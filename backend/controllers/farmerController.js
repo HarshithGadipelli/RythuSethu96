@@ -29,23 +29,28 @@ export const addCrop = async (req, res) => {
     if (cropData.isPesticideFree === 'true' || cropData.isPesticideFree === true) cropData.isPesticideFree = true;
     else cropData.isPesticideFree = false;
 
-    // Backend geocoding fallback if frontend didn't send coordinates
-    if (!cropData.latitude || cropData.latitude === "" || cropData.latitude === "null" ||
-        !cropData.longitude || cropData.longitude === "" || cropData.longitude === "null") {
-      const addr = cropData.location || cropData.farmLocation;
-      if (addr) {
-        try {
-          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`;
-          const r = await fetch(url, { headers: { "User-Agent": "RythuSethuApp/1.0" } });
-          const data = await r.json();
-          if (data && data.length > 0) {
-            cropData.latitude = parseFloat(data[0].lat);
-            cropData.longitude = parseFloat(data[0].lon);
-          }
-        } catch (e) {
-          console.error("Geocoding failed during crop creation:", e.message);
+    // Backend geocoding fallback if frontend didn't send coordinates, OR if farmer typed a custom location
+    // We prioritize the typed text `farmLocation` over the device's GPS if the text explicitly doesn't match
+    const addr = cropData.location || cropData.farmLocation;
+    
+    // If a manual address was typed, ALWAYS try to geocode it instead of just trusting the browser's GPS
+    // Because a farmer might be in Hyderabad but typing "Jagtial" to list their farm's crop.
+    if (addr && addr.trim().length > 3) {
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`;
+        const r = await fetch(url, { headers: { "User-Agent": "RythuSethuApp/1.0" } });
+        const data = await r.json();
+        if (data && data.length > 0) {
+          // Overwrite any device GPS with the actual geocoded location they typed
+          cropData.latitude = parseFloat(data[0].lat);
+          cropData.longitude = parseFloat(data[0].lon);
         }
+      } catch (e) {
+        console.error("Geocoding failed during crop creation:", e.message);
       }
+    } else if (!cropData.latitude || cropData.latitude === "" || cropData.latitude === "null" ||
+               !cropData.longitude || cropData.longitude === "" || cropData.longitude === "null") {
+      // If no address was typed AND no coordinates were sent, we'll try to let mongoose handle it (will be null)
     }
 
     // Cleanup empty strings to prevent Mongoose CastError
