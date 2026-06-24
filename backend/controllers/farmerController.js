@@ -30,7 +30,8 @@ export const addCrop = async (req, res) => {
     else cropData.isPesticideFree = false;
 
     // Backend geocoding fallback if frontend didn't send coordinates
-    if (!cropData.latitude || !cropData.longitude) {
+    if (!cropData.latitude || cropData.latitude === "" || cropData.latitude === "null" ||
+        !cropData.longitude || cropData.longitude === "" || cropData.longitude === "null") {
       const addr = cropData.location || cropData.farmLocation;
       if (addr) {
         try {
@@ -46,6 +47,10 @@ export const addCrop = async (req, res) => {
         }
       }
     }
+
+    // Cleanup empty strings to prevent Mongoose CastError
+    if (cropData.latitude === "" || cropData.latitude === "null" || isNaN(cropData.latitude)) delete cropData.latitude;
+    if (cropData.longitude === "" || cropData.longitude === "null" || isNaN(cropData.longitude)) delete cropData.longitude;
 
     const crop = await Crop.create(cropData);
     
