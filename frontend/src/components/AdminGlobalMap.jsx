@@ -71,10 +71,10 @@ export default function AdminGlobalMap({ activeDeliveries }) {
     // Only map active in_transit or picked_up deliveries to save performance
     if (d.status !== "in_transit" && d.status !== "picked_up") return;
 
-    const pickupLat = d.pickupLatitude || d.order?.crop?.latitude;
-    const pickupLng = d.pickupLongitude || d.order?.crop?.longitude;
-    const deliveryLat = d.deliveryLatitude;
-    const deliveryLng = d.deliveryLongitude;
+    const pickupLat = d.pickupLatitude || d.order?.crop?.latitude || d.order?.farmer?.latitude || d.order?.crop?.farmer?.latitude;
+    const pickupLng = d.pickupLongitude || d.order?.crop?.longitude || d.order?.farmer?.longitude || d.order?.crop?.farmer?.longitude;
+    const deliveryLat = d.deliveryLatitude || d.order?.customer?.latitude;
+    const deliveryLng = d.deliveryLongitude || d.order?.customer?.longitude;
 
     const agentId = d.agent?._id || d.agent;
     const currentAgentPos = liveAgents[agentId] || (d.agentLatitude && d.agentLongitude ? { lat: d.agentLatitude, lng: d.agentLongitude } : null);

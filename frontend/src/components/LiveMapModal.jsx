@@ -69,7 +69,9 @@ export default function LiveMapModal({ order, onClose }) {
   const pickupLng = order.crop?.longitude || order.farmer?.longitude || order.crop?.farmer?.longitude;
   const pickupPos = (pickupLat && pickupLng) ? [pickupLat, pickupLng] : null;
 
-  const deliveryPos = order.deliveryLatitude ? [order.deliveryLatitude, order.deliveryLongitude] : null;
+  const deliveryLat = order.deliveryLatitude || order.customer?.latitude;
+  const deliveryLng = order.deliveryLongitude || order.customer?.longitude;
+  const deliveryPos = (deliveryLat && deliveryLng) ? [deliveryLat, deliveryLng] : null;
 
   const [agentPos, setAgentPos] = useState(
     order?.agent?.latitude && order?.agent?.longitude 
@@ -165,8 +167,8 @@ export default function LiveMapModal({ order, onClose }) {
               )}
 
               {/* Customer Marker */}
-              {order.deliveryLatitude && order.deliveryLongitude && (
-                <Marker position={[order.deliveryLatitude, order.deliveryLongitude]} icon={customerIcon}>
+              {deliveryPos && (
+                <Marker position={deliveryPos} icon={customerIcon}>
                   <Popup>Delivery Destination (Customer)</Popup>
                 </Marker>
               )}

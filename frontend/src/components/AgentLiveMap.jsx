@@ -68,8 +68,10 @@ export default function AgentLiveMap({ agentPos, deliveryData }) {
          coords.push(`${deliveryData.order.crop.longitude},${deliveryData.order.crop.latitude}`);
       }
 
-      if (deliveryData.deliveryLongitude && deliveryData.deliveryLatitude) {
-        coords.push(`${deliveryData.deliveryLongitude},${deliveryData.deliveryLatitude}`);
+      const dLat = deliveryData.deliveryLatitude || deliveryData.order?.customer?.latitude;
+      const dLng = deliveryData.deliveryLongitude || deliveryData.order?.customer?.longitude;
+      if (dLng && dLat) {
+        coords.push(`${dLng},${dLat}`);
       }
     }
 
@@ -102,15 +104,15 @@ export default function AgentLiveMap({ agentPos, deliveryData }) {
     markers.push({ id: "agent", lat: agentPos.lat, lng: agentPos.lng, type: "agent", label: "Your Location" });
   }
 
-  const pickupLat = deliveryData.pickupLatitude || deliveryData.order?.crop?.latitude;
-  const pickupLng = deliveryData.pickupLongitude || deliveryData.order?.crop?.longitude;
+  const pickupLat = deliveryData.pickupLatitude || deliveryData.order?.crop?.latitude || deliveryData.order?.farmer?.latitude || deliveryData.order?.crop?.farmer?.latitude;
+  const pickupLng = deliveryData.pickupLongitude || deliveryData.order?.crop?.longitude || deliveryData.order?.farmer?.longitude || deliveryData.order?.crop?.farmer?.longitude;
   
   if (pickupLat && pickupLng) {
     markers.push({ id: "pickup", lat: pickupLat, lng: pickupLng, type: "pickup", label: "Pickup Location" });
   }
 
-  const deliveryLat = deliveryData.deliveryLatitude;
-  const deliveryLng = deliveryData.deliveryLongitude;
+  const deliveryLat = deliveryData.deliveryLatitude || deliveryData.order?.customer?.latitude;
+  const deliveryLng = deliveryData.deliveryLongitude || deliveryData.order?.customer?.longitude;
 
   if (deliveryLat && deliveryLng) {
     markers.push({ id: "delivery", lat: deliveryLat, lng: deliveryLng, type: "delivery", label: "Delivery Location" });

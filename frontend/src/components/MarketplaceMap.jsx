@@ -16,6 +16,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { BASE_URL } from "../api/api";
 
 // Fix for default marker icons in leaflet with react
 delete L.Icon.Default.prototype._getIconUrl;
@@ -134,7 +135,6 @@ function createFarmerIcon(grade = "New", isOrganic = false, imgUrl = null) {
   const bg = colors[grade] || colors.New;
   
   // Format the image URL correctly if it exists to handle local vs absolute
-  const BASE_URL = "http://localhost:5000";
   const parsedImg = imgUrl ? (imgUrl.startsWith("http") ? imgUrl : `${BASE_URL}${imgUrl}`) : null;
   
   const innerHtml = parsedImg 
@@ -265,7 +265,7 @@ export default function MarketplaceMap({
 
     const fetchAgents = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/public/agents");
+        const res = await fetch(`${BASE_URL}/api/public/agents`);
         if (!res.ok) return;
         const liveAgents = await res.json();
         
