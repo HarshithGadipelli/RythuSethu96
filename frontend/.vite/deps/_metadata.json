@@ -1,0 +1,88 @@
+{
+  "hash": "f77ef718",
+  "configHash": "ab77fd36",
+  "lockfileHash": "7353cf78",
+  "browserHash": "88e4d7a7",
+  "optimized": {
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "8d975c16",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "91b3868a",
+      "needsInterop": true
+    },
+    "react-router-dom": {
+      "src": "../../node_modules/react-router-dom/dist/index.js",
+      "file": "react-router-dom.js",
+      "fileHash": "8cda6cf2",
+      "needsInterop": false
+    },
+    "lucide-react": {
+      "src": "../../node_modules/lucide-react/dist/esm/lucide-react.mjs",
+      "file": "lucide-react.js",
+      "fileHash": "96dbf5f6",
+      "needsInterop": false
+    },
+    "socket.io-client": {
+      "src": "../../node_modules/socket.io-client/build/esm/index.js",
+      "file": "socket__io-client.js",
+      "fileHash": "092664d8",
+      "needsInterop": false
+    },
+    "axios": {
+      "src": "../../node_modules/axios/index.js",
+      "file": "axios.js",
+      "fileHash": "921e3b0e",
+      "needsInterop": false
+    },
+    "framer-motion": {
+      "src": "../../node_modules/framer-motion/dist/es/index.mjs",
+      "file": "framer-motion.js",
+      "fileHash": "21d45301",
+      "needsInterop": false
+    },
+    "react-dom": {
+      "src": "../../node_modules/react-dom/index.js",
+      "file": "react-dom.js",
+      "fileHash": "fcec21e3",
+      "needsInterop": true
+    },
+    "react-leaflet": {
+      "src": "../../node_modules/react-leaflet/lib/index.js",
+      "file": "react-leaflet.js",
+      "fileHash": "e7e93747",
+      "needsInterop": false
+    },
+    "leaflet": {
+      "src": "../../node_modules/leaflet/dist/leaflet-src.js",
+      "file": "leaflet.js",
+      "fileHash": "8bc804e8",
+      "needsInterop": true
+    },
+    "react-qr-code": {
+      "src": "../../node_modules/react-qr-code/lib/index.mjs",
+      "file": "react-qr-code.js",
+      "fileHash": "6cd018ec",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-UQIBVFMD": {
+      "file": "chunk-UQIBVFMD.js"
+    },
+    "chunk-NNN5MASO": {
+      "file": "chunk-NNN5MASO.js"
+    },
+    "chunk-K25BQGW3": {
+      "file": "chunk-K25BQGW3.js"
+    },
+    "chunk-PR4QN5HX": {
+      "file": "chunk-PR4QN5HX.js"
+    }
+  }
+}

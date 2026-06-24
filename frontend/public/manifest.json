@@ -1,0 +1,28 @@
+{
+  "short_name": "Rythu Sethu",
+  "name": "Rythu Sethu - Farm Fresh, Direct to You",
+  "description": "AI-powered marketplace bridging farmers and customers for fresh farm produce.",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1a4a2e",
+  "background_color": "#f8fafc",
+  "categories": ["food", "shopping", "business"],
+  "lang": "en",
+  "prefer_related_applications": false
+}
