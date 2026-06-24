@@ -29,6 +29,25 @@ export const addCrop = async (req, res) => {
     if (cropData.isPesticideFree === 'true' || cropData.isPesticideFree === true) cropData.isPesticideFree = true;
     else cropData.isPesticideFree = false;
 
+    // Backend geocoding fallback if frontend didn't send coordinates
+    if (!cropData.latitude || !cropData.longitude) {
+      const addr = cropData.location || cropData.farmLocation;
+      if (addr) {
+        try {
+          const fetch = (await import("node-fetch")).default;
+          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`;
+          const r = await fetch(url, { headers: { "User-Agent": "RythuSethuApp/1.0" } });
+          const data = await r.json();
+          if (data && data.length > 0) {
+            cropData.latitude = parseFloat(data[0].lat);
+            cropData.longitude = parseFloat(data[0].lon);
+          }
+        } catch (e) {
+          console.error("Geocoding failed during crop creation:", e.message);
+        }
+      }
+    }
+
     const crop = await Crop.create(cropData);
     
     // Emit real-time event

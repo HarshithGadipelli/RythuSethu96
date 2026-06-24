@@ -56,7 +56,7 @@ export default function CuratedBoxes() {
         // Get unique crops by name
         const unique = [];
         const seen = new Set();
-        for (const c of res.data) {
+        for (const c of (res.data || [])) {
           if (!seen.has(c.name) && c.quantity > 0 && c.isLive !== false) {
             seen.add(c.name);
             unique.push(c);

@@ -96,7 +96,7 @@ export default function CustomerOrders({ orders, fetchOrders }) {
         <Package size={24} color="var(--green-mid)" /> My Orders
       </h2>
 
-      {orders.length === 0 ? (
+      {!orders || orders.length === 0 ? (
         <div style={{ padding: "3rem", textAlign: "center", background: "white", borderRadius: "var(--radius-lg)" }}>
           <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>📦</div>
           <h3 style={{ color: "var(--text-mid)" }}>No orders yet!</h3>
@@ -104,7 +104,7 @@ export default function CustomerOrders({ orders, fetchOrders }) {
         </div>
       ) : (
         <div style={{ display: "grid", gap: "1rem" }}>
-          {orders.map(o => (
+          {orders?.map(o => (
             <div key={o._id} style={{ 
               background: "white", padding: "1.5rem", borderRadius: "var(--radius-md)", 
               border: "1px solid #e2e8f0", display: "flex", flexWrap: "wrap", gap: "1.5rem", justifyContent: "space-between", alignItems: "center" 

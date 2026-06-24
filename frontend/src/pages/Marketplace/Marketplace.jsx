@@ -955,11 +955,11 @@ export default function Marketplace() {
             exit={{ opacity: 0, height: 0 }}
             className="glass-card mb-3" style={{ overflowY:"auto", background:"white", borderColor:"#e2e8f0", borderRadius:"var(--radius-lg)" }}>
             <h3 className="section-title" style={{ fontSize:"1.1rem", color:"var(--text-dark)", marginBottom:"1rem" }}>📦 {t("myOrders")}</h3>
-            {myOrders.length === 0 ? (
+            {(!myOrders || myOrders.length === 0) ? (
               <p style={{ color:"var(--text-muted)", fontSize:"0.95rem" }}>No orders yet.</p>
             ) : (
               <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-                {myOrders.map(o => (
+                {myOrders?.map(o => (
                   <div key={o._id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"1rem", background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:"var(--radius-md)" }}>
                     <div>
                       <span style={{ color:"var(--text-dark)", fontWeight:700, fontSize:"1rem", display:"block" }}>{o.crop?.name || "Order"}</span>

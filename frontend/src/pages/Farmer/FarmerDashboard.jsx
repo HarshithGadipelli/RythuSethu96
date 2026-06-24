@@ -1045,24 +1045,24 @@ export default function FarmerDashboard() {
                   window.speechSynthesis.cancel();
                   return;
                 }
-                if (orders.length === 0) {
+                if (!orders || orders.length === 0) {
                   playTTS("You have no incoming orders.", lang);
                   return;
                 }
-                const text = `You have ${orders.length} orders. ` + orders.map((o, i) => `Order ${i+1}: ${o.quantity} units of ${o.crop?.name || "crop"} for ${o.totalAmount} rupees.`).join(" ");
+                const text = `You have ${orders.length} orders. ` + orders?.map((o, i) => `Order ${i+1}: ${o.quantity} units of ${o.crop?.name || "crop"} for ${o.totalAmount} rupees.`).join(" ");
                 playTTS(text, lang);
               }}
             >
               🔊 Toggle Read Orders
             </button>
           </div>
-          {orders.length === 0 ? (
+          {!orders || orders.length === 0 ? (
             <p style={{ color:"var(--text-muted)", textAlign:"center", padding:"2rem" }}>No orders received yet.</p>
           ) : (
             <table className="rs-table">
               <thead><tr><th>Order</th><th>Crop</th><th>Customer</th><th>Qty</th><th>Amount</th><th>Type</th><th>Status</th><th>Date</th></tr></thead>
               <tbody>
-                {orders.map(o => (
+                {orders?.map(o => (
                   <tr key={o._id}>
                     <td style={{ fontSize:"0.75rem", color:"var(--text-muted)" }}>#{o.billNumber || o._id.substring(0,8).toUpperCase()}</td>
                     <td><strong style={{ color: "var(--text-dark)" }}>{o.crop?.name || "—"}</strong></td>
