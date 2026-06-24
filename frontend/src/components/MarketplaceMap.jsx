@@ -603,11 +603,24 @@ export default function MarketplaceMap({
           const lng = c.longitude || c.farmer?.longitude;
           if (!lat || !lng) return acc;
           const fid = (c.farmer?._id || c.farmer)?.toString?.() || "unknown";
-          if (!acc[fid]) {
-             acc[fid] = { id: fid, name: c.farmer?.name || "Farmer", lat, lng, crops: [], isOrganic: false, image: c.farmer?.profilePic || c.image || null };
+          
+          // Group by both farmer and exact location coordinates so multiple locations render distinct markers
+          const groupKey = `${fid}_${lat}_${lng}`;
+          
+          if (!acc[groupKey]) {
+             acc[groupKey] = { 
+               id: fid, 
+               groupKey: groupKey,
+               name: c.farmer?.name || "Farmer", 
+               lat, 
+               lng, 
+               crops: [], 
+               isOrganic: false, 
+               image: c.farmer?.profilePic || c.image || null 
+             };
           }
-          acc[fid].crops.push(c);
-          if (c.isOrganic) acc[fid].isOrganic = true;
+          acc[groupKey].crops.push(c);
+          if (c.isOrganic) acc[groupKey].isOrganic = true;
           return acc;
         }, {})).map((f) => {
           const trust = trustScores[f.id];
@@ -619,7 +632,7 @@ export default function MarketplaceMap({
 
           return (
             <Marker
-              key={f.id}
+              key={f.groupKey}
               position={[f.lat, f.lng]}
               icon={createFarmerIcon(grade, f.isOrganic, f.image)}
               eventHandlers={{

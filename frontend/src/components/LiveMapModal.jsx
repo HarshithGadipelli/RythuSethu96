@@ -65,10 +65,10 @@ function MapUpdater({ position }) {
 }
 
 export default function LiveMapModal({ order, onClose }) {
-  const pickupPos = (order.farmer?.latitude || order.crop?.farmer?.latitude) 
-    ? [order.farmer?.latitude || order.crop?.farmer?.latitude, order.farmer?.longitude || order.crop?.farmer?.longitude] 
-    : null;
-    
+  const pickupLat = order.crop?.latitude || order.farmer?.latitude || order.crop?.farmer?.latitude;
+  const pickupLng = order.crop?.longitude || order.farmer?.longitude || order.crop?.farmer?.longitude;
+  const pickupPos = (pickupLat && pickupLng) ? [pickupLat, pickupLng] : null;
+
   const deliveryPos = order.deliveryLatitude ? [order.deliveryLatitude, order.deliveryLongitude] : null;
 
   const [agentPos, setAgentPos] = useState(
@@ -137,12 +137,12 @@ export default function LiveMapModal({ order, onClose }) {
               <MapUpdater position={mapCenter} />
               
               {/* Draw Route Polyline */}
-              {(order.farmer?.latitude || order.crop?.farmer?.latitude) && order.deliveryLatitude && (
+              {pickupPos && deliveryPos && (
                 <Polyline 
                   positions={[
-                    [order.farmer?.latitude || order.crop?.farmer?.latitude, order.farmer?.longitude || order.crop?.farmer?.longitude],
-                    agentPos || [order.farmer?.latitude || order.crop?.farmer?.latitude, order.farmer?.longitude || order.crop?.farmer?.longitude],
-                    [order.deliveryLatitude, order.deliveryLongitude]
+                    pickupPos,
+                    agentPos || pickupPos,
+                    deliveryPos
                   ]} 
                   color="#3b82f6" 
                   weight={5} 
@@ -152,8 +152,8 @@ export default function LiveMapModal({ order, onClose }) {
               )}
 
               {/* Farmer Marker */}
-              {(order.farmer?.latitude || order.crop?.farmer?.latitude) && (
-                <Marker position={[order.farmer?.latitude || order.crop?.farmer?.latitude, order.farmer?.longitude || order.crop?.farmer?.longitude]} icon={farmerIcon}>
+              {pickupPos && (
+                <Marker position={pickupPos} icon={farmerIcon}>
                   <Popup>Pickup Location (Farmer)</Popup>
                 </Marker>
               )}

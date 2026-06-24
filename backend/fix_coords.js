@@ -30,37 +30,11 @@ async function geocode(address) {
 async function fixCrops() {
   try {
     await mongoose.connect(MONGO_URI);
-    console.log("Connected to MongoDB.");
-
-    const crops = await Crop.find({
-      $or: [
-        { latitude: { $exists: false } },
-        { latitude: null },
-        { longitude: { $exists: false } },
-        { longitude: null }
-      ]
-    });
-
-    console.log(`Found ${crops.length} crops missing coordinates.`);
-
-    for (const crop of crops) {
-      const address = crop.location || crop.farmLocation;
-      if (address) {
-        const coords = await geocode(address);
-        if (coords) {
-          crop.latitude = coords.lat;
-          crop.longitude = coords.lng;
-          await crop.save();
-          console.log(`Updated crop ${crop._id} (${address}) to lat: ${coords.lat}, lng: ${coords.lng}`);
-        } else {
-          console.log(`Could not geocode ${address}`);
-        }
-        // Sleep to respect Nominatim limits (1 req/sec)
-        await new Promise(r => setTimeout(r, 1100));
-      }
-    }
-
-    console.log("Finished updating crops.");
+    const allCrops = await Crop.find({}, 'name location farmLocation latitude longitude');
+    console.log("All crops:");
+    allCrops.forEach(c => console.log(`- ${c.name}: loc=${c.location}, farmLoc=${c.farmLocation}, lat=${c.latitude}, lng=${c.longitude}`));
+    
+    console.log("Finished querying crops.");
   } catch (err) {
     console.error(err);
   } finally {
