@@ -14,6 +14,7 @@ import {
   MapContainer, TileLayer, Marker, Popup, useMap,
   Circle, Polyline, Polygon, ZoomControl, useMapEvents
 } from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { BASE_URL } from "../api/api";
@@ -598,7 +599,8 @@ export default function MarketplaceMap({
         })}
 
         {/* Farmer / crop markers grouped by Farmer */}
-        {Object.values(crops.reduce((acc, c) => {
+        <MarkerClusterGroup chunkedLoading={true} maxClusterRadius={40}>
+          {Object.values(crops.reduce((acc, c) => {
           const lat = c.latitude || c.farmer?.latitude;
           const lng = c.longitude || c.farmer?.longitude;
           if (!lat || !lng) return acc;
@@ -691,7 +693,8 @@ export default function MarketplaceMap({
               </Popup>
             </Marker>
           );
-        })}
+          })}
+        </MarkerClusterGroup>
       </MapContainer>
     </div>
   );
