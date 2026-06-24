@@ -34,7 +34,6 @@ export const addCrop = async (req, res) => {
       const addr = cropData.location || cropData.farmLocation;
       if (addr) {
         try {
-          const fetch = (await import("node-fetch")).default;
           const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`;
           const r = await fetch(url, { headers: { "User-Agent": "RythuSethuApp/1.0" } });
           const data = await r.json();

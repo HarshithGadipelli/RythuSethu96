@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import fetch from "node-fetch";
 
 // The script assumes MongoDB runs locally or on the env string
 const MONGO_URI = "mongodb://127.0.0.1:27017/rythu_sethu";
