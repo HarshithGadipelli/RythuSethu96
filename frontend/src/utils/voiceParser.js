@@ -165,7 +165,18 @@ export const CROP_BENCHMARKS = {
   Carrot: { min: 30, max: 50, avg: 40, unit: "kg", trend: "Stable", advice: "Fresh organic carrots see 25% faster sellouts." },
   Spinach: { min: 15, max: 30, avg: 22, unit: "kg", trend: "Fast Moving", advice: "Perishable leaf crop - recommend same-day pickup." },
   Pulses: { min: 85, max: 135, avg: 110, unit: "kg", trend: "Upward", advice: "Packaged pulses sell with high customer loyalty." },
-  Sugarcane: { min: 300, max: 450, avg: 375, unit: "ton", trend: "Stable", advice: "Sugar mills running full extraction schedules." }
+  Sugarcane: { min: 300, max: 450, avg: 375, unit: "ton", trend: "Stable", advice: "Sugar mills running full extraction schedules." },
+  Watermelon: { min: 12, max: 25, avg: 18, unit: "kg", trend: "High Demand", advice: "Peak summer hydration favorite." },
+  Papaya: { min: 20, max: 40, avg: 28, unit: "kg", trend: "Fast Moving", advice: "High retail turnover across fruit markets." },
+  Grapes: { min: 60, max: 120, avg: 85, unit: "kg", trend: "Upward (+10%)", advice: "Fresh table grapes in high urban demand." },
+  Coconut: { min: 25, max: 45, avg: 32, unit: "piece", trend: "Stable", advice: "Year-round demand for fresh water and kernels." },
+  Soybean: { min: 35, max: 55, avg: 45, unit: "kg", trend: "Upward (+6%)", advice: "Protein processing plants buying aggressively." },
+  Mustard: { min: 45, max: 70, avg: 58, unit: "kg", trend: "Stable", advice: "High oil extraction demand in winter." },
+  Peas: { min: 35, max: 65, avg: 48, unit: "kg", trend: "Fast Moving", advice: "Fresh green pods command premium pricing." },
+  Cucumber: { min: 15, max: 30, avg: 22, unit: "kg", trend: "Fast Moving", advice: "Constant salad and vegetable consumption." },
+  Drumstick: { min: 40, max: 80, avg: 55, unit: "kg", trend: "High Demand", advice: "Export and south Indian cuisine staple." },
+  Coriander: { min: 20, max: 45, avg: 30, unit: "kg", trend: "Fast Moving", advice: "Daily culinary requirement, same-day delivery ideal." },
+  BitterGourd: { min: 25, max: 48, avg: 36, unit: "kg", trend: "Stable", advice: "High medicinal and diabetic dietary demand." }
 };
 
 // Convert spoken number (word or digit string) to numerical string

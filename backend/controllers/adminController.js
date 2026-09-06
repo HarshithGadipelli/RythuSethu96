@@ -141,3 +141,103 @@ export const broadcastPromotion = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const getWasteManagement = async (req, res) => {
+  try {
+    const GlobalConfig = (await import("../models/GlobalConfig.js")).default;
+    const VermiCompostRequest = (await import("../models/VermiCompostRequest.js")).default;
+
+    let config = await GlobalConfig.findOne();
+    if (!config) {
+      config = await GlobalConfig.create({});
+    }
+
+    const requests = await VermiCompostRequest.find().populate("farmer", "name email phone walletBalance").sort({ createdAt: -1 });
+
+    res.json({
+      totalBiodegradableWasteKg: config.totalBiodegradableWasteKg || 0,
+      requests
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const approveWasteRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const VermiCompostRequest = (await import("../models/VermiCompostRequest.js")).default;
+    const GlobalConfig = (await import("../models/GlobalConfig.js")).default;
+    const User = (await import("../models/User.js")).default;
+    const Notification = (await import("../models/Notification.js")).default;
+
+    const request = await VermiCompostRequest.findById(id).populate("farmer");
+    if (!request) return res.status(404).json({ error: "Request not found" });
+    if (request.status !== "pending") return res.status(400).json({ error: "Request already processed" });
+
+    let config = await GlobalConfig.findOne();
+    if (!config || (config.totalBiodegradableWasteKg || 0) < request.requestedKg) {
+      return res.status(400).json({ error: "Insufficient waste inventory in cold storage" });
+    }
+
+    const farmerUser = await User.findById(request.farmer._id || request.farmer);
+    if (farmerUser.walletBalance < request.totalCost) {
+      return res.status(400).json({ error: "Farmer has insufficient wallet balance" });
+    }
+
+    // Process approval
+    farmerUser.walletBalance -= request.totalCost;
+    await farmerUser.save();
+
+    config.totalBiodegradableWasteKg -= request.requestedKg;
+    await config.save();
+
+    request.status = "approved";
+    request.approvedAt = new Date();
+    await request.save();
+
+    // Notify farmer
+    const notif = await Notification.create({
+      user: farmerUser._id,
+      title: "✅ Vermi Compost Request Approved",
+      message: `Your request for ${request.requestedKg} kg of biodegradable waste has been approved. ₹${request.totalCost} has been debited from your wallet.`,
+      type: "system",
+      priority: "normal"
+    });
+    const io = req.app.get("io");
+    if (io) io.emit("notification", notif);
+
+    res.json({ success: true, message: "Request approved and wallet debited.", request });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const sellBiogas = async (req, res) => {
+  try {
+    const { quantityKg, pricePerKg } = req.body;
+    if (!quantityKg || !pricePerKg) return res.status(400).json({ error: "Quantity and price are required" });
+
+    const GlobalConfig = (await import("../models/GlobalConfig.js")).default;
+    const User = (await import("../models/User.js")).default;
+
+    let config = await GlobalConfig.findOne();
+    if (!config || (config.totalBiodegradableWasteKg || 0) < quantityKg) {
+      return res.status(400).json({ error: "Insufficient waste inventory in cold storage" });
+    }
+
+    config.totalBiodegradableWasteKg -= quantityKg;
+    await config.save();
+
+    // Credit admin wallet
+    const adminUser = await User.findById(req.user.id);
+    if (adminUser) {
+      adminUser.walletBalance = (adminUser.walletBalance || 0) + (quantityKg * pricePerKg);
+      await adminUser.save();
+    }
+
+    res.json({ success: true, message: `Successfully sold ${quantityKg} kg to Biogas Plant.` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

@@ -38,27 +38,32 @@ echo [Step 5/5] Skipping Database Import (Database auto-seeds on startup)
 
 echo.
 echo ========================================================
-echo     Launching Services in 3 Terminals...
+echo     Launching Services in 4 Terminals...
 echo ========================================================
 echo.
 
 :: 1. Launch Terminal 1: MongoDB Service Status & Monitor
-echo [1/3] Launching MongoDB Terminal...
+echo [1/4] Launching MongoDB Terminal...
 start "Rythu Sethu - MongoDB (Port 27017)" cmd /k "title Rythu Sethu - MongoDB (Port 27017) && echo ======================================================== && echo  Rythu Sethu: MongoDB Service (Port 27017) && echo ======================================================== && net start MongoDB 2>nul || sc query MongoDB && echo. && echo [STATUS] MongoDB Service is running on port 27017. && echo Keep this window open or close when finished. && echo."
 
 :: 2. Launch Terminal 2: Backend Server (Node.js/Express)
-echo [2/3] Launching Backend Server Terminal (Port 5000)...
+echo [2/4] Launching Backend Server Terminal (Port 5000)...
 start "Rythu Sethu - Backend (Port 5000)" cmd /k "title Rythu Sethu - Backend (Port 5000) && cd /d "%~dp0backend" && echo ======================================================== && echo  Rythu Sethu: Backend Server (Port 5000) && echo ======================================================== && npm.cmd run dev"
 
-:: 3. Launch Terminal 3: Frontend Client (Vite/React)
-echo [3/3] Launching Frontend Client Terminal (Port 3000)...
+:: 3. Launch Terminal 3: Python ML Microservice (FastAPI)
+echo [3/4] Launching Python ML Microservice Terminal (Port 8000)...
+start "Rythu Sethu - ML Microservice (Port 8000)" cmd /k "title Rythu Sethu - ML Microservice (Port 8000) && cd /d "%~dp0ml_models" && echo ======================================================== && echo  Rythu Sethu: ML Microservice (Port 8000) && echo ======================================================== && uvicorn api:app --reload --port 8000"
+
+:: 4. Launch Terminal 4: Frontend Client (Vite/React)
+echo [4/4] Launching Frontend Client Terminal (Port 3000)...
 start "Rythu Sethu - Frontend (Port 3000)" cmd /k "title Rythu Sethu - Frontend (Port 3000) && cd /d "%~dp0frontend" && echo ======================================================== && echo  Rythu Sethu: Frontend Client (Port 3000) && echo ======================================================== && npm.cmd run dev"
 
 echo.
 echo ===================================================
 echo Success! Rythu Sethu 4.0 is booting up!
-echo - MongoDB:  Port 27017
-echo - Backend:  http://localhost:5000
-echo - Frontend: http://localhost:3000 (or http://localhost:5173)
+echo - MongoDB:      Port 27017
+echo - Backend:      http://localhost:5000
+echo - ML Models:    http://localhost:8000
+echo - Frontend:     http://localhost:3000
 echo ===================================================
 pause

@@ -57,7 +57,10 @@ const deliverySchema = new mongoose.Schema({
   
   // ── Circular Economy / Waste Collection ──
   wasteCollectedKg: { type: Number, default: 0 },
-  wastePointsAwarded: { type: Number, default: 0 }
+  wastePointsAwarded: { type: Number, default: 0 },
+  wastePhoto: { type: String, default: "" },
+  wasteScanStatus: { type: String, enum: ["pending", "verified", "rejected"], default: "pending" },
+  wasteDroppedOff: { type: Boolean, default: false }
 }, { timestamps: true });
 
 export default mongoose.model("Delivery", deliverySchema);

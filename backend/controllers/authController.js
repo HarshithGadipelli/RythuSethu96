@@ -106,6 +106,11 @@ export const register = async (req, res) => {
       const farmerPhotoPath = req.files?.farmerPhoto?.[0]?.filename ? `/uploads/${req.files.farmerPhoto[0].filename}` : (req.body.farmerPhoto || "");
       const farmPhotoPath = req.files?.farmPhoto?.[0]?.filename ? `/uploads/${req.files.farmPhoto[0].filename}` : (req.body.farmPhoto || "");
       const productPhotoPath = req.files?.productPhoto?.[0]?.filename ? `/uploads/${req.files.productPhoto[0].filename}` : (req.body.productPhoto || "");
+      const locationAudioPath = req.files?.locationAudio?.[0]?.filename ? `/uploads/${req.files.locationAudio[0].filename}` : "";
+      
+      user.locationMethod = req.body.locationMethod || "gps";
+      user.locationAudioUrl = locationAudioPath;
+      await user.save();
       
       await Farmer.create({
         user: user._id,
@@ -132,10 +137,27 @@ export const register = async (req, res) => {
         longitude: longitude ? Number(longitude) : undefined
       });
     } else if (user.role === "agent") {
+      const agentPhotoPath = req.files?.agentPhoto?.[0]?.filename ? `/uploads/${req.files.agentPhoto[0].filename}` : "";
+      const vehiclePhotoPath = req.files?.vehiclePhoto?.[0]?.filename ? `/uploads/${req.files.vehiclePhoto[0].filename}` : "";
+      
+      // Blocking: agents MUST upload photos to register
+      if (!agentPhotoPath || !vehiclePhotoPath) {
+        await User.findByIdAndDelete(user._id);
+        return res.status(400).json({ error: "Agent photo and vehicle photo are required for registration. Please upload both photos." });
+      }
+      
+      // Save photos to user document
+      user.agentPhoto = agentPhotoPath;
+      user.vehiclePhoto = vehiclePhotoPath;
+      user.vehicleNumber = req.body.vehicleNumber || "";
+      user.agentType = req.body.agentType || "bike";
+      user.agentVerificationStatus = "pending";
+      await user.save();
+      
       await Agent.create({
         user: user._id,
         vehicle: req.body.agentType || req.body.vehicle || "bike",
-        active: true
+        active: false // Not active until admin verifies
       });
     }
 

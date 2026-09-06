@@ -22,12 +22,28 @@ def fetch_and_augment_seasonal_data(target_rows=50000):
         
         for crop in live_crops:
             created_at = crop.get('createdAt')
-            month = created_at.month if created_at else np.random.randint(1, 13)
+            month = created_at.month if (created_at and hasattr(created_at, 'month')) else np.random.randint(1, 13)
+            declared_season = crop.get('season')
             
             # Approximate real-world weather when crop was listed (with realistic 20% noise)
             noise_temp = np.random.normal(0, 3)
             noise_rain = np.random.normal(0, 20)
-            if month in [7, 8, 9, 10]: # Kharif
+            
+            if declared_season and str(declared_season).lower() in ['kharif', 'rabi', 'zaid', 'perennial']:
+                season = str(declared_season).capitalize()
+                if season == 'Kharif':
+                    temp = np.random.uniform(28, 40) + noise_temp
+                    rainfall = np.random.uniform(200, 500) + noise_rain
+                elif season == 'Rabi':
+                    temp = np.random.uniform(10, 24) + noise_temp
+                    rainfall = np.random.uniform(0, 100) + noise_rain
+                elif season == 'Zaid':
+                    temp = np.random.uniform(32, 45) + noise_temp
+                    rainfall = np.random.uniform(0, 50) + noise_rain
+                else:
+                    temp = np.random.uniform(20, 35) + noise_temp
+                    rainfall = np.random.uniform(50, 150) + noise_rain
+            elif month in [7, 8, 9, 10]: # Kharif
                 season = 'Kharif'
                 temp = np.random.uniform(28, 40) + noise_temp
                 rainfall = np.random.uniform(200, 500) + noise_rain

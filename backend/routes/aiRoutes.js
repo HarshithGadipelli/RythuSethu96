@@ -1,13 +1,14 @@
 import express from "express";
 import { parseIntent } from "../controllers/aiController.js";
 import AILog from "../models/AILog.js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import Delivery from "../models/Delivery.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import multer from "multer";
 import * as googleTTS from "google-tts-api";
+import { callGeminiWithFallback, getGenAI } from "../services/geminiService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -135,9 +136,6 @@ router.post("/chat", async (req, res) => {
     };
 
     if (apiKey && apiKey.trim().length > 10) {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
       const finalPrompt = `
       You are the Rythu Sethu 4.0 Advanced AI Assistant. You are deeply integrated into the system and know real-time data.
       You help farmers optimize crop yields, customers find the best prices, and agents optimize deliveries.
@@ -154,8 +152,12 @@ router.post("/chat", async (req, res) => {
       `;
 
       try {
-        const result = await model.generateContent(finalPrompt);
-        aiResponseText = result.response.text();
+        const textResult = await callGeminiWithFallback(finalPrompt);
+        if (textResult) {
+          aiResponseText = textResult;
+        } else {
+          aiResponseText = await handleOfflineHeuristics(prompt, req.body.lang);
+        }
       } catch (geminiError) {
         console.warn("Gemini API failed:", geminiError.message);
         aiResponseText = await handleOfflineHeuristics(prompt, req.body.lang);
@@ -219,8 +221,7 @@ router.post("/verify-delivery", async (req, res) => {
       return res.status(400).json({ error: "Gemini API Key is missing or invalid. Cannot perform AI vision check." });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const ai = getGenAI() || new GoogleGenAI({ apiKey });
 
     // Function to read file and convert to generative AI part
     function fileToGenerativePart(filePath, mimeType) {
@@ -268,8 +269,11 @@ router.post("/verify-delivery", async (req, res) => {
     }
     `;
 
-    const result = await model.generateContent([prompt, ...imageParts]);
-    const responseText = result.response.text().trim().replace(/^```json/i, "").replace(/```$/, "").trim();
+    const result = await ai.models.generateContent({
+      model: "gemini-3.5-flash-lite",
+      contents: [prompt, ...imageParts]
+    });
+    const responseText = (result.text || "").trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
     
     let aiAnalysis;
     try {
@@ -303,23 +307,11 @@ router.post("/recipe-suggest", async (req, res) => {
       return res.status(400).json({ error: "No ingredients provided" });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey || !apiKey.trim().length > 10) {
-      return res.status(503).json({ error: "Gemini API Key is missing or invalid. Offline mode active." });
+    const recipeText = await callGeminiWithFallback(prompt);
+    if (!recipeText) {
+      return res.status(503).json({ error: "Failed to generate recipe suggestions." });
     }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-    const prompt = `
-      You are an expert culinary AI Chef. 
-      The following fresh ingredients are currently available in our marketplace: ${ingredients.join(", ")}.
-      Suggest 2 quick, delicious recipes that prominently feature a combination of some of these available ingredients.
-      Keep the formatting clean and easy to read.
-    `;
-
-    const result = await model.generateContent(prompt);
-    res.json({ recipe: result.response.text() });
+    res.json({ recipe: recipeText });
   } catch (error) {
     console.error("AI Recipe Suggest Error:", error);
     res.status(500).json({ error: "Failed to generate recipe suggestions." });
@@ -438,9 +430,7 @@ router.post("/pest-detect", async (req, res) => {
     // Try Gemini Vision API if key exists
     if (apiKey && apiKey.trim().length > 5 && imageBase64) {
       try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
+        const ai = getGenAI() || new GoogleGenAI({ apiKey });
         const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
         const prompt = `
@@ -460,17 +450,20 @@ router.post("/pest-detect", async (req, res) => {
         }
         `;
 
-        const result = await model.generateContent([
-          prompt,
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType: "image/jpeg"
+        const result = await ai.models.generateContent({
+          model: "gemini-3.5-flash-lite",
+          contents: [
+            prompt,
+            {
+              inlineData: {
+                data: base64Data,
+                mimeType: "image/jpeg"
+              }
             }
-          }
-        ]);
+          ]
+        });
 
-        const responseText = result.response.text().trim().replace(/^```json/i, "").replace(/```$/, "").trim();
+        const responseText = (result.text || "").trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
         aiAnalysis = JSON.parse(responseText);
         aiAnalysis.source = "Gemini Vision AI";
       } catch (geminiError) {
@@ -531,36 +524,12 @@ router.post("/parse-registration", async (req, res) => {
       return res.json(parsedData);
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-    const prompt = `
-    You are an advanced AI assistant helping a rural Indian farmer register on an agricultural platform.
-    The user spoke the following heavily accented, colloquial input in ${lang || "their local language"}:
-    "${transcript}"
-    
-    CRITICAL INSTRUCTIONS:
-    1. EXTRACT DATA: Intelligently extract the requested fields despite poor grammar, heavy slang, or honorifics/filler words (like 'andi', 'bhaiya', 'sir').
-    2. LOCAL MEASUREMENTS: For 'farmSize', if the user says local units like "bigha" (approx 0.6 acres), "gunta" or "guntha" (approx 0.025 acres), or "cents" (approx 0.01 acres), CONVERT IT to standard acres. If they say a number, assume acres by default.
-    3. PHONETIC NAMES: Capture the 'name' accurately even if pronounced weirdly. Strip out prefixes like "my name is", "mera naam", "naa peru".
-    4. SOIL TYPE: Map local soil terms to the closest English equivalent (loamy, clay, sandy, silt, peat, chalk, other). E.g. "erra neela" (red soil) -> sandy/loamy, "nalla regadi" (black soil) -> clay.
-    
-    Extract the following details if present:
-    - name (string)
-    - phone (string, exactly 10 digits; strip out +91 or country codes)
-    - farmLocation (string)
-    - farmSize (number in acres; converted from local slang if necessary)
-    - experience (number in years)
-    - soilType (string: loamy, clay, sandy, silt, peat, chalk, other)
-    
-    Return EXACTLY and ONLY valid JSON matching these keys. Do not include markdown wrappers or backticks.
-    If a field is not mentioned, leave it null.
-    `;
-
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text().trim().replace(/^```json/i, "").replace(/```$/, "").trim();
-    
-    const parsedData = JSON.parse(responseText);
+    const responseText = await callGeminiWithFallback(prompt);
+    if (!responseText) {
+      return res.status(500).json({ error: "Failed to parse registration audio." });
+    }
+    const cleanJson = responseText.trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
+    const parsedData = JSON.parse(cleanJson);
     res.json(parsedData);
   } catch (error) {
     console.error("AI Parse Registration Error:", error);
@@ -579,8 +548,7 @@ router.post("/analyze-quality", async (req, res) => {
       return res.status(503).json({ error: "Gemini API Key is missing or invalid." });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const ai = getGenAI() || new GoogleGenAI({ apiKey });
     const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
     const prompt = `
@@ -600,17 +568,20 @@ router.post("/analyze-quality", async (req, res) => {
     }
     `;
 
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: "image/jpeg"
+    const result = await ai.models.generateContent({
+      model: "gemini-3.5-flash-lite",
+      contents: [
+        prompt,
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType: "image/jpeg"
+          }
         }
-      }
-    ]);
+      ]
+    });
 
-    const responseText = result.response.text().trim().replace(/^```json/i, "").replace(/```$/, "").trim();
+    const responseText = (result.text || "").trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
     const aiAnalysis = JSON.parse(responseText);
 
     res.json(aiAnalysis);
@@ -674,9 +645,7 @@ router.post("/stt", upload.single("audio"), async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || !apiKey.trim().length > 10) return res.status(500).json({ error: "No valid Gemini API Key" });
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    // Use gemini-1.5-flash as it inherently supports audio parsing perfectly
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const ai = getGenAI() || new GoogleGenAI({ apiKey });
 
     const audioPart = {
       inlineData: {
@@ -713,8 +682,11 @@ CRITICAL RULES:
 Output the transcription as pure plain text. Do not wrap in quotes or markdown.
 `;
 
-    const result = await model.generateContent([prompt, audioPart]);
-    const transcription = result.response.text().trim();
+    const result = await ai.models.generateContent({
+      model: "gemini-3.5-flash-lite",
+      contents: [prompt, audioPart]
+    });
+    const transcription = (result.text || "").trim();
 
     res.json({ transcript: transcription });
   } catch (err) {

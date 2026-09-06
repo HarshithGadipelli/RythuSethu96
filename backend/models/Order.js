@@ -90,6 +90,9 @@ const orderSchema = new mongoose.Schema({
   isSettledWithFarmer: { type: Boolean, default: false },
   isSettledWithAgent: { type: Boolean, default: false },
   adminRevenue: { type: Number, default: 0 },
+  isRidealong: { type: Boolean, default: false },
+  ridealongDiscount: { type: Number, default: 0 },
+  agentEarnings: { type: Number, default: 0 },
 
   // ─── Multi-Location Delivery ───
   multiLocationGroupId: { type: String, default: "" }

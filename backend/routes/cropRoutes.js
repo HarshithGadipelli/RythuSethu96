@@ -6,7 +6,7 @@ import upload from "../middleware/upload.js";
 import { addCrop } from "../controllers/farmerController.js";
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { callGeminiWithFallback } from "../services/geminiService.js";
 
 const router = express.Router();
 
@@ -515,13 +515,10 @@ router.put("/:id/stage", upload.single("image"), async (req, res) => {
 
     // AI Suggestion
     let aiSuggestion = "";
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey && apiKey.trim() !== "") {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const prompt = `A farmer is growing ${crop.name} and the crop has just entered the "${lifecycleStage}" stage. Give a one sentence specific farming suggestion for this stage. If it is "harvesting" or "post_harvest", suggest eco-friendly alternatives to stubble burning like turning it into hay bales.`;
-      const result = await model.generateContent(prompt);
-      aiSuggestion = result.response.text();
+    const prompt = `A farmer is growing ${crop.name} and the crop has just entered the "${lifecycleStage}" stage. Give a one sentence specific farming suggestion for this stage. If it is "harvesting" or "post_harvest", suggest eco-friendly alternatives to stubble burning like turning it into hay bales.`;
+    const resText = await callGeminiWithFallback(prompt);
+    if (resText) {
+      aiSuggestion = resText.trim();
     } else {
       if (lifecycleStage === "post_harvest") aiSuggestion = "Instead of burning stubble, consider turning it into hay bales to prevent pollution.";
       else if (lifecycleStage === "vegetative") aiSuggestion = "Apply nitrogen-rich fertilizer to support rapid growth.";

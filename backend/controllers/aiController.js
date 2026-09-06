@@ -1,6 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import dotenv from "dotenv";
-dotenv.config();
+import { callGeminiWithFallback } from "../services/geminiService.js";
 
 // Free Google Translate API Bridge (To English)
 const translateToEnglish = async (text) => {
@@ -46,14 +44,9 @@ export const parseIntent = async (req, res) => {
   try {
     const { text, context, lang } = req.body;
     if (!text) return res.status(400).json({ error: "No text provided" });
-
-    // Initialize Gemini if API key is present
     const apiKey = process.env.GEMINI_API_KEY;
-    
     if (apiKey && apiKey.trim() !== "") {
       try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         let prompt = "";
         
@@ -113,20 +106,20 @@ export const parseIntent = async (req, res) => {
           prompt = `Extract intent from: "${text}". Output JSON.`;
         }
 
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text();
-        
-        let cleanJsonStr = responseText.replace(/```json/gi, '').replace(/```/gi, '').trim();
-        const parsedData = JSON.parse(cleanJsonStr);
-        
-        if (parsedData.reply && lang && lang !== "en" && lang !== "en-IN") {
-          parsedData.reply = await translateFromEnglish(parsedData.reply, lang);
+        const responseText = await callGeminiWithFallback(prompt);
+        if (responseText) {
+          let cleanJsonStr = responseText.replace(/```json/gi, '').replace(/```/gi, '').trim();
+          const parsedData = JSON.parse(cleanJsonStr);
+          
+          if (parsedData.reply && lang && lang !== "en" && lang !== "en-IN") {
+            parsedData.reply = await translateFromEnglish(parsedData.reply, lang);
+          }
+          if (parsedData.aiAnswer && lang && lang !== "en" && lang !== "en-IN") {
+            parsedData.aiAnswer = await translateFromEnglish(parsedData.aiAnswer, lang);
+          }
+          
+          return res.json({ source: "gemini", data: parsedData });
         }
-        if (parsedData.aiAnswer && lang && lang !== "en" && lang !== "en-IN") {
-          parsedData.aiAnswer = await translateFromEnglish(parsedData.aiAnswer, lang);
-        }
-        
-        return res.json({ source: "gemini", data: parsedData });
       } catch (geminiError) {
         console.error("Gemini API Error, falling back to local parser:", geminiError.message);
       }

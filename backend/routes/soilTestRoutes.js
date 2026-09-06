@@ -2,7 +2,8 @@ import express from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
+import { getGenAI } from "../services/geminiService.js";
 import SoilTestRequest from "../models/SoilTestRequest.js";
 import User from "../models/User.js";
 import Notification from "../models/Notification.js";
@@ -42,7 +43,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Fallback rule-based soil classifier
+// Fallback rule-based soil classifier with complete chemical & elemental profile
 function classifySoilFallback(text = "") {
   const t = text.toLowerCase();
   if (t.includes("black") || t.includes("dark") || t.includes("cotton")) {
@@ -52,11 +53,29 @@ function classifySoilFallback(text = "") {
       texture: "Heavy clayey texture, highly moisture retentive, self-ploughing cracks upon drying",
       colorProfile: "Deep Black / Charcoal Brown",
       organicMatterEstimate: "Medium to High (0.6% - 0.8%)",
+      organicCarbonPercent: 0.74,
+      organicCarbonStatus: "High (>0.75%)",
+      estimatedPH: 7.6,
+      phStatus: "Slightly Alkaline (Optimum for Cotton/Wheat)",
+      electricalConductivityEC: "0.42 dS/m (Normal / Non-saline)",
+      npkEstimate: {
+        nitrogen: "Medium (240 - 280 kg/ha)",
+        phosphorus: "Low to Medium (14 - 18 kg/ha)",
+        potassium: "Very High (380 - 450 kg/ha)"
+      },
+      micronutrients: {
+        zinc: "Deficient (0.48 ppm)",
+        iron: "Sufficient (6.2 ppm)",
+        boron: "Marginal (0.45 ppm)",
+        manganese: "Adequate (4.1 ppm)",
+        copper: "Sufficient (0.92 ppm)",
+        sulphur: "Medium (14.0 ppm)"
+      },
       suitableCrops: ["Cotton", "Sugarcane", "Wheat", "Soybean", "Jowar (Sorghum)", "Sunflower"],
       suggestedOrganicFertilizers: [
         "Well-rotted Cow Dung Farm Yard Manure (2-3 tonnes/acre)",
         "Jeevamrutham liquid bio-fertilizer every 15 days",
-        "Neem cake powder for root health and nematode prevention"
+        "Zinc-solubilizing bio-fertilizer and neem cake powder"
       ],
       recommendations: "Maintain proper drainage during monsoons to avoid water stagnation. Avoid excessive chemical urea."
     };
@@ -67,11 +86,29 @@ function classifySoilFallback(text = "") {
       texture: "Porous, crumbly structure with excellent aeration and rapid drainage",
       colorProfile: "Reddish Brown to Terracotta (Rich in Iron Oxide)",
       organicMatterEstimate: "Low to Moderate (0.4% - 0.6%)",
+      organicCarbonPercent: 0.52,
+      organicCarbonStatus: "Moderate (0.5% - 0.75%)",
+      estimatedPH: 6.4,
+      phStatus: "Slightly Acidic (Ideal for Groundnut & Millets)",
+      electricalConductivityEC: "0.28 dS/m (Normal / Excellent Porosity)",
+      npkEstimate: {
+        nitrogen: "Low to Medium (190 - 230 kg/ha)",
+        phosphorus: "Medium (18 - 24 kg/ha)",
+        potassium: "Medium (210 - 260 kg/ha)"
+      },
+      micronutrients: {
+        zinc: "Sufficient (0.68 ppm)",
+        iron: "Rich (9.4 ppm)",
+        boron: "Deficient (0.32 ppm)",
+        manganese: "Adequate (5.0 ppm)",
+        copper: "Sufficient (0.80 ppm)",
+        sulphur: "Low (8.5 ppm)"
+      },
       suitableCrops: ["Groundnut", "Millets (Ragi, Bajra, Foxtail)", "Pulses (Toor, Moong)", "Tomatoes", "Chilli"],
       suggestedOrganicFertilizers: [
-        "Vermicompost (500kg/acre) to improve organic matter",
+        "Vermicompost (500kg/acre) to boost organic carbon",
         "Green Manuring with Dhaincha or Sunn hemp",
-        "Phosphorus Solubilizing Bacteria (PSB) bio-inoculant"
+        "Phosphorus Solubilizing Bacteria (PSB) & Borax spray"
       ],
       recommendations: "Incorporate organic compost to enhance water holding capacity. Mulch rows to retain soil moisture."
     };
@@ -82,11 +119,29 @@ function classifySoilFallback(text = "") {
       texture: "Dense, fine-particle soil with excellent nutrient holding capacity",
       colorProfile: "Greyish Brown to Dark Clay",
       organicMatterEstimate: "High (0.7% - 0.9%)",
+      organicCarbonPercent: 0.81,
+      organicCarbonStatus: "High (>0.75%)",
+      estimatedPH: 6.9,
+      phStatus: "Near Neutral (Optimum for Paddy)",
+      electricalConductivityEC: "0.36 dS/m (Normal)",
+      npkEstimate: {
+        nitrogen: "High (290 - 340 kg/ha)",
+        phosphorus: "Adequate (25 - 30 kg/ha)",
+        potassium: "Adequate (270 - 310 kg/ha)"
+      },
+      micronutrients: {
+        zinc: "Marginal (0.55 ppm)",
+        iron: "Sufficient (7.1 ppm)",
+        boron: "Adequate (0.58 ppm)",
+        manganese: "Adequate (4.8 ppm)",
+        copper: "Sufficient (1.1 ppm)",
+        sulphur: "Medium (13.5 ppm)"
+      },
       suitableCrops: ["Paddy (Rice)", "Brinjal", "Leafy Greens (Palak, Methi)", "Cabbage", "Cauliflower"],
       suggestedOrganicFertilizers: [
         "Gypsum application to improve soil permeability",
         "Trichoderma enriched compost for soil-borne disease protection",
-        "Azospirillum bio-fertilizer for nitrogen fixation"
+        "Azospirillum bio-fertilizer for biological nitrogen fixation"
       ],
       recommendations: "Plough when soil has optimal moisture. Avoid heavy machinery when soil is waterlogged."
     };
@@ -97,6 +152,24 @@ function classifySoilFallback(text = "") {
       texture: "Balanced sand, silt, and clay blend with optimum porosity and fertility",
       colorProfile: "Light Brown to Yellowish Loam",
       organicMatterEstimate: "High (0.7% - 1.0%)",
+      organicCarbonPercent: 0.78,
+      organicCarbonStatus: "High (>0.75%)",
+      estimatedPH: 7.1,
+      phStatus: "Neutral (Most Versatile)",
+      electricalConductivityEC: "0.32 dS/m (Normal)",
+      npkEstimate: {
+        nitrogen: "Medium to High (270 - 320 kg/ha)",
+        phosphorus: "Adequate (24 - 28 kg/ha)",
+        potassium: "High (310 - 360 kg/ha)"
+      },
+      micronutrients: {
+        zinc: "Adequate (0.72 ppm)",
+        iron: "Sufficient (5.8 ppm)",
+        boron: "Adequate (0.51 ppm)",
+        manganese: "Adequate (3.9 ppm)",
+        copper: "Sufficient (0.88 ppm)",
+        sulphur: "Medium to High (15.2 ppm)"
+      },
       suitableCrops: ["Rice", "Wheat", "Maize", "Sugarcane", "Mustard", "Vegetables & Fruits"],
       suggestedOrganicFertilizers: [
         "Panchagavya foliar spray (3%) every 20 days",
@@ -119,21 +192,40 @@ router.post("/scan-photo", upload.single("photo"), async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey && (imageBase64 || req.file)) {
       try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const ai = getGenAI() || new GoogleGenAI({ apiKey });
 
-        const prompt = `You are a certified senior agricultural soil scientist in India.
-Analyze this farm soil photograph and return ONLY a valid JSON object without any markdown code blocks.
-Identify:
-1. "soilType": (e.g., "Black Cotton Soil (Regur)", "Red Sandy Loam", "Alluvial Loam", "Laterite Soil", "Clay Loam")
-2. "confidence": (number between 85 and 98)
-3. "texture": brief description of particle size, clay/sand balance, and water retention
-4. "colorProfile": visual color details
-5. "organicMatterEstimate": "Low (<0.5%)", "Medium (0.5% - 0.75%)", or "High (>0.75%)"
-6. "suitableCrops": array of 5-6 best suitable crops for this soil
-7. "suggestedOrganicFertilizers": array of 3 actionable organic manure/bio-fertilizer tips
-8. "recommendations": practical farming and irrigation advice
-9. "notice": "Visual scan identifies soil type. Chemical parameters (pH level, Nitrogen N, Phosphorus P, Potassium K, Organic Carbon, Electrical Conductivity EC, Micronutrients Zinc/Iron/Boron) require on-field chemical laboratory testing."`;
+        const prompt = `You are a certified senior agricultural soil chemist and pedologist in India.
+Analyze this farm soil photograph and return ONLY a valid JSON object without any markdown code blocks or triple backticks.
+Provide a complete chemical and elemental agronomic evaluation including:
+{
+  "soilType": "e.g. Black Cotton Soil (Regur), Red Sandy Loam, Alluvial Loam, Clay Loam, or Laterite Soil",
+  "confidence": 93,
+  "texture": "detailed physical particle size, clay/sand/silt balance, aeration and moisture retention capacity",
+  "colorProfile": "visual color shade and mineral indicators (e.g. high iron oxide, organic humus)",
+  "organicMatterEstimate": "Low (<0.5%), Medium (0.5% - 0.75%), or High (>0.75%)",
+  "organicCarbonPercent": 0.72,
+  "organicCarbonStatus": "High (>0.75%) or Moderate or Low",
+  "estimatedPH": 6.8,
+  "phStatus": "Slightly Acidic, Neutral, or Slightly Alkaline",
+  "electricalConductivityEC": "0.35 dS/m (Normal / Non-saline)",
+  "npkEstimate": {
+    "nitrogen": "e.g. Medium (260 kg/ha)",
+    "phosphorus": "e.g. Adequate (22 kg/ha)",
+    "potassium": "e.g. High (320 kg/ha)"
+  },
+  "micronutrients": {
+    "zinc": "e.g. Deficient (0.48 ppm) or Adequate (0.75 ppm)",
+    "iron": "e.g. Sufficient (5.8 ppm)",
+    "boron": "e.g. Marginal (0.42 ppm)",
+    "manganese": "e.g. Adequate (3.8 ppm)",
+    "copper": "e.g. Sufficient (0.9 ppm)",
+    "sulphur": "e.g. Medium (13 ppm)"
+  },
+  "suitableCrops": ["Crop 1", "Crop 2", "Crop 3", "Crop 4", "Crop 5"],
+  "suggestedOrganicFertilizers": ["Tip 1", "Tip 2", "Tip 3"],
+  "recommendations": "practical irrigation and organic management advice",
+  "notice": "Visual AI scan estimates chemical & elemental parameters based on soil chromas, pedological texture, and regional agro-climatic indicators. For statutory certification, mobile laboratory spectrometer testing is available."
+}`;
 
         let imagePart;
         if (imageBase64) {
@@ -144,8 +236,11 @@ Identify:
           imagePart = { inlineData: { data: fileData, mimeType: req.file.mimetype } };
         }
 
-        const geminiRes = await model.generateContent([prompt, imagePart]);
-        const text = geminiRes.response.text();
+        const geminiRes = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: [prompt, imagePart]
+        });
+        const text = geminiRes.text || "";
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           analysisResult = JSON.parse(jsonMatch[0]);

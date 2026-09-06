@@ -20,7 +20,24 @@ export const VISUAL_CROPS = [
   { id: "Groundnut", emoji: "🥜", category: "pulse", names: { en: "Groundnut", te: "వేరుశనగ / పల్లీలు", hi: "मूंगफली", ta: "வேர்க்கடலை", kn: "ನೆಲಗಡಲೆ" } },
   { id: "Maize", emoji: "🌽", category: "grain", names: { en: "Maize / Corn", te: "మొక్కజొన్న", hi: "मक्का / भुट्टा", ta: "மக்காச்சோளம்", kn: "ಜೋಳ" } },
   { id: "Cabbage", emoji: "🥬", category: "vegetable", names: { en: "Cabbage", te: "క్యాబేజీ", hi: "पत्तागोभी", ta: "முட்டைக்கோஸ்", kn: "ಕೋಸು" } },
-  { id: "Okra", emoji: "🥒", category: "vegetable", names: { en: "Okra / Bhindi", te: "బెండకాయ", hi: "भिंडी", ta: "வெண்டைக்காய்", kn: "ಬೆಂಡೆಕಾಯಿ" } }
+  { id: "Okra", emoji: "🥒", category: "vegetable", names: { en: "Okra / Bhindi", te: "బెండకాయ", hi: "भिंडी", ta: "வெண்டைக்காய்", kn: "ಬೆಂಡೆಕಾಯಿ" } },
+  { id: "Sugarcane", emoji: "🎋", category: "other", names: { en: "Sugarcane", te: "చెరకు", hi: "गन्ना", ta: "கரும்பு", kn: "ಕಬ್ಬು" } },
+  { id: "Brinjal", emoji: "🍆", category: "vegetable", names: { en: "Brinjal / Eggplant", te: "వంకాయ", hi: "बैंगन", ta: "கத்தரிக்காய்", kn: "ಬದನೆಕಾಯಿ" } },
+  { id: "Carrot", emoji: "🥕", category: "vegetable", names: { en: "Carrot", te: "క్యారెట్", hi: "गाजर", ta: "கேரட்", kn: "ಕ್ಯಾರೆಟ್" } },
+  { id: "Cauliflower", emoji: "🥦", category: "vegetable", names: { en: "Cauliflower", te: "కాలీఫ్లవర్", hi: "फूलगोभी", ta: "காலிஃபிளவர்", kn: "ಹೂಕೋಸು" } },
+  { id: "Spinach", emoji: "🥬", category: "vegetable", names: { en: "Spinach / Palak", te: "పాలకూర", hi: "पालक", ta: "பசலைக்கீரை", kn: "ಪಾಲಕ್" } },
+  { id: "Watermelon", emoji: "🍉", category: "fruit", names: { en: "Watermelon", te: "పుచ్చకాయ", hi: "तरबूज", ta: "தர்பூசணி", kn: "ಕಲ್ಲಂಗಡಿ" } },
+  { id: "Papaya", emoji: "🍈", category: "fruit", names: { en: "Papaya", te: "బొప్పాయి", hi: "पपीता", ta: "பப்பாளி", kn: "ಪರಂಗಿ ಹಣ್ಣು" } },
+  { id: "Apple", emoji: "🍎", category: "fruit", names: { en: "Apple", te: "ఆపిల్", hi: "सेब", ta: "ஆப்பிள்", kn: "ಸೇಬು" } },
+  { id: "Grapes", emoji: "🍇", category: "fruit", names: { en: "Grapes", te: "ద్రాక్ష", hi: "अंगूर", ta: "திராட்சை", kn: "ದ್ರಾಕ್ಷಿ" } },
+  { id: "Coconut", emoji: "🥥", category: "fruit", names: { en: "Coconut", te: "కొబ్బరికాయ", hi: "नारियल", ta: "தேங்காய்", kn: "ತೆಂಗಿನಕಾಯಿ" } },
+  { id: "Soybean", emoji: "🌱", category: "pulse", names: { en: "Soybean", te: "సోయాబీన్", hi: "सोयाबीन", ta: "சோயாபீன்", kn: "ಸೋಯಾಬೀನ್" } },
+  { id: "Mustard", emoji: "🌾", category: "spice", names: { en: "Mustard / Rai", te: "ఆవాలు", hi: "सरसों", ta: "கடுகு", kn: "ಸಾಸಿವೆ" } },
+  { id: "Peas", emoji: "🫛", category: "vegetable", names: { en: "Green Peas", te: "బఠానీలు", hi: "मटर", ta: "பட்டாணி", kn: "ಬಟಾಣಿ" } },
+  { id: "Cucumber", emoji: "🥒", category: "vegetable", names: { en: "Cucumber", te: "దోసకాయ", hi: "खीरा", ta: "வெள்ளரிக்காய்", kn: "ಸೌತೆಕಾಯಿ" } },
+  { id: "Drumstick", emoji: "🥢", category: "vegetable", names: { en: "Drumstick / Moringa", te: "మునగకాయ", hi: "सहजन", ta: "முருங்கைக்காய்", kn: "ನುಗ್ಗೆಕಾಯಿ" } },
+  { id: "Coriander", emoji: "🌿", category: "spice", names: { en: "Coriander / Cilantro", te: "కొత్తిమీర", hi: "धनिया", ta: "கொத்தமல்லி", kn: "ಕೊತ್ತಂಬರಿ" } },
+  { id: "BitterGourd", emoji: "🥒", category: "vegetable", names: { en: "Bitter Gourd / Karela", te: "కాకరకాయ", hi: "करेला", ta: "பாகற்காய்", kn: "ಹಾಗಲಕಾಯಿ" } }
 ];
 
 export default function CropVisualPicker({ selectedCrop, onSelectCrop }) {

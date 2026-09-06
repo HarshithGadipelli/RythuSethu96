@@ -10,7 +10,10 @@ router.post("/register", upload.fields([
   { name: "farmPhoto", maxCount: 1 },
   { name: "productPhoto", maxCount: 1 },
   { name: "aadhaarPhoto", maxCount: 1 },
-  { name: "avatar", maxCount: 1 }
+  { name: "avatar", maxCount: 1 },
+  { name: "agentPhoto", maxCount: 1 },
+  { name: "vehiclePhoto", maxCount: 1 },
+  { name: "locationAudio", maxCount: 1 }
 ]), register);
 router.post("/login", login);
 router.get("/profile", protect, getProfile);

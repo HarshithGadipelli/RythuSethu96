@@ -1,6 +1,6 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createServer } from "http";
@@ -36,12 +36,16 @@ import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import translationRoutes from "./routes/translationRoutes.js";
 import soilTestRoutes from "./routes/soilTestRoutes.js";
 
-dotenv.config();
+import { GoogleGenAI } from "@google/genai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Initialize unified Google Gen AI instance
+export const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
+
 const app = express();
+app.locals.ai = ai;
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {

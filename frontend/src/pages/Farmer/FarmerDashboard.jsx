@@ -23,6 +23,7 @@ import FarmerProfitCalculator from "./FarmerProfitCalculator";
 import FarmerFinancialLedger from "./FarmerFinancialLedger";
 import FarmerTours from "./FarmerTours";
 import SoilTestingHub from "../../components/SoilTestingHub";
+import VermiCompostPanel from "../../components/VermiCompostPanel";
 import AssistantOverlay from "../../components/AssistantOverlay";
 import CropVisualPicker, { VISUAL_CROPS } from "../../components/CropVisualPicker";
 import { Navigation, Volume2, Mic, Sparkles, CheckCircle2, TrendingUp, RefreshCw, IndianRupee, HelpCircle, XCircle } from "lucide-react";
@@ -1048,6 +1049,7 @@ export default function FarmerDashboard() {
           { k:"ledger", l:"📒 Financial Ledger" },
           { k:"profit", l:"💰 Profit Calculator" },
           { k:"soil",   l:"🧪 Soil Testing & Lab" },
+          { k:"vermi",  l:"🌱 Vermi Compost" },
           { k:"pest",  l:"🐛 Pest Detection" },
           { k:"warehouse", l:"🏭 Warehouse Planning" },
           { k:"policies", l:"📜 Policies" },
@@ -2242,6 +2244,9 @@ export default function FarmerDashboard() {
 
       {/* ── FARM TOURS TAB ── */}
       {tab === "tours" && <FarmerTours />}
+
+      {/* 🌱 VERMI COMPOST TAB 🌱 */}
+      {tab === "vermi" && <VermiCompostPanel />}
       
       {/* ── ASSISTANT OVERLAY ── */}
       <AssistantOverlay 

@@ -41,10 +41,29 @@ const userSchema = new mongoose.Schema({
   accountStatus: { type: String, enum: ["active", "suspended", "banned"], default: "active" },
 
   // ─── Agent Specific Info ───
-  agentType: { type: String, enum: ["bike", "auto", "truck"], default: "bike" },
+  agentType: { type: String, enum: ["bike", "auto", "truck", "ridealong", "vermicompost", "biogas"], default: "bike" },
+  agentPhoto: { type: String, default: "" },
+  vehiclePhoto: { type: String, default: "" },
+  vehicleNumber: { type: String, default: "" },
+  agentVerificationStatus: { type: String, enum: ["pending", "verified", "rejected"], default: "pending" },
+  
+  // ─── Ride-Along Agent Route ───
+  ridealongRoute: {
+    fromLocation: { type: String, default: "" },
+    toLocation: { type: String, default: "" },
+    fromLat: { type: Number },
+    fromLng: { type: Number },
+    toLat: { type: Number },
+    toLng: { type: Number },
+    departureTime: { type: Date },
+    isActive: { type: Boolean, default: false }
+  },
   
   // ─── Farmer Specific Info ───
   farmName: { type: String, default: "" },
+  locationMethod: { type: String, enum: ["gps", "pin", "mic"], default: "gps" },
+  locationAudioUrl: { type: String, default: "" },
+  locationVerified: { type: Boolean, default: false },
   
   // ─── Financial Ledger ───
   walletBalance: { type: Number, default: 0 }, // E.g., Delivery Agent accumulated earnings

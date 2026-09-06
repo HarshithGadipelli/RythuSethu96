@@ -7,7 +7,10 @@ import Farmer from "../models/Farmer.js";
 import Agent from "../models/Agent.js";
 import Notification from "../models/Notification.js";
 import GlobalConfig from "../models/GlobalConfig.js";
-import { getLiveStockAnalysis, getClearanceStock, updateClearancePrice, broadcastPromotion } from "../controllers/adminController.js";
+import { 
+  getLiveStockAnalysis, getClearanceStock, updateClearancePrice, broadcastPromotion,
+  getWasteManagement, approveWasteRequest, sellBiogas
+} from "../controllers/adminController.js";
 
 const router = express.Router();
 
@@ -186,12 +189,16 @@ router.put("/users/:id/deduct-wallet", async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── USER VERIFICATION ───
+// ─── USER & AGENT & FARM TOUR VERIFICATION ───
 router.put("/users/:id/verify", async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(req.params.id, { isVerified: true, verificationStatus: "verified" }, { new: true }).select("-password");
     if (user.role === "farmer") {
       await Farmer.findOneAndUpdate({ user: req.params.id }, { verified: true, aadhaarVerified: true });
+    } else if (user.role === "agent") {
+      user.agentVerificationStatus = "verified";
+      await user.save();
+      await Agent.findOneAndUpdate({ user: req.params.id }, { active: true });
     }
     const io = req.app.get("io");
     if (io) io.emit("user_verified", { userId: req.params.id });
@@ -205,8 +212,27 @@ router.put("/users/:id/reject", async (req, res) => {
     const user = await User.findByIdAndUpdate(req.params.id, { isVerified: false, verificationStatus: "rejected" }, { new: true }).select("-password");
     if (user.role === "farmer") {
       await Farmer.findOneAndUpdate({ user: req.params.id }, { verified: false });
+    } else if (user.role === "agent") {
+      user.agentVerificationStatus = "rejected";
+      await user.save();
+      await Agent.findOneAndUpdate({ user: req.params.id }, { active: false });
     }
     res.json({ user, reason: reason || "Verification rejected" });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Admin verify Farm Tour specifically
+router.put("/farmers/:id/verify-farm-tour", async (req, res) => {
+  try {
+    const farmer = await Farmer.findOneAndUpdate(
+      { $or: [{ _id: req.params.id }, { user: req.params.id }] },
+      { farmTourVerified: true },
+      { new: true }
+    );
+    if (!farmer) return res.status(404).json({ error: "Farmer not found" });
+    const io = req.app.get("io");
+    if (io) io.emit("tour_verified", { farmerId: farmer._id });
+    res.json({ success: true, message: "Farm tour verified and approved!", farmer });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -338,7 +364,6 @@ router.get("/pending-users", async (req, res) => {
         const findLatestUpload = (prefix) => {
           const matches = uploadFiles.filter(f => f.startsWith(prefix + "-"));
           if (matches.length === 0) return "";
-          // Sort descending and pick closest timestamp to user creation
           matches.sort((a, b) => {
             const tsA = parseInt(a.replace(prefix + "-", "").split(".")[0]) || 0;
             const tsB = parseInt(b.replace(prefix + "-", "").split(".")[0]) || 0;
@@ -350,8 +375,19 @@ router.get("/pending-users", async (req, res) => {
         result.push({
           user,
           farmerProfile: farmerProfile || {},
+          coordinates: {
+            latitude: farmerProfile?.latitude || user.latitude,
+            longitude: farmerProfile?.longitude || user.longitude,
+            farmLocation: farmerProfile?.farmLocation || user.location || "Telangana"
+          },
+          farmTour: {
+            enabled: Boolean(farmerProfile?.farmTourEnabled),
+            verified: Boolean(farmerProfile?.farmTourVerified),
+            price: farmerProfile?.farmTourPrice || 0,
+            details: farmerProfile?.farmTourDetails || ""
+          },
           photos: {
-            farmerPhoto: farmerProfile?.farmerPhoto || findLatestUpload("farmerPhoto"),
+            farmerPhoto: farmerProfile?.farmerPhoto || user.avatar || findLatestUpload("farmerPhoto"),
             farmPhoto: farmerProfile?.farmPhoto || findLatestUpload("farmPhoto"),
             productPhoto: farmerProfile?.productPhoto || findLatestUpload("productPhoto"),
             aadhaarPhoto: user.aadhaarImage || findLatestUpload("aadhaarPhoto")
@@ -362,8 +398,12 @@ router.get("/pending-users", async (req, res) => {
         result.push({
           user,
           agentProfile: agentProfile || {},
+          agentType: user.agentType || "bike",
+          vehicleNumber: user.vehicleNumber || "",
+          ridealongRoute: user.ridealongRoute || null,
           photos: {
-            avatar: user.avatar || "",
+            agentPhoto: user.agentPhoto || user.avatar || "",
+            vehiclePhoto: user.vehiclePhoto || "",
             aadhaarPhoto: user.aadhaarImage || ""
           }
         });
@@ -513,5 +553,10 @@ router.post("/users/:id/fine", async (req, res) => {
     res.json({ message: "Fine applied successfully", user });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+// ─── WASTE MANAGEMENT ───
+router.get("/waste/management", getWasteManagement);
+router.post("/waste/approve-request/:id", approveWasteRequest);
+router.post("/waste/sell-biogas", sellBiogas);
 
 export default router;

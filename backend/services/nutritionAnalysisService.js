@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { callGeminiWithFallback } from './geminiService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,32 +41,28 @@ export const getNutritionAnalysis = async (crop) => {
   }
 
   // 2. Fallback to Gemini AI for unseen crops (Advanced dynamic generation)
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (apiKey) {
-    try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-      const prompt = `
-        You are an expert nutritionist. Provide a nutritional breakdown for 100g of raw "${crop}".
-        Return EXACTLY and ONLY valid JSON matching this exact structure, no markdown blocks:
-        {
-          "calories": 50,
-          "protein": 1.5,
-          "carbs": 10.0,
-          "fat": 0.5,
-          "fiber": 2.0,
-          "vitamins": ["Vitamin C", "Vitamin A", "Potassium"],
-          "benefits": ["Improves immunity", "Good for skin"],
-          "bestNutrient": {
-            "name": "Vitamin C",
-            "dailyValuePercentage": 25,
-            "highlightMessage": "Excellent source of Vitamin C (25% DV)"
-          }
-        }`;
-      
-      const result = await model.generateContent(prompt);
-      let text = result.response.text().trim();
-      text = text.replace(/^```json/i, "").replace(/```$/, "").trim();
+  try {
+    const prompt = `
+      You are an expert nutritionist. Provide a nutritional breakdown for 100g of raw "${crop}".
+      Return EXACTLY and ONLY valid JSON matching this exact structure, no markdown blocks:
+      {
+        "calories": 50,
+        "protein": 1.5,
+        "carbs": 10.0,
+        "fat": 0.5,
+        "fiber": 2.0,
+        "vitamins": ["Vitamin C", "Vitamin A", "Potassium"],
+        "benefits": ["Improves immunity", "Good for skin"],
+        "bestNutrient": {
+          "name": "Vitamin C",
+          "dailyValuePercentage": 25,
+          "highlightMessage": "Excellent source of Vitamin C (25% DV)"
+        }
+      }`;
+    
+    const textResult = await callGeminiWithFallback(prompt);
+    if (textResult) {
+      let text = textResult.trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/, "").trim();
       const aiData = JSON.parse(text);
       
       return {
@@ -74,9 +70,9 @@ export const getNutritionAnalysis = async (crop) => {
         ...aiData,
         source: "ai_generated"
       };
-    } catch (err) {
-      console.warn("Gemini Nutrition Fallback Failed:", err.message);
     }
+  } catch (err) {
+    console.warn("Gemini Nutrition Fallback Failed:", err.message);
   }
 
   // 3. Absolute failsafe static fallback

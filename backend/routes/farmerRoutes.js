@@ -181,4 +181,33 @@ router.post("/visit/:farmerId", async (req, res) => {
   }
 });
 
+// ─── VERMI COMPOST ───
+router.post("/vermi-compost/request", protect, async (req, res) => {
+  try {
+    const { requestedKg, totalCost } = req.body;
+    if (!requestedKg || requestedKg <= 0 || !totalCost) return res.status(400).json({ error: "Invalid request data" });
+
+    const VermiCompostRequest = (await import("../models/VermiCompostRequest.js")).default;
+    const newRequest = await VermiCompostRequest.create({
+      farmer: req.user._id,
+      requestedKg,
+      totalCost
+    });
+
+    res.status(201).json({ success: true, message: "Request submitted successfully", request: newRequest });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/vermi-compost/requests", protect, async (req, res) => {
+  try {
+    const VermiCompostRequest = (await import("../models/VermiCompostRequest.js")).default;
+    const requests = await VermiCompostRequest.find({ farmer: req.user._id }).sort({ createdAt: -1 });
+    res.json(requests);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

@@ -1,16 +1,43 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
-let genAI;
-try {
-  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 10) {
-    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+let genAI = null;
+
+export const getGenAI = () => {
+  const key = process.env.GEMINI_API_KEY;
+  if (!genAI && key && key.trim().length > 10) {
+    try {
+      genAI = new GoogleGenAI({ apiKey: key.trim() });
+    } catch (error) {
+      console.warn("Failed to initialize GoogleGenAI:", error.message);
+    }
   }
-} catch (error) {
-  console.warn("Failed to initialize GoogleGenerativeAI:", error.message);
-}
+  return genAI;
+};
+
+export const callGeminiWithFallback = async (promptOrParts) => {
+  const ai = getGenAI();
+  if (!ai) return null;
+  const models = [
+    "gemini-3.5-flash-lite",
+    "gemini-flash-lite-latest",
+    "gemini-flash-latest",
+    "gemini-3.6-flash"
+  ];
+  for (const m of models) {
+    try {
+      const res = await ai.models.generateContent({
+        model: m,
+        contents: promptOrParts
+      });
+      if (res && res.text) return res.text;
+    } catch (err) {
+      console.warn(`[Gemini] ${m} unavailable (${err.status || err.message}). Trying fallback...`);
+    }
+  }
+  return null;
+};
 
 export const getGeminiCropSuggestion = async (weatherLive, soil, location) => {
-  if (!genAI) return null;
   try {
     const prompt = `You are an expert Indian agricultural AI. 
 Given the current weather (Temperature: ${weatherLive.temp}°C, Humidity: ${weatherLive.hum}%, Rainfall: ${weatherLive.rain}mm), 
@@ -40,23 +67,18 @@ Suggest the best crop to plant right now. Return EXACTLY and ONLY valid JSON in 
 
 Do not include markdown blocks like \`\`\`json or \`\`\`. Just output raw JSON.`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    const response = await model.generateContent(prompt);
+    const rawText = await callGeminiWithFallback(prompt);
+    if (!rawText) return null;
     
-    let text = response.response.text().trim();
-    if (text.startsWith("```json")) text = text.slice(7);
-    if (text.startsWith("```")) text = text.slice(3);
-    if (text.endsWith("```")) text = text.slice(0, -3);
-    
+    const text = rawText.trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
     return JSON.parse(text);
   } catch (error) {
     console.error("Gemini crop suggestion error:", error);
-    return null; // Fallback to our existing logic
+    return null;
   }
 };
 
 export const getGeminiFarmerTips = async (crop, soil, location, stage) => {
-  if (!genAI) return null;
   try {
     const prompt = `You are an expert Indian agricultural AI advising a farmer.
 The farmer is growing ${crop} in ${soil} soil at location: ${location || "Unknown"}.
@@ -84,14 +106,10 @@ Return EXACTLY and ONLY valid JSON in this structure:
 
 Do not include markdown blocks like \`\`\`json or \`\`\`. Just output raw JSON.`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    const response = await model.generateContent(prompt);
+    const rawText = await callGeminiWithFallback(prompt);
+    if (!rawText) return null;
 
-    let text = response.response.text().trim();
-    if (text.startsWith("```json")) text = text.slice(7);
-    if (text.startsWith("```")) text = text.slice(3);
-    if (text.endsWith("```")) text = text.slice(0, -3);
-    
+    const text = rawText.trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
     return JSON.parse(text);
   } catch (error) {
     console.error("Gemini farmer tips error:", error);

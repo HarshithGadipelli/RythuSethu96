@@ -1,25 +1,48 @@
-# Rythusethu95
+# RythuSethu 
 
-## Getting Started
+RythuSethu is an AI-driven agricultural marketplace connecting farmers directly with customers and B2B buyers.
 
-Because Rythu Sethu is a heavy, production-grade application featuring native Machine Learning `.pkl` files and complex Node modules, these heavy binaries are ignored via `.gitignore` to keep the repository lightning-fast.
+## Quick Start (Windows)
 
-**When you clone this repository, you must generate the dependencies and ML models locally!**
+To start the entire project (Frontend, Backend, and ML API) automatically, simply double-click the `run_project.bat` file in the root directory. 
+This will open three command prompt windows, install dependencies if needed, and start all the servers.
 
-### 🚀 One-Click Installation (Windows)
-We have provided a fully automated setup script. Simply double-click it!
-1. Clone the repository: `git clone https://github.com/HarshithGadipelli/Rythusethu95.git`
-2. Open the cloned folder.
-3. **Double-click `setup_and_run.bat`**
+### Services Started:
+- **Frontend App**: `http://localhost:5173`
+- **Backend API**: `http://localhost:5000`
+- **FastAPI ML API**: `http://localhost:8000`
 
-This script will automatically:
-- Install all Node modules for the Frontend and Backend.
-- Install Python requirements (`pip install -r requirements.txt`).
-- Execute the Python ML training scripts to mathematically generate the required `.pkl` model files locally.
-- Boot up the servers.
+---
 
-### Manual Installation
-If you prefer to run it manually or are on Mac/Linux:
-1. **Backend**: `cd backend`, copy `.env.example` to `.env`, and run `npm install` then `npm run dev`.
-2. **Frontend**: `cd frontend` and run `npm install` then `npm run dev`.
-3. **Machine Learning**: `cd ml_models`, run `pip install -r requirements.txt`, then `cd training` and run `python train_model.py`. Ensure you have MongoDB running locally.95"# RythuSethu96" 
+## Manual Startup
+
+If you prefer to start the servers manually, run the following commands in separate terminals:
+
+### 1. Backend Server
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+### 2. Frontend React App
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### 3. FastAPI ML Server
+```bash
+cd backend/ml_api
+pip install -r requirements.txt
+python -m uvicorn main:app --reload --port 8000
+```
+
+## Features added in the latest update:
+- **Comprehensive AI & ML Architecture Overview** in `RythuSethu_Comprehensive_Architecture_Analysis.txt`.
+- **New Delivery Agent Types**: Added Support for Vermicompost and BioGas agents.
+- **Farmer Location Verification**: Farmers can now verify their farm location using GPS, Map Pin, or an uploaded Audio Mic recording.
+- **Admin Verification Pipeline**: Admins can listen to audio recordings and verify farmer locations in the verification dashboard.
+- **Agent Registration Block**: Agents must provide their vehicle and agent photos at the time of registration.
+- **Ride-along Payment Split**: Ride-along agents' delivery fees are automatically split: 50% to the agent, 10% to the platform, and 40% refunded to the customer.

@@ -635,6 +635,26 @@ export default function Marketplace() {
     setShowSuggestions(false);
   };
 
+  // ─── Fetch Seasonal Prediction ───
+  const fetchSeasonalPrediction = useCallback(async (lat, lng) => {
+    setSeasonalLoading(true);
+    try {
+      const latitude = lat ?? customerLat ?? user?.latitude ?? 17.3850;
+      const longitude = lng ?? customerLng ?? user?.longitude ?? 78.4867;
+      const res = await API.get(`/ml/seasonal-prediction?lat=${latitude}&lng=${longitude}`);
+      setSeasonalPrediction(res.data);
+    } catch (e) {
+      console.error("Seasonal prediction fetch error:", e);
+    } finally {
+      setSeasonalLoading(false);
+    }
+  }, [customerLat, customerLng, user?.latitude, user?.longitude]);
+
+  // Auto-fetch seasonal prediction once on mount
+  useEffect(() => {
+    fetchSeasonalPrediction();
+  }, [fetchSeasonalPrediction]);
+
   // ─── Detect customer location ───
   const detectCustomerLocation = () => {
     if (!navigator.geolocation) { alert("Geolocation not supported"); return; }
@@ -642,6 +662,7 @@ export default function Marketplace() {
     navigator.geolocation.getCurrentPosition(async ({ coords }) => {
       setCustomerLat(coords.latitude);
       setCustomerLng(coords.longitude);
+      fetchSeasonalPrediction(coords.latitude, coords.longitude);
       try {
         const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}`);
         const d = await r.json();
@@ -1532,17 +1553,41 @@ export default function Marketplace() {
               <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "1rem" }}>Ranked by weather suitability score using live temperature, humidity, and rainfall data.</p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
                 {seasonalPrediction.recommendedCrops?.map((crop, i) => (
-                  <div key={crop.key} style={{ background: "white", borderRadius: "12px", padding: "1rem 1.2rem", border: `2px solid ${crop.suitabilityScore >= 70 ? "#86efac" : crop.suitabilityScore >= 50 ? "#fde68a" : "#fca5a5"}`, boxShadow: "0 4px 15px rgba(0,0,0,0.04)", transition: "transform 0.2s", cursor: "default" }}>
+                  <motion.div 
+                    key={crop.key} 
+                    whileHover={{ scale: 1.02, y: -3 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      setSearch(crop.name);
+                      setMsg({ type: "success", text: `Filtered marketplace for in-season ${crop.name}!` });
+                      setTimeout(() => setMsg({ type:"", text:"" }), 2500);
+                    }}
+                    style={{ 
+                      background: "white", 
+                      borderRadius: "12px", 
+                      padding: "1rem 1.2rem", 
+                      border: `2px solid ${crop.suitabilityScore >= 70 ? "#86efac" : crop.suitabilityScore >= 50 ? "#fde68a" : "#fca5a5"}`, 
+                      boxShadow: "0 4px 15px rgba(0,0,0,0.04)", 
+                      cursor: "pointer",
+                      position: "relative"
+                    }}
+                    title={`Click to filter marketplace products for ${crop.name}`}
+                  >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                      <h4 style={{ margin: 0, fontSize: "1.05rem", color: "var(--text-dark)" }}>
-                        {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i+1}`} {crop.name}
+                      <h4 style={{ margin: 0, fontSize: "1.05rem", color: "var(--text-dark)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        <span>{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i+1}`}</span>
+                        <span>{crop.name}</span>
                       </h4>
                       <span style={{ background: crop.suitabilityScore >= 70 ? "#dcfce7" : crop.suitabilityScore >= 50 ? "#fef9c3" : "#fee2e2", color: crop.suitabilityScore >= 70 ? "#166534" : crop.suitabilityScore >= 50 ? "#854d0e" : "#991b1b", padding: "0.2rem 0.6rem", borderRadius: "100px", fontSize: "0.8rem", fontWeight: 700 }}>
                         {crop.suitabilityScore}% Match
                       </span>
                     </div>
                     <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: 1.4 }}>{crop.reason}</p>
-                  </div>
+                    <div style={{ marginTop: "0.75rem", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "0.75rem", color: "var(--green-mid)", fontWeight: 600, borderTop: "1px dashed #e2e8f0", paddingTop: "0.5rem" }}>
+                      <span>Seasonal Suitability</span>
+                      <span>🔍 Filter Market &rarr;</span>
+                    </div>
+                  </motion.div>
                 ))}
               </div>
 

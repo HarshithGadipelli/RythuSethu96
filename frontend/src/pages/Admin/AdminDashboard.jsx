@@ -8,6 +8,7 @@ import API from "../../api/api";
 import { io } from "socket.io-client";
 import AdminFinancials from "./AdminFinancials";
 import AdminGlobalMap from "../../components/AdminGlobalMap";
+import AdminWasteManagement from "../../components/AdminWasteManagement";
 
 const TABS = ["overview","users","verification","orders","deliveries","profit","security","support", "tips", "demand", "stock", "mlops", "waste", "soiltests", "clearance", "broadcasts"];
 
@@ -238,6 +239,16 @@ export default function AdminDashboard() {
     catch { flash("error","Failed to reject."); }
   };
 
+  const verifyFarmTour = async (id, name) => {
+    try {
+      await API.put(`/admin/farmers/${id}/verify-farm-tour`);
+      flash("success", `✅ Farm Tour approved for ${name}!`);
+      loadAll();
+    } catch {
+      flash("error", "Failed to approve farm tour.");
+    }
+  };
+
   const updateOrderStatus = async (id, status) => {
     try { await API.put(`/orders/${id}/status`, { status }); flash("success","✅ Order status updated."); loadAll(); }
     catch { flash("error","Failed to update order."); }
@@ -344,6 +355,7 @@ export default function AdminDashboard() {
           { k:"tips", l:"💡 Tips" },
           { k:"demand", l:"📊 Demand Prediction" },
           { k:"broadcast", l:"📢 Broadcast" },
+          { k:"waste", l:"🌱 Waste Management" },
           { k:"mlops", l:"🤖 ML Ops" }
         ].map(tb => (
           <button key={tb.k} className={`tab-btn ${tab===tb.k?"active":""}`} onClick={() => setTab(tb.k)}>
@@ -629,63 +641,164 @@ export default function AdminDashboard() {
                 </div>
               ) : (
                 <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
-                  {pendingUsersList.map(({ user: u, farmerProfile, agentProfile, photos }) => (
-                    <div className="glass-card" key={u._id} style={{ display:"flex", flexDirection: "column", gap:"1rem" }}>
-                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:"1rem" }}>
-                        <div style={{ flex:1, minWidth:200 }}>
-                          <h3 style={{ color: "var(--text-dark)", fontWeight:700 }}>
-                            {u.name} <span className="badge badge-yellow ml-2">{u.role.toUpperCase()}</span>
-                          </h3>
-                          <p style={{ color: "var(--text-muted)", fontSize:"0.82rem" }}>{u.email} • {u.phone || "No phone"}</p>
-                          <p style={{ color:"var(--text-muted)", fontSize:"0.78rem" }}>📍 {u.location || "No location"}</p>
-                          {u.aadhaar && <p style={{ color:"var(--text-muted)", fontSize:"0.78rem" }}>🪪 Aadhaar: {u.aadhaar}</p>}
-                          <p style={{ color:"var(--text-muted)", fontSize:"0.72rem" }}>Joined: {new Date(u.createdAt).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" })}</p>
-                        </div>
-                        <div style={{ display:"flex", gap:"0.75rem", flexWrap: "wrap" }}>
-                          {photos && Object.entries(photos).map(([key, url]) => {
-                            const label = key.replace("Photo", " Photo").replace(/([A-Z])/g, ' $1').replace("  ", " ").trim();
-                            const fullUrl = url
-                              ? (url.startsWith("http") || url.startsWith("data:") || url.startsWith("blob:")
-                                  ? url
-                                  : `${BASE_URL}/${url.replace(/^\/+/, "")}`)
-                              : null;
-                            return (
-                              <div key={key} style={{ textAlign: "center" }}>
-                                {fullUrl ? (
-                                  <a href={fullUrl} target="_blank" rel="noreferrer" title={`Open ${label} in new tab`}>
-                                    <img
-                                      src={fullUrl}
-                                      alt={label}
-                                      onError={(e) => { e.target.src = ""; e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }}
-                                      style={{ width: 120, height: 120, objectFit: "cover", borderRadius: "10px", border: "2px solid rgba(82,183,136,0.4)", background: "var(--green-pale)", display: "block", cursor: "pointer" }}
-                                    />
-                                    <div style={{ display:"none", width:120, height:120, borderRadius:"10px", border:"2px dashed rgba(82,183,136,0.3)", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:"4px" }}>
-                                      <span style={{ fontSize:"1.5rem" }}>🖼️</span>
-                                      <span style={{ fontSize:"0.6rem", color:"var(--text-muted)" }}>Load failed</span>
-                                    </div>
-                                  </a>
-                                ) : (
-                                  <div style={{ width:120, height:120, borderRadius:"10px", border:"2px dashed rgba(255,255,255,0.15)", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:"4px", background:"rgba(0,0,0,0.15)" }}>
-                                    <span style={{ fontSize:"1.5rem" }}>📷</span>
-                                    <span style={{ fontSize:"0.6rem", color:"var(--text-muted)", textAlign:"center" }}>Not uploaded</span>
+                  {pendingUsersList.map((item) => {
+                    const u = item.user;
+                    const farmerProfile = item.farmerProfile;
+                    const agentProfile = item.agentProfile;
+                    const photos = item.photos;
+                    const coords = item.coordinates;
+                    const tour = item.farmTour;
+
+                    return (
+                      <div className="glass-card" key={u._id} style={{ display:"flex", flexDirection: "column", gap:"1rem", border: u.role === "agent" ? "1.5px solid rgba(234,179,8,0.3)" : "1.5px solid rgba(34,197,94,0.3)" }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:"1rem" }}>
+                          <div style={{ flex:1, minWidth:240 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                              <h3 style={{ color: "var(--text-dark)", fontWeight:700, margin: 0 }}>
+                                {u.name}
+                              </h3>
+                              <span className={`badge ${u.role === "agent" ? "badge-yellow" : "badge-green"}`}>
+                                {u.role.toUpperCase()}
+                              </span>
+                              {u.role === "agent" && (
+                                <span className="badge badge-blue" style={{ textTransform: "capitalize" }}>
+                                  {item.agentType || u.agentType || "bike"}
+                                </span>
+                              )}
+                            </div>
+
+                            <p style={{ color: "var(--text-muted)", fontSize:"0.82rem", marginTop: "0.3rem" }}>{u.email} • 📞 {u.phone || "No phone"}</p>
+                            
+                            {u.role === "farmer" && (
+                              <div style={{ marginTop: "0.5rem", background: "rgba(34,197,94,0.08)", padding: "0.6rem 0.8rem", borderRadius: "8px", border: "1px solid rgba(34,197,94,0.2)" }}>
+                                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--green-deep)", marginBottom: "0.4rem" }}>
+                                  📍 Farm: {coords?.farmLocation || u.location || "Telangana"}
+                                </div>
+                                
+                                <div style={{ fontSize: "0.75rem", color: "var(--text-dark)", marginBottom: "0.4rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                                  <strong>Location Source:</strong> 
+                                  <span className="badge badge-green" style={{ textTransform: "capitalize", padding: "2px 6px", fontSize: "0.7rem" }}>
+                                    {u.locationMethod === "gps" ? "🛰️ GPS Tracking" : u.locationMethod === "pin" ? "📍 Map Pin" : u.locationMethod === "mic" ? "🎙️ Audio Clarification" : (u.locationMethod || "Unknown")}
+                                  </span>
+                                </div>
+
+                                {u.locationMethod === "mic" && u.locationAudioUrl && (
+                                  <div style={{ marginBottom: "0.5rem" }}>
+                                    <span style={{ fontSize: "0.75rem", display: "block", marginBottom: "0.2rem", fontWeight: 600 }}>🔊 Listen to Farmer's Audio Clarification:</span>
+                                    <audio controls src={u.locationAudioUrl.startsWith("http") ? u.locationAudioUrl : `${BASE_URL}${u.locationAudioUrl}`} style={{ height: "30px", width: "100%", maxWidth: "250px" }} />
                                   </div>
                                 )}
-                                <p style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: "0.3rem", textTransform: "capitalize", maxWidth: 120 }}>{label}</p>
+
+                                {coords?.latitude && coords?.longitude ? (
+                                  <div style={{ marginTop: "0.3rem", display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                                    <span style={{ fontSize: "0.75rem", color: "var(--text-dark)", fontWeight: 600 }}>
+                                      GPS: {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}
+                                    </span>
+                                    <a
+                                      href={`https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      style={{
+                                        fontSize: "0.72rem", background: "#166534", color: "white", padding: "2px 8px",
+                                        borderRadius: "4px", textDecoration: "none", fontWeight: 600
+                                      }}
+                                    >
+                                      🗺️ Verify On Map
+                                    </a>
+                                  </div>
+                                ) : (
+                                  <div style={{ fontSize: "0.72rem", color: "#dc2626", marginTop: "0.2rem" }}>
+                                    ⚠️ GPS coordinates not supplied
+                                  </div>
+                                )}
+
+                                {/* Farm Tour Status & Approval */}
+                                {tour?.enabled && (
+                                  <div style={{ marginTop: "0.5rem", paddingTop: "0.4rem", borderTop: "1px dashed rgba(34,197,94,0.3)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.4rem" }}>
+                                    <div style={{ fontSize: "0.76rem" }}>
+                                      <strong style={{ color: "#166534" }}>🚜 Farm Tour: </strong>
+                                      <span>₹{tour.price}/person • {tour.verified ? "✅ Approved" : "⏳ Pending Approval"}</span>
+                                    </div>
+                                    {!tour.verified && (
+                                      <button
+                                        type="button"
+                                        className="btn-primary"
+                                        style={{ fontSize: "0.72rem", padding: "2px 8px" }}
+                                        onClick={() => verifyFarmTour(farmerProfile?._id || u._id, u.name)}
+                                      >
+                                        Approve Tour
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            );
-                          })}
+                            )}
+
+                            {/* Agent Specific: Vehicle Photo, Registration No & Ridealong Route */}
+                            {u.role === "agent" && (
+                              <div style={{ marginTop: "0.5rem", background: "rgba(234,179,8,0.08)", padding: "0.6rem 0.8rem", borderRadius: "8px", border: "1px solid rgba(234,179,8,0.2)" }}>
+                                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#92400e" }}>
+                                  🚚 Vehicle: {item.vehicleNumber || u.vehicleNumber || "Reg. Pending"} ({item.agentType || u.agentType || "bike"})
+                                </div>
+                                {(item.agentType === "ridealong" || u.agentType === "ridealong") && (
+                                  <div style={{ fontSize: "0.75rem", color: "#b45309", marginTop: "0.2rem" }}>
+                                    🛣️ Commute Route: <strong>{u.ridealongRoute?.fromLocation || "Origin"}</strong> ➔ <strong>{u.ridealongRoute?.toLocation || "Destination"}</strong>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {u.aadhaar && <p style={{ color:"var(--text-muted)", fontSize:"0.76rem", marginTop:"0.4rem" }}>🪪 Aadhaar: {u.aadhaar}</p>}
+                            <p style={{ color:"var(--text-muted)", fontSize:"0.72rem" }}>Joined: {new Date(u.createdAt).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" })}</p>
+                          </div>
+
+                          {/* Photos Grid */}
+                          <div style={{ display:"flex", gap:"0.75rem", flexWrap: "wrap" }}>
+                            {photos && Object.entries(photos).map(([key, url]) => {
+                              const label = key.replace("Photo", " Photo").replace(/([A-Z])/g, ' $1').replace("  ", " ").trim();
+                              const fullUrl = url
+                                ? (url.startsWith("http") || url.startsWith("data:") || url.startsWith("blob:")
+                                    ? url
+                                    : `${BASE_URL}/${url.replace(/^\/+/, "")}`)
+                                : null;
+                              return (
+                                <div key={key} style={{ textAlign: "center" }}>
+                                  {fullUrl ? (
+                                    <a href={fullUrl} target="_blank" rel="noreferrer" title={`Open ${label} in new tab`}>
+                                      <img
+                                        src={fullUrl}
+                                        alt={label}
+                                        onError={(e) => { e.target.src = ""; e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }}
+                                        style={{ width: 110, height: 110, objectFit: "cover", borderRadius: "10px", border: "2px solid rgba(82,183,136,0.4)", background: "var(--green-pale)", display: "block", cursor: "pointer" }}
+                                      />
+                                      <div style={{ display:"none", width:110, height:110, borderRadius:"10px", border:"2px dashed rgba(82,183,136,0.3)", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:"4px" }}>
+                                        <span style={{ fontSize:"1.3rem" }}>🖼️</span>
+                                        <span style={{ fontSize:"0.6rem", color:"var(--text-muted)" }}>Load failed</span>
+                                      </div>
+                                    </a>
+                                  ) : (
+                                    <div style={{ width:110, height:110, borderRadius:"10px", border:"2px dashed rgba(255,255,255,0.15)", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:"4px", background:"rgba(0,0,0,0.15)" }}>
+                                      <span style={{ fontSize:"1.3rem" }}>📷</span>
+                                      <span style={{ fontSize:"0.6rem", color:"var(--text-muted)", textAlign:"center" }}>Not uploaded</span>
+                                    </div>
+                                  )}
+                                  <p style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: "0.3rem", textTransform: "capitalize", maxWidth: 110 }}>{label}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div style={{ display:"flex", gap:"0.75rem", justifyContent: "flex-end", marginTop: "0.5rem" }}>
+                          <button className="btn-primary" style={{ width:"auto", padding:"0.5rem 1.25rem" }} onClick={() => verifyFarmer(u._id, u.name)}>
+                            ✅ Approve Profile
+                          </button>
+                          <button className="btn-danger" style={{ width: "auto", padding:"0.5rem 1.25rem" }} onClick={() => rejectFarmer(u._id, u.name)}>
+                            ❌ Reject
+                          </button>
                         </div>
                       </div>
-                      <div style={{ display:"flex", gap:"0.75rem", justifyContent: "flex-end", marginTop: "1rem" }}>
-                        <button className="btn-primary" style={{ width:"auto", padding:"0.6rem 1.25rem" }} onClick={() => verifyFarmer(u._id, u.name)}>
-                          ✅ Approve
-                        </button>
-                        <button className="btn-danger" style={{ width: "auto", padding:"0.6rem 1.25rem" }} onClick={() => rejectFarmer(u._id, u.name)}>
-                          ❌ Reject
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1272,6 +1385,13 @@ export default function AdminDashboard() {
               <button className="btn-primary mt-2" onClick={sendBroadcast}>
                 📢 Send Broadcast Now
               </button>
+            </div>
+          )}
+
+          {/* 🌱 WASTE MANAGEMENT TAB 🌱 */}
+          {tab === "waste" && (
+            <div className="mt-3">
+              <AdminWasteManagement />
             </div>
           )}
 

@@ -614,7 +614,21 @@ router.put("/:id/complete", async (req, res) => {
     
     // Agent Payout
     if (order.agent && !order.isSettledWithAgent) {
-      await User.findByIdAndUpdate(order.agent, { $inc: { walletBalance: order.deliveryCharges } });
+      const agentUser = await User.findById(order.agent);
+      let agentPayout = order.agentEarnings || order.deliveryCharges;
+      
+      if (agentUser && agentUser.agentType === "ridealong") {
+        agentPayout = (order.deliveryCharges || 0) * 0.50;
+        const platformShare = (order.deliveryCharges || 0) * 0.10;
+        const customerRefund = (order.deliveryCharges || 0) * 0.40;
+        
+        await Order.findByIdAndUpdate(order._id, { $inc: { adminRevenue: platformShare } });
+        if (order.customer) {
+          await User.findByIdAndUpdate(order.customer, { $inc: { walletBalance: customerRefund } });
+        }
+      }
+
+      await User.findByIdAndUpdate(order.agent, { $inc: { walletBalance: agentPayout } });
       if (order.paymentMode === "cod") {
         await User.findByIdAndUpdate(order.agent, { $inc: { cashInHand: order.totalAmount } });
       }
@@ -776,8 +790,21 @@ router.put("/:id/status", async (req, res) => {
     // If delivered, handle agent payout & COD cash holding
     if (status === "delivered" && fetchedOrder && fetchedOrder.agent) {
       if (!fetchedOrder.isSettledWithAgent) {
-        // Agent gets paid the delivery charges (added to their wallet)
-        await User.findByIdAndUpdate(fetchedOrder.agent, { $inc: { walletBalance: fetchedOrder.deliveryCharges } });
+        const agentUser = await User.findById(fetchedOrder.agent);
+        let agentPayout = fetchedOrder.agentEarnings || fetchedOrder.deliveryCharges;
+        
+        if (agentUser && agentUser.agentType === "ridealong") {
+          agentPayout = (fetchedOrder.deliveryCharges || 0) * 0.50;
+          const platformShare = (fetchedOrder.deliveryCharges || 0) * 0.10;
+          const customerRefund = (fetchedOrder.deliveryCharges || 0) * 0.40;
+          
+          await Order.findByIdAndUpdate(fetchedOrder._id, { $inc: { adminRevenue: platformShare } });
+          if (fetchedOrder.customer) {
+            await User.findByIdAndUpdate(fetchedOrder.customer, { $inc: { walletBalance: customerRefund } });
+          }
+        }
+        
+        await User.findByIdAndUpdate(fetchedOrder.agent, { $inc: { walletBalance: agentPayout } });
         
         // If COD, the agent holds the total cash for this order (owed to admin)
         if (fetchedOrder.paymentMode === "cod") {

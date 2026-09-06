@@ -1,10 +1,14 @@
 import express from "express";
+import GlobalConfig from "../models/GlobalConfig.js";
+import Agent from "../models/Agent.js";
 import Delivery from "../models/Delivery.js";
 import Order from "../models/Order.js";
 import User from "../models/User.js";
 import Notification from "../models/Notification.js";
 import multer from "multer";
 import path from "path";
+import fs from "fs";
+import { callGeminiWithFallback } from "../services/geminiService.js";
 
 // Setup multer for image uploads
 const storage = multer.diskStorage({
@@ -210,32 +214,80 @@ router.post("/auto-assign/:orderId", async (req, res) => {
     const pickupLat = order.farmer?.latitude || order.crop?.latitude || 0;
     const pickupLng = order.farmer?.longitude || order.crop?.longitude || 0;
 
-    // 2. Score agents
-    // We balance Proximity (distance) and Delivery Score. 
-    // Lower combined score is better. Distance in km * 10 - Delivery Score.
-    const scoredAgents = agents.map(agent => {
-      const dist = haversineDistance(agent.latitude, agent.longitude, pickupLat, pickupLng);
-      // Give preference to agents with high delivery score, but heavily penalize distance
-      const score = (dist * 10) - (agent.deliveryScore || 0);
-      return { agent, dist, score };
-    });
+    // 2. Score agents - Check ridealong agents matching route first
+    const dropLat = order.deliveryLatitude || 0;
+    const dropLng = order.deliveryLongitude || 0;
 
-    // Sort by best score (lowest score value first)
-    scoredAgents.sort((a, b) => a.score - b.score);
-    const bestAgentData = scoredAgents[0];
-    const bestAgent = bestAgentData.agent;
+    let bestAgent = null;
+    let isRidealong = false;
+    let agentDistance = 0;
+
+    // Check if any active ridealong agent's commute route encompasses this delivery
+    const ridealongAgents = agents.filter(a => a.agentType === "ridealong" && a.ridealongRoute?.isActive);
+    for (const rAgent of ridealongAgents) {
+      const route = rAgent.ridealongRoute;
+      const startLat = route.fromLat || rAgent.latitude;
+      const startLng = route.fromLng || rAgent.longitude;
+      const destLat = route.toLat;
+      const destLng = route.toLng;
+
+      const distPickupFromStart = haversineDistance(startLat, startLng, pickupLat, pickupLng);
+      const distDropToDest = (destLat && destLng && dropLat && dropLng) ? haversineDistance(dropLat, dropLng, destLat, destLng) : 5;
+
+      // If pickup is within 15km of agent's commute start and drop is within 15km of their destination
+      if (distPickupFromStart <= 15 && distDropToDest <= 15) {
+        bestAgent = rAgent;
+        isRidealong = true;
+        agentDistance = distPickupFromStart;
+        break;
+      }
+    }
+
+    if (!bestAgent) {
+      // Balance Proximity (distance) and Delivery Score
+      const scoredAgents = agents.map(agent => {
+        const dist = haversineDistance(agent.latitude, agent.longitude, pickupLat, pickupLng);
+        const score = (dist * 10) - (agent.deliveryScore || 0);
+        return { agent, dist, score };
+      });
+
+      scoredAgents.sort((a, b) => a.score - b.score);
+      bestAgent = scoredAgents[0].agent;
+      agentDistance = scoredAgents[0].dist;
+    }
 
     // Calculate ETA based on agent's distance to pickup + pickup to drop
     const distToDrop = order.deliveryDistance || haversineDistance(pickupLat, pickupLng, order.deliveryLatitude, order.deliveryLongitude);
-    const totalDist = bestAgentData.dist + distToDrop;
-    const etaMinutes = computeETA(totalDist, "bike");
+    const totalDist = agentDistance + distToDrop;
+    const etaMinutes = computeETA(totalDist, bestAgent.agentType || "bike");
     const etaText = etaMinutes < 60 ? `${etaMinutes} mins` : `${Math.floor(etaMinutes / 60)}h ${etaMinutes % 60}m`;
 
-    // 3. Assign
+    // 3. Fee Split & Pricing
+    const origDelivery = order.deliveryCharges || 40;
+    if (isRidealong) {
+      // 50% to ride along, 10% platform, 40% discount to customer
+      const customerDiscount = Math.round(origDelivery * 0.40);
+      const agentShare = Math.round(origDelivery * 0.50);
+      
+      order.isRidealong = true;
+      order.ridealongDiscount = customerDiscount;
+      order.agentEarnings = agentShare;
+      order.deliveryCharges = origDelivery - customerDiscount;
+      order.totalAmount = Math.max(0, (order.totalAmount || 0) - customerDiscount);
+      order.timeline.push({ 
+        status: "assigned", 
+        note: `Auto-assigned Ride-Along Freelance Agent (${bestAgent.name}). 40% Delivery Discount applied (Customer saved ₹${customerDiscount})! ETA: ${etaText}` 
+      });
+    } else {
+      order.isRidealong = false;
+      order.agentEarnings = order.deliveryCharges;
+      order.timeline.push({ status: "assigned", note: `Auto-assigned best agent (${bestAgent.name}). ETA: ${etaText}` });
+    }
+
+    // 4. Assign
     order.agent = bestAgent._id;
     order.status = "assigned";
     order.estimatedDeliveryMinutes = etaMinutes;
-    order.timeline.push({ status: "assigned", note: `Auto-assigned best agent (${bestAgent.name}). ETA: ${etaText}` });
     await order.save();
 
     const delivery = await Delivery.create({
@@ -417,6 +469,35 @@ router.put("/:id/status", async (req, res) => {
               "delivery", "high", { orderId: deliveryDoc.order?._id, penaltyPoints: latePenaltyPoints }
             );
           }
+        }
+      }
+
+      // ─── Recalculate Agent Trust Score ───
+      if (deliveryDoc.agent) {
+        try {
+          const agentDoc = await Agent.findOne({ user: deliveryDoc.agent });
+          if (agentDoc) {
+            if (!agentDoc.trustScore) {
+              agentDoc.trustScore = { score: 100, rating: 5.0, totalRatings: 0, totalDeliveries: 0, onTimeDeliveries: 0, issuesReported: 0 };
+            }
+            agentDoc.trustScore.totalDeliveries = (agentDoc.trustScore.totalDeliveries || 0) + 1;
+            if (isEarly) {
+              agentDoc.trustScore.onTimeDeliveries = (agentDoc.trustScore.onTimeDeliveries || 0) + 1;
+            }
+            const totalDels = agentDoc.trustScore.totalDeliveries;
+            const onTimeDels = agentDoc.trustScore.onTimeDeliveries;
+            const onTimeRate = totalDels > 0 ? (onTimeDels / totalDels) : 1;
+            const currentRating = agentDoc.trustScore.rating || 5.0;
+            const ratingScore = (currentRating / 5) * 30;
+            const issuesPenalty = Math.min(10, agentDoc.trustScore.issuesReported || 0);
+            const compositeTrustScore = Math.min(100, Math.max(10, Math.round((onTimeRate * 60) + ratingScore + (10 - issuesPenalty))));
+            
+            agentDoc.trustScore.score = compositeTrustScore;
+            await agentDoc.save();
+            await User.findByIdAndUpdate(deliveryDoc.agent, { deliveryScore: compositeTrustScore });
+          }
+        } catch (tsErr) {
+          console.error("Agent trust score calculation error:", tsErr);
         }
       }
 
@@ -634,7 +715,6 @@ router.get("/earnings/:agentId", async (req, res) => {
 });
 
 // Rate Delivery Agent
-import Agent from "../models/Agent.js";
 router.post("/rate-agent/:orderId", async (req, res) => {
   try {
     const { rating } = req.body;
@@ -662,5 +742,134 @@ router.post("/rate-agent/:orderId", async (req, res) => {
   }
 });
 
+
+// ─── AI Biodegradable Waste Verification ───
+router.post("/:id/verify-waste", upload.single("wastePhoto"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!req.file) return res.status(400).json({ error: "No image file provided." });
+
+    const photoUrl = `/uploads/${req.file.filename}`;
+    const filePath = path.join(process.cwd(), "public", photoUrl);
+
+    let base64Data = null;
+    let mimeType = req.file.mimetype;
+    try {
+      const fileBuffer = fs.readFileSync(filePath);
+      base64Data = fileBuffer.toString("base64");
+    } catch (e) {
+      console.error("Error reading waste file:", e);
+      return res.status(500).json({ error: "Error reading uploaded file." });
+    }
+
+    const delivery = await Delivery.findByIdAndUpdate(id, { wastePhoto: photoUrl }, { new: true });
+    if (!delivery) return res.status(404).json({ error: "Delivery not found" });
+
+    const prompt = `Analyze this image. Is it primarily biodegradable agricultural or kitchen waste (e.g., vegetable peels, fruit waste, leaves, crop residue)? Respond strictly with a JSON object: {"isBiodegradable": boolean, "confidence": number, "reason": "string"}`;
+    
+    let isVerified = false;
+    let reason = "AI Verification Failed";
+
+    if (base64Data) {
+      const response = await callGeminiWithFallback([
+        { text: prompt },
+        { inlineData: { data: base64Data, mimeType } }
+      ]);
+      if (response) {
+        try {
+          const jsonMatch = response.match(/\{.*\}/s);
+          if (jsonMatch) {
+            const aiRes = JSON.parse(jsonMatch[0]);
+            isVerified = aiRes.isBiodegradable;
+            reason = aiRes.reason;
+          }
+        } catch (e) { console.error("JSON parse error:", e); }
+      }
+    }
+
+    delivery.wasteScanStatus = isVerified ? "verified" : "rejected";
+    delivery.aiVerificationNotes = reason;
+    await delivery.save();
+
+    res.json({ success: true, isVerified, reason, delivery });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Drop-off Waste at Admin Storage (₹15 Customer Reward Points) ───
+router.post("/:id/dropoff-waste", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const delivery = await Delivery.findById(id).populate("order");
+    if (!delivery) return res.status(404).json({ error: "Delivery not found" });
+
+    if (delivery.wasteCollectedKg <= 0 || delivery.wasteScanStatus !== "verified") {
+      return res.status(400).json({ error: "No verified waste collected for this delivery." });
+    }
+    if (delivery.wasteDroppedOff) {
+      return res.status(400).json({ error: "Waste already dropped off." });
+    }
+
+    delivery.wasteDroppedOff = true;
+    await delivery.save();
+
+    // Add to Global Config Inventory
+    let config = await GlobalConfig.findOne();
+    if (!config) config = new GlobalConfig();
+    config.totalBiodegradableWasteKg = (config.totalBiodegradableWasteKg || 0) + delivery.wasteCollectedKg;
+    await config.save();
+
+    // Reward Customer with 15 points
+    if (delivery.order && delivery.order.customer) {
+      const customerId = delivery.order.customer._id || delivery.order.customer;
+      
+      const WASTE_REWARD_POINTS = 15;
+      delivery.wastePointsAwarded = WASTE_REWARD_POINTS;
+      await delivery.save();
+      
+      await User.findByIdAndUpdate(customerId, { $inc: { rewardPoints: WASTE_REWARD_POINTS } });
+
+      // Notify customer
+      await notify(req.app, customerId, 
+        "🌱 Thank You for Donating Waste!",
+        `The delivery agent has successfully deposited your ${delivery.wasteCollectedKg} kg of biodegradable waste at our central storage. You earned ${WASTE_REWARD_POINTS} reward points!`,
+        "reward", "normal", { deliveryId: delivery._id, rewardPoints: WASTE_REWARD_POINTS }
+      );
+    }
+
+    res.json({ success: true, message: "Waste dropped off successfully", delivery });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Ride-Along Route Management ───
+router.put("/ridealong/route", async (req, res) => {
+  try {
+    const { agentId, fromLocation, toLocation, fromLat, fromLng, toLat, toLng, departureTime, isActive } = req.body;
+    if (!agentId) return res.status(400).json({ error: "Agent ID required" });
+
+    const user = await User.findById(agentId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    user.agentType = "ridealong";
+    user.ridealongRoute = {
+      fromLocation: fromLocation || user.ridealongRoute?.fromLocation || "",
+      toLocation: toLocation || user.ridealongRoute?.toLocation || "",
+      fromLat: fromLat !== undefined ? Number(fromLat) : user.ridealongRoute?.fromLat,
+      fromLng: fromLng !== undefined ? Number(fromLng) : user.ridealongRoute?.fromLng,
+      toLat: toLat !== undefined ? Number(toLat) : user.ridealongRoute?.toLat,
+      toLng: toLng !== undefined ? Number(toLng) : user.ridealongRoute?.toLng,
+      departureTime: departureTime ? new Date(departureTime) : user.ridealongRoute?.departureTime,
+      isActive: isActive !== undefined ? Boolean(isActive) : true
+    };
+
+    await user.save();
+    res.json({ success: true, message: "Ride-along route updated successfully", ridealongRoute: user.ridealongRoute });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 export default router;

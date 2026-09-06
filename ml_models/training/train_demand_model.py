@@ -17,31 +17,67 @@ def fetch_and_augment_demand_data(target_rows=50000):
         client = MongoClient("mongodb://127.0.0.1:27017/")
         db = client["rythu_sethu"]
         
+        # Build map of all live crops
+        crops_docs = list(db.crops.find({}))
+        crop_id_map = {str(c['_id']): c for c in crops_docs}
+        print(f"Found {len(crops_docs)} real crops in live database.")
+        for c in crops_docs:
+            cname = c.get('name')
+            if cname and cname not in crops_list:
+                crops_list.append(cname)
+
         # Extract live order demand
         orders = list(db.orders.find({}))
         print(f"Found {len(orders)} real orders in live database.")
         
         for order in orders:
-            # Safely extract crop name based on schema
-            items = order.get('items', [])
-            if not items: continue
+            # Extract crop name via productSnapshot or crop ObjectId lookup
+            crop_name = None
+            if order.get('productSnapshot') and order['productSnapshot'].get('name'):
+                crop_name = order['productSnapshot']['name']
+            elif order.get('crop'):
+                cid = str(order['crop'])
+                if cid in crop_id_map:
+                    crop_name = crop_id_map[cid].get('name')
             
-            crop_name = items[0].get('crop', {}).get('name', 'Unknown')
-            if crop_name not in crops_list: crops_list.append(crop_name)
+            if not crop_name:
+                continue
+            
+            if crop_name not in crops_list:
+                crops_list.append(crop_name)
             
             created_at = order.get('createdAt')
-            month = created_at.month if created_at else np.random.randint(1, 13)
+            month = created_at.month if (created_at and hasattr(created_at, 'month')) else np.random.randint(1, 13)
             
-            qty = items[0].get('quantity', 1)
+            qty = float(order.get('quantity') or 1)
+            total_amt = float(order.get('totalAmount') or order.get('subtotal') or (qty * 50))
+            market_price = max(total_amt / max(qty, 1.0), 5.0)
             
             data.append({
                 'crop_encoded': crops_list.index(crop_name),
                 'month': month,
                 'historical_sales': qty * 10,
-                'market_price': order.get('totalAmount', 100) / qty,
+                'market_price': market_price,
                 'target_demand': qty * 1.5 # Real demand calculation
             })
             
+        # Ingest live search history signals
+        searches = list(db.searchhistories.find({}))
+        if searches:
+            print(f"Found {len(searches)} search history logs.")
+            for s in searches:
+                sq = s.get('query', '').strip().title()
+                if sq and sq in crops_list:
+                    created_at = s.get('createdAt')
+                    month = created_at.month if (created_at and hasattr(created_at, 'month')) else np.random.randint(1, 13)
+                    data.append({
+                        'crop_encoded': crops_list.index(sq),
+                        'month': month,
+                        'historical_sales': 15,
+                        'market_price': 45.0,
+                        'target_demand': 20.0
+                    })
+        print(f"Extracted {len(data)} real training rows from live MongoDB records.")
     except Exception as e:
         print(f"MongoDB connection failed: {e}. Falling back to pure synthetic.")
         

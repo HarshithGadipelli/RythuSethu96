@@ -83,9 +83,13 @@ export const farmerSuggestions = async (req, res) => {
 
 export const routeOptimize = async (req, res) => {
   try {
-    const { agentLat, agentLng, orders } = req.body;
+    const { agentLat, agentLng, orders, agentType } = req.body;
     if (!agentLat || !agentLng || !orders || orders.length === 0) return res.status(400).json({ error: "Missing data" });
-    const { optimized, totalDistance } = await optimizeDeliveryRoute(agentLat, agentLng, orders);
+    
+    // Determine agent type, defaulting to bike
+    const type = agentType || (req.user && req.user.agentType) || "bike";
+    
+    const { optimized, totalDistance } = await optimizeDeliveryRoute(agentLat, agentLng, orders, type);
     res.json({ optimizedRoute: optimized, totalDistance: totalDistance.toFixed(2) });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -168,9 +172,7 @@ export const predictYield = async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey && apiKey.trim().length > 10) {
       try {
-        const { GoogleGenerativeAI } = await import("@google/generative-ai");
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const { callGeminiWithFallback } = await import("../services/geminiService.js");
         const prompt = `
         You are an expert Indian agricultural ML prediction model.
         Predict the harvest yield and revenue for:
@@ -190,12 +192,15 @@ export const predictYield = async (req, res) => {
           "aiRecommendation": "Short tip to improve yield based on this data"
         }`;
         
-        const result = await model.generateContent(prompt);
-        let text = result.response.text().trim();
-        text = text.replace(/^```json/i, "").replace(/```$/, "").trim();
-        const aiData = JSON.parse(text);
-        
-        return res.json({ crop, acres, soilType, soilPh: soilPh || baseline.idealPh, ...aiData });
+        const rawText = await callGeminiWithFallback(prompt);
+        if (rawText) {
+          let text = rawText.trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
+          const parsed = JSON.parse(text);
+          return res.json({
+            ...parsed,
+            source: "gemini_ml"
+          });
+        }
       } catch (err) {
         console.warn("Gemini Yield Prediction Failed:", err.message);
       }

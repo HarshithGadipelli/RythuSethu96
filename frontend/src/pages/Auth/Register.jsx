@@ -45,9 +45,11 @@ export default function Register() {
     soilTestRequested: false,
     address: "", pincode: "", city: "", state: "",
     customerType: "individual", requiresDailyDelivery: false,
-    agentType: "bike",
+    agentType: "bike", locationMethod: "gps",
     adminSecret: "", acceptedTerms: false
   });
+  
+  const [locationAudio, setLocationAudio] = useState(null);
 
   const set = (k) => (val) => {
     if (typeof val === "function") {
@@ -214,7 +216,7 @@ export default function Register() {
         delete payload.farmerPhoto; delete payload.farmPhoto; delete payload.productPhoto;
         delete payload.avatar; delete payload.aadhaarPhoto;
         delete payload.farmerPhotoPreview; delete payload.farmPhotoPreview; delete payload.productPhotoPreview;
-        delete payload.avatarPreview; delete payload.aadhaarPhotoPreview;
+        delete payload.avatarPreview; delete payload.aadhaarPhotoPreview; delete payload.locationAudioPreview;
         res = await API.post("/auth/register", payload);
       }
       try {
@@ -439,11 +441,13 @@ export default function Register() {
               {form.role === "agent" && (
                 <div className="glass-card" style={{ marginTop: "1rem", padding: "1rem", background: "rgba(255,255,255,0.05)" }}>
                   <div className="form-group mb-2">
-                    <label className="field-label">What vehicle will you use for deliveries?</label>
+                    <label className="field-label">Select Agent Type / Vehicle</label>
                     <select className="rs-select" value={form.agentType} onChange={set("agentType")}>
                       <option value="bike">🛵 Two Wheeler / Bike (Light Orders)</option>
                       <option value="auto">🛺 Auto / 3-Wheeler (Medium Orders)</option>
                       <option value="truck">🚛 Mini Truck / LCV (Heavy & Intercity Orders)</option>
+                      <option value="vermicompost">🪱 Vermicompost Collection Agent</option>
+                      <option value="biogas">⚡ Bio-Gas Collection Agent</option>
                     </select>
                   </div>
                 </div>
@@ -626,6 +630,31 @@ export default function Register() {
                     />
                   </div>
                 )}
+                
+                <div style={{ marginTop: "1rem", padding: "1rem", background: "rgba(255,255,255,0.05)", borderRadius: "8px", border: "1px solid rgba(22,163,74,0.3)" }}>
+                  <label className="field-label" style={{ color: "var(--green-mid)" }}>✅ Verification: How did you provide your location?</label>
+                  <select className="rs-select" value={form.locationMethod} onChange={set("locationMethod")}>
+                    <option value="gps">Current GPS Location</option>
+                    <option value="pin">Pin-based (Map Dropper)</option>
+                    <option value="mic">Mic Audio (Voice Clarification)</option>
+                  </select>
+                  
+                  {form.locationMethod === "mic" && (
+                    <div style={{ marginTop: "0.75rem" }}>
+                      <label className="field-label">Upload Voice Clarification (Audio File)</label>
+                      <input 
+                        type="file" 
+                        accept="audio/*" 
+                        onChange={(e) => setForm(f => ({ ...f, locationAudio: e.target.files[0] }))}
+                        className="rs-input"
+                        style={{ padding: "0.4rem" }}
+                      />
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.3rem" }}>
+                        Please upload an audio recording describing your exact farm location and nearby landmarks. Admin will verify this.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>

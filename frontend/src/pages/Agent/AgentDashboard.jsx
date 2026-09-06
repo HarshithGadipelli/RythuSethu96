@@ -211,6 +211,39 @@ export default function AgentDashboard() {
   const [delayNote, setDelayNote] = useState("");
   const { listening, activeField, interim, startListening, stopListening } = useVoiceInput(lang || "en");
   const [showPledge, setShowPledge] = useState(user?.acceptedTerms === false);
+  const [ridealongForm, setRidealongForm] = useState({
+    fromLocation: user?.ridealongRoute?.fromLocation || "",
+    toLocation: user?.ridealongRoute?.toLocation || "",
+    fromLat: user?.ridealongRoute?.fromLat || (user?.latitude || 17.385),
+    fromLng: user?.ridealongRoute?.fromLng || (user?.longitude || 78.486),
+    toLat: user?.ridealongRoute?.toLat || 17.2403,
+    toLng: user?.ridealongRoute?.toLng || 78.4294,
+    departureTime: user?.ridealongRoute?.departureTime ? new Date(user.ridealongRoute.departureTime).toISOString().slice(0, 16) : "",
+    isActive: user?.ridealongRoute?.isActive ?? false
+  });
+  const [savingRoute, setSavingRoute] = useState(false);
+
+  const saveRidealongRoute = async (e) => {
+    e.preventDefault();
+    setSavingRoute(true);
+    try {
+      const res = await API.put("/delivery/ridealong/route", {
+        agentId: user?._id,
+        ...ridealongForm
+      });
+      setMsg({ type: "success", text: "🎒 Ride-Along route saved! Platform will auto-match orders along your commute." });
+      if (user) {
+        user.ridealongRoute = res.data.ridealongRoute;
+        user.agentType = "ridealong";
+      }
+      loadAll();
+    } catch (err) {
+      setMsg({ type: "error", text: err.response?.data?.error || "Failed to update ride-along route." });
+    } finally {
+      setSavingRoute(false);
+      setTimeout(() => setMsg({ type:"", text:"" }), 4000);
+    }
+  };
 
   useEffect(() => { 
     loadAll();
@@ -406,6 +439,41 @@ export default function AgentDashboard() {
     } finally {
       setUpdating(null);
       setTimeout(() => setMsg({ type:"", text:"" }), 3000);
+    }
+  };
+
+  const uploadWastePhoto = async (deliveryId, file) => {
+    setUpdating(deliveryId);
+    try {
+      const formData = new FormData();
+      formData.append("wastePhoto", file);
+      setMsg({ type:"info", text:"Uploading photo & running AI Biodegradable Scan..." });
+      const res = await API.post(`/delivery/${deliveryId}/verify-waste`, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      if (res.data.isVerified) {
+        setMsg({ type:"success", text:"🌱 AI Verified: Organic waste accepted!" });
+      } else {
+        setMsg({ type:"error", text:`❌ AI Alert: ${res.data.reason}` });
+      }
+      loadAll();
+    } catch (err) {
+      setMsg({ type:"error", text: err.response?.data?.error || "Failed to verify waste." });
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const dropoffWaste = async (deliveryId) => {
+    setUpdating(deliveryId);
+    try {
+      await API.post(`/delivery/${deliveryId}/dropoff-waste`);
+      setMsg({ type:"success", text:"♻️ Waste dropped off at Admin Storage successfully!" });
+      loadAll();
+    } catch (err) {
+      setMsg({ type:"error", text: err.response?.data?.error || "Failed to drop off waste." });
+    } finally {
+      setUpdating(null);
     }
   };
 
@@ -668,6 +736,7 @@ export default function AgentDashboard() {
         {[
           { k:"my", l:"📦 My Deliveries" },
           { k:"available", l:"🚚 Available Orders" },
+          { k:"ridealong", l:"🎒 Ride-Along Route" },
           { k:"earnings", l:"💰 Earnings" },
           { k:"tips", l:"💡 Smart Tips" }
         ].map(tb => (
@@ -946,6 +1015,58 @@ export default function AgentDashboard() {
                       )}
                     </div>
 
+                    {/* Waste Management UI */}
+                    {d.wasteCollectedKg > 0 && d.status === "delivered" && (
+                      <div className="mt-2" style={{ background:"rgba(34, 197, 94, 0.05)", padding:"1rem", borderRadius:"var(--radius-sm)", border:"1px solid rgba(34, 197, 94, 0.2)" }}>
+                        <h4 style={{ color: "var(--green-deep)", marginBottom:"0.5rem", fontSize:"0.9rem", display:"flex", alignItems:"center", gap:"0.3rem" }}>
+                          🌱 Waste Verification ({d.wasteCollectedKg} kg collected)
+                        </h4>
+                        
+                        <div style={{ marginBottom: "0.5rem" }}>
+                          {d.wasteScanStatus === "pending" && (
+                            <label className="btn-secondary w-100" style={{ display:"block", textAlign:"center", padding:"0.5rem", cursor:"pointer", fontSize:"0.8rem" }}>
+                              📸 Upload Waste Photo & Verify AI
+                              <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => {
+                                if (e.target.files[0]) uploadWastePhoto(d._id, e.target.files[0]);
+                              }} disabled={updating === d._id} />
+                            </label>
+                          )}
+                          
+                          {d.wasteScanStatus === "verified" && (
+                            <div style={{ color:"#22c55e", fontSize:"0.85rem", display:"flex", alignItems:"center", gap:"0.3rem" }}>
+                              <span style={{ fontSize:"1.2rem" }}>✅</span> Verified Organic Waste
+                            </div>
+                          )}
+
+                          {d.wasteScanStatus === "rejected" && (
+                            <div style={{ color:"#ef4444", fontSize:"0.85rem", marginTop:"0.5rem" }}>
+                              <div style={{ display:"flex", alignItems:"center", gap:"0.3rem", fontWeight:700 }}>
+                                <span style={{ fontSize:"1.2rem" }}>❌</span> Rejected: Non-Biodegradable
+                              </div>
+                              <p style={{ marginTop:"0.2rem", color:"var(--text-muted)" }}>{d.aiVerificationNotes}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {d.wasteScanStatus === "verified" && !d.wasteDroppedOff && (
+                          <button 
+                            className="btn-primary w-100" 
+                            style={{ background: "var(--green-mid)", border:"none", marginTop: "0.5rem" }}
+                            onClick={() => dropoffWaste(d._id)}
+                            disabled={updating === d._id}
+                          >
+                            {updating === d._id ? "Processing..." : "♻️ Drop-off Waste at Storage"}
+                          </button>
+                        )}
+                        {d.wasteDroppedOff && (
+                           <div style={{ color:"var(--text-muted)", fontSize:"0.8rem", textAlign:"center", marginTop: "0.5rem" }}>
+                             ✓ Dropped off at Admin Storage
+                           </div>
+                        )}
+                      </div>
+                    )}
+
+
                     {d.status === "delivered" && (
                       <div className="alert alert-success" style={{ marginTop:0 }}>
                         ✅ Delivery completed successfully!
@@ -1030,6 +1151,118 @@ export default function AgentDashboard() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── RIDE-ALONG FREELANCE ROUTE CONFIGURATION ── */}
+      {tab === "ridealong" && (
+        <div className="glass-card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem", marginBottom: "1.5rem" }}>
+            <div>
+              <h3 className="section-title" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span>🎒</span> Ride-Along Freelance Delivery Mode
+              </h3>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: "0.3rem" }}>
+                Traveling somewhere? Set your commute route to carry agricultural packages along the way!
+              </p>
+            </div>
+            <span className={`badge ${ridealongForm.isActive ? "badge-green" : "badge-yellow"}`} style={{ fontSize: "0.85rem", padding: "6px 14px" }}>
+              {ridealongForm.isActive ? "🟢 Active Commuter" : "⚪ Offline"}
+            </span>
+          </div>
+
+          {/* Pricing Model Highlight: 50% to ride along, 10% platform, 40% discount to customer */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+            <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.25)", padding: "1rem", borderRadius: "10px" }}>
+              <div style={{ color: "#166534", fontSize: "0.75rem", fontWeight: 700 }}>YOUR EARNINGS</div>
+              <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "#15803d" }}>50%</div>
+              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: 0 }}>Of delivery fee paid directly to your wallet</p>
+            </div>
+
+            <div style={{ background: "rgba(59, 130, 246, 0.08)", border: "1px solid rgba(59, 130, 246, 0.25)", padding: "1rem", borderRadius: "10px" }}>
+              <div style={{ color: "#1d4ed8", fontSize: "0.75rem", fontWeight: 700 }}>CUSTOMER DISCOUNT</div>
+              <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "#2563eb" }}>40% Off</div>
+              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: 0 }}>Incentivizes customers along your route</p>
+            </div>
+
+            <div style={{ background: "rgba(234, 179, 8, 0.08)", border: "1px solid rgba(234, 179, 8, 0.25)", padding: "1rem", borderRadius: "10px" }}>
+              <div style={{ color: "#92400e", fontSize: "0.75rem", fontWeight: 700 }}>PLATFORM SHARE</div>
+              <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "#d97706" }}>10%</div>
+              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: 0 }}>Covers insurance & tracking telemetry</p>
+            </div>
+          </div>
+
+          <form onSubmit={saveRidealongRoute} style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
+            <div className="grid-2" style={{ gap: "1rem" }}>
+              <div>
+                <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-dark)", display: "block", marginBottom: "0.4rem" }}>
+                  📍 Commute Origin (Starting Point):
+                </label>
+                <input
+                  type="text"
+                  className="rs-input"
+                  required
+                  value={ridealongForm.fromLocation}
+                  onChange={e => setRidealongForm({ ...ridealongForm, fromLocation: e.target.value })}
+                  placeholder="e.g. Secunderabad Station, Medchal..."
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-dark)", display: "block", marginBottom: "0.4rem" }}>
+                  🎯 Commute Destination (Ending Point):
+                </label>
+                <input
+                  type="text"
+                  className="rs-input"
+                  required
+                  value={ridealongForm.toLocation}
+                  onChange={e => setRidealongForm({ ...ridealongForm, toLocation: e.target.value })}
+                  placeholder="e.g. Shamshabad Airport, Gachibowli..."
+                />
+              </div>
+            </div>
+
+            <div className="grid-2" style={{ gap: "1rem" }}>
+              <div>
+                <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-dark)", display: "block", marginBottom: "0.4rem" }}>
+                  ⏰ Estimated Departure Time:
+                </label>
+                <input
+                  type="datetime-local"
+                  className="rs-input"
+                  value={ridealongForm.departureTime}
+                  onChange={e => setRidealongForm({ ...ridealongForm, departureTime: e.target.value })}
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-dark)", display: "block", marginBottom: "0.4rem" }}>
+                  Network Availability:
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: "0.6rem", cursor: "pointer", fontSize: "0.88rem", color: "var(--text-dark)" }}>
+                  <input
+                    type="checkbox"
+                    checked={ridealongForm.isActive}
+                    onChange={e => setRidealongForm({ ...ridealongForm, isActive: e.target.checked })}
+                    style={{ width: 18, height: 18, accentColor: "var(--green-mid)" }}
+                  />
+                  <span><strong>Accept Ride-Along Deliveries</strong> (Visible to auto-assign engine)</span>
+                </label>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: "1rem", justifyContent: "flex-end", marginTop: "0.5rem" }}>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={savingRoute}
+                style={{ padding: "0.75rem 2rem", fontSize: "0.95rem" }}
+              >
+                {savingRoute ? "Saving..." : "💾 Save Ride-Along Route"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

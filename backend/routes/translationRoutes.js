@@ -1,16 +1,7 @@
 import express from "express";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { callGeminiWithFallback } from "../services/geminiService.js";
 
 const router = express.Router();
-
-let genAI;
-try {
-  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 10) {
-    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  }
-} catch (error) {
-  console.warn("Failed to initialize GoogleGenerativeAI for Translation:", error.message);
-}
 
 // Memory cache to prevent hitting API for the same texts repeatedly
 const translationCache = new Map();
@@ -18,12 +9,8 @@ const translationCache = new Map();
 router.post("/", async (req, res) => {
   try {
     const { texts, targetLang } = req.body;
-    if (!texts || !Array.isArray(texts) || !targetLang || targetLang === "en") {
-      return res.json({ translatedTexts: texts });
-    }
-
-    if (!genAI) {
-      return res.json({ translatedTexts: texts }); // Fallback to original
+    if (!texts || !Array.isArray(texts) || texts.length === 0) {
+      return res.status(400).json({ error: "No texts provided" });
     }
 
     const cacheKey = `${targetLang}_${JSON.stringify(texts)}`;
@@ -34,8 +21,9 @@ router.post("/", async (req, res) => {
     const languageMap = {
       te: "Telugu",
       hi: "Hindi",
+      ta: "Tamil",
       kn: "Kannada",
-      ta: "Tamil"
+      en: "English"
     };
     const langName = languageMap[targetLang] || targetLang;
 
@@ -43,15 +31,12 @@ router.post("/", async (req, res) => {
 Maintain the exact array structure. Return ONLY a valid JSON array of strings, nothing else. No markdown blocks.
 Input: ${JSON.stringify(texts)}`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    const response = await model.generateContent(prompt);
+    const rawResponse = await callGeminiWithFallback(prompt);
+    if (!rawResponse) {
+      return res.json({ translatedTexts: texts });
+    }
     
-    let resultText = response.response.text().trim();
-    if (resultText.startsWith("\`\`\`json")) resultText = resultText.slice(7);
-    if (resultText.startsWith("\`\`\`")) resultText = resultText.slice(3);
-    if (resultText.endsWith("\`\`\`")) resultText = resultText.slice(0, -3);
-    resultText = resultText.trim();
-    
+    let resultText = rawResponse.trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
     const translatedArray = JSON.parse(resultText);
     
     // Store in cache
