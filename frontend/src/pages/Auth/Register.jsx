@@ -31,6 +31,7 @@ export default function Register() {
 
   const [showMap, setShowMap] = useState(false);
   const [showFarmMap, setShowFarmMap] = useState(false);
+  const [aiGuesserActive, setAiGuesserActive] = useState(false);
   const [assistantRunning, setAssistantRunning] = useState(false);
   const [assistantStep, setAssistantStep] = useState("");
   const [assistantMsg, setAssistantMsg] = useState("");
@@ -41,8 +42,10 @@ export default function Register() {
     role: "customer", language: "en", aadhaar: "",
     location: "", latitude: "", longitude: "",
     farmName: "", farmLocation: "", farmSize: "", soilType: "loamy", experience: "",
+    soilTestRequested: false,
     address: "", pincode: "", city: "", state: "",
     customerType: "individual", requiresDailyDelivery: false,
+    agentType: "bike",
     adminSecret: "", acceptedTerms: false
   });
 
@@ -179,7 +182,7 @@ export default function Register() {
 
 
 
-  const totalSteps = form.role === "farmer" ? 3 : 2;
+  const totalSteps = (form.role === "farmer" || form.role === "agent") ? 3 : 2;
 
   const handleRegister = async () => {
     setError("");
@@ -192,7 +195,7 @@ export default function Register() {
     setLoading(true);
     try {
       let res;
-      if (form.role === "farmer" && (form.farmerPhoto || form.farmPhoto || form.productPhoto)) {
+      if ((form.role === "farmer" || form.role === "agent") && (form.farmerPhoto || form.farmPhoto || form.productPhoto || form.avatar || form.aadhaarPhoto)) {
         // Use FormData for file uploads
         const fd = new FormData();
         Object.entries(form).forEach(([key, val]) => {
@@ -209,9 +212,23 @@ export default function Register() {
         delete payload.confirmPass;
         // Remove file/preview fields
         delete payload.farmerPhoto; delete payload.farmPhoto; delete payload.productPhoto;
+        delete payload.avatar; delete payload.aadhaarPhoto;
         delete payload.farmerPhotoPreview; delete payload.farmPhotoPreview; delete payload.productPhotoPreview;
+        delete payload.avatarPreview; delete payload.aadhaarPhotoPreview;
         res = await API.post("/auth/register", payload);
       }
+      try {
+        const saved = JSON.parse(localStorage.getItem("rs_saved_accounts")) || [];
+        const filtered = saved.filter(a => a.email.toLowerCase() !== res.data.user.email.toLowerCase());
+        filtered.unshift({
+          email: res.data.user.email,
+          password: form.password,
+          name: res.data.user.name,
+          role: res.data.user.role,
+          avatar: res.data.user.avatar || ""
+        });
+        localStorage.setItem("rs_saved_accounts", JSON.stringify(filtered.slice(0, 4)));
+      } catch (e) {}
       login(res.data.user, res.data.token);
       const role = res.data.user.role;
       if (role === "farmer") navigate("/farmer");
@@ -418,6 +435,20 @@ export default function Register() {
                 </div>
               )}
 
+              {/* Agent Type Fields */}
+              {form.role === "agent" && (
+                <div className="glass-card" style={{ marginTop: "1rem", padding: "1rem", background: "rgba(255,255,255,0.05)" }}>
+                  <div className="form-group mb-2">
+                    <label className="field-label">What vehicle will you use for deliveries?</label>
+                    <select className="rs-select" value={form.agentType} onChange={set("agentType")}>
+                      <option value="bike">🛵 Two Wheeler / Bike (Light Orders)</option>
+                      <option value="auto">🛺 Auto / 3-Wheeler (Medium Orders)</option>
+                      <option value="truck">🚛 Mini Truck / LCV (Heavy & Intercity Orders)</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
               {/* Admin secret code */}
               {form.role === "admin" && (
                 <div className="form-group">
@@ -526,7 +557,7 @@ export default function Register() {
 
               <div style={{ display: "flex", gap: "0.75rem" }}>
                 <button className="btn-secondary" onClick={() => setStep(1)}>← Back</button>
-                {form.role !== "farmer"
+                {(form.role !== "farmer" && form.role !== "agent")
                   ? <button className="btn-primary" onClick={handleRegister} disabled={loading}>
                       {loading ? t("loading") : `✅ ${t("register")}`}
                     </button>
@@ -644,9 +675,30 @@ export default function Register() {
 
               <div className="form-group">
                 <label className="field-label">{t("soilType")}</label>
-                <select className="rs-select" value={form.soilType} onChange={set("soilType")}>
-                  {SOIL_TYPES.map(s => <option key={s} value={s}>{t(s) || (s.charAt(0).toUpperCase() + s.slice(1))}</option>)}
-                </select>
+                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                  <select className="rs-select" style={{ flex: 1 }} value={form.soilType} onChange={set("soilType")}>
+                    {SOIL_TYPES.map(s => <option key={s} value={s}>{t(s) || (s.charAt(0).toUpperCase() + s.slice(1))}</option>)}
+                  </select>
+                  <button type="button" className="btn-secondary" style={{ padding: "0 0.75rem", fontSize: "0.8rem", whiteSpace: "nowrap" }} onClick={handleAIGuessSoil} disabled={aiGuesserActive}>
+                    {aiGuesserActive ? "🤖 Scanning..." : "🤖 AI Guess (Upload Photo)"}
+                  </button>
+                </div>
+                
+                <div style={{ background: "rgba(59, 130, 246, 0.05)", padding: "0.75rem", borderRadius: "8px", border: "1px dashed rgba(59, 130, 246, 0.3)", marginTop: "0.5rem" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                    <input 
+                      type="checkbox" 
+                      id="soilTestRequested" 
+                      checked={form.soilTestRequested} 
+                      onChange={(e) => setForm(f => ({ ...f, soilTestRequested: e.target.checked }))} 
+                      style={{ width: 16, height: 16, marginTop: "2px", cursor: "pointer" }} 
+                    />
+                    <label htmlFor="soilTestRequested" style={{ fontSize: "0.85rem", color: "var(--text-dark)", cursor: "pointer" }}>
+                      <strong>Request Physical Soil Test</strong>
+                      <p style={{ color: "var(--text-muted)", fontSize: "0.75rem", marginTop: "0.2rem" }}>Can't decide? Request our admin to send a soil test team to your farm! <span style={{ color: "var(--green-mid)", fontWeight: 600 }}>First-time farmers get a 69% discount! 🎉</span></p>
+                    </label>
+                  </div>
+                </div>
               </div>
 
               {/* ── Verification Photo Uploads ── */}
@@ -716,6 +768,82 @@ export default function Register() {
                 <button className="btn-secondary" onClick={() => setStep(2)}>← Back</button>
                 <button className="btn-primary" onClick={handleRegister} disabled={loading}>
                   {loading ? t("loading") : `🌾 ${t("register")}`}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ── STEP 3: Agent Details ── */}
+          {step === 3 && form.role === "agent" && (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                <h3 className="section-title" style={{ margin: 0 }}>🚚 Agent Verification</h3>
+                <button type="button" className="btn-icon" onClick={() => readAloud("Agent Verification", "Upload your verification documents.")} title="Read Aloud" style={{ padding: 4 }}>🔊</button>
+              </div>
+
+              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.5rem" }}>
+                Please upload the following documents. These will be reviewed by our Admin team before you can start delivering orders.
+              </p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                {[
+                  { key: "avatar", label: "Your Photo (Selfie)", icon: "📸" },
+                  { key: "aadhaarPhoto", label: "Aadhaar Card (Front)", icon: "🪪" }
+                ].map((item) => (
+                  <div key={item.key} style={{ textAlign: "center" }}>
+                    <label
+                      htmlFor={`upload-${item.key}`}
+                      style={{
+                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                        width: "100%", aspectRatio: "1.2", borderRadius: "var(--radius-md)",
+                        border: form[item.key] ? "2px solid var(--blue-light)" : "2px dashed rgba(59, 130, 246, 0.3)",
+                        background: form[item.key] ? "rgba(59, 130, 246, 0.05)" : "rgba(255,255,255,0.5)",
+                        cursor: "pointer", transition: "all 0.3s", overflow: "hidden", position: "relative"
+                      }}
+                    >
+                      {form[`${item.key}Preview`] ? (
+                        <img src={form[`${item.key}Preview`]} alt={item.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <>
+                          <span style={{ fontSize: "2rem" }}>{item.icon}</span>
+                          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.5rem", padding: "0 0.5rem" }}>{item.label}</span>
+                        </>
+                      )}
+                    </label>
+                    <input
+                      id={`upload-${item.key}`}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          setForm((f) => ({
+                            ...f,
+                            [item.key]: file,
+                            [`${item.key}Preview`]: URL.createObjectURL(file)
+                          }));
+                        }
+                      }}
+                    />
+                    {form[item.key] && <span style={{ fontSize: "0.75rem", color: "var(--blue-light)", fontWeight: 600, marginTop: "0.4rem", display: "block" }}>✅ Uploaded</span>}
+                  </div>
+                ))}
+              </div>
+
+              <div className="alert alert-info" style={{ marginTop: "1.5rem" }}>
+                ℹ️ After registration, your account will be in "Pending" status until an Admin reviews and approves your documents.
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "1rem", marginBottom: "0.5rem" }}>
+                <input type="checkbox" id="terms-agent" checked={form.acceptedTerms} onChange={(e) => setForm(f => ({ ...f, acceptedTerms: e.target.checked }))} style={{ width:18, height:18, cursor:"pointer" }} />
+                <label htmlFor="terms-agent" style={{ fontSize: "0.85rem", color: "var(--text-muted)", cursor:"pointer" }}>I agree to the Agent Rules, Delivery Conditions, and Security Policies.</label>
+              </div>
+
+              <div style={{ display: "flex", gap: "0.75rem", marginTop: "1rem" }}>
+                <button className="btn-secondary" onClick={() => setStep(2)}>← Back</button>
+                <button className="btn-primary" onClick={handleRegister} disabled={loading}>
+                  {loading ? t("loading") : `🚚 ${t("register")}`}
                 </button>
               </div>
             </>

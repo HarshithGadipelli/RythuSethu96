@@ -10,6 +10,7 @@ import { Home, ShoppingBag, Leaf, Truck, Shield, LogOut, User, Bell, Headphones,
 import API from "../api/api";
 import { io } from "socket.io-client";
 import { createPortal } from "react-dom";
+import { toggleFarmAmbience, toggleKrishnaFlute } from "../utils/ambientSoundEngine";
 
 import CartSidebar from "./CartSidebar";
 export default function Navbar() {
@@ -26,15 +27,16 @@ export default function Navbar() {
   const [birdsPlaying, setBirdsPlaying] = useState(false);
   
   const [fluteBgm, setFluteBgm] = useState(localStorage.getItem("rs_flute_bgm") !== "false");
-  const [natureBgm, setNatureBgm] = useState(localStorage.getItem("rs_nature_bgm") !== "false");
+  // 0: off, 1: day (birds), 2: night (crickets)
+  const [natureBgmState, setNatureBgmState] = useState(parseInt(localStorage.getItem("rs_nature_bgm_state")) || 0);
 
   useEffect(() => {
     localStorage.setItem("rs_flute_bgm", fluteBgm);
   }, [fluteBgm]);
 
   useEffect(() => {
-    localStorage.setItem("rs_nature_bgm", natureBgm);
-  }, [natureBgm]);
+    localStorage.setItem("rs_nature_bgm_state", natureBgmState);
+  }, [natureBgmState]);
   
   // Settings States
   const [showSettings, setShowSettings] = useState(false);
@@ -49,24 +51,41 @@ export default function Navbar() {
   const notifRef = useRef(null);
 
   useEffect(() => {
-    // Check initial state of the audio elements
-    const fluteAudio = document.getElementById("ambient-flute-audio");
-    if (fluteAudio) {
-      setFluteBgm(!fluteAudio.paused);
-      fluteAudio.addEventListener("play", () => setFluteBgm(true));
-      fluteAudio.addEventListener("pause", () => setFluteBgm(false));
-    }
-    const natureAudio = document.getElementById("ambient-nature-audio");
-    if (natureAudio) {
-      setNatureBgm(!natureAudio.paused);
-      natureAudio.addEventListener("play", () => setNatureBgm(true));
-      natureAudio.addEventListener("pause", () => setNatureBgm(false));
-    }
+    // Initial sync
+    if (natureBgmState === 1) toggleFarmAmbience(true, "day");
+    else if (natureBgmState === 2) toggleFarmAmbience(true, "night");
+    else toggleFarmAmbience(false);
+    
+    toggleKrishnaFlute(fluteBgm);
   }, []);
 
-  // Sync announcer icon with Marketplace audio state
+  const handleNatureToggle = () => {
+    const next = (natureBgmState + 1) % 3;
+    setNatureBgmState(next);
+    if (next === 0) toggleFarmAmbience(false);
+    else if (next === 1) toggleFarmAmbience(true, "day");
+    else toggleFarmAmbience(true, "night");
+  };
+
+  const handleFluteToggle = () => {
+    const next = !fluteBgm;
+    setFluteBgm(next);
+    toggleKrishnaFlute(next);
+  };
+
+  const handleAnnouncerToggle = () => {
+    const nextState = !isAnnouncerActive;
+    setIsAnnouncerActive(nextState);
+    window.dispatchEvent(new CustomEvent("market_announcer_toggle", { detail: { isActive: nextState } }));
+  };
+
+  // Sync announcer icon with Marketplace audio state if it changes externally
   useEffect(() => {
-    const syncHandler = (e) => setIsAnnouncerActive(e.detail.isActive);
+    const syncHandler = (e) => {
+      if (e.detail && e.detail.isActive !== undefined) {
+        setIsAnnouncerActive(e.detail.isActive);
+      }
+    };
     window.addEventListener("market_audio_state", syncHandler);
     return () => window.removeEventListener("market_audio_state", syncHandler);
   }, []);
@@ -175,55 +194,6 @@ export default function Navbar() {
         {user && (
           <li><Link to="/support" className={active("/support")}><Headphones size={18} /> Support</Link></li>
         )}
-        {location.pathname === "/marketplace" && (
-          <li>
-            <button 
-              className="btn-icon" 
-              onClick={() => window.dispatchEvent(new CustomEvent("market_announcer_toggle"))} 
-              title={isAnnouncerActive ? "Mute Market Sounds" : "Play Immersive Market Sounds"}
-              style={{ 
-                color: isAnnouncerActive ? "var(--green-mid)" : "var(--text-muted)",
-                background: isAnnouncerActive ? "rgba(34,197,94,0.1)" : undefined,
-                position: "relative"
-              }}
-            >
-              {isAnnouncerActive ? <Volume2 size={20} /> : <Volume2 size={20} style={{ opacity: 0.4 }} />}
-              {isAnnouncerActive && (
-                <span style={{ position: "absolute", top: -3, right: -3, width: 8, height: 8, borderRadius: "50%", background: "#22c55e", border: "2px solid white", animation: "pulse 1.5s infinite" }} />
-              )}
-            </button>
-          </li>
-        )}
-        <li>
-          <button 
-            className="btn-icon" 
-            onClick={() => window.dispatchEvent(new Event("toggle_nature_audio"))} 
-            title={natureBgm ? "Pause Nature Sounds" : "Play Nature Sounds"}
-            style={{ 
-              color: natureBgm ? "var(--green-mid)" : "var(--text-muted)",
-              background: natureBgm ? "rgba(34,197,94,0.1)" : undefined,
-              position: "relative"
-            }}
-          >
-            {natureBgm ? <Volume2 size={20} /> : <VolumeX size={20} style={{ opacity: 0.4 }} />}
-            <span style={{ fontSize: "10px", position: "absolute", bottom: -8, right: 0 }}>🌿</span>
-          </button>
-        </li>
-        <li>
-          <button 
-            className="btn-icon" 
-            onClick={() => window.dispatchEvent(new Event("toggle_flute_audio"))} 
-            title={fluteBgm ? "Pause Flute BGM" : "Play Flute BGM"}
-            style={{ 
-              color: fluteBgm ? "var(--green-mid)" : "var(--text-muted)",
-              background: fluteBgm ? "rgba(34,197,94,0.1)" : undefined,
-              position: "relative"
-            }}
-          >
-            {fluteBgm ? <Volume2 size={20} /> : <VolumeX size={20} style={{ opacity: 0.4 }} />}
-            <span style={{ fontSize: "10px", position: "absolute", bottom: -8, right: 0 }}>🪈</span>
-          </button>
-        </li>
         <li>
           <select className="lang-select" value={lang} onChange={(e) => changeLang(e.target.value)}>
             <option value="en">🇬🇧 EN</option>
@@ -231,7 +201,25 @@ export default function Navbar() {
             <option value="te">🇮🇳 Telugu (తె)</option>
             <option value="ta">🇮🇳 Tamil (தமி)</option>
             <option value="kn">🇮🇳 Kannada (ಕನ್)</option>
+            <option value="ml">🇮🇳 Malayalam (മല)</option>
           </select>
+        </li>
+        <li>
+          <button className="icon-btn" onClick={handleAnnouncerToggle} title="Market Voices">
+            {isAnnouncerActive ? <span style={{fontSize:"1.1rem"}}>🗣️</span> : <span style={{fontSize:"1.1rem", filter:"grayscale(1) opacity(0.5)"}}>🗣️</span>}
+          </button>
+        </li>
+        <li>
+          <button className="icon-btn" onClick={handleNatureToggle} title="Nature Sound">
+            {natureBgmState === 1 ? <span style={{fontSize:"1.1rem"}}>🕊️</span> : 
+             natureBgmState === 2 ? <span style={{fontSize:"1.1rem"}}>🦗</span> : 
+             <span style={{fontSize:"1.1rem", filter:"grayscale(1) opacity(0.5)"}}>🕊️</span>}
+          </button>
+        </li>
+        <li>
+          <button className="icon-btn" onClick={handleFluteToggle} title="Krishna Flute">
+            {fluteBgm ? <span style={{fontSize:"1.1rem"}}>🎵</span> : <span style={{fontSize:"1.1rem", filter:"grayscale(1) opacity(0.5)"}}>🎵</span>}
+          </button>
         </li>
         {user ? (
           <>

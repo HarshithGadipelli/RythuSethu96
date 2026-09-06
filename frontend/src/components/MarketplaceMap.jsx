@@ -178,11 +178,11 @@ const customerIcon = L.divIcon({
 });
 
 // ─── Helper: fly-to on selection ─────────────────────────────────────────────
-function FlyTo({ position, zoom = 14 }) {
+function FlyTo({ lat, lng, zoom = 14 }) {
   const map = useMap();
   useEffect(() => {
-    if (position) map.flyTo(position, zoom, { duration: 1.2 });
-  }, [position]);
+    if (lat && lng) map.flyTo([lat, lng], zoom, { duration: 1.2 });
+  }, [lat, lng, map, zoom]);
   return null;
 }
 
@@ -205,6 +205,85 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// ─── Live Delivery Trucks Layer ─────────────────────────────────────────────
+const LiveTrucksLayer = React.memo(() => {
+  const [trucks, setTrucks] = useState([]);
+  
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchAgents = async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/api/public/agents`);
+        if (!res.ok) return;
+        const liveAgents = await res.json();
+        
+        if (mounted) {
+          setTrucks(prevTrucks => {
+            return liveAgents.map(agent => {
+              const existing = prevTrucks.find(t => t.id === agent._id);
+              if (existing) {
+                return { ...existing, targetLat: agent.latitude, targetLng: agent.longitude, name: agent.name };
+              }
+              return {
+                id: agent._id, lat: agent.latitude, lng: agent.longitude,
+                targetLat: agent.latitude, targetLng: agent.longitude,
+                name: agent.name, speed: 0.0001
+              };
+            });
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch live agents:", err);
+      }
+    };
+
+    fetchAgents();
+    const pollInterval = setInterval(fetchAgents, 15000); // Update target every 15 seconds
+
+    // High-fps Animation Loop to interpolate positions smoothly
+    const animInterval = setInterval(() => {
+      setTrucks(prev => prev.map(t => {
+        const dLat = t.targetLat - t.lat;
+        const dLng = t.targetLng - t.lng;
+        const dist = Math.sqrt(dLat*dLat + dLng*dLng);
+        
+        if (dist < 0.0001) return { ...t, lat: t.targetLat, lng: t.targetLng };
+        return { ...t, lat: t.lat + (dLat / dist) * t.speed, lng: t.lng + (dLng / dist) * t.speed };
+      }));
+    }, 100);
+    
+    return () => {
+      mounted = false;
+      clearInterval(pollInterval);
+      clearInterval(animInterval);
+    };
+  }, []);
+
+  return (
+    <>
+      {trucks.map(truck => (
+        <Marker 
+          key={truck.id} 
+          position={[truck.lat, truck.lng]} 
+          icon={L.divIcon({
+            className: "",
+            html: `<div class="delivery-truck-icon" title="${truck.name || 'Delivery'}">🚚</div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+          })}
+          zIndexOffset={900}
+        >
+          <Popup>
+            <strong>🚚 Active Agent</strong><br />
+            {truck.name}
+          </Popup>
+        </Marker>
+      ))}
+    </>
+  );
+});
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function MarketplaceMap({
   crops = [],
@@ -223,12 +302,48 @@ export default function MarketplaceMap({
   const [tileKey, setTileKey] = useState(defaultTile);
   const [hoveredCrop, setHoveredCrop] = useState(null);
   const [showDemand, setShowDemand] = useState(false);
+  const [showWeatherRadar, setShowWeatherRadar] = useState(false);
+  const [showFarmBoundaries, setShowFarmBoundaries] = useState(false);
+
+  // NEW STATES
+  const [searchRadius, setSearchRadius] = useState(50);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [quickFilter, setQuickFilter] = useState("all");
+  const [flyToCoords, setFlyToCoords] = useState(null);
+  const [osrmRoute, setOsrmRoute] = useState(null);
   const tile = TILE_LAYERS[tileKey];
 
   // Determine centre: prefer selected crop, else customer loc, else Hyderabad
   const focusCrop = hoveredCrop || selected;
   const focusLat = focusCrop?.latitude || focusCrop?.farmer?.latitude;
   const focusLng = focusCrop?.longitude || focusCrop?.farmer?.longitude;
+
+  // OSRM Route Fetching
+  useEffect(() => {
+    if (customerLat && customerLng && focusLat && focusLng) {
+      setOsrmRoute(null); // Clear previous route while loading new one
+      const url = `https://router.project-osrm.org/route/v1/driving/${customerLng},${customerLat};${focusLng},${focusLat}?overview=full&geometries=geojson`;
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (data.routes && data.routes[0]) {
+            const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+            setOsrmRoute({
+              positions: coords,
+              duration: data.routes[0].duration,
+              distance: data.routes[0].distance
+            });
+          } else {
+            setOsrmRoute(null);
+          }
+        }).catch(err => {
+          console.error("OSRM route fetch failed:", err);
+          setOsrmRoute(null);
+        });
+    } else {
+      setOsrmRoute(null);
+    }
+  }, [customerLat, customerLng, focusLat, focusLng]);
 
   const centre =
     focusLat && focusLng
@@ -251,85 +366,81 @@ export default function MarketplaceMap({
         ]
       : null;
 
-  // ── Real-Time Delivery Trucks ──
-  const [trucks, setTrucks] = useState([]);
-  
-  // Extract organic zones for Polygon rendering
-  const organicFarms = crops.filter(c => c.isOrganic && (c.latitude || c.farmer?.latitude));
+  // Extract organic zones and apply filters
+  const visibleCrops = crops.filter(c => {
+    if (quickFilter === "organic" && !c.isOrganic) return false;
+    if (quickFilter === "prebook" && !c.isPrebooking) return false;
+    if (!customerLat || !customerLng) return true;
+    const lat = c.latitude || c.farmer?.latitude;
+    const lng = c.longitude || c.farmer?.longitude;
+    if (!lat || !lng) return false;
+    return haversine(customerLat, customerLng, lat, lng) <= searchRadius;
+  });
+
+  const organicFarms = visibleCrops.filter(c => c.isOrganic && (c.latitude || c.farmer?.latitude));
   const organicZonePositions = organicFarms.length >= 3 
     ? organicFarms.map(c => [c.latitude || c.farmer?.latitude, c.longitude || c.farmer?.longitude])
     : [];
 
-  // Fetch live delivery agents and interpolate
-  useEffect(() => {
-    let mounted = true;
-
-    const fetchAgents = async () => {
-      try {
-        const res = await fetch(`${BASE_URL}/api/public/agents`);
-        if (!res.ok) return;
-        const liveAgents = await res.json();
-        
-        if (mounted) {
-          setTrucks(prevTrucks => {
-            // Map live backend coordinates
-            return liveAgents.map(agent => {
-              // Check if we already have this truck to animate smoothly from its current position
-              const existing = prevTrucks.find(t => t.id === agent._id);
-              if (existing) {
-                return {
-                  ...existing,
-                  targetLat: agent.latitude,
-                  targetLng: agent.longitude,
-                  name: agent.name
-                };
-              }
-              // New truck appears
-              return {
-                id: agent._id,
-                lat: agent.latitude,
-                lng: agent.longitude,
-                targetLat: agent.latitude,
-                targetLng: agent.longitude,
-                name: agent.name,
-                speed: 0.0001
-              };
-            });
-          });
-        }
-      } catch (err) {
-        console.error("Failed to fetch live agents:", err);
+  const topFarms = Object.values(
+    visibleCrops.reduce((acc, c) => {
+      const lat = c.latitude || c.farmer?.latitude;
+      const lng = c.longitude || c.farmer?.longitude;
+      if (!lat || !lng) return acc;
+      const fid = (c.farmer?._id || c.farmer)?.toString?.() || "unknown";
+      if (!acc[fid]) {
+         acc[fid] = { id: fid, name: c.farmer?.name || "Farmer", lat, lng, image: c.farmer?.profilePic || c.image || null };
       }
-    };
-
-    fetchAgents();
-    const pollInterval = setInterval(fetchAgents, 15000); // Update target every 15 seconds
-
-    // High-fps Animation Loop to interpolate positions smoothly
-    const animInterval = setInterval(() => {
-      setTrucks(prev => prev.map(t => {
-        const dLat = t.targetLat - t.lat;
-        const dLng = t.targetLng - t.lng;
-        const dist = Math.sqrt(dLat*dLat + dLng*dLng);
-        
-        // If close to target, just snap or stay
-        if (dist < 0.0001) return { ...t, lat: t.targetLat, lng: t.targetLng };
-        
-        // Move towards target smoothly
-        return { ...t, lat: t.lat + (dLat / dist) * t.speed, lng: t.lng + (dLng / dist) * t.speed };
-      }));
-    }, 100);
-    
-    return () => {
-      mounted = false;
-      clearInterval(pollInterval);
-      clearInterval(animInterval);
-    };
-  }, []);
+      return acc;
+    }, {})
+  ).sort((a, b) => (trustScores[b.id]?.score || 0) - (trustScores[a.id]?.score || 0)).slice(0, 5);
 
   return (
-    <div style={{ position: "relative", height: "100%", width: "100%" }}>
+    <div style={{ 
+      position: isFullscreen ? "fixed" : "relative", 
+      top: isFullscreen ? 0 : "auto", 
+      left: isFullscreen ? 0 : "auto",
+      width: isFullscreen ? "100vw" : "100%", 
+      height: isFullscreen ? "100vh" : "100%", 
+      zIndex: isFullscreen ? 9999 : 1,
+      background: "#fff"
+    }}>
       <style>{pulseStyle}</style>
+
+      <button
+        onClick={() => {
+          setIsFullscreen(!isFullscreen);
+          setTimeout(() => window.dispatchEvent(new Event('resize')), 200);
+        }}
+        title="Toggle Fullscreen"
+        style={{
+          position: "absolute", top: 10, left: 50, zIndex: 1000,
+          background: "white", border: "2px solid rgba(0,0,0,0.2)",
+          borderRadius: 4, width: 34, height: 34,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "pointer", fontWeight: 800, fontSize: "1.2rem", color: "#475569"
+        }}
+      >
+        {isFullscreen ? "↙" : "↗"}
+      </button>
+
+      <div style={{
+        position: "absolute", top: 60, left: 10, zIndex: 1000,
+        display: "flex", flexDirection: "column", gap: "0.4rem"
+      }}>
+        {["all", "organic", "prebook"].map(type => (
+          <button key={type} onClick={() => setQuickFilter(type)} style={{
+            padding: "6px 12px", borderRadius: "100px", border: "1px solid #e2e8f0",
+            background: quickFilter === type ? "#16a34a" : "rgba(255,255,255,0.9)",
+            color: quickFilter === type ? "white" : "#475569",
+            fontWeight: 700, fontSize: "0.75rem", cursor: "pointer",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+            transition: "all 0.2s"
+          }}>
+            {type === "all" ? "🌍 All Crops" : type === "organic" ? "🌿 Organic Only" : "⏳ Pre-Book"}
+          </button>
+        ))}
+      </div>
 
       {/* Tile Layer Switcher */}
       <div style={{
@@ -378,6 +489,38 @@ export default function MarketplaceMap({
         >
           🔥 {showDemand ? "Demand View ON" : "Demand View OFF"}
         </button>
+        <button
+          onClick={() => setShowWeatherRadar(!showWeatherRadar)}
+          style={{
+            padding: "3px 10px",
+            borderRadius: 100,
+            fontSize: "0.72rem",
+            fontWeight: 700,
+            cursor: "pointer",
+            background: showWeatherRadar ? "linear-gradient(135deg, #3b82f6, #2563eb)" : "transparent",
+            color: showWeatherRadar ? "white" : "#3b82f6",
+            border: showWeatherRadar ? "none" : "1px solid #3b82f6",
+            transition: "all 0.2s",
+          }}
+        >
+          🌧️ Radar
+        </button>
+        <button
+          onClick={() => setShowFarmBoundaries(!showFarmBoundaries)}
+          style={{
+            padding: "3px 10px",
+            borderRadius: 100,
+            fontSize: "0.72rem",
+            fontWeight: 700,
+            cursor: "pointer",
+            background: showFarmBoundaries ? "linear-gradient(135deg, #8b5cf6, #7c3aed)" : "transparent",
+            color: showFarmBoundaries ? "white" : "#8b5cf6",
+            border: showFarmBoundaries ? "none" : "1px solid #8b5cf6",
+            transition: "all 0.2s",
+          }}
+        >
+          🛑 Zones
+        </button>
       </div>
 
       {/* Demand Heatmap Legend */}
@@ -416,7 +559,7 @@ export default function MarketplaceMap({
             {distKm.toFixed(1)} km
           </span>
           <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>
-            ~{Math.round(distKm * 2 + 30)} min ETA
+            {osrmRoute ? `~${Math.round(osrmRoute.duration / 60)} min ETA (Live Routing)` : `~${Math.round(distKm * 2 + 30)} min ETA`}
           </span>
         </div>
       )}
@@ -450,6 +593,45 @@ export default function MarketplaceMap({
         </div>
       )}
 
+      {customerLat && customerLng && (
+        <div style={{
+          position: "absolute", bottom: 20, right: 10, zIndex: 1000,
+          background: "rgba(255,255,255,0.95)", padding: "10px 15px",
+          borderRadius: "12px", boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+          border: "1px solid #e2e8f0", width: 200,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: 700 }}>Search Radius</span>
+            <span style={{ fontSize: "0.75rem", color: "#3b82f6", fontWeight: 700 }}>{searchRadius} km</span>
+          </div>
+          <input 
+            type="range" min="1" max="100" value={searchRadius} 
+            onChange={(e) => setSearchRadius(Number(e.target.value))}
+            style={{ width: "100%", accentColor: "#3b82f6" }}
+          />
+        </div>
+      )}
+
+      {topFarms.length > 0 && (
+        <div className="no-scrollbar" style={{
+          position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)", zIndex: 1000,
+          display: "flex", gap: "10px", overflowX: "auto", maxWidth: "50%", padding: "10px"
+        }}>
+          {topFarms.map(f => (
+            <div key={f.id} onClick={() => setFlyToCoords({ lat: f.lat, lng: f.lng })} style={{
+              background: "rgba(255,255,255,0.95)", borderRadius: "100px", padding: "6px 14px",
+              display: "flex", alignItems: "center", gap: "8px", cursor: "pointer",
+              boxShadow: "0 4px 15px rgba(0,0,0,0.1)", border: "1px solid #e2e8f0", flexShrink: 0
+            }}>
+              <img src={f.image ? (f.image.startsWith("http") ? f.image : `${BASE_URL}${f.image}`) : "/default.png"} style={{width:24,height:24,borderRadius:"50%",objectFit:"cover"}} alt=""/>
+              <div>
+                <strong style={{fontSize:"0.75rem", display:"block", whiteSpace:"nowrap"}}>{f.name}</strong>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <MapContainer
         center={centre}
         zoom={customerLat ? 12 : 7}
@@ -459,7 +641,8 @@ export default function MarketplaceMap({
         <ZoomControl position="topright" />
         <TileLayer url={tile.url} attribution={tile.attribution} maxZoom={20} />
         <MapInvalidator />
-        {focusLat && focusLng && <FlyTo position={[focusLat, focusLng]} />}
+        {focusLat && focusLng && <FlyTo lat={focusLat} lng={focusLng} />}
+        {flyToCoords && <FlyTo lat={flyToCoords.lat} lng={flyToCoords.lng} zoom={15} />}
 
         {/* Customer location with Radar Sweep */}
         {customerLat && customerLng && (
@@ -497,36 +680,32 @@ export default function MarketplaceMap({
         )}
 
         {/* Distance line to focused crop */}
-        {routeLine && (
+        {osrmRoute ? (
+          <Polyline
+            positions={osrmRoute.positions}
+            pathOptions={{ color: "#3b82f6", weight: 5, opacity: 0.8, className: "animated-path" }}
+          />
+        ) : routeLine && (
           <Polyline
             positions={routeLine}
             pathOptions={{ color: "#22c55e", weight: 4, opacity: 0.9, dashArray: "10 10", className: "animated-path" }}
           />
         )}
         
-        {/* Render Moving Trucks (Live) */}
-        {trucks.map(truck => (
-          <Marker 
-            key={truck.id} 
-            position={[truck.lat, truck.lng]} 
-            icon={L.divIcon({
-              className: "",
-              html: `<div class="delivery-truck-icon" title="${truck.name || 'Delivery'}">🚚</div>`,
-              iconSize: [32, 32],
-              iconAnchor: [16, 16]
-            })}
-            zIndexOffset={900}
-            interactive={true}
-          >
-            <Popup>
-              <strong>🚚 Active Agent</strong><br />
-              {truck.name}
-            </Popup>
-          </Marker>
-        ))}
+        {/* Render Moving Trucks (Live) using Memoized Component */}
+        <LiveTrucksLayer />
+
+        {/* Weather Radar Layer */}
+        {showWeatherRadar && (
+          <TileLayer
+            url="https://tilecache.rainviewer.com/v2/radar/1690000000/256/{z}/{x}/{y}/2/1_1.png"
+            opacity={0.65}
+            zIndex={10}
+          />
+        )}
 
         {/* Glowing Organic Polygon Zones */}
-        {organicZonePositions.length >= 3 && (
+        {organicZonePositions.length >= 3 && !showFarmBoundaries && (
           <Polygon 
             positions={organicZonePositions} 
             pathOptions={{ 
@@ -545,7 +724,7 @@ export default function MarketplaceMap({
         )}
 
         {/* Demand Heatmap Layer */}
-        {showDemand && crops.map((c, index) => {
+        {showDemand && visibleCrops.map((c, index) => {
           const lat = c.latitude || c.farmer?.latitude;
           const lng = c.longitude || c.farmer?.longitude;
           if (!lat || !lng) return null;
@@ -598,9 +777,42 @@ export default function MarketplaceMap({
           );
         })}
 
+        {/* Farm Boundaries (Geofencing Simulation) */}
+        {showFarmBoundaries && visibleCrops.map((c, index) => {
+          const lat = c.latitude || c.farmer?.latitude;
+          const lng = c.longitude || c.farmer?.longitude;
+          if (!lat || !lng) return null;
+          
+          const offset = 0.006 + (Math.random() * 0.004);
+          const positions = [
+            [lat - offset, lng - offset],
+            [lat + offset, lng - (offset * 0.8)],
+            [lat + (offset * 1.2), lng + offset],
+            [lat - (offset * 0.5), lng + (offset * 1.1)]
+          ];
+
+          return (
+            <Polygon 
+              key={`zone-${c._id || index}`}
+              positions={positions} 
+              pathOptions={{ 
+                color: c.isOrganic ? "#16a34a" : "#8b5cf6", 
+                weight: 2, 
+                fillColor: c.isOrganic ? "#22c55e" : "#a78bfa", 
+                fillOpacity: 0.25,
+              }} 
+            >
+              <Popup>
+                <strong>{c.isOrganic ? "🌿 Organic Farm Boundary" : "🛑 Farm Boundary"}</strong>
+                <p style={{fontSize:"0.8rem", color:"#64748b", margin:0}}>Estimated acreage for {c.farmer?.name || "Farmer"}'s {c.name}.</p>
+              </Popup>
+            </Polygon>
+          );
+        })}
+
         {/* Farmer / crop markers grouped by Farmer */}
         <MarkerClusterGroup chunkedLoading={true} maxClusterRadius={40}>
-          {Object.values(crops.reduce((acc, c) => {
+          {Object.values(visibleCrops.reduce((acc, c) => {
           const lat = c.latitude || c.farmer?.latitude;
           const lng = c.longitude || c.farmer?.longitude;
           if (!lat || !lng) return acc;

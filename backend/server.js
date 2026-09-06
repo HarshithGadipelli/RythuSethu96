@@ -5,8 +5,13 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import fs from "fs";
 import connectDB from "./config/db.js";
 import Delivery from "./models/Delivery.js";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import mongoSanitize from "express-mongo-sanitize";
+import sanitizeMiddleware from "./middleware/sanitizeMiddleware.js";
 
 import authRoutes from "./routes/authRoutes.js";
 import farmerRoutes from "./routes/farmerRoutes.js";
@@ -28,6 +33,8 @@ import ecommerceRoutes from "./routes/ecommerceRoutes.js";
 import auctionRoutes from "./routes/auctionRoutes.js";
 import boxRoutes from "./routes/boxRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
+import translationRoutes from "./routes/translationRoutes.js";
+import soilTestRoutes from "./routes/soilTestRoutes.js";
 
 dotenv.config();
 
@@ -86,15 +93,39 @@ io.on("connection", (socket) => {
 connectDB();
 
 app.use(cors({ origin: "*", credentials: true }));
+
+// Security Middlewares
+app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(mongoSanitize());
+app.use(sanitizeMiddleware);
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000 // limit each IP to 1000 requests per windowMs
+});
+app.use(limiter);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Static uploads
-app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
+// Ensure uploads directory exists
+const uploadDir = path.join(__dirname, "public/uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
+// Static uploads with caching disabled to ensure real-time visibility
+app.use("/uploads", express.static(uploadDir, {
+  setHeaders: (res, path) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+  }
+}));
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/farmer", farmerRoutes);
+app.use("/api/farmers", farmerRoutes);
 app.use("/api/crops", cropRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/delivery", deliveryRoutes);
@@ -113,6 +144,8 @@ app.use("/api/shop", ecommerceRoutes);
 app.use("/api/auctions", auctionRoutes);
 app.use("/api/boxes", boxRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
+app.use("/api/translate", translationRoutes);
+app.use("/api/soil-test", soilTestRoutes);
 
 app.get("/", (req, res) => {
   res.send("🌾 Rythu Sethu 4.0 Backend Running");

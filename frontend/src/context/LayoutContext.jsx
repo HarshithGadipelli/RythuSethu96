@@ -3,10 +3,9 @@ import { createContext, useContext, useState, useEffect } from "react";
 const LayoutContext = createContext();
 
 export function LayoutProvider({ children }) {
-  const [layoutMode, setLayoutMode] = useState(localStorage.getItem("rs_layout_mode") || "auto"); // "auto", "mobile", "desktop"
+  const [layoutMode, setLayoutMode] = useState("auto"); // "auto", "mobile", "desktop"
 
   useEffect(() => {
-    localStorage.setItem("rs_layout_mode", layoutMode);
     document.body.classList.remove("force-mobile-mode", "force-desktop-mode");
     
     if (layoutMode === "mobile") {

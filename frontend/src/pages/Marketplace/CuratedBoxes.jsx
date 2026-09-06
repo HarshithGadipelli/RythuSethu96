@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import API from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
-import { Package, ArrowLeft, CheckCircle, Leaf, Truck, Star } from "lucide-react";
+import { Package, ArrowLeft, CheckCircle, Leaf, Truck, Star, Sparkles } from "lucide-react";
+import SmartCuratedBasket from "../../components/SmartCuratedBasket";
 
 export default function CuratedBoxes() {
   const { user } = useAuth();
@@ -123,13 +124,16 @@ export default function CuratedBoxes() {
         </Link>
         <div>
           <h1 className="section-title" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Package color="var(--primary)" /> Curated Farm Boxes
+            <Package color="var(--primary)" /> Curated Farm Boxes & AI Smart Basket
           </h1>
           <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", margin: 0 }}>
-            Subscribe to fresh, organic produce delivered to your door on autopilot.
+            Build custom boxes, calculate event catering, or subscribe to fresh produce delivered to your door.
           </p>
         </div>
       </div>
+
+      {/* ── SMART AI BASKET BUILDER & EVENT CATERING ── */}
+      <SmartCuratedBasket />
 
       {msg.text && (
         <div style={{ padding: "1rem", borderRadius: "8px", marginBottom: "1.5rem", background: msg.type === "error" ? "rgba(239,68,68,0.1)" : "rgba(34,197,94,0.1)", color: msg.type === "error" ? "var(--red-deep)" : "var(--green-deep)", border: `1px solid ${msg.type === "error" ? "rgba(239,68,68,0.3)" : "rgba(34,197,94,0.3)"}` }}>

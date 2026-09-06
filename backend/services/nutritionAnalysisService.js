@@ -45,7 +45,7 @@ export const getNutritionAnalysis = async (crop) => {
   if (apiKey) {
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
       const prompt = `
         You are an expert nutritionist. Provide a nutritional breakdown for 100g of raw "${crop}".
         Return EXACTLY and ONLY valid JSON matching this exact structure, no markdown blocks:

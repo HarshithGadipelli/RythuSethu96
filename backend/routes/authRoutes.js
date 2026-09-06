@@ -1,5 +1,5 @@
 import express from "express";
-import { register, login, getProfile, updateProfile } from "../controllers/authController.js";
+import { register, login, getProfile, updateProfile, acceptTerms } from "../controllers/authController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import upload from "../middleware/upload.js";
 
@@ -15,5 +15,6 @@ router.post("/register", upload.fields([
 router.post("/login", login);
 router.get("/profile", protect, getProfile);
 router.put("/profile", protect, updateProfile);
+router.put("/accept-terms", protect, acceptTerms);
 
 export default router;

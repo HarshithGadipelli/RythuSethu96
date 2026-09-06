@@ -2,6 +2,7 @@ import Farmer from "../models/Farmer.js";
 import User from "../models/User.js";
 import Order from "../models/Order.js";
 import Crop from "../models/Crop.js";
+import Review from "../models/Review.js";
 
 /**
  * Trust Score Calculation Service
@@ -79,14 +80,24 @@ export async function calculateTrustScore(farmerId) {
   };
 
   // ─── 2. Average Rating (20 pts) ───
-  // Rating is 0–5 scale → normalized to 0–20
-  const rating = farmer.rating || 0;
+  // Rating is 0–5 scale → normalized to 0–20 (Fetched dynamically from Reviews)
+  const reviews = await Review.find({ farmer: farmerId });
+  let rating = 0;
+  if (reviews.length > 0) {
+    const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+    rating = totalRating / reviews.length;
+  }
+  
   const ratingScore = Math.round((rating / 5) * 20 * 10) / 10;
   breakdown.rating = {
     score: ratingScore,
     max: 20,
-    details: { averageRating: rating }
+    details: { averageRating: rating, totalReviews: reviews.length }
   };
+
+  // Sync real-time rating back to farmer document
+  farmer.rating = rating;
+  await farmer.save();
 
   // ─── 3. Order Fulfillment Rate (15 pts) ───
   // (delivered orders / total non-pending orders) × 15

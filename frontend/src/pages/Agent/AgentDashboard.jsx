@@ -8,6 +8,9 @@ import API from "../../api/api";
 import { io } from "socket.io-client";
 import AgentLiveMap from "../../components/AgentLiveMap";
 import AgentFinancialLedger from "./AgentFinancialLedger";
+import SecurityPledgeModal from "../../components/SecurityPledgeModal";
+import { Volume2 } from "lucide-react";
+import { playTTS } from "../../utils/voiceParser";
 const STATUS_STEPS = ["assigned","picked_up","in_transit","delivered"];
 const STATUS_ICONS = { assigned:"📋", picked_up:"📦", in_transit:"🚚", delivered:"✅", failed:"❌" };
 const STATUS_LABELS = { assigned:"Assigned", picked_up:"Picked Up", in_transit:"In Transit", delivered:"Delivered", failed:"Failed" };
@@ -50,14 +53,125 @@ const SmartETA = ({ agentLat, agentLng, destLat, destLng, orderSizeKg }) => {
   );
 };
 
-const AgentTips = () => {
+const LiveSLATracker = ({ delivery, onLogDelay }) => {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  if (delivery.status === "delivered") {
+    const perf = delivery.deliveryPerformance;
+    if (!perf) return null;
+    return (
+      <div style={{
+        marginTop: "0.75rem", padding: "0.65rem 0.85rem", borderRadius: "10px",
+        background: perf.isEarly ? "rgba(22, 163, 74, 0.08)" : "rgba(239, 68, 68, 0.08)",
+        border: perf.isEarly ? "1px solid #86efac" : "1px solid #fca5a5",
+        display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.82rem"
+      }}>
+        <div>
+          {perf.isEarly ? (
+            <span style={{ color: "#166534", fontWeight: 700 }}>
+              ⚡ Delivered {perf.diffMinutes} mins early • Speed Bonus: +{perf.speedBonusPoints} pts (+₹{perf.speedBonusCash} tip)
+            </span>
+          ) : (
+            <span style={{ color: "#991b1b", fontWeight: 700 }}>
+              ⏰ Delivered {Math.abs(perf.diffMinutes)} mins late • {perf.isDisputed ? "🛡️ Penalty Waived (Dispute Logged)" : `Points reduced: -${perf.latePenaltyPoints} pts`}
+            </span>
+          )}
+        </div>
+        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+          {new Date(perf.deliveredAt || delivery.deliveredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </span>
+      </div>
+    );
+  }
+
+  // Active delivery
+  const deadlineMs = delivery.estimatedDeliveryDeadline 
+    ? new Date(delivery.estimatedDeliveryDeadline).getTime()
+    : new Date(delivery.createdAt).getTime() + (delivery.estimatedMinutes || 35) * 60 * 1000;
+
+  const diffMinutes = Math.round((deadlineMs - now) / (60 * 1000));
+  const isUrgent = diffMinutes <= 5 && diffMinutes > 0;
+  const isLate = diffMinutes <= 0;
+
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${delivery.pickupLatitude || ''},${delivery.pickupLongitude || ''}&destination=${delivery.deliveryLatitude || ''},${delivery.deliveryLongitude || ''}`;
+
+  return (
+    <div style={{
+      marginTop: "0.75rem", padding: "0.75rem 1rem", borderRadius: "12px",
+      background: isLate ? "#fef2f2" : isUrgent ? "#fffbeb" : "#f0fdf4",
+      border: isLate ? "1px solid #fecaca" : isUrgent ? "1px solid #fde68a" : "1px solid #bbf7d0",
+      display: "flex", flexDirection: "column", gap: "0.5rem"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+        <div>
+          {isLate ? (
+            <div style={{ color: "#b91c1c", fontWeight: 700, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <span>⏰ Delivery Overdue by {Math.abs(diffMinutes)} mins!</span>
+              <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "#dc2626" }}>(-20 pts penalty on delivery)</span>
+            </div>
+          ) : isUrgent ? (
+            <div style={{ color: "#b45309", fontWeight: 700, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <span>⚠️ Urgent SLA: Only {diffMinutes} mins remaining!</span>
+              <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "#d97706" }}>(Deliver now to avoid late deduction)</span>
+            </div>
+          ) : (
+            <div style={{ color: "#15803d", fontWeight: 700, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <span>⚡ Fast-Track Window: {diffMinutes} mins left</span>
+              <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#16a34a" }}>(Deliver early for +35 Speed Pts & ₹20 Tip!)</span>
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              background: "#2563eb", color: "white", padding: "0.35rem 0.75rem",
+              borderRadius: "6px", fontSize: "0.75rem", fontWeight: 600, textDecoration: "none",
+              display: "inline-flex", alignItems: "center", gap: "0.3rem"
+            }}
+          >
+            🧭 Fast GPS Route
+          </a>
+          <button
+            type="button"
+            onClick={onLogDelay}
+            style={{
+              background: "white", color: "#475569", border: "1px solid #cbd5e1",
+              padding: "0.35rem 0.75rem", borderRadius: "6px", fontSize: "0.75rem",
+              fontWeight: 600, cursor: "pointer"
+            }}
+            title="Log delay reason to excuse late points deduction"
+          >
+            ⚠️ Log Delay
+          </button>
+        </div>
+      </div>
+      {delivery.deliveryPerformance?.delayReason && (
+        <div style={{ fontSize: "0.75rem", color: "#0369a1", background: "#e0f2fe", padding: "0.3rem 0.6rem", borderRadius: "6px" }}>
+          🛡️ Dispute Note: {delivery.deliveryPerformance.delayReason}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const AgentTips = ({ user }) => {
+  const isBike = user?.agentType === 'bike' || !user?.agentType;
   const tips = [
+    "📸 Always take clear photos for AI verification (REQUIRED for marking as Delivered).",
+    isBike ? "🛵 Security Rule: You are on a Bike (Max 50kg). Do not accept over-capacity orders." : "🚚 Security Rule: You are on a Truck (Max 5000kg). Maintain logbooks and load limits.",
+    isBike ? "🎒 Use insulated backpacks for dairy or perishable crops." : "❄️ Ensure truck refrigeration is on for long-distance perishables.",
     "📦 Handle organic produce carefully—avoid crushing soft fruits.",
     "⛽ Plan your routes to minimize fuel consumption and delivery time.",
-    "📸 Always take clear photos for AI verification to maintain a high Trust Score.",
-    "❄️ Use insulated bags for dairy or highly perishable crops.",
-    "🛡️ Keep your app location tracking on so customers and admins can monitor ETA accurately.",
-    "🛵 Perform weekly maintenance checks on your vehicle to avoid sudden breakdowns during transit."
+    "🛡️ Keep your app location tracking on so customers can monitor ETA accurately."
   ];
   return (
     <div className="glass-card mt-3">
@@ -91,7 +205,12 @@ export default function AgentDashboard() {
   const [optimizing, setOptimizing] = useState(false);
   const [agentPos, setAgentPos] = useState(null);
   const [radiusFilter, setRadiusFilter] = useState("");
+  const [perfData, setPerfData] = useState({ totalCompleted: 0, earlyDeliveries: 0, lateDeliveries: 0, onTimeRate: 100, totalSpeedPoints: 0, totalSpeedCash: 0, totalPenaltyPoints: 0 });
+  const [delayModal, setDelayModal] = useState(null);
+  const [delayReason, setDelayReason] = useState("Traffic Jam");
+  const [delayNote, setDelayNote] = useState("");
   const { listening, activeField, interim, startListening, stopListening } = useVoiceInput(lang || "en");
+  const [showPledge, setShowPledge] = useState(user?.acceptedTerms === false);
 
   useEffect(() => { 
     loadAll();
@@ -135,6 +254,30 @@ export default function AgentDashboard() {
     fetchDeliveries();
     fetchAvailable();
     fetchEarnings();
+    fetchPerformance();
+  };
+
+  const fetchPerformance = async () => {
+    try {
+      const res = await API.get(`/delivery/agent-performance/${user?._id}`);
+      setPerfData(res.data);
+    } catch {}
+  };
+
+  const logDelayReason = async () => {
+    if (!delayModal) return;
+    try {
+      await API.post(`/delivery/${delayModal._id}/log-delay`, {
+        reason: delayReason,
+        notes: delayNote
+      });
+      setMsg({ type: "success", text: "🛡️ Delay reason recorded. Late penalty waiver submitted for review." });
+      setDelayModal(null);
+      setDelayNote("");
+      loadAll();
+    } catch (err) {
+      setMsg({ type: "error", text: "Failed to log delay." });
+    }
   };
 
   const fetchDeliveries = async () => {
@@ -196,16 +339,29 @@ export default function AgentDashboard() {
 
   const updateStatus = async (d, status) => {
     setUpdating(d._id);
+    let wasteCollectedKg = 0;
     try {
       if (status === "delivered") {
+        if (!d.deliveryPhoto) {
+          setMsg({ type:"error", text: "Security Rule: Quality Verification Photo is required before marking as delivered. Please upload it first." });
+          setUpdating(null);
+          return;
+        }
+        
         const otp = prompt("Enter the 6-digit OTP sent to the customer:");
         if (!otp) {
           setUpdating(null);
           return;
         }
         await API.post(`/delivery/${d._id}/verify-otp`, { otp });
+
+        // Waste Collection Prompt
+        const wasteInput = prompt("Did you collect any organic waste from the customer? Enter amount in kg (or 0):");
+        if (wasteInput && !isNaN(wasteInput) && Number(wasteInput) > 0) {
+          wasteCollectedKg = Number(wasteInput);
+        }
       }
-      await API.put(`/delivery/${d._id}/status`, { status });
+      await API.put(`/delivery/${d._id}/status`, { status, wasteCollectedKg });
       setMsg({ type:"success", text:`✅ Status updated to "${STATUS_LABELS[status]}"` });
       loadAll();
     } catch (err) {
@@ -395,6 +551,18 @@ export default function AgentDashboard() {
     });
   }
 
+  // Multi-Agent Mode Routing
+  filteredAvailable = filteredAvailable.filter(o => {
+    const isTruck = user?.agentType === 'truck';
+    const cLat = o.farmer?.latitude || o.crop?.latitude;
+    const cLng = o.farmer?.longitude || o.crop?.longitude;
+    const dist = agentPos && cLat && cLng ? haversineDistance(agentPos.lat, agentPos.lng, cLat, cLng) : 0;
+    const isHeavy = o.quantity >= 30 || dist >= 25;
+    
+    if (isTruck) return isHeavy;
+    return !isHeavy;
+  });
+
   const filtered = filter === "all"
     ? filteredDeliveries
     : filteredDeliveries.filter(d => d.status === filter);
@@ -406,14 +574,39 @@ export default function AgentDashboard() {
 
   return (
     <div className="page-wrapper">
+      {!user?.isVerified ? (
+        <div className="glass-card text-center" style={{ padding: "4rem 2rem", maxWidth: 600, margin: "2rem auto", background: "var(--blue-pale)", border: "1px solid var(--blue-light)" }}>
+          <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>⏳</div>
+          <h2 style={{ color: "var(--blue-deep)", marginBottom: "1rem" }}>Verification Pending</h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "1.1rem", marginBottom: "1.5rem" }}>
+            Your agent account is currently under review. Our admin team is verifying your Aadhaar and Profile photo. 
+            Once verified, you will be able to access the delivery dashboard and start earning!
+          </p>
+          <button className="btn-secondary" onClick={() => window.location.reload()}>🔄 Check Status</button>
+        </div>
+      ) : (
+        <>
+
+      {showPledge && <SecurityPledgeModal user={user} onAccepted={() => { setShowPledge(false); user.acceptedTerms = true; }} />}
+      
       <div className="flex-between mb-3" style={{ flexWrap: "wrap", gap: "1rem" }}>
         <div>
-          <h1 className="page-title" style={{ textAlign:"left", fontSize:"1.8rem" }}>
-            🚚 {t("welcome")}, {user?.name?.split(" ")[0] || "Agent"}
+          <h1 className="page-title" style={{ textAlign:"left", fontSize:"1.8rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            {user?.agentType === 'truck' ? '🚛' : '🛵'} {t("welcome")}, {user?.name?.split(" ")[0] || "Agent"}
+            <span className="badge badge-green" style={{ fontSize: "0.8rem", marginLeft: "0.5rem" }}>
+              {user?.agentType === 'truck' ? 'Heavy / Long Distance' : 'Light / Local'} Agent
+            </span>
           </h1>
           <p style={{ color: "var(--text-muted)", fontSize:"0.85rem" }}>Manage deliveries & accept new orders</p>
         </div>
         <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+          <button 
+             className="btn-secondary" 
+             style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(59, 130, 246, 0.1)", color: "#2563eb", border: "1px solid rgba(59, 130, 246, 0.3)" }}
+             onClick={() => playTTS(`Welcome Agent ${user?.name}. You are assigned as a ${user?.agentType || 'bike'} agent. Review your available orders below.`, lang)}
+          >
+             🔊 Audio Guide
+          </button>
           <div style={{ minWidth: 250 }}>
             <AutoSuggestInput
                value={search}
@@ -438,31 +631,33 @@ export default function AgentDashboard() {
         </div>
       </div>
 
-      {/* Earnings & Trust Row */}
+      {/* Earnings, Speed Bonuses & Trust Row */}
       <div className="grid-5 mb-3" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem" }}>
         <div className="earnings-card">
           <div className="earnings-value">₹{earnings.totalEarnings?.toLocaleString() || 0}</div>
           <div className="earnings-label">Total Earnings</div>
         </div>
-        <div className="stat-card">
-          <span className="stat-icon">📦</span>
-          <div className="stat-value">{earnings.totalDeliveries || 0}</div>
-          <div className="stat-label">Completed</div>
+        <div className="stat-card" style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid #86efac" }}>
+          <span className="stat-icon">⚡</span>
+          <div className="stat-value" style={{ color: "#166534" }}>+{perfData.totalSpeedPoints || 0} pts</div>
+          <div className="stat-label">Speed Bonuses (₹{perfData.totalSpeedCash || 0} tip)</div>
         </div>
         <div className="stat-card">
-          <span className="stat-icon">📅</span>
-          <div className="stat-value">{earnings.todayDeliveries || 0}</div>
-          <div className="stat-label">Today</div>
+          <span className="stat-icon">⏱️</span>
+          <div className="stat-value">{perfData.onTimeRate || 100}%</div>
+          <div className="stat-label">On-Time Success Rate</div>
         </div>
-        <div className="stat-card">
-          <span className="stat-icon">💰</span>
-          <div className="stat-value">₹{earnings.perDeliveryAvg || 0}</div>
-          <div className="stat-label">Avg/Delivery</div>
+        <div className="stat-card" style={{ background: (perfData.totalPenaltyPoints || 0) > 0 ? "rgba(239, 68, 68, 0.08)" : undefined, borderColor: (perfData.totalPenaltyPoints || 0) > 0 ? "#fca5a5" : undefined }}>
+          <span className="stat-icon">⚠️</span>
+          <div className="stat-value" style={{ color: (perfData.totalPenaltyPoints || 0) > 0 ? "#dc2626" : "var(--text-dark)" }}>
+            -{perfData.totalPenaltyPoints || 0} pts
+          </div>
+          <div className="stat-label">Late Penalties Incurred</div>
         </div>
         <div className="stat-card" style={{ background: "rgba(22, 163, 74, 0.05)", border: "1px solid var(--green-mid)" }}>
           <span className="stat-icon">🛡️</span>
-          <div className="stat-value" style={{ color: "var(--green-mid)" }}>{earnings.trustScore?.score || 100}</div>
-          <div className="stat-label">Trust Score ({earnings.trustScore?.rating || 5.0} ⭐)</div>
+          <div className="stat-value" style={{ color: "var(--green-mid)" }}>{user?.deliveryScore || earnings.trustScore?.score || 100}</div>
+          <div className="stat-label">Delivery Score ({earnings.trustScore?.rating || 5.0} ⭐)</div>
         </div>
       </div>
 
@@ -539,10 +734,23 @@ export default function AgentDashboard() {
                   <div className="glass-card" key={d._id} style={{ padding:"1.5rem" }}>
                     <div className="flex-between mb-2">
                       <div>
-                        <h3 style={{ color: "var(--text-dark)", fontWeight:700 }}>
-                          {d.trackingCode || `#${d._id.substring(0,8).toUpperCase()}`}
-                        </h3>
-                        {order?.crop && <p style={{ color:"var(--yellow-wheat)", fontSize:"0.88rem" }}>🌾 {order.crop.name} — {order.quantity} {order.crop.unit||"kg"}</p>}
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                          <h3 style={{ color: "var(--text-dark)", fontWeight:700, margin: 0 }}>
+                            {d.trackingCode || `#${d._id.substring(0,8).toUpperCase()}`}
+                          </h3>
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              const text = `Delivery ${d.trackingCode || ''}. Pickup from ${d.pickupLocation || 'farmer'}. Deliver to ${order?.customer?.name || 'customer'} at ${d.deliveryLocation || ''}. Order value ${order?.totalAmount || 0} rupees. Status: ${STATUS_LABELS[d.status]}.`;
+                              playTTS(text, lang);
+                            }}
+                            style={{ background: "rgba(59, 130, 246, 0.15)", border: "1px solid rgba(59, 130, 246, 0.3)", borderRadius: "6px", padding: "2px 6px", cursor: "pointer", color: "#60a5fa", display: "inline-flex", alignItems: "center", gap: "3px", fontSize: "0.72rem" }}
+                            title="🔊 Read Delivery Details Out Loud"
+                          >
+                            <Volume2 size={12} /> 🔊 Hear Details
+                          </button>
+                        </div>
+                        {order?.crop && <p style={{ color:"var(--yellow-wheat)", fontSize:"0.88rem", marginTop:"0.2rem" }}>🌾 {order.crop.name} — {order.quantity} {order.crop.unit||"kg"}</p>}
                         <p style={{ color:"var(--text-muted)", fontSize:"0.78rem", marginTop:"0.2rem" }}>
                           {new Date(d.createdAt).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}
                         </p>
@@ -551,6 +759,9 @@ export default function AgentDashboard() {
                         {STATUS_ICONS[d.status]} {STATUS_LABELS[d.status]}
                       </span>
                     </div>
+
+                    {/* Live SLA & Speed Incentive Tracker */}
+                    <LiveSLATracker delivery={d} onLogDelay={() => setDelayModal(d)} />
 
                     {/* Progress Bar */}
                     <div className="delivery-progress mb-2">
@@ -577,12 +788,22 @@ export default function AgentDashboard() {
                           <p style={{ fontSize:"0.85rem", color: "var(--text-dark)" }}>{d.pickupLocation.substring(0,50)}</p>
                         </div>
                       )}
-                      {d.deliveryLocation && (
+                      {d.dropoffs && d.dropoffs.length > 0 ? (
+                        <div style={{ background:"rgba(255,255,255,0.05)", borderRadius:"var(--radius-sm)", padding:"0.75rem", gridColumn: "1 / -1" }}>
+                          <p style={{ fontSize:"0.72rem", color: "var(--text-muted)", marginBottom:"0.4rem" }}>📍 MULTIPLE DROPOFFS (Route)</p>
+                          {d.dropoffs.map((drop, idx) => (
+                            <div key={idx} style={{ marginBottom:"0.5rem", padding:"0.5rem", background:"rgba(0,0,0,0.03)", borderRadius:"6px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                              <p style={{ fontSize:"0.85rem", color: "var(--text-dark)", margin: 0 }}><strong>Stop {idx+1}:</strong> {drop.location.substring(0, 60)}</p>
+                              <span className={`badge ${drop.status==="delivered"?"badge-green":"badge-yellow"}`} style={{ fontSize:"0.7rem" }}>{drop.status}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : d.deliveryLocation ? (
                         <div style={{ background:"rgba(255,255,255,0.05)", borderRadius:"var(--radius-sm)", padding:"0.75rem" }}>
                           <p style={{ fontSize:"0.72rem", color: "var(--text-muted)", marginBottom:"0.2rem" }}>📍 DELIVER TO</p>
                           <p style={{ fontSize:"0.85rem", color: "var(--text-dark)" }}>{d.deliveryLocation.substring(0,50)}</p>
                         </div>
-                      )}
+                      ) : null}
                       {order?.customer && (
                         <div style={{ background:"rgba(255,255,255,0.05)", borderRadius:"var(--radius-sm)", padding:"0.75rem" }}>
                           <p style={{ fontSize:"0.72rem", color: "var(--text-muted)", marginBottom:"0.2rem" }}>👤 CUSTOMER</p>
@@ -607,6 +828,7 @@ export default function AgentDashboard() {
 
                     {(d.status === "assigned" || d.status === "picked_up" || d.status === "in_transit") && (
                       <div style={{ marginBottom: "1rem" }}>
+                        <AgentTips user={user} />
                         <AgentLiveMap agentPos={agentPos} deliveryData={d} />
                         <button 
                           className="btn-secondary mt-2" 
@@ -761,8 +983,21 @@ export default function AgentDashboard() {
                 <div className="glass-card" key={o._id} style={{ padding:"1.5rem" }}>
                   <div className="flex-between mb-2">
                     <div>
-                      <h3 style={{ color: "var(--text-dark)", fontWeight:700 }}>🌾 {o.crop?.name || "Order"}</h3>
-                      <p style={{ color: "var(--text-muted)", fontSize:"0.85rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <h3 style={{ color: "var(--text-dark)", fontWeight:700, margin: 0 }}>🌾 {o.crop?.name || "Order"}</h3>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            const text = `Available Order: ${o.quantity || ''} ${o.crop?.unit || 'kg'} of ${o.crop?.name || 'produce'}. Pickup from ${o.farmer?.location || o.crop?.location || 'farmer'}. Deliver to ${o.deliveryAddress || 'customer'}. Delivery fee: ₹${o.deliveryCharges || 30}.`;
+                            playTTS(text, lang);
+                          }}
+                          style={{ background: "rgba(34, 197, 94, 0.15)", border: "1px solid rgba(34, 197, 94, 0.3)", borderRadius: "6px", padding: "2px 6px", cursor: "pointer", color: "#4ade80", display: "inline-flex", alignItems: "center", gap: "3px", fontSize: "0.72rem" }}
+                          title="🔊 Read Order Out Loud"
+                        >
+                          <Volume2 size={12} /> 🔊 Hear Details
+                        </button>
+                      </div>
+                      <p style={{ color: "var(--text-muted)", fontSize:"0.85rem", marginTop:"0.2rem" }}>
                         {o.quantity} {o.crop?.unit||"kg"} • ₹{(o.totalAmount||0).toLocaleString()}
                       </p>
                     </div>
@@ -823,13 +1058,77 @@ export default function AgentDashboard() {
               <p style={{ fontSize: "0.85rem", color: "var(--text-mid)" }}>Customer and Farmer details (phone, address) are strictly for delivery purposes. Misuse will lead to immediate termination.</p>
             </div>
             <div style={{ background: "rgba(217, 119, 6, 0.05)", padding: "1.25rem", borderRadius: "12px", border: "1px solid rgba(217, 119, 6, 0.2)" }}>
-              <h4 style={{ color: "#d97706", marginBottom: "0.5rem" }}>📍 Location Tracking</h4>
-              <p style={{ fontSize: "0.85rem", color: "var(--text-mid)" }}>You must allow GPS tracking while on duty. This provides transparency to the customer and ensures your safety.</p>
+              <h4 style={{ color: "#d97706", marginBottom: "0.5rem" }}>📍 Location Tracking & Speed SLA</h4>
+              <p style={{ fontSize: "0.85rem", color: "var(--text-mid)" }}>You must allow GPS tracking while on duty. Early deliveries earn up to +50 speed points & instant cash tips, while delays reduce points unless a valid delay reason is logged.</p>
             </div>
           </div>
         </div>
       )}
 
+      {/* ── DELAY REASON & WAIVER MODAL ── */}
+      {delayModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "1.5rem"
+        }}>
+          <div style={{
+            background: "white", borderRadius: "16px", maxWidth: "520px", width: "100%",
+            padding: "2rem", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)"
+          }}>
+            <h3 style={{ color: "#b45309", display: "flex", alignItems: "center", gap: "0.5rem", marginTop: 0 }}>
+              ⚠️ Log Delay Reason & Request Waiver
+            </h3>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.2rem" }}>
+              Facing unexpected transit delays? Select a valid reason so that late points reduction and score penalties are waived for order <strong>{delayModal.trackingCode}</strong>.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-dark)", display: "block", marginBottom: "0.4rem" }}>
+                  Select Primary Delay Cause:
+                </label>
+                <select
+                  value={delayReason}
+                  onChange={e => setDelayReason(e.target.value)}
+                  style={{ width: "100%", padding: "0.6rem 0.8rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.9rem" }}
+                >
+                  <option value="Heavy Traffic Jam">🚦 Heavy Road Traffic / Gridlock</option>
+                  <option value="Monsoon Rain & Waterlogging">🌧️ Heavy Rain / Waterlogged Roads</option>
+                  <option value="Farmer Packing Delay">👨‍🌾 Farmer Harvesting / Packaging Delay</option>
+                  <option value="Vehicle Breakdown">🛵 Vehicle Puncture / Mechanical Issue</option>
+                  <option value="Customer Address Unreachable">📍 Incorrect / Unreachable Customer Address</option>
+                  <option value="Other Unavoidable Reason">❓ Other Transit Emergency</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-dark)", display: "block", marginBottom: "0.4rem" }}>
+                  Additional Notes (Optional):
+                </label>
+                <textarea
+                  rows={3}
+                  value={delayNote}
+                  onChange={e => setDelayNote(e.target.value)}
+                  placeholder="Provide any details (e.g., stuck on Outer Ring Road for 20 mins)..."
+                  style={{ width: "100%", padding: "0.6rem 0.8rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.85rem" }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "1.5rem" }}>
+              <button className="btn-secondary" onClick={() => setDelayModal(null)}>
+                Cancel
+              </button>
+              <button className="btn-primary" onClick={logDelayReason} style={{ background: "linear-gradient(135deg, #d97706, #b45309)" }}>
+                🛡️ Submit Delay Waiver
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      </>
+      )}
     </div>
   );
 }

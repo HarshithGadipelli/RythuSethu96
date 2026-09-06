@@ -1,4 +1,5 @@
 import express from "express";
+import jwt from "jsonwebtoken";
 import Crop from "../models/Crop.js";
 import Farmer from "../models/Farmer.js";
 import upload from "../middleware/upload.js";
@@ -9,38 +10,51 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const router = express.Router();
 
-// Add crop with image
-router.post("/add", upload.single("image"), addCrop);
+const optionalAuth = async (req, res, next) => {
+  try {
+    let token = req.headers.authorization;
+    if (token && token.startsWith("Bearer ")) {
+      const tokenStr = token.split(" ")[1];
+      const decoded = jwt.verify(tokenStr, process.env.JWT_SECRET);
+      req.user = await User.findById(decoded.id).select("-password");
+    }
+  } catch (e) {}
+  next();
+};
 
-// Update Crop Lifecycle Stage
-router.put("/:id/stage", upload.single("image"), async (req, res) => {
+// Add crop with image
+router.post("/", optionalAuth, upload.single("image"), addCrop);
+router.post("/add", optionalAuth, upload.single("image"), addCrop);
+
+// Get my crops for logged in farmer
+router.get("/farmer/my-crops", optionalAuth, async (req, res) => {
+  try {
+    const farmerId = req.user?._id || req.query.farmerId;
+    if (!farmerId) return res.json([]);
+    const crops = await Crop.find({ farmer: farmerId }).sort({ createdAt: -1 });
+    res.json(crops);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+
+// Sell crop to Admin (Clearance Sale)
+router.put("/:id/sell-to-admin", optionalAuth, async (req, res) => {
   try {
     const crop = await Crop.findById(req.params.id);
     if (!crop) return res.status(404).json({ error: "Crop not found" });
 
-    const { lifecycleStage, notes } = req.body;
-    let imageUrl = "";
-    if (req.file) imageUrl = `/uploads/${req.file.filename}`;
-
-    crop.lifecycleStage = lifecycleStage;
-    crop.lifecycleUpdates.push({
-      stage: lifecycleStage,
-      notes,
-      imageUrl,
-      timestamp: new Date()
-    });
-
+    // Mark as Admin Stock and apply clearance pricing
+    crop.isAdminStock = true;
+    crop.originalFarmer = crop.farmer; // track the source
+    crop.clearanceDiscount = 40; // 40% discount given to farmer
+    crop.price = Math.round(crop.price * 0.6); // Farmer takes 40% hit
+    crop.coldStorageLocation = "RythuSethu Central Cold Storage, Hub 1";
+    
     await crop.save();
-
-    let aiSuggestion = "Keep monitoring soil moisture.";
-    if (lifecycleStage === "flowering") aiSuggestion = "Apply potassium-rich fertilizers to boost yield.";
-    if (lifecycleStage === "harvesting") aiSuggestion = "Ensure dry weather for harvest to prevent mold.";
-
-    // Emit event
-    const io = req.app?.get?.("io");
-    if (io) io.emit("crop_updated", crop);
-
-    res.json({ message: "Stage updated successfully", crop, aiSuggestion });
+    res.json({ success: true, message: "Crop sold to Admin for Clearance." });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -483,6 +497,10 @@ router.put("/:id/stage", upload.single("image"), async (req, res) => {
     crop.lifecycleUpdates.push(updateEntry);
 
     await crop.save();
+
+    // Emit real-time event for frontend
+    const io = req.app?.get?.("io");
+    if (io) io.emit("crop_updated", crop);
 
     // Notify Admin
     const admin = await User.findOne({ role: "admin" });

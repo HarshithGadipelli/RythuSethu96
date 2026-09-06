@@ -1,6 +1,6 @@
 import { BASE_URL } from '../../api/api';
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import API from "../../api/api";
@@ -10,19 +10,17 @@ import { useCart } from "../../context/CartContext";
 import { useVoiceInput } from "../../utils/useVoiceInput";
 import AutoSuggestInput from "../../components/AutoSuggestInput";
 import { io } from "socket.io-client";
-import { parseSpokenNumber, playTTS } from "../../utils/voiceParser";
+import { parseSpokenNumber, playTTS, stopTTS, isTTSPlaying } from "../../utils/voiceParser";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Map as MapIcon, List, ShoppingBag, Truck, PackageCheck, Package, Users, Zap, Filter, X, MapPin, Leaf, Shield, ArrowUpDown, ChevronDown, ChevronUp, Star, Sparkles, LocateFixed, DollarSign, SlidersHorizontal, Navigation, Volume2, VolumeX } from "lucide-react";
+import { Search, Map as MapIcon, List, ShoppingBag, Truck, PackageCheck, Package, Users, Zap, Filter, X, MapPin, Leaf, Shield, ArrowUpDown, ChevronDown, ChevronUp, Star, Sparkles, LocateFixed, DollarSign, SlidersHorizontal, Navigation, Volume2, VolumeX, Scale } from "lucide-react";
 import LiveMapModal from "../../components/LiveMapModal";
 import PaymentModal from "../../components/PaymentModal";
 import useMarketAudio from "../../hooks/useMarketAudio";
 import MarketplaceMap from "../../components/MarketplaceMap";
 import LocationButton from "../../components/LocationButton";
 import VoiceMicButton from "../../components/VoiceMicButton";
-
-
-
-// Fix leaflet default icons
+import LocationPickerModal from "../../components/LocationPickerModal";
+import OrderTracking from "../../components/OrderTracking";// Fix leaflet default icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
@@ -65,6 +63,71 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
     Math.sin(dLon/2) * Math.sin(dLon/2);
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
+const CROP_FALLBACK_IMAGES = {
+  rice: "http://localhost:5000/uploads/ai_rice.jpg",
+  paddy: "http://localhost:5000/uploads/ai_rice.jpg",
+  sona: "http://localhost:5000/uploads/ai_rice.jpg",
+  bpt: "http://localhost:5000/uploads/ai_rice.jpg",
+  wheat: "http://localhost:5000/uploads/ai_wheat.jpg",
+  corn: "https://images.unsplash.com/photo-1551754655-cd27e38d2076?w=600&auto=format&fit=crop&q=80",
+  maize: "https://images.unsplash.com/photo-1551754655-cd27e38d2076?w=600&auto=format&fit=crop&q=80",
+  millet: "http://localhost:5000/uploads/ai_millets.jpg",
+  ragi: "http://localhost:5000/uploads/ai_millets.jpg",
+  jowar: "http://localhost:5000/uploads/ai_millets.jpg",
+  bajra: "http://localhost:5000/uploads/ai_millets.jpg",
+  tomato: "http://localhost:5000/uploads/ai_tomato.jpg",
+  onion: "http://localhost:5000/uploads/ai_onion.jpg",
+  potato: "http://localhost:5000/uploads/potato.png",
+  spinach: "http://localhost:5000/uploads/ai_spinach.jpg",
+  palak: "http://localhost:5000/uploads/ai_spinach.jpg",
+  cabbage: "http://localhost:5000/uploads/ai_cabbage.jpg",
+  cauliflower: "http://localhost:5000/uploads/ai_cauliflower.jpg",
+  brinjal: "http://localhost:5000/uploads/ai_brinjal.jpg",
+  eggplant: "http://localhost:5000/uploads/ai_brinjal.jpg",
+  vankaya: "http://localhost:5000/uploads/ai_brinjal.jpg",
+  bhindi: "http://localhost:5000/uploads/ai_bhindi.jpg",
+  ladyfinger: "http://localhost:5000/uploads/ai_bhindi.jpg",
+  okra: "http://localhost:5000/uploads/ai_bhindi.jpg",
+  carrot: "http://localhost:5000/uploads/carrot.png",
+  mango: "http://localhost:5000/uploads/ai_mango.jpg",
+  banana: "http://localhost:5000/uploads/ai_banana.jpg",
+  pomegranate: "http://localhost:5000/uploads/ai_pomegranate.jpg",
+  chilli: "http://localhost:5000/uploads/ai_red_chilli.jpg",
+  mirchi: "http://localhost:5000/uploads/ai_red_chilli.jpg",
+  turmeric: "http://localhost:5000/uploads/ai_turmeric.jpg",
+  coriander: "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600&auto=format&fit=crop&q=80",
+  ginger: "https://images.unsplash.com/photo-1599940824399-b87987ceb72a?w=600&auto=format&fit=crop&q=80",
+  garlic: "https://images.unsplash.com/photo-1540148426945-6cf22a6b2383?w=600&auto=format&fit=crop&q=80",
+  dal: "http://localhost:5000/uploads/ai_pulses_dal.jpg",
+  toor: "http://localhost:5000/uploads/ai_pulses_dal.jpg",
+  moong: "http://localhost:5000/uploads/ai_pulses_dal.jpg",
+  chana: "http://localhost:5000/uploads/ai_pulses_dal.jpg",
+  soya: "http://localhost:5000/uploads/ai_soya.jpg",
+  ghee: "http://localhost:5000/uploads/ai_honey_ghee.jpg",
+  honey: "http://localhost:5000/uploads/ai_honey_ghee.jpg",
+  jaggery: "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?w=600&auto=format&fit=crop&q=80",
+  oil: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600&auto=format&fit=crop&q=80",
+  cotton: "https://images.unsplash.com/photo-1606041008023-472dfb5e530f?w=600&auto=format&fit=crop&q=80",
+  sugarcane: "https://images.unsplash.com/photo-1596753392437-05c8733230c1?w=600&auto=format&fit=crop&q=80"
+};
+
+export const getImgSrc = (img, name = "", category = "") => {
+  if (img && typeof img === "string" && img.trim() !== "" && img !== "EMPTY") {
+    if (img.startsWith("http://") || img.startsWith("https://")) {
+      return img;
+    }
+    const cleanPath = img.startsWith("/") ? img : `/${img}`;
+    return `${BASE_URL.replace(/\/api\/?$/, "")}${cleanPath}`;
+  }
+  const cleanStr = (name + " " + category).toLowerCase();
+  for (const [key, url] of Object.entries(CROP_FALLBACK_IMAGES)) {
+    if (cleanStr.includes(key)) return url;
+  }
+  if (category === "fruit") return "http://localhost:5000/uploads/ai_mango.jpg";
+  if (category === "grain") return "http://localhost:5000/uploads/ai_rice.jpg";
+  return "http://localhost:5000/uploads/ai_tomato.jpg";
+};
 
 function FlyToMarker({ crop }) {
   const map = useMap();
@@ -150,6 +213,7 @@ import CustomerOrders from "./CustomerOrders";
 import CustomerGroups from "./CustomerGroups";
 import RythuSethuAnimation from "../../components/RythuSethuAnimation";
 import FarmTourModal from "../../components/FarmTourModal";
+import SmartCuratedBasket from "../../components/SmartCuratedBasket";
 
 // Helper to get current active agricultural season in India based on month
 const getCurrentIndianSeason = () => {
@@ -170,19 +234,30 @@ const getSeasonalCrops = () => {
   return ["wheat", "mustard", "potato", "onion", "cabbage", "cauliflower", "spinach", "carrot", "peas", "garlic", "apple"];
 };
 
-// Helper for dynamic image URLs (handles both farmer uploads and ML placeholders)
-const getImgSrc = (img) => {
-  if (!img) return null;
-  return img.startsWith("http") ? img : `${BASE_URL}${img}`;
-};
-
 export default function Marketplace() {
   const { user } = useAuth();
   const { t, lang } = useLang();
   const { addToCart, setIsCartOpen } = useCart();
   const { listening, activeField, interim, startListening, stopListening } = useVoiceInput(lang);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [mainTab, setMainTab] = useState("shop"); // "shop", "orders", "groups"
+  const initialTab = searchParams.get("tab") || "shop";
+  const [mainTab, setMainTab] = useState(initialTab);
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && ["shop", "orders", "groups"].includes(tabParam)) {
+      setMainTab(tabParam);
+    }
+  }, [searchParams]);
+
+  const switchMainTab = (tabName) => {
+    setMainTab(tabName);
+    setSearchParams({ tab: tabName });
+    if (tabName === "orders" && user) {
+      fetchMyOrders();
+    }
+  };
 
   const [crops, setCrops] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -191,9 +266,10 @@ export default function Marketplace() {
   const [category, setCategory] = useState("all");
   const [showModal, setShowModal] = useState(false);
   const [orderQty, setOrderQty] = useState(1);
-  const [orderAddr, setOrderAddr] = useState("");
-  const [orderLat, setOrderLat] = useState(null);
-  const [orderLng, setOrderLng] = useState(null);
+  const [orderAddr, setOrderAddr] = useState(user?.address || "");
+  const [orderLat, setOrderLat] = useState(user?.latitude || null);
+  const [orderLng, setOrderLng] = useState(user?.longitude || null);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [deliveryType, setDeliveryType] = useState("standard");
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -243,6 +319,30 @@ export default function Marketplace() {
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [isMarketAudioActive, setIsMarketAudioActive] = useState(false);
 
+  // Compare Feature State
+  const [compareList, setCompareList] = useState([]);
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [showSmartBasket, setShowSmartBasket] = useState(false);
+
+  // ─── Real-Time Seasonal Prediction State ───
+  const [seasonalPrediction, setSeasonalPrediction] = useState(null);
+  const [seasonalLoading, setSeasonalLoading] = useState(false);
+
+  const toggleCompare = (crop, e) => {
+    e.stopPropagation();
+    setCompareList(prev => {
+      if (prev.find(c => c._id === crop._id)) {
+        return prev.filter(c => c._id !== crop._id);
+      }
+      if (prev.length >= 4) {
+        setMsg({ type: "error", text: "You can compare up to 4 items maximum." });
+        setTimeout(() => setMsg({ type:"", text:"" }), 3000);
+        return prev;
+      }
+      return [...prev, crop];
+    });
+  };
+
   useEffect(() => {
     const syncHandler = (e) => setIsMarketAudioActive(e.detail.isActive);
     window.addEventListener("market_audio_state", syncHandler);
@@ -255,8 +355,22 @@ export default function Marketplace() {
     return () => clearInterval(timer);
   }, []);
 
+  const marketContainerRef = useRef(null);
+
   // ── Immersive Market Audio ──────────────────────────────────────────────
-  const { isActive: audioActive, toggle: toggleAudio, focusCrop, blurCrop } = useMarketAudio(crops, lang);
+  const { isActive: audioActive, toggle: toggleAudio, focusCrop, blurCrop, attachScrollObserver, refreshObserver } = useMarketAudio(crops, lang);
+
+  useEffect(() => {
+    if (marketContainerRef.current) {
+      attachScrollObserver(marketContainerRef.current);
+    }
+  }, [attachScrollObserver]);
+
+  useEffect(() => {
+    if (marketContainerRef.current) {
+      refreshObserver(marketContainerRef.current);
+    }
+  }, [filtered, refreshObserver]);
 
   // Allow Navbar speaker button to toggle audio via custom event
   useEffect(() => {
@@ -305,7 +419,7 @@ export default function Marketplace() {
   }, [filterOrganic, filterPesticideFree, filterMinPrice, filterMaxPrice, filterMaxDistance, sortBy]);
 
   useEffect(() => { 
-    fetchCrops();
+    fetchFestivalConfig();
     fetchFestivalConfig();
     if (user) fetchMyOrders();
     const socket = io(BASE_URL);
@@ -338,6 +452,10 @@ export default function Marketplace() {
       window.removeEventListener("ai_navigate", handleAINavigate);
     };
   }, []);
+
+  useEffect(() => {
+    fetchCrops();
+  }, [lang]);
 
   // ─── Advanced filtering (client-side on the fetched crops) ───
   useEffect(() => {
@@ -427,6 +545,26 @@ export default function Marketplace() {
         }
         return c;
       });
+
+      // Dynamic Translation for full-website multilingual support
+      if (lang && lang !== "en") {
+        const textsToTranslate = [];
+        available.forEach(c => {
+          textsToTranslate.push(c.name || "");
+          textsToTranslate.push(c.description || "");
+        });
+        try {
+          const tRes = await API.post("/translate", { texts: textsToTranslate, targetLang: lang });
+          if (tRes.data && tRes.data.translatedTexts) {
+            const translated = tRes.data.translatedTexts;
+            available = available.map((c, i) => ({
+              ...c,
+              name: translated[i * 2] || c.name,
+              description: translated[i * 2 + 1] || c.description
+            }));
+          }
+        } catch (e) { console.error("Translation error", e); }
+      }
 
       setCrops(available);
       setFiltered(available);
@@ -544,6 +682,7 @@ export default function Marketplace() {
   const openCrop = async (crop) => {
     setSelected(crop);
     setShowModal(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
     setNutrition(null);
     setPriceTrends(null);
     setBasketSuggestions([]);
@@ -568,24 +707,14 @@ export default function Marketplace() {
     } catch {} finally { setBasketLoading(false); }
 
     try {
-      const res = await API.post("/ml/price-trends", { crop: crop.name });
+      const payload = { crop: crop.name };
+      if (user?.location?.coordinates) {
+        payload.longitude = user.location.coordinates[0];
+        payload.latitude = user.location.coordinates[1];
+      }
+      const res = await API.post("/ml/price-trends", payload);
       setPriceTrends(res.data);
     } catch {}
-  };
-
-  const detectLocation = () => {
-    if (!navigator.geolocation) { alert("Geolocation not supported"); return; }
-    navigator.geolocation.getCurrentPosition(async ({ coords }) => {
-      setOrderLat(coords.latitude);
-      setOrderLng(coords.longitude);
-      try {
-        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}`);
-        const d = await r.json();
-        setOrderAddr(d.display_name || `${coords.latitude}, ${coords.longitude}`);
-      } catch { 
-        setOrderAddr(`${coords.latitude}, ${coords.longitude}`);
-      }
-    }, () => { alert("Could not get location"); });
   };
 
   // ─── View Trust Score Detail Modal ───
@@ -635,25 +764,7 @@ export default function Marketplace() {
     };
 
     const res = await API.post("/orders/create", orderData);
-    setShowBill({
-      billNumber: res.data.billNumber,
-      cropName: selected.name,
-      quantity: orderQty,
-      unit: selected.unit || "kg",
-      unitPrice: selectedPrice,
-      subtotal,
-      deliveryType,
-      deliveryCharges,
-      pointsUsed: pointsDiscount,
-      deliveryDistance: Math.round(deliveryDistance * 10) / 10,
-      totalAmount,
-      paymentMode: payMode,
-      farmerName: selected.farmer?.name || "Farmer",
-      farmerLocation: selected.location || "",
-      customerName: user.name,
-      deliveryAddress: deliveryType === "farm_pickup" ? "Farm Pickup" : orderAddr,
-      date: new Date().toLocaleDateString("en-IN", { day:"numeric", month:"long", year:"numeric", hour:"2-digit", minute:"2-digit" })
-    });
+    setTrackingOrder(res.data._id);
     setMsg({ type:"success", text:`✅ Order placed successfully!` });
     fetchCrops();
     if (user) fetchMyOrders();
@@ -777,11 +888,11 @@ export default function Marketplace() {
   );
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="page-wrapper" style={{ maxWidth:"100%", padding:"1.5rem" }}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="page-wrapper" style={{ maxWidth:"100%", padding:"1.5rem" }} ref={marketContainerRef}>
       {/* ─── MAIN TABS NAVIGATION ─── */}
-      <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "0.5rem" }}>
+      <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
         <button 
-          onClick={() => setMainTab("shop")}
+          onClick={() => switchMainTab("shop")}
           style={{
             background: "none", border: "none", fontSize: "1.1rem", fontWeight: 700,
             color: mainTab === "shop" ? "var(--green-mid)" : "var(--text-mid)", cursor: "pointer",
@@ -791,17 +902,17 @@ export default function Marketplace() {
           <ShoppingBag size={18} /> Marketplace
         </button>
         <button 
-          onClick={() => setMainTab("orders")}
+          onClick={() => switchMainTab("orders")}
           style={{
             background: "none", border: "none", fontSize: "1.1rem", fontWeight: 700,
             color: mainTab === "orders" ? "var(--green-mid)" : "var(--text-mid)", cursor: "pointer",
             borderBottom: mainTab === "orders" ? "3px solid var(--green-mid)" : "3px solid transparent",
             padding: "0.5rem 1rem", display: "flex", alignItems: "center", gap: "0.5rem"
           }}>
-          <Package size={18} /> My Orders
+          <Package size={18} /> My Orders {myOrders.length > 0 && `(${myOrders.length})`}
         </button>
         <button 
-          onClick={() => setMainTab("groups")}
+          onClick={() => switchMainTab("groups")}
           style={{
             background: "none", border: "none", fontSize: "1.1rem", fontWeight: 700,
             color: mainTab === "groups" ? "var(--green-mid)" : "var(--text-mid)", cursor: "pointer",
@@ -907,7 +1018,27 @@ export default function Marketplace() {
             🛒 {t("marketplace")}
           </h1>
           <p style={{ color:"var(--text-muted)", fontSize:"0.95rem", marginBottom: "0.5rem" }}>{filtered.length} fresh products from local farmers</p>
-          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem", flexWrap: "wrap" }}>
+            <button 
+              type="button"
+              onClick={() => setShowSmartBasket(!showSmartBasket)} 
+              className="btn-primary" 
+              style={{ 
+                padding: "0.35rem 0.9rem", 
+                fontSize: "0.85rem", 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "0.4rem", 
+                background: showSmartBasket ? "var(--green-deep)" : "linear-gradient(135deg, #16a34a, #15803d)",
+                boxShadow: "0 4px 12px rgba(22,163,74,0.25)",
+                border: "none",
+                cursor: "pointer",
+                borderRadius: "100px",
+                color: "white"
+              }}
+            >
+              <Sparkles size={15} /> ⚡ Voice/Text List & Catering AI {showSmartBasket ? "▲" : "▼"}
+            </button>
             <Link to="/farm-tours" className="btn-secondary" style={{ padding: "0.3rem 0.8rem", fontSize: "0.85rem", textDecoration: "none", display: "flex", alignItems: "center", gap: "0.3rem" }}>
               🎥 Farm Tours
             </Link>
@@ -931,7 +1062,7 @@ export default function Marketplace() {
             {isMarketAudioActive ? <><Volume2 size={16} /> Sounds On</> : <><VolumeX size={16} /> Muted</>}
           </button>
           {user && (
-            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className={`btn-secondary`} onClick={() => setShowOrders(!showOrders)} style={{ background:"white", color:"var(--text-dark)", borderColor:"#e2e8f0" }}>
+            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className={`btn-secondary`} onClick={() => switchMainTab("orders")} style={{ background:"white", color:"var(--text-dark)", borderColor:"#e2e8f0" }}>
               <PackageCheck size={18} style={{ marginRight:4 }} /> {t("myOrders")} ({myOrders.length})
             </motion.button>
           )}
@@ -978,6 +1109,20 @@ export default function Marketplace() {
                 ))}
               </div>
             )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── SMART CURATED BASKET & EVENT CATERING AI PANEL ── */}
+      <AnimatePresence>
+        {showSmartBasket && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{ overflow: "hidden", marginBottom: "1.5rem" }}
+          >
+            <SmartCuratedBasket onAddToCartSuccess={() => setShowSmartBasket(false)} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1313,37 +1458,148 @@ export default function Marketplace() {
         </motion.div>
       )}
 
-      {/* Seasonal Specials Section (ML / Data-driven Logic) */}
-      {filtered.some(c => c.name && getSeasonalCrops().includes(c.name.toLowerCase().trim())) && search === "" && category === "all" && viewTab === "list" && (
+      {/* Seasonal Specials Section — Real-Time Weather-Based ML Prediction */}
+      {viewTab === "list" && search === "" && category === "all" && (
         <div className="mb-3">
-          <h3 className="section-title mb-1">🌤️ {t("seasonalSpecials")}</h3>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "1rem" }}>Freshly harvested {getCurrentIndianSeason()} crops highly recommended for this month.</p>
-          <div className="scroll-x no-scrollbar" style={{ display: "flex", gap: "1rem", overflowX: "auto", paddingBottom: "1rem" }}>
-            {filtered
-              .filter(c => c.name && getSeasonalCrops().includes(c.name.toLowerCase().trim()))
-              .sort((a, b) => (b.trustScore || 0) - (a.trustScore || 0)) // Sort by highest trust / demand
-              .slice(0, 5)
-              .map(c => (
-              <div key={c._id} className="crop-card" onClick={() => openCrop(c)} style={{ minWidth: 260, cursor: "pointer", flexShrink: 0, border: "1px solid var(--green-pale)" }}>
-                <div className="crop-img-wrap" style={{ height: 140 }}>
-                  {c.image ? <img src={getImgSrc(c.image)} alt={c.name} /> : <div className="crop-img-fallback">🌿</div>}
-                  {c.isPrebooking && <span className="organic-badge" style={{ background: "var(--yellow-wheat)", color: "black", border: "none", marginBottom: "0.2rem" }}>⏳ Pre-Book</span>}
-                  {c.lifecycleStage && <span className="organic-badge" style={{ background: "#fef3c7", color: "#d97706", border: "none", textTransform: "capitalize", marginBottom: "0.2rem" }}>🌱 {c.lifecycleStage.replace("_", " ")}</span>}
-                  {c.isOrganic && <span className="organic-badge">🌿 Organic</span>}
-                </div>
-                <div className="crop-info" style={{ padding: "1rem" }}>
-                  <div className="flex-between">
-                    <h3 className="crop-title" style={{ fontSize: "1.1rem" }}>{c.name}</h3>
-                    <span className="crop-price">₹{c.price}/{c.unit||"kg"}</span>
+          {!seasonalPrediction && !seasonalLoading && (
+            <div className="glass-card" style={{ background: "linear-gradient(135deg, rgba(22, 163, 74, 0.08), rgba(59, 130, 246, 0.08))", border: "1px solid rgba(22, 163, 74, 0.2)", padding: "1.5rem", textAlign: "center" }}>
+              <h3 className="section-title mb-1">🌟 AI Seasonal Crop Prediction</h3>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "1rem" }}>Get real-time crop recommendations based on your location's live weather, agro-climatic zone, and current season.</p>
+              <button className="btn-primary" onClick={async () => {
+                setSeasonalLoading(true);
+                try {
+                  let lat = customerLat, lng = customerLng;
+                  if (!lat || !lng) {
+                    const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 }));
+                    lat = pos.coords.latitude; lng = pos.coords.longitude;
+                    setCustomerLat(lat); setCustomerLng(lng);
+                  }
+                  const res = await API.get(`/ml/seasonal-prediction?lat=${lat}&lng=${lng}`);
+                  setSeasonalPrediction(res.data);
+                } catch (e) {
+                  setMsg({ type: "error", text: "Failed to fetch seasonal prediction. Please enable location." });
+                } finally { setSeasonalLoading(false); }
+              }} style={{ padding: "0.7rem 2rem", fontSize: "1rem", borderRadius: "100px" }}>
+                {seasonalLoading ? "Analyzing Weather..." : "📍 Detect My Location & Predict"}
+              </button>
+            </div>
+          )}
+
+          {seasonalLoading && (
+            <div className="glass-card text-center" style={{ padding: "2rem" }}>
+              <div className="loader"></div>
+              <p style={{ color: "var(--text-muted)", marginTop: "1rem" }}>Fetching live weather & analyzing agro-climatic zone...</p>
+            </div>
+          )}
+
+          {seasonalPrediction && (
+            <div>
+              {/* Weather & Zone Header */}
+              <div className="glass-card" style={{ background: "linear-gradient(135deg, #064e3b, #0f766e)", color: "white", padding: "1.2rem 1.5rem", marginBottom: "1rem", border: "none" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: "1.3rem" }}>🌟 {seasonalPrediction.season} — Live Weather Prediction</h3>
+                    <p style={{ margin: "0.3rem 0 0", fontSize: "0.85rem", opacity: 0.85 }}>Zone: <strong>{seasonalPrediction.agroClimaticZone}</strong></p>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginTop: "0.4rem" }}>
-                    <TrustBadge trust={getCropTrust(c)} />
-                    <DistanceBadge distance={getCropDistance(c)} />
+                  <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap" }}>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: "1.8rem", fontWeight: 800 }}>{seasonalPrediction.weather?.temperature}°C</div>
+                      <div style={{ fontSize: "0.75rem", opacity: 0.8 }}>{seasonalPrediction.weather?.condition}</div>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: "1.4rem", fontWeight: 700 }}>💧 {seasonalPrediction.weather?.humidity}%</div>
+                      <div style={{ fontSize: "0.75rem", opacity: 0.8 }}>Humidity</div>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: "1.4rem", fontWeight: 700 }}>🌧️ {seasonalPrediction.weather?.rainfall}mm</div>
+                      <div style={{ fontSize: "0.75rem", opacity: 0.8 }}>Rainfall</div>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: "1.4rem", fontWeight: 700 }}>💨 {seasonalPrediction.weather?.windSpeed} km/h</div>
+                      <div style={{ fontSize: "0.75rem", opacity: 0.8 }}>Wind</div>
+                    </div>
                   </div>
                 </div>
+                {seasonalPrediction.weather?.weekForecast && (
+                  <div style={{ marginTop: "0.8rem", padding: "0.6rem 0.8rem", background: "rgba(255,255,255,0.1)", borderRadius: "8px", fontSize: "0.82rem" }}>
+                    📅 7-Day Forecast: Max {seasonalPrediction.weather.weekForecast.avgMaxTemp}°C / Min {seasonalPrediction.weather.weekForecast.avgMinTemp}°C | Total Rainfall: {seasonalPrediction.weather.weekForecast.totalRainfall}mm
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+
+              {/* Recommended Crops Grid */}
+              <h3 className="section-title mb-1">🌾 Recommended Crops for Your Area</h3>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "1rem" }}>Ranked by weather suitability score using live temperature, humidity, and rainfall data.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+                {seasonalPrediction.recommendedCrops?.map((crop, i) => (
+                  <div key={crop.key} style={{ background: "white", borderRadius: "12px", padding: "1rem 1.2rem", border: `2px solid ${crop.suitabilityScore >= 70 ? "#86efac" : crop.suitabilityScore >= 50 ? "#fde68a" : "#fca5a5"}`, boxShadow: "0 4px 15px rgba(0,0,0,0.04)", transition: "transform 0.2s", cursor: "default" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                      <h4 style={{ margin: 0, fontSize: "1.05rem", color: "var(--text-dark)" }}>
+                        {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i+1}`} {crop.name}
+                      </h4>
+                      <span style={{ background: crop.suitabilityScore >= 70 ? "#dcfce7" : crop.suitabilityScore >= 50 ? "#fef9c3" : "#fee2e2", color: crop.suitabilityScore >= 70 ? "#166534" : crop.suitabilityScore >= 50 ? "#854d0e" : "#991b1b", padding: "0.2rem 0.6rem", borderRadius: "100px", fontSize: "0.8rem", fontWeight: 700 }}>
+                        {crop.suitabilityScore}% Match
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: 1.4 }}>{crop.reason}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Seasonal Insights */}
+              {seasonalPrediction.insights?.length > 0 && (
+                <div className="glass-card" style={{ background: "rgba(59, 130, 246, 0.04)", border: "1px solid rgba(59, 130, 246, 0.15)", padding: "1rem 1.2rem" }}>
+                  <h4 style={{ margin: "0 0 0.5rem", color: "var(--text-dark)" }}>💡 Seasonal Farming Insights</h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                    {seasonalPrediction.insights.map((insight, i) => (
+                      <p key={i} style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)", padding: "0.5rem 0.75rem", background: "rgba(255,255,255,0.6)", borderRadius: "8px", border: "1px solid rgba(0,0,0,0.04)" }}>{insight}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Matching crops from marketplace */}
+              {filtered.some(c => c.name && (seasonalPrediction.cropNames || []).includes(c.name.toLowerCase().trim())) && (
+                <div style={{ marginTop: "1.5rem" }}>
+                  <h3 className="section-title mb-1">🛒 Available Now — Season-Matched Products</h3>
+                  <div className="scroll-x no-scrollbar" style={{ display: "flex", gap: "1rem", overflowX: "auto", paddingBottom: "1rem" }}>
+                    {filtered
+                      .filter(c => c.name && (seasonalPrediction.cropNames || []).includes(c.name.toLowerCase().trim()))
+                      .sort((a, b) => (b.trustScore || 0) - (a.trustScore || 0))
+                      .slice(0, 6)
+                      .map(c => (
+                      <motion.div 
+                        key={c._id} 
+                        data-crop-id={c._id}
+                        className="crop-card" 
+                        onClick={() => openCrop(c)} 
+                        onMouseEnter={() => focusCrop(c)}
+                        onMouseLeave={() => blurCrop()}
+                        whileHover={{ scale: 1.08, y: -6, boxShadow: "0 20px 50px rgba(22, 163, 74, 0.3)" }}
+                        style={{ minWidth: 240, cursor: "pointer", flexShrink: 0, border: "2px solid var(--green-pale)", position: "relative" }}
+                      >
+                        <div className="crop-img-wrap" style={{ height: 130 }}>
+                          {c.image ? <img src={getImgSrc(c.image)} alt={c.name} /> : <div className="crop-img-fallback">🌿</div>}
+                          {c.isOrganic && <span className="organic-badge">🌿 Organic</span>}
+                          <span className="organic-badge" style={{ background: "#dcfce7", color: "#166534", border: "1px solid #86efac" }}>✅ Season Match</span>
+                        </div>
+                        <div className="crop-info" style={{ padding: "0.8rem" }}>
+                          <div className="flex-between">
+                            <h3 className="crop-title" style={{ fontSize: "1rem" }}>{c.name}</h3>
+                            <span className="crop-price">₹{c.price}/{c.unit||"kg"}</span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginTop: "0.3rem" }}>
+                            <TrustBadge trust={getCropTrust(c)} />
+                            <DistanceBadge distance={getCropDistance(c)} />
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -1376,6 +1632,7 @@ export default function Marketplace() {
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:"0.4rem", flexWrap: "wrap" }}>
                           <h4 style={{ color:"var(--text-dark)", fontSize:"0.95rem", fontWeight:700 }}>{c.name}</h4>
+                          {c.isAdminStock && <span className="organic-tag" style={{ fontSize:"0.6rem", padding:"2px 6px", background: "#bae6fd", color: "#0369a1" }}>❄️ Clearance</span>}
                           {c.isOrganic && <span className="organic-tag" style={{ fontSize:"0.6rem", padding:"2px 6px" }}>🌿 Organic</span>}
                           {c.isPesticideFree && !c.isOrganic && <span className="organic-tag" style={{ fontSize:"0.6rem", padding:"2px 6px", background: "#ecfdf5", color: "#059669" }}>🛡️ PF</span>}
                         </div>
@@ -1386,7 +1643,12 @@ export default function Marketplace() {
                           {dist !== null && <DistanceBadge distance={dist} />}
                         </div>
                       </div>
-                      <button className="btn-primary" style={{ width:"auto", padding:"0.5rem 0.85rem", fontSize:"0.8rem", flexShrink:0, borderRadius:"100px" }} onClick={(e) => { e.stopPropagation(); openCrop(c); }}>{t("buy")}</button>
+                      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                        <button className="btn-secondary" onClick={(e) => toggleCompare(c, e)} style={{ padding:"0.5rem", borderRadius:"100px", flexShrink:0, background: compareList.find(x => x._id === c._id) ? "var(--green-pale)" : "white", borderColor: compareList.find(x => x._id === c._id) ? "var(--green-mid)" : "#e2e8f0" }} title="Compare">
+                          <Scale size={16} color={compareList.find(x => x._id === c._id) ? "var(--green-deep)" : "var(--text-muted)"} />
+                        </button>
+                        <button className="btn-primary" style={{ width:"auto", padding:"0.5rem 0.85rem", fontSize:"0.8rem", flexShrink:0, borderRadius:"100px" }} onClick={(e) => { e.stopPropagation(); openCrop(c); }}>{t("buy")}</button>
+                      </div>
                     </motion.div>
                   );
                 })}
@@ -1440,9 +1702,9 @@ export default function Marketplace() {
                 </h3>
                 <div className="scroll-x no-scrollbar" style={{ display: "flex", gap: "1rem", overflowX: "auto" }}>
                   {aiRecommendations.map(c => (
-                    <motion.div whileHover={{ scale: 1.02 }} key={`ai-${c._id}`} className="crop-card" onClick={() => openCrop(c)} style={{ minWidth: 220, cursor: "pointer", flexShrink: 0, border: "1px solid #bfdbfe", background: "#eff6ff" }}>
+                    <motion.div data-crop-id={c._id} whileHover={{ scale: 1.02 }} key={`ai-${c._id}`} className="crop-card" onClick={() => openCrop(c)} style={{ minWidth: 220, cursor: "pointer", flexShrink: 0, border: "1px solid #bfdbfe", background: "#eff6ff" }}>
                       <div className="crop-img-wrap" style={{ height: 120 }}>
-                        {c.image ? <img src={getImgSrc(c.image)} alt={c.name} /> : <div className="crop-img-fallback">🌿</div>}
+                        <img src={getImgSrc(c.image, c.name, c.category)} alt={c.name} />
                       </div>
                       <div className="crop-info" style={{ padding: "0.75rem" }}>
                         <h3 className="crop-title" style={{ fontSize: "1rem", color: "#1e3a8a" }}>{c.name}</h3>
@@ -1464,25 +1726,36 @@ export default function Marketplace() {
               const dist = getCropDistance(c);
               return (
                 <motion.div
+                  data-crop-id={c._id}
                   variants={itemVariants}
                   className="crop-card"
                   key={c._id}
                   onClick={() => openCrop(c)}
                   onMouseEnter={() => focusCrop(c)}
                   onMouseLeave={() => blurCrop()}
-                  style={{ outline: audioActive ? "1px solid transparent" : undefined, transition: "outline 0.3s" }}
+                  whileHover={{ scale: 1.15, y: -10, zIndex: 100, boxShadow: "0 40px 80px -10px rgba(22, 163, 74, 0.6)", border: "2px solid var(--green-mid)" }}
+                  style={{ outline: audioActive ? "1px solid transparent" : undefined, transition: "outline 0.3s, border 0.3s", position: "relative", border: "1px solid transparent" }}
                 >
-                  {c.image
-                    ? <img src={getImgSrc(c.image)} alt={c.name} />
-                    : <div style={{ height:180, background:"#f1f5f9", display:"flex", alignItems:"center", justifyContent:"center", color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>
-                        No Image Available
-                      </div>
-                  }
+                  <img src={getImgSrc(c.image, c.name, c.category)} alt={c.name} />
                   <div className="crop-card-body">
                     <div className="flex-between">
                       <h3 style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        <input 
+                          type="checkbox" 
+                          checked={compareList.some(comp => comp._id === c._id)}
+                          onChange={(e) => toggleCompare(c, e)}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ cursor: "pointer", width: "16px", height: "16px", accentColor: "var(--primary)" }}
+                          title="Compare this product"
+                        />
                         {c.name}
-                        <button className="tts-btn" onClick={(e) => { e.stopPropagation(); playTTS(`${c.name}. ${c.quantity} ${c.unit||"kg"} available at ${c.price} rupees per ${c.unit||"kg"}`, lang); }}><Volume2 size={16}/></button>
+                        <button className="tts-btn" onClick={(e) => { 
+                          e.stopPropagation(); 
+                          if (isTTSPlaying()) stopTTS();
+                          else playTTS(`${c.name}. ${c.quantity} ${c.unit||"kg"} available at ${c.price} rupees per ${c.unit||"kg"}`, lang, { overlap: false }); 
+                        }}>
+                          <Volume2 size={16}/>
+                        </button>
                       </h3>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexWrap: "wrap" }}>
                         {c.isFlashSale && (
@@ -1490,6 +1763,7 @@ export default function Marketplace() {
                             ⚡ {Math.max(0, Math.floor((c.flashExpiry - currentTime) / 3600000))}h {Math.max(0, Math.floor(((c.flashExpiry - currentTime) % 3600000) / 60000))}m Left
                           </span>
                         )}
+                        {c.isAdminStock && <span className="organic-tag" style={{ background: "#bae6fd", color: "#0369a1", borderColor: "#7dd3fc" }}>❄️ Clearance</span>}
                         {c.isOrganic && <span className="organic-tag">🌿</span>}
                         {c.isPesticideFree && !c.isOrganic && <span className="organic-tag" style={{ background: "#ecfdf5", color: "#059669", borderColor: "#a7f3d0" }}>🛡️</span>}
                       </div>
@@ -1526,6 +1800,9 @@ export default function Marketplace() {
                     {c.location && <p style={{ fontSize:"0.8rem", color:"var(--text-muted)", margin:"0.3rem 0 0.5rem", display:"flex", alignItems:"center", gap:"0.3rem" }}><MapIcon size={14}/> {c.location.substring(0,35)}...</p>}
                     
                     <div style={{ display: "flex", gap: "0.5rem", marginTop: "auto" }}>
+                      <button className="btn-secondary" onClick={(e) => toggleCompare(c, e)} style={{ padding:"0.6rem", borderRadius:"100px", display:"flex", justifyContent:"center", background: compareList.find(x => x._id === c._id) ? "var(--green-pale)" : "white", borderColor: compareList.find(x => x._id === c._id) ? "var(--green-mid)" : "#e2e8f0" }} title="Compare">
+                        <Scale size={16} color={compareList.find(x => x._id === c._id) ? "var(--green-deep)" : "var(--text-muted)"} />
+                      </button>
                       <button className="btn-primary" onClick={(e) => { e.stopPropagation(); openCrop(c); }} style={{ fontSize:"0.85rem", padding:"0.6rem", borderRadius:"100px", flex: 1, background: c.isPrebooking ? "var(--yellow-wheat)" : "", color: c.isPrebooking ? "#000" : "" }}>
                         <ShoppingBag size={16} /> {c.isPrebooking ? "Pre-book" : t("buy")}
                       </button>
@@ -1542,21 +1819,20 @@ export default function Marketplace() {
         )
       )}
 
-      {/* ── ORDER MODAL ── */}
+      {/* ── FULL-PAGE ORDER / PRODUCT MODAL ── */}
       {showModal && selected && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", backdropFilter:"blur(8px)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem" }}
-          onClick={(e) => { if (e.target === e.currentTarget) { setShowModal(false); setMsg({ type:"", text:"" }); setShowBill(null); setTrustScoreDetail(null); } }}>
-          <div className="glass-card-dark" style={{ maxWidth:600, width:"100%", maxHeight:"90vh", overflowY:"auto", position: "relative" }}>
+        <div style={{ position:"fixed", inset:0, background:"#f8fafc", zIndex:100000, overflowY:"auto" }}>
+          <div style={{ maxWidth:"1200px", margin:"0 auto", padding:"2rem", position: "relative", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
             
             {/* Explicit Close / Back Button */}
             <button 
               onClick={() => { setShowModal(false); setMsg({ type:"", text:"" }); setShowBill(null); setTrustScoreDetail(null); }}
-              style={{ position: "absolute", top: "1.2rem", right: "1.2rem", background: "rgba(0,0,0,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "50%", padding: "0.5rem", cursor: "pointer", zIndex: 10, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+              style={{ position: "absolute", top: "1.5rem", left: "1.5rem", background: "white", border: "1px solid #e2e8f0", borderRadius: "100px", padding: "0.6rem 1.2rem", cursor: "pointer", zIndex: 10, display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, boxShadow: "0 4px 15px rgba(0,0,0,0.05)", transition: "all 0.2s" }}
               title="Close and Go Back"
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.3)"}
-              onMouseLeave={e => e.currentTarget.style.background = "rgba(0,0,0,0.1)"}
+              onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.05)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
             >
-              <X size={20} color="var(--text-dark)" />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Market
             </button>
 
             {/* ── BILL VIEW ── */}
@@ -1591,14 +1867,14 @@ export default function Marketplace() {
                 </div>
               </div>
             ) : (
-              <>
-                {/* Crop Header */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(450px, 1fr))", gap: "4rem", marginTop: "4rem", width: "100%", alignItems: "start" }}>
+                
+                {/* ── LEFT COLUMN: Product Info, Imagery, Analytics ── */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                  {/* Crop Header */}
                 <div style={{ display:"flex", gap:"1rem", marginBottom:"1.5rem", alignItems:"flex-start" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", alignItems: "center", flexShrink: 0 }}>
-                    {selected.image
-                      ? <img src={getImgSrc(selected.image)} alt={selected.name} style={{ width:100, height:100, objectFit:"cover", borderRadius:12 }} />
-                      : <div style={{ width:100, height:100, borderRadius:12, background:"#f1f5f9", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.75rem", color: "var(--text-muted)", textAlign: "center", padding: "0.5rem" }}>No Image</div>
-                    }
+                    <img src={getImgSrc(selected.image, selected.name, selected.category)} alt={selected.name} style={{ width:100, height:100, objectFit:"cover", borderRadius:12 }} />
                     <button 
                       onClick={(e) => { e.stopPropagation(); setShow3DView(true); }}
                       style={{ fontSize: "0.75rem", background: "linear-gradient(135deg, #1e3a8a, #3b82f6)", color: "white", padding: "0.3rem 0.6rem", borderRadius: "100px", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem", boxShadow: "0 2px 4px rgba(59, 130, 246, 0.3)" }}>
@@ -1676,38 +1952,35 @@ export default function Marketplace() {
                   </div>
                 </div>
                 {/* Price Trends & Analytics Chart */}
-                {priceTrends && (
-                  <div style={{ marginBottom: "1.5rem", padding: "1rem", background: "rgba(59, 130, 246, 0.05)", borderRadius: "var(--radius-md)", border: "1px solid rgba(59, 130, 246, 0.2)" }}>
-                    <h4 style={{ color: "#1e40af", marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                      📈 Local Market Price Trends
+                {/* Price Trends & Analytics Chart */}
+                {priceTrends && priceTrends.globalPrediction && priceTrends.localPrediction && (
+                  <div style={{ marginBottom: "1.5rem", padding: "1.5rem", background: "rgba(59, 130, 246, 0.05)", borderRadius: "var(--radius-md)", border: "1px solid rgba(59, 130, 246, 0.2)" }}>
+                    <h4 style={{ color: "#1e40af", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      📈 Advanced ML Price Predictions
                     </h4>
                     
-                    {/* Advanced CSS Bar Chart */}
-                    <div style={{ display: "flex", alignItems: "flex-end", gap: "1rem", height: "100px", marginTop: "1rem", paddingBottom: "10px", borderBottom: "1px dashed #cbd5e1" }}>
-                      {[30, 14, 7, 1].map((days, idx) => {
-                        // Dummy logic to generate a sensible chart based on the selected price
-                        const randomFactor = 1 + (Math.sin(selected.price + days) * 0.2); // +/- 20%
-                        const historicPrice = Math.round(selected.price * randomFactor);
-                        const heightPct = Math.min(100, Math.max(10, (historicPrice / (selected.price * 1.5)) * 100));
-                        
-                        return (
-                          <div key={idx} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.3rem" }}>
-                            <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: "bold" }}>₹{historicPrice}</div>
-                            <div style={{ 
-                              width: "30px", height: `${heightPct}%`, 
-                              background: days === 1 ? "var(--green-mid)" : "#93c5fd", 
-                              borderRadius: "4px 4px 0 0",
-                              transition: "height 0.5s ease"
-                            }}></div>
-                            <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>{days}d ago</div>
-                          </div>
-                        );
-                      })}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                      <div style={{ background: "white", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                        <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "0.5rem" }}>Global Market Avg</div>
+                        <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "var(--text-dark)" }}>₹{priceTrends.globalPrediction.suggested_price}/kg</div>
+                        <div style={{ fontSize: "0.75rem", color: priceTrends.globalPrediction.market_trend === "Rising" || priceTrends.globalPrediction.market_trend === "Upward" ? "#dc2626" : "#16a34a", marginTop: "0.5rem", fontWeight: 600 }}>
+                          {priceTrends.globalPrediction.market_trend === "Rising" || priceTrends.globalPrediction.market_trend === "Upward" ? "↗ Trending Up" : "↘ Trending Down"}
+                        </div>
+                      </div>
+                      
+                      <div style={{ background: "white", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0", position: "relative", overflow: "hidden" }}>
+                        <div style={{ position: "absolute", top: 0, right: 0, background: "var(--green-mid)", color: "white", fontSize: "0.6rem", padding: "0.2rem 0.5rem", borderBottomLeftRadius: "8px", fontWeight: "bold" }}>Within 25km</div>
+                        <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "0.5rem" }}>Local Demand Surge</div>
+                        <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "var(--text-dark)" }}>₹{priceTrends.localPrediction.suggested_price}/kg</div>
+                        <div style={{ fontSize: "0.75rem", color: priceTrends.localPrediction.market_trend === "Rising" || priceTrends.localPrediction.market_trend === "Upward" ? "#dc2626" : "#16a34a", marginTop: "0.5rem", fontWeight: 600 }}>
+                          {priceTrends.localPrediction.market_trend === "Rising" || priceTrends.localPrediction.market_trend === "Upward" ? "↗ High Demand Surge" : "↘ Stable Supply"}
+                        </div>
+                      </div>
                     </div>
-                    
-                    <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.75rem" }}>
-                      {priceTrends.trend === "up" ? "Market prices are rising. " : priceTrends.trend === "down" ? "Market prices are dropping. " : "Prices are stable. "}
-                      Rythu Sethu farmers are saving you roughly {priceTrends.savingsPercent || 15}% compared to retail!
+
+                    <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", background: "#f8fafc", padding: "0.8rem", borderRadius: "6px" }}>
+                      <strong>🤖 AI Insight:</strong> The local competitor price (within 25km) is currently averaging ₹{Math.round(priceTrends.local25kmAverage)}. 
+                      By ordering from {selected.farmer?.name || "this farmer"} at ₹{selected.price}, you are getting a {selected.price < priceTrends.localPrediction.suggested_price ? "GREAT DEAL" : "FAIR MARKET PRICE"}.
                     </p>
                   </div>
                 )}
@@ -1880,9 +2153,13 @@ export default function Marketplace() {
                   </div>
                 ) : null}
 
-                {/* Order Form */}
-                <div className="section-divider"><hr /><span>Place Order</span><hr /></div>
-                {msg.text && <div className={`alert alert-${msg.type} mb-2`}>{msg.text}</div>}
+                </div> {/* End Left Column */}
+
+                {/* ── RIGHT COLUMN: Order Form & Checkout ── */}
+                <div style={{ background: "white", padding: "2.5rem", borderRadius: "24px", boxShadow: "0 20px 40px rgba(0,0,0,0.04)", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", position: "sticky", top: "2rem" }}>
+                  <h3 style={{ fontSize: "1.4rem", fontWeight: 900, marginBottom: "1.5rem", borderBottom: "2px solid #f8fafc", paddingBottom: "1rem", color: "var(--text-dark)" }}>Secure Checkout</h3>
+                  
+                  {msg.text && <div className={`alert alert-${msg.type} mb-2`}>{msg.text}</div>}
 
                 {/* Delivery Type Selection */}
                 <div className="form-group">
@@ -1954,14 +2231,17 @@ export default function Marketplace() {
                           activeField={activeField}
                         />
                       </div>
-                      <LocationButton
-                        compact
-                        onLocation={({ address, lat, lng }) => {
-                          setOrderAddr(address);
-                          setOrderLat(lat);
-                          setOrderLng(lng);
+                      <button
+                        type="button"
+                        onClick={() => setShowLocationPicker(true)}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: "0.4rem", padding: "0.75rem 1rem",
+                          background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "12px",
+                          color: "#3b82f6", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap"
                         }}
-                      />
+                      >
+                        📍 Map
+                      </button>
                     </div>
                     {orderAddr && (
                       <p style={{ fontSize: "0.75rem", color: "var(--green-mid)", marginTop: "0.3rem" }}>
@@ -2021,7 +2301,8 @@ export default function Marketplace() {
                     <ShoppingBag size={18} /> Add to Cart
                   </button>
                 </div>
-              </>
+              </div>
+            </div>
             )}
           </div>
         </div>
@@ -2079,7 +2360,158 @@ export default function Marketplace() {
           </motion.div>
         </div>
       )}
+      {/* ── FLOATING COMPARE BAR ── */}
+      <AnimatePresence>
+        {compareList.length > 0 && !showCompareModal && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            style={{ position: "fixed", bottom: "2rem", left: "50%", transform: "translateX(-50%)", background: "white", padding: "1rem 1.5rem", borderRadius: "100px", boxShadow: "0 10px 30px rgba(0,0,0,0.15)", display: "flex", alignItems: "center", gap: "1.5rem", zIndex: 50, border: "1px solid #e2e8f0" }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Scale size={20} color="var(--green-mid)" />
+              <span style={{ fontWeight: 700, color: "var(--text-dark)" }}>Comparing {compareList.length} item{compareList.length > 1 ? "s" : ""}</span>
+            </div>
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <button onClick={() => setCompareList([])} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontWeight: 600 }}>Clear</button>
+              <button onClick={() => setShowCompareModal(true)} disabled={compareList.length < 2} className="btn-primary" style={{ padding: "0.5rem 1.25rem", borderRadius: "100px", fontSize: "0.9rem", opacity: compareList.length < 2 ? 0.5 : 1 }}>
+                {compareList.length < 2 ? "Select one more" : "Compare Now"}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── FLOATING COMPARE BUTTON ── */}
+      {compareList.length > 0 && !showCompareModal && (
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          style={{ position: "fixed", bottom: "80px", left: "50%", transform: "translateX(-50%)", zIndex: 1000 }}
+        >
+          <button 
+            className="btn-primary" 
+            onClick={() => setShowCompareModal(true)}
+            style={{ padding: "0.8rem 1.5rem", borderRadius: "100px", display: "flex", alignItems: "center", gap: "0.5rem", boxShadow: "0 10px 25px rgba(34, 197, 94, 0.4)", fontSize: "1rem", fontWeight: "bold" }}
+          >
+            <Scale size={20} /> Compare {compareList.length} Item{compareList.length !== 1 && "s"}
+          </button>
+        </motion.div>
+      )}
+
+      {/* ── COMPARE MODAL ── */}
+      {showCompareModal && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.8)", backdropFilter:"blur(8px)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowCompareModal(false); }}>
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-card-dark" style={{ maxWidth: 900, width: "100%", maxHeight: "90vh", overflowY: "auto", position: "relative", padding: "2rem" }}>
+            <button 
+              onClick={() => setShowCompareModal(false)}
+              style={{ position: "absolute", top: "1.2rem", right: "1.2rem", background: "rgba(0,0,0,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "50%", padding: "0.5rem", cursor: "pointer" }}
+            >
+              <X size={20} color="var(--text-dark)" />
+            </button>
+            
+            <h2 style={{ color: "var(--text-dark)", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Scale size={24} color="var(--green-mid)" /> Compare Items
+            </h2>
+            
+            <div className="scroll-x no-scrollbar" style={{ overflowX: "auto", paddingBottom: "1rem" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: `${compareList.length * 200}px` }}>
+                <thead>
+                  <tr>
+                    <th style={{ padding: "1rem", textAlign: "left", color: "var(--text-muted)", borderBottom: "2px solid #e2e8f0" }}>Features</th>
+                    {compareList.map(c => (
+                      <th key={c._id} style={{ padding: "1rem", textAlign: "center", borderBottom: "2px solid #e2e8f0" }}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
+                          <img src={getImgSrc(c.image, c.name, c.category)} style={{ width: 80, height: 80, borderRadius: 12, objectFit: "cover" }} alt={c.name} />
+                          <span style={{ color: "var(--text-dark)", fontSize: "1.1rem" }}>{c.name}</span>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Price Row */}
+                  <tr>
+                    <td style={{ padding: "1rem", fontWeight: 600, color: "var(--text-dark)", borderBottom: "1px solid #e2e8f0" }}>Price</td>
+                    {compareList.map(c => (
+                      <td key={c._id} style={{ padding: "1rem", textAlign: "center", borderBottom: "1px solid #e2e8f0", fontSize: "1.2rem", color: "var(--green-deep)", fontWeight: 700 }}>
+                        ₹{c.price}/{c.unit||"kg"}
+                      </td>
+                    ))}
+                  </tr>
+                  {/* Quality / Trust Row */}
+                  <tr>
+                    <td style={{ padding: "1rem", fontWeight: 600, color: "var(--text-dark)", borderBottom: "1px solid #e2e8f0" }}>Quality / Trust</td>
+                    {compareList.map(c => {
+                      const t = getCropTrust(c);
+                      return (
+                        <td key={c._id} style={{ padding: "1rem", textAlign: "center", borderBottom: "1px solid #e2e8f0" }}>
+                          {t ? <TrustBadge trust={t} /> : <span style={{ color: "var(--text-muted)" }}>N/A</span>}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                  {/* Distance Row */}
+                  <tr>
+                    <td style={{ padding: "1rem", fontWeight: 600, color: "var(--text-dark)", borderBottom: "1px solid #e2e8f0" }}>Distance</td>
+                    {compareList.map(c => {
+                      const d = getCropDistance(c);
+                      return (
+                        <td key={c._id} style={{ padding: "1rem", textAlign: "center", borderBottom: "1px solid #e2e8f0" }}>
+                          {d !== null ? <DistanceBadge distance={d} /> : <span style={{ color: "var(--text-muted)" }}>Unknown</span>}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                  {/* Farming Method Row */}
+                  <tr>
+                    <td style={{ padding: "1rem", fontWeight: 600, color: "var(--text-dark)", borderBottom: "1px solid #e2e8f0" }}>Method</td>
+                    {compareList.map(c => (
+                      <td key={c._id} style={{ padding: "1rem", textAlign: "center", borderBottom: "1px solid #e2e8f0" }}>
+                        {c.isOrganic ? <span className="organic-tag" style={{ margin: "0 auto" }}>🌿 Organic</span> : c.isPesticideFree ? <span className="organic-tag" style={{ margin: "0 auto", background: "#ecfdf5", color: "#059669", borderColor: "#a7f3d0" }}>🛡️ Pesticide-Free</span> : <span style={{ color: "var(--text-muted)" }}>Standard</span>}
+                      </td>
+                    ))}
+                  </tr>
+                  {/* Action Row */}
+                  <tr>
+                    <td style={{ padding: "1rem", borderBottom: "1px solid transparent" }}></td>
+                    {compareList.map(c => (
+                      <td key={c._id} style={{ padding: "1rem", textAlign: "center" }}>
+                        <button className="btn-primary" onClick={() => { addToCart(c, 1, c.isPrebooking || false); setShowCompareModal(false); setIsCartOpen(true); }} style={{ padding: "0.5rem 1rem", borderRadius: "100px", fontSize: "0.85rem", width: "100%" }}>
+                          🛒 Add to Cart
+                        </button>
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        </div>
+      )}
       </>
+      )}
+      
+      <LocationPickerModal 
+        isOpen={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+        initialLat={orderLat || user?.latitude}
+        initialLng={orderLng || user?.longitude}
+        onConfirm={({ address, lat, lng }) => {
+          setOrderAddr(address);
+          setOrderLat(lat);
+          setOrderLng(lng);
+        }}
+      />
+      
+      {/* ─── Order Tracking Portal ─── */}
+      {trackingOrder && (
+        <OrderTracking 
+          orderId={trackingOrder} 
+          onClose={() => setTrackingOrder(null)} 
+        />
       )}
     </motion.div>
   );

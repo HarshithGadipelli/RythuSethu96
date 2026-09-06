@@ -101,6 +101,12 @@ router.post("/accept/:orderId", async (req, res) => {
     if (!order) return res.status(404).json({ error: "Order not found" });
     if (order.agent) return res.status(400).json({ error: "This order already has an assigned agent" });
 
+    // Enforce Weight Limit Security Rule
+    const maxCapacity = vehicleType === 'truck' ? 5000 : 50; // kg
+    if (order.quantity > maxCapacity) {
+      return res.status(400).json({ error: `Security Rule Violation: Order is too heavy (${order.quantity}kg) for a ${vehicleType} (Max ${maxCapacity}kg).` });
+    }
+
     // Calculate ETA based on distance & vehicle
     const pickupLat = order.farmer?.latitude || order.crop?.latitude;
     const pickupLng = order.farmer?.longitude || order.crop?.longitude;
@@ -131,7 +137,13 @@ router.post("/accept/:orderId", async (req, res) => {
       vehicleType: vehicle,
       estimatedTime: etaText,
       estimatedMinutes: etaMinutes,
+      estimatedDeliveryDeadline: new Date(Date.now() + etaMinutes * 60 * 1000),
       trackingCode: "TRK-" + Date.now().toString(36).toUpperCase()
+    });
+
+    await Order.findByIdAndUpdate(orderId, {
+      estimatedDeliveryMinutes: etaMinutes,
+      estimatedDeliveryDeadline: new Date(Date.now() + etaMinutes * 60 * 1000)
     });
 
     const io = req.app.get("io");
@@ -309,14 +321,125 @@ router.post("/:id/verify-otp", async (req, res) => {
 router.put("/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, wasteCollectedKg } = req.body;
+    
+    const deliveryDoc = await Delivery.findById(id).populate("order");
+    if (!deliveryDoc) return res.status(404).json({ error: "Delivery not found." });
+
+    // Security Rule: Require Quality Verification Photo for delivery
+    if (status === "delivered") {
+      if (!deliveryDoc.deliveryPhoto) {
+        return res.status(400).json({ error: "Security Rule Violation: Quality Verification Photo is required before marking as delivered." });
+      }
+    }
+
     const updates = { status };
-    if (status === "delivered") updates.deliveredAt = new Date();
+    if (status === "delivered") {
+      const now = new Date();
+      updates.deliveredAt = now;
+
+      // ── Circular Economy: Waste Collection ──
+      if (wasteCollectedKg && Number(wasteCollectedKg) > 0) {
+        updates.wasteCollectedKg = Number(wasteCollectedKg);
+        updates.wastePointsAwarded = updates.wasteCollectedKg * 10;
+        
+        // Award points to the customer
+        if (deliveryDoc.order && deliveryDoc.order.customer) {
+          await User.findByIdAndUpdate(
+            deliveryDoc.order.customer._id || deliveryDoc.order.customer,
+            { $inc: { rewardPoints: updates.wastePointsAwarded } }
+          );
+        }
+      }
+
+      // ─── Performance, Fast Delivery Incentive & Late Penalty Engine ───
+      const deadline = deliveryDoc.estimatedDeliveryDeadline || deliveryDoc.order?.estimatedDeliveryDeadline || new Date(new Date(deliveryDoc.createdAt).getTime() + (deliveryDoc.estimatedMinutes || 35) * 60 * 1000);
+      const diffMinutes = Math.round((deadline.getTime() - now.getTime()) / (60 * 1000));
+      const isEarly = diffMinutes >= 0;
+      const isLate = diffMinutes < 0;
+
+      let speedBonusPoints = 0;
+      let speedBonusCash = 0;
+      let latePenaltyPoints = 0;
+      let latePenaltyDeduction = 0;
+      let scoreChange = 0;
+
+      if (isEarly) {
+        // Fast / On-time Delivery Bonus (+20 to +50 points, +₹10 - ₹30 cash tip, +2 to +5 score)
+        speedBonusPoints = Math.min(50, Math.max(20, 20 + diffMinutes * 2));
+        speedBonusCash = Math.min(30, Math.max(10, Math.round(diffMinutes * 1.5)));
+        scoreChange = Math.min(5, Math.max(2, Math.round(diffMinutes / 5) + 2));
+
+        if (deliveryDoc.agent) {
+          await User.findByIdAndUpdate(deliveryDoc.agent, {
+            $inc: {
+              rewardPoints: speedBonusPoints,
+              experiencePoints: speedBonusPoints,
+              walletBalance: speedBonusCash,
+              deliveryScore: scoreChange
+            }
+          });
+
+          await notify(req.app, deliveryDoc.agent,
+            "⚡ Lightning Fast Delivery Bonus!",
+            `Awesome speed! You delivered ${diffMinutes} mins before deadline. Earned +${speedBonusPoints} Speed Points, +${scoreChange} Delivery Score, and ₹${speedBonusCash} Cash Tip!`,
+            "reward", "high", { orderId: deliveryDoc.order?._id, bonusPoints: speedBonusPoints, bonusCash: speedBonusCash }
+          );
+        }
+      } else {
+        // Late Delivery Penalty (-10 to -40 penalty points, score reduction, -₹20 delay fee if >15 mins late)
+        const lateMins = Math.abs(diffMinutes);
+        const isDisputed = deliveryDoc.deliveryPerformance?.isDisputed;
+
+        if (isDisputed) {
+          scoreChange = 0;
+          latePenaltyPoints = 0;
+        } else {
+          latePenaltyPoints = Math.min(50, Math.max(10, 10 + Math.floor(lateMins / 5) * 5));
+          scoreChange = -Math.min(10, Math.max(2, Math.floor(lateMins / 10) * 2));
+          if (lateMins > 15) latePenaltyDeduction = 20;
+
+          if (deliveryDoc.agent) {
+            const agentUser = await User.findById(deliveryDoc.agent);
+            const newPoints = Math.max(0, (agentUser.rewardPoints || 0) - latePenaltyPoints);
+            const newScore = Math.max(30, (agentUser.deliveryScore || 100) + scoreChange);
+            const walletDeduction = latePenaltyDeduction > 0 ? { $inc: { walletBalance: -latePenaltyDeduction } } : {};
+
+            await User.findByIdAndUpdate(deliveryDoc.agent, {
+              rewardPoints: newPoints,
+              deliveryScore: newScore,
+              ...walletDeduction
+            });
+
+            await notify(req.app, deliveryDoc.agent,
+              "⚠️ Late Delivery Points Deduction",
+              `Order was delivered ${lateMins} mins past estimated deadline. Points reduced by -${latePenaltyPoints} pts and Delivery Score updated (${scoreChange}).`,
+              "delivery", "high", { orderId: deliveryDoc.order?._id, penaltyPoints: latePenaltyPoints }
+            );
+          }
+        }
+      }
+
+      updates.deliveryPerformance = {
+        deliveredAt: now,
+        deadline,
+        diffMinutes,
+        isEarly,
+        isLate,
+        speedBonusPoints,
+        speedBonusCash,
+        latePenaltyPoints,
+        latePenaltyDeduction,
+        deliveryScoreChange: scoreChange,
+        delayReason: deliveryDoc.deliveryPerformance?.delayReason || "",
+        isDisputed: deliveryDoc.deliveryPerformance?.isDisputed || false
+      };
+    }
 
     const delivery = await Delivery.findByIdAndUpdate(id, updates, { new: true })
       .populate({ path: "order", populate: [{ path: "crop" }, { path: "customer" }, { path: "farmer" }] });
 
-    // Also update the order status
+    // Also update the order status & delivery performance
     if (delivery?.order) {
       const orderStatusMap = {
         "picked_up": "picked_up",
@@ -329,6 +452,9 @@ router.put("/:id/status", async (req, res) => {
           status: orderStatusMap[status],
           $push: { timeline: { status: orderStatusMap[status], note: `Delivery ${status.replace("_", " ")}` } }
         };
+        if (updates.deliveryPerformance) {
+          orderUpdates.deliveryPerformance = updates.deliveryPerformance;
+        }
         // Auto-clear COD payment upon delivery
         if (status === "delivered" && delivery.order.paymentMode === "cod") {
           orderUpdates.paymentStatus = "paid";
@@ -382,13 +508,9 @@ router.put("/:id/status", async (req, res) => {
       for (const admin of admins) {
         await notify(req.app, admin._id,
           "✅ Delivery Completed",
-          `Order #${order?.billNumber || ""} delivered successfully.`,
+          `Order #${order?.billNumber || ""} delivered. Early: ${updates.deliveryPerformance?.isEarly ? "Yes" : "No"}, Diff: ${updates.deliveryPerformance?.diffMinutes}m`,
           "delivery", "low", { orderId: order?._id }
         );
-      }
-      // Award agent XP
-      if (delivery.agent) {
-        await User.findByIdAndUpdate(delivery.agent, { $inc: { experiencePoints: 10 } });
       }
     }
 
@@ -400,7 +522,6 @@ router.put("/:id/status", async (req, res) => {
           "delivery", "urgent", { orderId: order._id }
         );
       }
-      // Notify admins
       const admins = await User.find({ role: "admin" });
       for (const admin of admins) {
         await notify(req.app, admin._id,
@@ -412,6 +533,65 @@ router.put("/:id/status", async (req, res) => {
     }
 
     res.json(delivery);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Log Delay Reason & Dispute / Waiver ───
+router.post("/:id/log-delay", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, notes } = req.body;
+    if (!reason) return res.status(400).json({ error: "Delay reason is required." });
+
+    const delivery = await Delivery.findByIdAndUpdate(
+      id,
+      {
+        "deliveryPerformance.delayReason": `${reason}: ${notes || ""}`.trim(),
+        "deliveryPerformance.isDisputed": true
+      },
+      { new: true }
+    ).populate("order");
+
+    if (!delivery) return res.status(404).json({ error: "Delivery not found." });
+
+    if (delivery.order) {
+      await Order.findByIdAndUpdate(delivery.order._id || delivery.order, {
+        "deliveryPerformance.delayReason": `${reason}: ${notes || ""}`.trim(),
+        "deliveryPerformance.isDisputed": true
+      });
+    }
+
+    res.json({ success: true, message: "Delay reason logged and penalty waiver submitted.", delivery });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Agent Performance & Speed Analytics ───
+router.get("/agent-performance/:agentId", async (req, res) => {
+  try {
+    const deliveries = await Delivery.find({ agent: req.params.agentId, status: "delivered" }).sort({ createdAt: -1 });
+    const totalCompleted = deliveries.length;
+    const earlyDeliveries = deliveries.filter(d => d.deliveryPerformance?.isEarly).length;
+    const lateDeliveries = deliveries.filter(d => d.deliveryPerformance?.isLate).length;
+    const onTimeRate = totalCompleted > 0 ? Math.round((earlyDeliveries / totalCompleted) * 100) : 100;
+    const totalSpeedPoints = deliveries.reduce((sum, d) => sum + (d.deliveryPerformance?.speedBonusPoints || 0), 0);
+    const totalSpeedCash = deliveries.reduce((sum, d) => sum + (d.deliveryPerformance?.speedBonusCash || 0), 0);
+    const totalPenaltyPoints = deliveries.reduce((sum, d) => sum + (d.deliveryPerformance?.latePenaltyPoints || 0), 0);
+
+    res.json({
+      totalCompleted,
+      earlyDeliveries,
+      lateDeliveries,
+      onTimeRate,
+      totalSpeedPoints,
+      totalSpeedCash,
+      totalPenaltyPoints,
+      recentPerformances: deliveries.slice(0, 10).map(d => ({
+        id: d._id,
+        trackingCode: d.trackingCode,
+        deliveredAt: d.deliveredAt || d.updatedAt,
+        performance: d.deliveryPerformance
+      }))
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

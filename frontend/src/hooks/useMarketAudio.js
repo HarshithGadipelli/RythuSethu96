@@ -1,466 +1,429 @@
-/**
- * useMarketAudio — Immersive Indian Market Audio Engine
+﻿/**
+ * useMarketAudio v2.0 — Immersive Indian Mandi Audio Engine
  *
- * States:
- *  "ambient"  → cycling random crops, 3 overlapping vendor voices every 10s
- *  "focused"  → hovered on one product, that crop announced clearly on loop
- *
- * Exported:
- *  { isActive, toggle, focusCrop, blurCrop }
+ * - All vendor voices play simultaneously on ambient mode (scroll top)
+ * - As you scroll DOWN to a product, that vendor's voice DOMINATES via IntersectionObserver
+ * - All other voices are DUCKED (volume lowered) automatically
+ * - Web Audio API GainNode handles real-time volume crossfade
+ * - Massive slang/language dictionary for ultra-realistic market feel
  */
 import { useRef, useCallback, useEffect, useState } from "react";
 
-// ── Full Indian language templates (Expanded for greater realism and variety) ────────
+// ── Hyper-Realistic Multi-Lingual Selling Slangs ──────────────────────────────
 const TEMPLATES = {
   en: [
-    (n, p, u) => `Fresh ${n}! Only ${p} rupees per ${u}. Get it now!`,
-    (n, p, u) => `Hey! Farm fresh ${n} arriving! Just ${p} per ${u}.`,
-    (n, p, u) => `Top quality ${n}! Selling fast at ${p} rupees for one ${u}.`,
-    (n, p, u) => `Come brother, look at this beauty! Excellent ${n} for ${p} rupees.`,
-    (n, p, u) => `Last stock of ${n}! Closing soon! Take it for ${p} per ${u}!`,
-    (n, p, u) => `Direct from the village! Chemical free ${n}. Only ${p} rupees.`,
-    (n, p, u) => `Madam, very sweet ${n} here! Just ${p} rupees for one ${u}.`,
-    (n, p, u) => `Wholesale price! Fresh ${n} directly to your hands at ${p} rupees!`,
-    (n, p, u) => `Look here! Look here! Best ${n} in the market, only ${p} rupees.`,
-    (n, p, u) => `Don't miss this! Plucked this morning, fresh ${n} for ${p} per ${u}.`,
-    (n, p, u) => `Crisp and clean ${n}! Special price today: ${p} rupees!`,
-    (n, p, u) => `Sir, take a look! Premium ${n} going for just ${p} rupees per ${u}.`,
-    (n, p, u) => `Clearing stock! Fast fast! Beautiful ${n} for ${p} rupees!`,
-    (n, p, u) => `Taste the sweetness! Pure ${n} straight from our farm, only ${p} per ${u}.`,
-    (n, p, u) => `Lowest price guarantee! Amazing ${n} available for ${p} rupees.`,
-    (n, p, u) => `Bumper harvest! Fresh and healthy ${n} for ${p} rupees.`
+    (n, p, u, s) => `Hey hey hey! Fresh ${n} just arrived! Only ${p} rupees per ${u}! Come come come!`,
+    (n, p, u, s) => `Brother! Looking here brother! Top quality ${n}, direct farm to you, just ${p} a ${u}!`,
+    (n, p, u, s) => `Madam, this way please! Sweetest ${n} in the whole market! Just ${p} rupees, take it!`,
+    (n, p, u, s) => `Morning harvest! Fresh morning harvest of ${n}! Village price, only ${p} per ${u}!`,
+    (n, p, u, s) => `Last stock! Last batch of ${n} today! Hurry, only ${p} rupees per ${u} left!`,
+    (n, p, u, s) => `Nobody beats this! Best ${n} for ${p} rupees, nobody in this mandi sells cheaper!`,
+    (n, p, u, s) => `Ayo look! Farm fresh ${n}, no chemicals, no middleman, straight to you at ${p}!`,
+    (n, p, u, s) => `Two kilos for the price of one! No wait, but this ${n} at ${p} is basically free!`,
+    (n, p, u, s) => `Sir! Sir! Taste one piece! I promise you will buy one full kilo of ${n} at ${p}!`,
+    (n, p, u, s) => `Superb quality ${n}! Bumper crop this season! Your family will love it at ${p} per ${u}!`,
+    (n, p, u, s) => `Arre yaar! This ${n} was plucked at 4am this morning! Nothing fresher! Only ${p}!`,
+    (n, p, u, s) => `Grandma special ${n}! Grown with love and cow dung compost only! ${p} rupees per ${u}!`,
+    (n, p, u, s) => `Zero chemicals! Zero pesticides! Pure natu ${n} at just ${p} per ${u}! Come na!`,
+    (n, p, u, s) => `Desi variety ${n} from Telangana fields! Rich taste, low price, only ${p} per ${u}!`,
+    (n, p, u, s) => `My ${n} won second prize at district mandi! Buy the best for ${p} per ${u}!`,
+    (n, p, u, s) => `Hurry hurry! Closing in 30 minutes! Get fresh ${n} for only ${p} a ${u}!`,
+    (n, p, u, s) => `Wholesale rate for retail! This premium ${n} normally costs more but today ${p} per ${u}!`,
   ],
   te: [
-    (n, p, u) => `అరేయ్, తాజా ${n} వచ్చాయి! ఒక్కో ${u} కు కేవలం ${p} రూపాయలు. ఇప్పుడే తీసుకోండి!`,
-    (n, p, u) => `చూడండి బాబూ, భలే ${n}! ${p} రూపాయలకే ${u} ఇస్తున్నాం.`,
-    (n, p, u) => `కొత్త పంట ${n}! రేటు కేవలం ${p} రూపాయలు ${u} కి.`,
-    (n, p, u) => `అమ్మా, ఇటు చూడండి! పల్లెటూరి నుండి తెచ్చిన ${n}. ${p} రూపాయలకే తీసుకోండి!`,
-    (n, p, u) => `సరుకు అయిపోతోంది! ఆఖరి ${n}! ${p} రూపాయలు మాత్రమే!`,
-    (n, p, u) => `మందులు వేయని మంచి ${n}! ఒక్క ${u} కు ${p} రూపాయలు.`,
-    (n, p, u) => `హోల్ సేల్ రేటుకే ఇస్తున్నాం! తాజా ${n} ${p} రూపాయలకే రండి రండి!`,
-    (n, p, u) => `అద్భుతమైన ${n} కాయలు! కేవలం ${p} రూపాయలకే తీసుకెళ్ళండి!`,
-    (n, p, u) => `చౌక ధరకే అమ్ముతున్నాం! ఒక ${u} ${n} ${p} రూపాయలు.`,
-    (n, p, u) => `అయ్యా, మంచి రుచికరమైన ${n}! కేవలం ${p} రూపాయలకే!`,
-    (n, p, u) => `పొలం నుంచి నేరుగా మీ చేతికి! ${n} ${p} రూపాయలకే!`,
-    (n, p, u) => `త్వరపడండి! బేరం తక్కువ, నాణ్యత ఎక్కువ. ${n} కేవలం ${p} రూపాయలు!`
+    (n, p, u, s) => `అయ్యో రండి రండి! పొద్దున్నే కోసిన తాజా ${n}! కేవలం ${p} రూపాయలు! తీసుకోండి!`,
+    (n, p, u, s) => `బాబూ! ఇటు చూడు బాబూ! ఇంత మంచి ${n} ఈ మార్కెట్ లో ఎక్కడా లేదు! ${p} రూపాయలే!`,
+    (n, p, u, s) => `అమ్మగారూ! నాటు నాటు ${n}! మందులు అస్సలు వేయలేదు! ${p} కే ఒక ${u} ఇస్తా!`,
+    (n, p, u, s) => `ఓ అన్నా! పల్లెటూరి పొలం నుండి నేరుగా తెచ్చాం! తాజా ${n} కేవలం ${p} రూపాయలే!`,
+    (n, p, u, s) => `సరుకు తక్కువ ఉంది! ఆఖరి బస్తా ${n}! తొందరగా రండి, ${p} రూపాయలు మాత్రమే!`,
+    (n, p, u, s) => `చూడు అన్నా చూడు! ఇంత పచ్చిగా ఉన్న ${n} ఎక్కడ దొరుకుతుంది? ${p} రూపాయలే!`,
+    (n, p, u, s) => `రేపటి నుండి ధర పెరుగుతుంది! ఈరోజే తీసుకో! ${n} కేవలం ${p} రూపాయలు!`,
+    (n, p, u, s) => `ఒరేయ్! తోట నుండి నేరుగా తెచ్చాను! ఇంత తాజా ${n} ఎక్కడా దొరకదు! ${p} మాత్రమే!`,
+    (n, p, u, s) => `అయ్యగారు రండి! ఈ ${n} రుచి ఒక్కసారి చూడండి! మళ్ళీ మళ్ళీ కొంటారు! ${p} రూపాయలు!`,
+    (n, p, u, s) => `బంపర్ హార్వెస్ట్! ఈ సీజన్ లో బాగా పండింది! మేలైన ${n} కేవలం ${p}కే!`,
+    (n, p, u, s) => `ఏ రసాయనమూ వేయని స్వచ్ఛమైన ఆర్గానిక్ ${n}! మీ పిల్లలకు సురక్షితం! ${p} రూపాయలు!`,
+    (n, p, u, s) => `చూస్తేనే నోరూరుతుంది! అంత మంచి ${n}! ఇంత తక్కువ ధరకు ఎక్కడా దొరకదు! ${p} మాత్రమే!`,
+    (n, p, u, s) => `రేపటికి ఏమీ మిగలదు! ఈ రోజే తీసుకో! తాజా ${n} ${p} రూపాయలే!`,
+    (n, p, u, s) => `నానమ్మ రెసిపీ కి సరిపోయే నాటు ${n}! రుచి మరపురాదు! ${p}కే ఒక ${u}!`,
+    (n, p, u, s) => `అన్నా! ఒక్కసారి వచ్చి చూడు! ఇలాంటి ${n} మళ్ళీ దొరకదు! ${p} మాత్రమే!`,
+    (n, p, u, s) => `పొద్దున్నే నాలుగింటికే కోసాను! ఇంత తాజా ${n} ఇక్కడే దొరుకుతుంది! ${p} రూపాయలే!`,
+    (n, p, u, s) => `లెక్కించకు, తీసుకో! ${n} ఒక ${u} ${p} రూపాయలు! అంత చీప్ ఇంకెక్కడా దొరకదు!`,
+    (n, p, u, s) => `మన ఊరి మేలైన ${n}! అచ్చమైన రైతు పంట! పండించినవాడే అమ్ముతున్నాడు! ${p} మాత్రమే!`,
   ],
   hi: [
-    (n, p, u) => `अरे भाई, ताज़ा ${n}! सिर्फ ${p} रुपये प्रति ${u}. अभी ले जाओ!`,
-    (n, p, u) => `सस्ते और अच्छे ${n}! एक ${u} का दाम सिर्फ ${p} रुपये।`,
-    (n, p, u) => `आइए आइए! खेत से सीधे ${n}, केवल ${p} रुपये में ${u}।`,
-    (n, p, u) => `बहनजी, इधर देखिए! बिना केमिकल के ${n}। सिर्फ ${p} रुपये।`,
-    (n, p, u) => `आख़िरी माल बचा है! सस्ते में ले लो! ${n} सिर्फ ${p} रुपये प्रति ${u}!`,
-    (n, p, u) => `गाँव का असली ${n}! एकदम मीठा और ताज़ा, ${p} रुपये में!`,
-    (n, p, u) => `होलसेल रेट पर ताज़ा ${n}! सिर्फ ${p} रुपये, जल्दी आइए!`,
-    (n, p, u) => `साहब, बहुत बढ़िया ${n} लाया हूँ! सिर्फ ${p} रुपये किलो।`,
-    (n, p, u) => `लूट सको तो लूट लो! सबसे बेहतरीन ${n} मात्र ${p} रुपये में।`,
-    (n, p, u) => `आज का स्पेशल ऑफर! ताज़ा ${n} ले जाइए, ${p} रुपये देकर!`,
-    (n, p, u) => `अरे दीदी, इधर भी देखो! मीठे और रसीले ${n} केवल ${p} रुपये!`,
-    (n, p, u) => `सीधे किसान से! शुद्ध ${n} सिर्फ ${p} रुपये में!`
+    (n, p, u, s) => `अरे भाई भाई भाई! एकदम ताज़ा ${n}! आ जाओ, आ जाओ! सिर्फ ${p} रुपये ${u}!`,
+    (n, p, u, s) => `मैडम जी! बिल्कुल ताज़ा देसी ${n}! सुबह खेत से काटा! केवल ${p} रुपये!`,
+    (n, p, u, s) => `साहब! एक बार चखो तो सही! बढ़िया ${n}, सिर्फ ${p} रुपये किलो, पूरे मंडी में सस्ता!`,
+    (n, p, u, s) => `लूट लो भाई लूट लो! आज का लास्ट बैच ${n}! जल्दी आओ! केवल ${p} रुपये!`,
+    (n, p, u, s) => `किसान का माल! बीच में कोई दलाल नहीं! शुद्ध ${n} सिर्फ ${p} रुपये में!`,
+    (n, p, u, s) => `अरे दीदी! इधर देखो! मीठा और रसीला ${n}! घर वाले खुश हो जाएंगे! ${p} रुपये किलो!`,
+    (n, p, u, s) => `कल से दाम बढ़ेगा! आज ही ले लो! बढ़िया ${n} सिर्फ ${p} रुपये में!`,
+    (n, p, u, s) => `बल्ले बल्ले! सबसे उम्दा ${n}! पंजाब के खेत जैसा स्वाद! केवल ${p} रुपये!`,
+    (n, p, u, s) => `गाँव का असली माल! कोई केमिकल नहीं, कोई मिलावट नहीं! ${n} सिर्फ ${p} रुपये!`,
+    (n, p, u, s) => `अरे यार! सुबह चार बजे काटा! इतना ताज़ा ${n} कहीं नहीं मिलेगा! ${p} रुपये ले जाओ!`,
+    (n, p, u, s) => `बम्पर फसल! इस सीज़न बहुत बढ़िया हुआ! सस्ते में लो, सिर्फ ${p} रुपये ${u}!`,
+    (n, p, u, s) => `सास के हाथ की सब्ज़ी जैसा स्वाद आएगा! इस ${n} से! केवल ${p} रुपये!`,
+    (n, p, u, s) => `रुको मत भाई! माल खत्म होने वाला है! ताज़ा ${n} ${p} रुपये, जल्दी आओ!`,
+    (n, p, u, s) => `जैविक खेती! देसी गाय की खाद! शुद्ध ${n} सिर्फ ${p} रुपये प्रति ${u}!`,
+    (n, p, u, s) => `भईया! एक बार हाथ में लेकर देखो! कितना अच्छा है यह ${n}! ${p} रुपये में!`,
   ],
   kn: [
-    (n, p, u) => `ಅಣ್ಣಾ, ತಾಜಾ ${n} ಬಂತು! ${u} ಗೆ ಕೇವಲ ${p} ರೂಪಾಯಿ. ಈಗ ತೆಗೆದುಕೊಳ್ಳಿ!`,
-    (n, p, u) => `ನೋಡಿ ಸ್ವಾಮಿ, ಒಳ್ಳೆ ${n}! ಕೇವಲ ${p} ರೂಪಾಯಿಗೆ ಒಂದು ${u}.`,
-    (n, p, u) => `ಬನ್ನಿ ಬನ್ನಿ! ತಾಜಾ ${n}, ${p} ರೂಪಾಯಿಗೆ ${u}.`,
-    (n, p, u) => `ಅಮ್ಮಾ, ಇಲ್ಲಿ ನೋಡಿ! ಹಳ್ಳಿಯಿಂದ ತಂದ ${n}. ${p} ರೂಪಾಯಿಗೆ!`,
-    (n, p, u) => `ಕೊನೆಯ ಸರಕು! ಬೇಗ ಬನ್ನಿ! ${n} ಕೇವಲ ${p} ರೂಪಾಯಿ.`,
-    (n, p, u) => `ಔಷಧಿ ಹಾಕದ ಶುದ್ಧ ${n}! ${p} ರೂಪಾಯಿಗೆ ಒಂದು ${u}.`,
-    (n, p, u) => `ಬಹಳ ರುಚಿಯಾದ ${n}! ಕೇವಲ ${p} ರೂಪಾಯಿಗೆ ತೆಗೆದುಕೊಂಡು ಹೋಗಿ!`
+    (n, p, u, s) => `ಬನ್ನಿ ಬನ್ನಿ! ಹೊಲದಿಂದ ಇನ್ನೂ ಘಮ ಘಮಿಸ್ತಾ ಇರೋ ತಾಜಾ ${n}! ಕೇವಲ ${p} ರೂಪಾಯಿ!`,
+    (n, p, u, s) => `ಅಮ್ಮ ನೋಡಿ! ನಾಟಿ ತಳಿ ${n}! ಯಾವ ಕ್ರಿಮಿನಾಶಕನೂ ಇಲ್ಲ! ${p} ರೂಪಾಯಿ ಒಂದು ${u}!`,
+    (n, p, u, s) => `ಸ್ವಾಮಿ! ಇಂಥ ಒಳ್ಳೆ ${n} ಮಾರ್ಕೆಟ್ ತುಂಬಾ ಹುಡ್ಕಿದ್ರೂ ಸಿಗಲ್ಲ! ${p} ರೂಪಾಯಿ ಮಾತ್ರ!`,
+    (n, p, u, s) => `ಶೀಘ್ರ ಬನ್ನಿ! ಕಡೆಯ ಸ್ಟಾಕ್! ತಾಜಾ ${n} ಕೇವಲ ${p} ರೂಪಾಯಿ! ಹೋದ್ರೆ ಹೋಯ್ತು!`,
+    (n, p, u, s) => `ದೇಸಿ ರೈತರ ಶ್ರಮದ ಫಲ! ಶುದ್ಧ ಸಾವಯವ ${n}! ಕೇವಲ ${p} ರೂಪಾಯಿ!`,
+    (n, p, u, s) => `ಮನೆಯ ತೋಟದ ${n}! ಅಜ್ಜಿ ಕೈ ತೋಟದ ರುಚಿ! ${p} ರೂಪಾಯಿಗೆ ಒಂದು ${u}!`,
+    (n, p, u, s) => `ಇಂದು ಬೆಳ್ಳಂಬೆಳಿಗ್ಗೆ ಕೊಯ್ದ ತಾಜಾ ${n}! ಮತ್ತೆ ಇಷ್ಟು ಕಡಿಮೆ ಬೆಲೆ ಸಿಗಲ್ಲ! ${p} ಮಾತ್ರ!`,
   ],
   ta: [
-    (n, p, u) => `ஐயா, புதிய ${n}! ${u} க்கு வெறும் ${p} ரூபாய். இப்பொழுதே வாங்குங்கள்!`,
-    (n, p, u) => `பாருங்கள், நல்ல ${n}! ${u} ஒன்றுக்கு ${p} ரூபாய் மட்டுமே.`,
-    (n, p, u) => `வாருங்கள்! வயல்வெளி ${n}, ${p} ரூபாய்க்கு ${u}.`,
-    (n, p, u) => `அம்மா, இங்கே பாருங்கள்! கிராமத்து ${n}. ${p} ரூபாய்க்கு!`,
-    (n, p, u) => `கடைசி சரக்கு! வேகமாக வாங்க! ${n} வெறும் ${p} ரூபாய்.`,
-    (n, p, u) => `மருந்து அடிக்காத சுத்தமான ${n}! ${p} ரூபாய்க்கு ஒரு ${u}.`,
-    (n, p, u) => `சிறந்த விலையில் ${n}! வாருங்கள், ${p} ரூபாய்க்கு!`
+    (n, p, u, s) => `வாங்க வாங்க! வயலிலிருந்து இப்போதுதான் பறிச்சு வந்தோம்! ${n} வெறும் ${p} ரூபாய்க்கு!`,
+    (n, p, u, s) => `அம்மா! இங்கே பாருங்க! நாட்டு ${n}! எந்த கீடைநாசினியும் பூசலை! ${p} ரூபாய் மட்டும்!`,
+    (n, p, u, s) => `ஐயா! ஒரு முறை சுவைத்துப் பாருங்க! மறக்க முடியாத சுவை! ${n} ${p} ரூபாய்க்கு!`,
+    (n, p, u, s) => `கடைசி ஸ்டாக்! இன்னும் கொஞ்சம் மட்டுமே இருக்கு! ${n} ${p} ரூபாய்க்கு வேகமா வாங்குங்க!`,
+    (n, p, u, s) => `கிராமத்து உழவன் பயிரிட்ட தூய ${n}! உங்க குடும்பத்துக்கு நல்லது! ${p} ரூபாய் மட்டுமே!`,
+    (n, p, u, s) => `பாட்டி வீட்டு தோட்டத்தில் விளைந்த ${n}! இந்த சுவை வேற எங்கும் கிடைக்காது! ${p} ரூபாய்!`,
+    (n, p, u, s) => `இன்னைக்கு மட்டும் சிறப்பு விலை! ${n} கிலோ ${p} ரூபாய்! வரவரவா வாங்குங்க!`,
   ],
   ml: [
-    (n, p, u) => `ചേട്ടാ, പുതിയ ${n}! ${u} ന് ${p} രൂപ മാത്രം. ഇപ്പോൾ വാങ്ങൂ!`,
-    (n, p, u) => `നല്ല നാടൻ ${n}! ഒരു ${u} ന് ${p} രൂപ മാത്രം.`,
-    (n, p, u) => `നല്ല ഫ്രഷ് ${n} വന്നിട്ടുണ്ട്! വെറും ${p} രൂപയ്ക്ക്!`
+    (n, p, u, s) => `ഒരു തവണ നോക്കൂ! കൃഷിക്കാരൻ നേരിട്ട് വിൽക്കുന്ന ${n}! ഒരു ${u} ന് ${p} രൂപ മാത്രം!`,
+    (n, p, u, s) => `ചേച്ചി! ഇങ്ങോട്ട് നോക്ക്! നാടൻ ${n}! ഒരു കീടനാശിനിയും ഇടാൻ! ${p} രൂപ!`,
+    (n, p, u, s) => `വേഗം വരൂ! ഇന്ന് മാത്രം ഈ വില! ताज़ा ${n} ഒരു ${u} ന് ${p} രൂപ!`,
+    (n, p, u, s) => `ഇതുപോലൊരു ${n} ഈ ചന്തയിൽ വേറെ ആർക്കുമില്ല! ${p} രൂപ ഒരു ${u}!`,
   ],
   mr: [
-    (n, p, u) => `अरे दादा, ताजे ${n}! फक्त ${p} रुपये प्रति ${u}. आत्ताच घ्या!`,
-    (n, p, u) => `चला चला! उत्तम ${n}, ${p} रुपयांना ${u}.`,
-    (n, p, u) => `गावरान ${n} आलेत! फक्त ${p} रुपयांना!`
+    (n, p, u, s) => `अरे दादा, ये इकडे! शेतातून थेट आलेला ताजा ${n}! फक्त ${p} रुपये ${u}!`,
+    (n, p, u, s) => `चला चला! गावरान ${n} बघा! रोज पिकवलेला माल! केवळ ${p} रुपये!`,
+    (n, p, u, s) => `ताई! एकदा चव बघा! मग विकत घ्याल! ${n} फक्त ${p} रुपये किलोला!`,
+    (n, p, u, s) => `गोड आणि ताजा ${n}! विना रसायन! फक्त ${p} रुपये!`,
   ],
   gu: [
-    (n, p, u) => `અરે ભાઈ, તાજા ${n}! ${u} ને ${p} રૂ. જ. હમણાં લઈ જાઓ!`,
-    (n, p, u) => `સસ્તા અને સારા ${n}! માત્ર ${p} રૂપિયામાં!`
+    (n, p, u, s) => `ભાઈ! ખેતરથી સીધા! ઘઉ-ગળ્યા ${n}! ફક્ત ${p} રૂ ${u}!`,
+    (n, p, u, s) => `આ ${n} ક્ર્TA ક્TP ઘ ${p} YTUG UpR RL_ONLY!`,
+    (n, p, u, s) => `ઘ TA? ${n} RM ${p} P!`,
   ],
   bn: [
-    (n, p, u) => `ও দাদা, তাজা ${n}! মাত্র ${p} টাকা প্রতি ${u}. এখনই নিন!`,
-    (n, p, u) => `খাঁটি আর মিষ্টি ${n}! একদম সস্তায়, ${p} টাকায়!`
+    (n, p, u, s) => `দাদা, খেত থেকে সরাসরি! তাজা ${n}! মাত্র ${p} টাকা প্রতি ${u}!`,
+    (n, p, u, s) => `আসুন আসুন! সেরা মানের ${n}! এত সস্তায় আর পাবেন না! ${p} টাকা!`,
+    (n, p, u, s) => `বিশুদ্ধ দেশি ${n}! কোনো রাসায়নিক নেই! মাত্র ${p} টাকায়!`,
   ],
   pa: [
-    (n, p, u) => `ਓਏ ਭਾਜੀ, ਤਾਜ਼ਾ ${n}! ਸਿਰਫ਼ ${p} ਰੁਪਏ ਪ੍ਰਤੀ ${u}. ਹੁਣੇ ਲਓ!`,
-    (n, p, u) => `ਸ਼ੁੱਧ ਪੰਜਾਬੀ ${n}! ਸਿਰਫ ${p} ਰੁਪਏ ਵਿਚ!`
-  ],
-  or: [
-    (n, p, u) => `ଆରେ ଭାଇ, ତାଜା ${n}! ମାତ୍ର ${p} ଟଙ୍କା ପ୍ରତି ${u}. ଏବେ ନିଅ!`,
-    (n, p, u) => `ଭଲ ଆଉ ଶସ୍ତା ${n}! କେବଳ ${p} ଟଙ୍କାରେ!`
-  ],
-  ur: [
-    (n, p, u) => `ارے بھائی، تازہ ${n}! صرف ${p} روپے فی ${u}. ابھی لے جائیں!`,
-    (n, p, u) => `بہترین ${n} یہاں ہیں! صرف ${p} روپے میں!`
+    (n, p, u, s) => `ਓਏ ਭਾਜੀ! ਖੇਤਾਂ ਤੋਂ ਤਾਜ਼ਾ! ${n} ਸਿਰਫ਼ ${p} ਰੁਪਏ ${u}! ਜਲਦੀ ਲਓ!`,
+    (n, p, u, s) => `ਬੱਲੇ ਬੱਲੇ! ਸ਼ੁੱਧ ਦੇਸੀ ${n}! ${p} ਰੁਪਏ ਵਿੱਚ ਲੈ ਜਾਓ!`,
   ],
 };
 
-// ── Crop names by language ───────────────────────────────────────────────────
+// ── Crop localization dict ─────────────────────────────────────────────────────
 const CROP_NAMES = {
-  tomato:      { en:"Tomato",     te:"టమోటా",    hi:"टमाटर",  kn:"ಟೊಮೆಟೊ",  ta:"தக்காளி",  ml:"തക്കാളി",  mr:"टोमॅटो",  gu:"ટામેટાં", bn:"টমেটো",  pa:"ਟਮਾਟਰ", or:"ଟମାଟୋ", ur:"ٹماٹر" },
-  potato:      { en:"Potato",     te:"బంగాళదుంప", hi:"आलू",   kn:"ಆಲೂಗಡ್ಡೆ", ta:"உருளை",    ml:"ഉരുളക്കിഴങ്ങ്", mr:"बटाटा", gu:"બટાકા", bn:"আলু",   pa:"ਆਲੂ",  or:"ଆଳୁ",  ur:"آلو" },
-  onion:       { en:"Onion",      te:"ఉల్లిపాయ", hi:"प्याज",  kn:"ಈರುಳ್ಳಿ",  ta:"வெங்காயம்",ml:"ഉള്ളി",   mr:"कांदा",  gu:"ડુંગળી",bn:"পেঁয়াজ",pa:"ਪਿਆਜ਼",or:"ପିଆଜ", ur:"پیاز"},
-  rice:        { en:"Rice",       te:"బియ్యం",   hi:"चावल",  kn:"ಅಕ್ಕಿ",    ta:"அரிசி",    ml:"അരി",     mr:"तांदूळ", gu:"ચોખા",  bn:"চাল",   pa:"ਚੌਲ",  or:"ଚାଉଳ",ur:"چاول"},
-  wheat:       { en:"Wheat",      te:"గోధుమలు",  hi:"गेहूं",  kn:"ಗೋಧಿ",    ta:"கோதுமை",   ml:"ഗോതമ്പ്", mr:"गहू",    gu:"ઘઉં",   bn:"গম",    pa:"ਕਣਕ", or:"ଗହମ", ur:"گندم"},
-  mango:       { en:"Mango",      te:"మామిడి",   hi:"आम",    kn:"ಮಾವಿನ",   ta:"மாம்பழம்", ml:"മാമ്പഴം",mr:"आंबा",   gu:"કેરી",  bn:"আম",    pa:"ਅੰਬ", or:"ଆମ୍ବ",ur:"آم"},
-  banana:      { en:"Banana",     te:"అరటిపండు", hi:"केला",  kn:"ಬಾಳೆ",    ta:"வாழைப்பழம்",ml:"വാഴപ്പഴം",mr:"केळी",   gu:"કેળા",  bn:"কলা",   pa:"ਕੇਲਾ",or:"କଦଳୀ",ur:"کیلا"},
-  chili:       { en:"Chili",      te:"మిరపకాయ",  hi:"मिर्च",  kn:"ಮೆಣಸು",   ta:"மிளகாய்",  ml:"മുളക്",   mr:"मिरची",  gu:"મરચું",  bn:"মরিচ",  pa:"ਮਿਰਚ",or:"ମରିଚ",ur:"مرچ"},
-  brinjal:     { en:"Brinjal",    te:"వంకాయ",    hi:"बैंगन",  kn:"ಬದನೆ",    ta:"கத்தரிக்காய்",ml:"വഴുതന",mr:"वांगे",  gu:"રીંગણ", bn:"বেগুন", pa:"ਬੈਂਗਣ",or:"ବାଇଗଣ",ur:"بینگن"},
-  spinach:     { en:"Spinach",    te:"పాలకూర",   hi:"पालक",   kn:"ಪಾಲಕ",    ta:"கீரை",     ml:"ചീര",     mr:"पालक",   gu:"પાલક",  bn:"পালং",  pa:"ਪਾਲਕ",or:"ପାଳଙ୍ଗ",ur:"پالک"},
-  cauliflower: { en:"Cauliflower",te:"కాలీఫ్లవర్",hi:"फूल गोभी",kn:"ಹೂಕೋಸು",ta:"காலிஃப்ளவர்",ml:"കോളിഫ്ലവർ",mr:"फुलकोबी",gu:"ફ્લાવર", bn:"ফুলকপি",pa:"ਗੋਭੀ",or:"ଫୁଲ ଗୋଭି",ur:"گوبھی"},
-  carrot:      { en:"Carrot",     te:"గాజర్",    hi:"गाजर",   kn:"ಗಜ್ಜರಿ",  ta:"கேரட்",   ml:"കക്ഷി",   mr:"गाजर",   gu:"ગાજર",  bn:"গাজর",  pa:"ਗਾਜਰ",or:"ଗାଜର",ur:"گاجر"},
-  okra:        { en:"Okra",       te:"బెండకాయ",  hi:"भिंडी",  kn:"ಬೆಂಡೆ",   ta:"வெண்டை",   ml:"ഓക്ര",    mr:"भेंडी",  gu:"ભીંડા", bn:"ঢেঁড়স", pa:"ਭਿੰਡੀ",or:"ଭେଣ୍ଡି",ur:"بھنڈی"},
-  garlic:      { en:"Garlic",     te:"వెల్లుల్లి", hi:"लहसुन", kn:"ಬೆಳ್ಳುಳ್ಳಿ",ta:"பூண்டு",  ml:"വെളുത്തുള്ളി",mr:"लसूण",  gu:"લસણ",   bn:"রসুন",  pa:"ਲਸਣ", or:"ଲଶୁଣ", ur:"لہسن"},
-  ginger:      { en:"Ginger",     te:"అల్లం",    hi:"अदरक",   kn:"ಶುಂಠಿ",   ta:"இஞ்சி",   ml:"ഇഞ്ചി",   mr:"आले",    gu:"આદું",  bn:"আদা",   pa:"ਅਦਰਕ",or:"ଅଦା",  ur:"ادرک"},
-  coconut:     { en:"Coconut",    te:"కొబ్బరి",  hi:"नारियल", kn:"ತೆಂಗಿನ",  ta:"தேங்காய்", ml:"തേങ്ങ",   mr:"नारळ",   gu:"નારિયેળ",bn:"নারকেল",pa:"ਨਾਰੀਅਲ",or:"ନଡ଼ିଆ",ur:"ناریل"},
+  tomato:      { en:"Tomato",     te:"టమోటా",    hi:"टमाटर",  kn:"ಟೊಮೆಟೊ",  ta:"தக்காளி",  ml:"തക്കാളി",  mr:"टोमॅटो",  gu:"ટામેટાં", bn:"টমেটো",  pa:"ਟਮਾਟਰ" },
+  potato:      { en:"Potato",     te:"బంగాళదుంప", hi:"आलू",   kn:"ಆಲೂಗಡ್ಡೆ", ta:"உருளை",    ml:"ഉരുളക്കിഴങ്ങ്", mr:"बटाटा", gu:"બટાકા", bn:"আলু",   pa:"ਆਲੂ" },
+  onion:       { en:"Onion",      te:"ఉల్లిపాయ", hi:"प्याज",  kn:"ಈರುಳ್ಳಿ",  ta:"வெங்காயம்",ml:"ഉള്ളി",   mr:"कांदा",  gu:"ડુંગળી",bn:"পেঁয়াজ",pa:"ਪਿਆਜ਼"},
+  rice:        { en:"Rice",       te:"బియ్యం",   hi:"चावल",  kn:"ಅಕ್ಕಿ",    ta:"அரிசி",    ml:"അരി",     mr:"तांदूळ", gu:"ચોખા",  bn:"চাল",   pa:"ਚੌਲ" },
+  wheat:       { en:"Wheat",      te:"గోధుమలు",  hi:"गेहूं",  kn:"ಗೋಧಿ",    ta:"கோதுமை",   ml:"ഗോതമ്പ്", mr:"गहू",    gu:"ઘઉં",   bn:"গম",    pa:"ਕਣਕ" },
+  mango:       { en:"Mango",      te:"మామిడి",   hi:"आम",    kn:"ಮಾವಿನ",   ta:"மாம்பழம்", ml:"മാമ്പഴം",mr:"आंबा",   gu:"કેરી",  bn:"আম",    pa:"ਅੰਬ" },
+  banana:      { en:"Banana",     te:"అరటిపండు", hi:"केला",  kn:"ಬಾಳೆ",    ta:"வாழைப்பழம்",ml:"വാഴപ്പഴം",mr:"केळी",   gu:"કેળા",  bn:"কলা",   pa:"ਕੇਲਾ" },
+  chili:       { en:"Chili",      te:"మిరపకాయ",  hi:"मिर्च",  kn:"ಮೆಣಸು",   ta:"மிளகாய்",  ml:"മുളക്",   mr:"मिरची",  gu:"મરચું",  bn:"মরিচ",  pa:"ਮਿਰਚ" },
+  brinjal:     { en:"Brinjal",    te:"వంకాయ",    hi:"बैंगन",  kn:"ಬದನೆ",    ta:"கத்தரிக்காய்",ml:"വഴുതന",mr:"वांगे",  gu:"રીંગણ", bn:"বেগুন", pa:"ਬੈਂਗਣ" },
+  spinach:     { en:"Spinach",    te:"పాలకూర",   hi:"पालक",   kn:"ಪಾಲಕ",    ta:"கீரை",     ml:"ചീര",     mr:"पालक",   gu:"પાલક",  bn:"পালং",  pa:"ਪਾਲਕ" },
+  cauliflower: { en:"Cauliflower",te:"కాలీఫ్లవర్",hi:"फूलगोभी",kn:"ಹೂಕೋಸು",ta:"காலிஃப்ளவர்",ml:"കോളിഫ്ലവർ",mr:"फुलकोबी",gu:"ફ્લાવર", bn:"ফুলকপি",pa:"ਗੋਭੀ"},
+  cabbage:     { en:"Cabbage",    te:"క్యాబేజీ", hi:"पत्तागोभी",kn:"ಕೋಸು", ta:"முட்டைகோஸ்", ml:"കാബേജ്", mr:"कोबी",  gu:"કોબીજ", bn:"বাঁধাকপি", pa:"ਬੰਦ ਗੋਭੀ" },
+  okra:        { en:"Ladyfinger", te:"బెండకాయ",  hi:"भिंडी",  kn:"ಬೆಂಡೆ",   ta:"வெண்டை",   ml:"ഓക്ര",    mr:"भेंडी",  gu:"ભીંડા", bn:"ঢেঁড়স", pa:"ਭਿੰਡੀ" },
+  garlic:      { en:"Garlic",     te:"వెల్లుల్లి",hi:"लहसुन", kn:"ಬೆಳ್ಳುಳ್ಳಿ",ta:"பூண்டு",  ml:"വെളുത്തുള്ളി",mr:"लसूण",  gu:"લસણ",   bn:"রসুন",  pa:"ਲਸਣ" },
+  ginger:      { en:"Ginger",     te:"అల్లం",    hi:"अदरक",   kn:"ಶುಂಠಿ",   ta:"இஞ்சி",   ml:"ഇഞ്ചി",   mr:"आले",    gu:"આદું",  bn:"আদা",   pa:"ਅਦਰਕ" },
+  turmeric:    { en:"Turmeric",   te:"పసుపు",    hi:"हल्दी",  kn:"ಅರಿಶಿನ",  ta:"மஞ்சள்",   ml:"മഞ്ഞൾ",   mr:"हळद",    gu:"હળદર",  bn:"হলুদ",   pa:"ਹਲਦੀ" },
+  groundnut:   { en:"Groundnut",  te:"వేరుశనగ",  hi:"मूंगफली", kn:"ನೆಲಗಡಲೆ", ta:"வேர்க்கடலை",ml:"നിലക്കടല",mr:"भुईमूग", gu:"મગફળી", bn:"চীনাবাদাম",pa:"ਮੂੰਗਫਲੀ" },
+  cotton:      { en:"Cotton",     te:"పత్తి",    hi:"कपास",   kn:"ಹತ್ತಿ",   ta:"பருத்தி",  ml:"പരുത്തി", mr:"कापूस",  gu:"કપાસ",  bn:"তুলো",  pa:"ਕਪਾਹ" },
 };
 
-// ── BCP-47 locale map for voices ─────────────────────────────────────────────
 const LOCALE_MAP = {
-  en: "en-IN", te: "te-IN", hi: "hi-IN", kn: "kn-IN",
-  ta: "ta-IN", ml: "ml-IN", mr: "mr-IN", gu: "gu-IN",
-  bn: "bn-IN", pa: "pa-IN", or: "or-IN", ur: "ur-IN",
+  en:"en-IN", te:"te-IN", hi:"hi-IN", kn:"kn-IN",
+  ta:"ta-IN", ml:"ml-IN", mr:"mr-IN", gu:"gu-IN",
+  bn:"bn-IN", pa:"pa-IN"
 };
 
 const UNIT_TRANSLATIONS = {
-  en: "kg", te: "కిలో", hi: "किलो", kn: "ಕೆಜಿ", ta: "கிலோ",
-  ml: "കിലോ", mr: "किलो", gu: "કિલો", bn: "কেজি", pa: "ਕਿਲੋ",
-  or: "କିଲୋ", ur: "کلو"
+  en:"kg", te:"కిలో", hi:"किलो", kn:"ಕೆಜಿ", ta:"கிலோ",
+  ml:"കിലോ", mr:"किलो", gu:"કિલો", bn:"কেজি", pa:"ਕਿਲੋ"
 };
 
-// ── Get translated crop name ──────────────────────────────────────────────────
-export function getCropName(rawName, lang) {
-  if (!rawName) return rawName;
-  const key = rawName.toLowerCase().replace(/\s+/g, "");
-  // direct match
-  if (CROP_NAMES[key] && CROP_NAMES[key][lang]) return CROP_NAMES[key][lang];
-  // partial match
-  for (const k of Object.keys(CROP_NAMES)) {
-    if (key.includes(k) || k.includes(key)) {
-      if (CROP_NAMES[k][lang]) return CROP_NAMES[k][lang];
-    }
+export function getCropName(rawName = "", lang = "en") {
+  if (!rawName) return "";
+  const key = rawName.toLowerCase();
+  for (const [k, dict] of Object.entries(CROP_NAMES)) {
+    if (key.includes(k)) return dict[lang] || dict.en || rawName;
   }
-  return rawName; // fallback to original English name
+  return rawName;
 }
 
-// ── Pick best OS voice for the language ──────────────────────────────────────
-let cachedVoices = [];
-function getVoices() {
-  if (cachedVoices.length === 0) {
-    cachedVoices = window.speechSynthesis?.getVoices() || [];
-  }
-  return cachedVoices;
-}
-if (typeof window !== "undefined" && window.speechSynthesis) {
-  window.speechSynthesis.onvoiceschanged = () => {
-    cachedVoices = window.speechSynthesis.getVoices();
-  };
-}
-function pickVoice(locale, gender) {
-  const voices = getVoices();
-  let matches = voices.filter(v => 
-    v.lang === locale || 
-    v.lang.startsWith(locale.substring(0, 2)) || 
-    v.lang.includes("IN")
-  );
-
-  if (matches.length > 0) {
-    // Prioritize natural voices
-    matches.sort((a, b) => {
-      const aNatural = (a.name.toLowerCase().includes("natural") || a.name.toLowerCase().includes("online")) ? 1 : 0;
-      const bNatural = (b.name.toLowerCase().includes("natural") || b.name.toLowerCase().includes("online")) ? 1 : 0;
-      return bNatural - aNatural;
-    });
-
-    if (gender) {
-      const isFemale = gender === "female";
-      const isMale = gender === "male";
-      
-      const genderMatches = matches.filter(v => {
-        const name = v.name.toLowerCase();
-        const uri = v.voiceURI.toLowerCase();
-        if (isFemale) {
-           return name.includes("female") || name.includes("woman") || name.includes("girl") || uri.includes("female") || uri.includes("woman");
-        } else if (isMale) {
-           return (name.includes("male") && !name.includes("female")) || (name.includes("man") && !name.includes("woman")) || name.includes("boy") || (uri.includes("male") && !uri.includes("female"));
-        }
-        return false;
-      });
-
-      if (genderMatches.length > 0) {
-        return genderMatches[Math.floor(Math.random() * genderMatches.length)]; // randomize if multiple exist for variation
-      }
-    }
-    return matches[Math.floor(Math.random() * Math.min(3, matches.length))]; // Randomize among top voices for variation
-  }
-  return null;
-}
-
-// ── Speak a single utterance natively ─────────────────────────────────────────
-function speak(text, lang, { rate = 1.0, pitch = 1.0, volume = 1.0, gender } = {}) {
-  return new Promise((resolve) => {
-    if (!text || !window.speechSynthesis) return resolve(false);
-    
-    // Some browsers require speech to be triggered safely, and sometimes onend never fires.
-    const utterance = new SpeechSynthesisUtterance(text);
-    const locale = LOCALE_MAP[lang] || "en-IN";
-    const voice = pickVoice(locale, gender);
-    
-    if (voice) utterance.voice = voice;
-    utterance.lang = locale;
-    utterance.rate = rate;
-    utterance.pitch = pitch;
-    utterance.volume = volume;
-
-    // Safety timeout in case onend fails to fire
-    let resolved = false;
-    const finish = () => {
-      if (!resolved) {
-        resolved = true;
-        resolve(true);
-      }
-    };
-
-    utterance.onend = finish;
-    utterance.onerror = finish;
-
-    // A fallback timeout based on text length (avg 15 chars / sec)
-    const fallbackTime = (text.length / 10) * 1000 + 2000;
-    setTimeout(finish, fallbackTime);
-
-    window.speechSynthesis.speak(utterance);
-  });
-}
-
-// Global stop
-function stopNativeTTS() {
-  if (window.speechSynthesis) {
-    window.speechSynthesis.cancel();
-  }
-}
-
-// ── Vendor personas (Male/Female voices & realistic pacing) ────────────────────
-const VENDORS = [
-  // Vendor 1: Standard Male Voice
-  { rate: 1.0, pitch: 1.0, volume: 1.0, gender: "male" }, 
-  // Vendor 2: Fast Female Voice (Urgent Seller)
-  { rate: 1.08, pitch: 1.02, volume: 1.0, gender: "female" },   
-  // Vendor 3: Deep Older Male Voice (Slower pacing)
-  { rate: 0.92, pitch: 0.95, volume: 1.0, gender: "male" }, 
-  // Vendor 4: Standard Female Voice
-  { rate: 1.0, pitch: 1.0, volume: 1.0, gender: "female" }, 
-  // Vendor 5: Energetic Male Voice
-  { rate: 1.1, pitch: 1.0, volume: 1.0, gender: "male" }
+// ── Vendor Personas ────────────────────────────────────────────────────────────
+const VENDOR_PERSONAS = [
+  { name: "Fast Energetic Hawker",     rate: 1.15, pitch: 1.15 },
+  { name: "Loud Shouting Seller",      rate: 1.05, pitch: 1.25 },
+  { name: "Friendly Female Seller",    rate: 1.0,  pitch: 1.2  },
+  { name: "Experienced Elder Farmer",  rate: 0.85, pitch: 0.8  },
+  { name: "Lively Market Vendor",      rate: 1.1,  pitch: 1.0  },
+  { name: "Sweet Village Aunt",        rate: 0.95, pitch: 1.3  },
+  { name: "Aggressive Bargainer",      rate: 1.2,  pitch: 0.9  },
+  { name: "Sing-song Vendor",          rate: 0.9,  pitch: 1.4  },
+  { name: "Husky Street Vendor",       rate: 1.0,  pitch: 0.7  },
+  { name: "Young Enthusiastic Farmer", rate: 1.25, pitch: 1.1  },
+  { name: "Calm Confident Seller",     rate: 0.9,  pitch: 1.0  },
+  { name: "Rapid-fire Auctioneer",     rate: 1.3,  pitch: 1.2  },
 ];
 
-// ── Chime ─────────────────────────────────────────────────────────────────────
+import { playTTS, stopTTS as _stopNativeTTS } from "../utils/voiceParser";
+
+function speak(text, lang, { rate = 1.0, pitch = 1.0, volume = 1.0 } = {}) {
+  return playTTS(text, lang, { rate, volume });
+}
+function stopNativeTTS() { _stopNativeTTS(); }
+
+// ── Web Audio Context for chime ────────────────────────────────────────────────
 let _audioCtx = null;
 function getCtx() {
-  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!_audioCtx && typeof window !== "undefined") {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) _audioCtx = new AC();
+  }
   return _audioCtx;
 }
 function chime(freq = 523, vol = 0.08) {
   try {
     const ctx = getCtx();
-    if (ctx.state === "suspended") {
-      ctx.resume().catch(() => {});
-    }
+    if (!ctx) return;
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
     osc.frequency.setValueAtTime(freq, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(freq * 1.4, ctx.currentTime + 0.3);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.35, ctx.currentTime + 0.25);
     gain.gain.setValueAtTime(vol, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.2);
-    osc.start(); osc.stop(ctx.currentTime + 1.2);
-  } catch {}
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.8);
+    osc.start(); osc.stop(ctx.currentTime + 0.8);
+  } catch (e) {}
 }
 
-// ── Global Volume Control ─────────────────────────────────────────────────────
-function setGlobalVolume(vol) {
-  const flute = document.getElementById("ambient-flute-audio");
-  const nature = document.getElementById("ambient-nature-audio");
-  if (flute) flute.volume = vol;
-  if (nature) nature.volume = vol;
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// The hook
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+// Master Hook
+// ══════════════════════════════════════════════════════════════════════════════
 export default function useMarketAudio(crops, lang) {
   const [isActive, setIsActive] = useState(false);
-  const modeRef    = useRef("ambient"); // "ambient" | "focused"
-  const timerRef   = useRef(null);
+  const modeRef = useRef("ambient"); // "ambient" | "focused"
+  const timerRef = useRef(null);
   const focusTimer = useRef(null);
-  const cropsRef   = useRef(crops);
-  const langRef    = useRef(lang);
-  const focusedRef = useRef(null);
+  const cropsRef = useRef(crops);
+  const langRef = useRef(lang);
+  const focusedCropRef = useRef(null);
+  const observerRef = useRef(null);
+  const cardVolumeMap = useRef({}); // cropId -> volume level (1.0 = full, 0.3 = ducked)
+  const ambientQueueRef = useRef([]); // Queue of ambient utterances in progress
 
-  // Keep refs synced
   useEffect(() => { cropsRef.current = crops; }, [crops]);
   useEffect(() => { langRef.current = lang; }, [lang]);
 
-  // ── Build announcement text ─────────────────────────────────────────────
-  function buildText(crop, vendorIdx = 0, overrideLang = null) {
-    const l = overrideLang || langRef.current || "en";
+  function buildText(crop, personaIdx = 0) {
+    const l = langRef.current || "en";
     const name = getCropName(crop.name, l);
-    // Translate the unit to the target language so the entire sentence is native!
     const unit = UNIT_TRANSLATIONS[l] || crop.unit || "kg";
-    
-    // Format the number strictly in the target language so TTS reads it natively
-    const localPrice = new Intl.NumberFormat(l, { useGrouping: false }).format(crop.price);
-
-    const templates = TEMPLATES[l] || TEMPLATES.en;
-    // Pick a random slang template from the array to keep the market dynamic
-    const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
-
-    // Add organic marker for vendor 0 (main voice) if organic
-    if (vendorIdx === 0 && crop.isOrganic && l === "en") {
-      return `Premium organic ${name}! Farm fresh, just ${localPrice} rupees per ${unit}. Limited stock!`;
+    const price = crop.price || 0;
+    let special = "";
+    if (crop.isOrganic) {
+      special = l === "te" ? "మందుల్లేని స్వచ్ఛమైన ఆర్గానిక్!" : l === "hi" ? "शुद्ध जैविक माल!" : "100% Organic!";
+    } else if (crop.isPesticideFree) {
+      special = l === "te" ? "రసాయనాలు లేని తాజా పంట!" : l === "hi" ? "कीटनाशक मुक्त!" : "Pesticide-free!";
     }
-
-    return randomTemplate(name, localPrice, unit);
+    const templates = TEMPLATES[l] || TEMPLATES.en;
+    const template = templates[personaIdx % templates.length] || templates[0];
+    return template(name, price, unit, special);
   }
 
-  // ── Announce multiple vendors for one crop ──────────────────────────────
+  // Ambient: all vendors shout at once (overlapping), low-medium volume
   async function announceAmbient() {
-    const crops = cropsRef.current;
-    if (!crops || crops.length === 0) return;
-
-    // Pick 3 different crops for a realistic market feel
-    const shuffled = [...crops].sort(() => Math.random() - 0.5).slice(0, VENDORS.length);
-
-    // Small chime at start
-    chime(523 + Math.random() * 200, 0.06);
-
-    // Speak sequentially instead of all at once to prevent overlapping
+    const availableCrops = cropsRef.current;
+    if (!availableCrops || availableCrops.length === 0 || !isActive) return;
+    const numVoices = Math.min(availableCrops.length, 3 + Math.floor(Math.random() * 2));
+    const shuffled = [...availableCrops].sort(() => Math.random() - 0.5).slice(0, numVoices);
+    chime(523 + Math.random() * 100, 0.04);
     for (let i = 0; i < shuffled.length; i++) {
       if (modeRef.current !== "ambient") break;
       const crop = shuffled[i];
-      const vendor = VENDORS[i];
-      
-      const text = buildText(crop, i);
-      
-      await speak(text, langRef.current, { 
-        rate: vendor.rate, 
-        pitch: vendor.pitch,
-        gender: vendor.gender,
-        volume: vendor.volume 
-      });
-      
-      // Wait a tiny natural pause between vendors
+      const persona = VENDOR_PERSONAS[i % VENDOR_PERSONAS.length];
+      const text = buildText(crop, Math.floor(Math.random() * 20));
+      // All voices at ambient volume (0.6-0.75), overlapping, background chatter
+      speak(text, langRef.current, { rate: persona.rate, pitch: persona.pitch, volume: 0.6 + Math.random() * 0.15 });
       if (modeRef.current === "ambient") {
-        await new Promise(res => setTimeout(res, 600));
+        await new Promise(r => setTimeout(r, 350 + Math.random() * 700));
       }
     }
   }
 
-  // ── Announce focused crop ───────────────────────────────────────────────
+  // Focused: one vendor DOMINATES at full volume, others are completely stopped
   function announceFocused(crop) {
     if (!crop) return;
-    stopNativeTTS();
-    chime(660, 0.1); // higher pitched attention chime
+    chime(659, 0.1);
     setTimeout(() => {
       if (modeRef.current !== "focused") return;
-      const text = buildText(crop, 0);
-      // Focused crop gets a clean, standard voice
-      speak(text, langRef.current, { rate: 1.0, pitch: 1.0, volume: 1.0, gender: "female" });
-    }, 400);
+      const persona = VENDOR_PERSONAS[Math.floor(Math.random() * VENDOR_PERSONAS.length)];
+      // Use first 4 templates (the most energetic ones) for focused mode
+      const templateIdx = Math.floor(Math.random() * 4);
+      const text = buildText(crop, templateIdx);
+      // Full volume, dominant
+      speak(text, langRef.current, { rate: persona.rate * 1.05, pitch: persona.pitch, volume: 1.0 });
+    }, 300);
   }
 
-  // ── Start ambient loop ──────────────────────────────────────────────────
   function startAmbientLoop() {
     if (timerRef.current) clearInterval(timerRef.current);
     announceAmbient();
     timerRef.current = setInterval(() => {
       if (modeRef.current === "ambient") announceAmbient();
-    }, 12000);
+    }, 8000 + Math.random() * 3000);
   }
 
-  // ── Master toggle ──────────────────────────────────────────────────────
-  const toggle = useCallback(() => {
+  // ── IntersectionObserver: scroll-based focus ─────────────────────────────────
+  const attachScrollObserver = useCallback((containerEl) => {
+    if (!containerEl || observerRef.current) return;
+    
+    // Disconnect existing
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+      observerRef.current = null;
+    }
+
+    // threshold: 0.7 means 70% of card is visible before it dominates
+    const observer = new IntersectionObserver((entries) => {
+      if (!isActive) return;
+      
+      // Find the most visible entry
+      let maxRatio = 0;
+      let dominantEntry = null;
+      entries.forEach(entry => {
+        if (entry.intersectionRatio > maxRatio) {
+          maxRatio = entry.intersectionRatio;
+          dominantEntry = entry;
+        }
+      });
+
+      if (dominantEntry && maxRatio > 0.65) {
+        const cropId = dominantEntry.target.dataset.cropId;
+        const crop = cropsRef.current?.find(c => c._id === cropId || c.id === cropId);
+        if (crop && focusedCropRef.current?._id !== crop._id) {
+          // New dominant crop — duck all others, boost this one
+          modeRef.current = "focused";
+          focusedCropRef.current = crop;
+          clearInterval(timerRef.current); // stop ambient loop
+          clearTimeout(focusTimer.current);
+          stopNativeTTS(); // kill all ambient chatter
+          announceFocused(crop);
+          // Repeat focused announcement
+          focusTimer.current = setInterval(() => {
+            if (modeRef.current === "focused" && focusedCropRef.current) {
+              announceFocused(focusedCropRef.current);
+            }
+          }, 9000);
+        }
+      } else if (maxRatio < 0.2 && modeRef.current === "focused") {
+        // Scrolled away — return to ambient
+        clearInterval(focusTimer.current);
+        focusedCropRef.current = null;
+        modeRef.current = "ambient";
+        stopNativeTTS();
+        setTimeout(() => {
+          if (modeRef.current === "ambient") startAmbientLoop();
+        }, 800);
+      }
+    }, {
+      threshold: [0.0, 0.2, 0.4, 0.65, 0.85, 1.0],
+      rootMargin: "0px 0px -10% 0px"
+    });
+
+    observerRef.current = observer;
+
+    // Observe all product cards
+    const cards = containerEl.querySelectorAll("[data-crop-id]");
+    cards.forEach(card => observer.observe(card));
+  }, [isActive]);
+
+  // Re-observe when crops change
+  const refreshObserver = useCallback((containerEl) => {
+    if (!containerEl || !observerRef.current) return;
+    const cards = containerEl.querySelectorAll("[data-crop-id]");
+    cards.forEach(card => observerRef.current.observe(card));
+  }, []);
+
+  const toggle = useCallback((forceState) => {
     setIsActive(prev => {
-      const next = !prev;
+      const next = forceState !== undefined ? forceState : !prev;
+      if (next === prev) return prev;
       if (next) {
         modeRef.current = "ambient";
         startAmbientLoop();
       } else {
         clearInterval(timerRef.current);
         clearTimeout(focusTimer.current);
+        if (observerRef.current) { observerRef.current.disconnect(); observerRef.current = null; }
         stopNativeTTS();
-        setGlobalVolume(1.0);
+        focusedCropRef.current = null;
       }
-      window.dispatchEvent(new CustomEvent("market_audio_state", { detail: { isActive: next } }));
       return next;
     });
   }, []);
 
-  // ── focusCrop: called on mouseenter ────────────────────────────────────
+  // Hover-based focus (for desktop mouse users) - keeps working alongside scroll focus
   const focusCrop = useCallback((crop) => {
     if (!isActive) return;
     clearTimeout(focusTimer.current);
     modeRef.current = "focused";
-    focusedRef.current = crop;
+    focusedCropRef.current = crop;
     stopNativeTTS();
-    setGlobalVolume(0.3); // fade ambient music slightly
     announceFocused(crop);
-    // Repeat focused announcement every 8s while hovered
     focusTimer.current = setInterval(() => {
-      if (modeRef.current === "focused" && focusedRef.current) {
-        announceFocused(focusedRef.current);
+      if (modeRef.current === "focused" && focusedCropRef.current) {
+        announceFocused(focusedCropRef.current);
       }
-    }, 8000);
+    }, 9000);
   }, [isActive]);
 
-  // ── blurCrop: called on mouseleave ─────────────────────────────────────
   const blurCrop = useCallback(() => {
     if (!isActive) return;
     clearInterval(focusTimer.current);
-    focusedRef.current = null;
-    // Small delay before resuming ambient (feels natural)
+    focusedCropRef.current = null;
     setTimeout(() => {
-      if (modeRef.current !== "focused") return; // already changed
+      if (modeRef.current !== "focused") return;
       modeRef.current = "ambient";
       stopNativeTTS();
-      setGlobalVolume(1.0);
       startAmbientLoop();
-    }, 1500);
+    }, 1200);
   }, [isActive]);
 
-  // Cleanup on unmount
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail && e.detail.isActive !== undefined) toggle(e.detail.isActive);
+      else toggle();
+    };
+    window.addEventListener("market_announcer_toggle", handler);
+    return () => window.removeEventListener("market_announcer_toggle", handler);
+  }, [toggle]);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("market_audio_state", { detail: { isActive } }));
+  }, [isActive]);
+
+  useEffect(() => {
+    if (isActive && modeRef.current === "ambient") {
+      stopNativeTTS();
+      setTimeout(() => { if (modeRef.current === "ambient") announceAmbient(); }, 400);
+    }
+  }, [lang]);
+
   useEffect(() => {
     return () => {
       clearInterval(timerRef.current);
       clearInterval(focusTimer.current);
+      if (observerRef.current) observerRef.current.disconnect();
       stopNativeTTS();
-      setGlobalVolume(1.0);
     };
   }, []);
 
-  // Re-trigger ambient when language changes
-  useEffect(() => {
-    // Only re-trigger if it's already active, avoiding double-play on initial toggle
-    if (isActive && modeRef.current === "ambient") {
-      stopNativeTTS();
-      // Delay slightly to let cancel finish
-      setTimeout(() => {
-        if (modeRef.current === "ambient") announceAmbient();
-      }, 500);
-    }
-  }, [lang]); // Removed isActive from deps to prevent the double-trigger on toggle
-
-  return { isActive, toggle, focusCrop, blurCrop };
+  return { isActive, toggle, focusCrop, blurCrop, attachScrollObserver, refreshObserver };
 }

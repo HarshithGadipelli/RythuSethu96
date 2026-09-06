@@ -5,7 +5,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
-    host: true, // Expose on local network
+    host: true,
+    allowedHosts: [
+      'trash-irregular-critter.ngrok-free.dev'
+    ]
+    // Expose on local network
   },
   build: {
     chunkSizeWarningLimit: 1000,

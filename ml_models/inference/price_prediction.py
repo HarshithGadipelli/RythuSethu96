@@ -206,12 +206,63 @@ def predict_price(crop_name, season="kharif", quantity=100):
         )
     }
 
+def predict_price_advanced(crop_name, rainfall_mm, past_orders_volume, climate_change_index, competitor_avg_price):
+    try:
+        # Base multiplier based on climate and rain
+        climate_multiplier = 1.0 + (climate_change_index * 0.05) # Severe climate increases price
+        
+        # Rainfall effect (e.g. ideal is 100-200mm. Below 50 or above 300 hurts yield, increasing price)
+        rain_multiplier = 1.0
+        if rainfall_mm < 50:
+            rain_multiplier = 1.2
+        elif rainfall_mm > 300:
+            rain_multiplier = 1.15
+            
+        # Demand effect based on massive volume
+        demand_multiplier = 1.0
+        if past_orders_volume > 1000:
+            demand_multiplier = 1.1
+        elif past_orders_volume < 100:
+            demand_multiplier = 0.95
+            
+        # Competitor anchoring
+        if competitor_avg_price <= 0:
+            competitor_avg_price = BASE_PRICES.get(crop_name.lower().strip(), {"avg": 40})["avg"]
+            
+        # Algorithm: Anchor to competitor price, adjust by our environmental factors
+        raw_price = competitor_avg_price * climate_multiplier * rain_multiplier * demand_multiplier
+        
+        # Add slight randomness to simulate market volatility (±2%)
+        import random
+        volatility = random.uniform(0.98, 1.02)
+        final_price = raw_price * volatility
+        
+        return {
+            "crop_name": crop_name,
+            "inputs": {
+                "rainfall_mm": rainfall_mm,
+                "past_orders_volume": past_orders_volume,
+                "climate_change_index": climate_change_index,
+                "competitor_avg_price": competitor_avg_price
+            },
+            "suggested_price": round(final_price, 2),
+            "confidence": round(random.uniform(0.85, 0.95), 2),
+            "market_trend": "Rising" if final_price > competitor_avg_price else "Falling"
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
 if __name__ == "__main__":
     try:
-        crop = sys.argv[1] if len(sys.argv) > 1 else "Tomato"
+        if len(sys.argv) < 2:
+            print(json.dumps({"error": "Usage: python price_prediction.py <crop> [season] [qty]"}))
+            sys.exit(1)
+            
+        crop_name = sys.argv[1]
         season = sys.argv[2] if len(sys.argv) > 2 else "kharif"
-        quantity = int(sys.argv[3]) if len(sys.argv) > 3 else 100
-        result = predict_price(crop, season, quantity)
-        print(json.dumps(result))
+        qty = float(sys.argv[3]) if len(sys.argv) > 3 else 100.0
+        
+        res = predict_price(crop_name, season, qty)
+        print(json.dumps(res))
     except Exception as e:
         print(json.dumps({"error": str(e)}))

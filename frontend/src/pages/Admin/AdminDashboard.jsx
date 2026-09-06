@@ -9,7 +9,7 @@ import { io } from "socket.io-client";
 import AdminFinancials from "./AdminFinancials";
 import AdminGlobalMap from "../../components/AdminGlobalMap";
 
-const TABS = ["overview","users","verification","orders","deliveries","profit","security","support", "tips", "mlops"];
+const TABS = ["overview","users","verification","orders","deliveries","profit","security","support", "tips", "demand", "stock", "mlops", "waste", "soiltests", "clearance", "broadcasts"];
 
 const AdminTips = ({ stats }) => {
   const tips = [
@@ -72,7 +72,76 @@ export default function AdminDashboard() {
   const [search, setSearch] = useState("");
   const [mapRegionFilter, setMapRegionFilter] = useState("All");
   const [broadcastMsg, setBroadcastMsg] = useState("");
+  const [selectedUserModal, setSelectedUserModal] = useState(null);
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
+  const [cropSubTab, setCropSubTab] = useState("catalog");
+  const [soilRequests, setSoilRequests] = useState([]);
+  const [soilFilter, setSoilFilter] = useState("all");
+  const [soilAssignModal, setSoilAssignModal] = useState(null);
+  const [soilAssignForm, setSoilAssignForm] = useState({
+    scientistName: "Dr. Arvind Swamy (Soil Chemist - Unit 04)",
+    teamVehicleNumber: "TS-09-LAB-1029",
+    contactPhone: "9848099881",
+    scheduledVisitDate: "",
+    adminNotes: "Mobile soil testing van equipped with digital spectrometer."
+  });
+  const [soilReportModal, setSoilReportModal] = useState(null);
+  const [soilReportForm, setSoilReportForm] = useState({
+    phLevel: 6.8,
+    nitrogenN: "265 kg/ha (Medium)",
+    phosphorusP: "24 kg/ha (Adequate)",
+    potassiumK: "320 kg/ha (High)",
+    organicCarbonPercent: 0.72,
+    electricalConductivityEC: "0.38 dS/m (Normal)",
+    recommendedManure: "Apply 2 tonnes/acre Farm Yard Manure + 250kg Vermicompost + 5kg PSB biofertilizer."
+  });
   const { listening, activeField, interim, startListening, stopListening } = useVoiceInput(lang || "en");
+
+  const [demandData, setDemandData] = useState([]);
+  const [stockData, setStockData] = useState([]);
+  const [clearanceStock, setClearanceStock] = useState([]);
+  useEffect(() => {
+    if (tab === "demand") {
+      API.get("/ml/search-demand").then(res => setDemandData(res.data)).catch(console.error);
+    }
+    if (tab === "stock") {
+      API.get("/admin/stock-analysis").then(res => setStockData(res.data)).catch(console.error);
+    }
+    if (tab === "clearance") {
+      API.get("/admin/clearance").then(res => setClearanceStock(res.data)).catch(console.error);
+    }
+  }, [tab]);
+
+  const updateClearancePrice = async (id, currentPrice) => {
+    const newPrice = prompt(`Enter new selling price (Current: ₹${currentPrice}):`, currentPrice);
+    if (!newPrice || isNaN(newPrice) || Number(newPrice) <= 0) return;
+    try {
+      await API.put(`/admin/clearance/${id}/price`, { price: Number(newPrice) });
+      setMsg({ type: "success", text: "Clearance price updated!" });
+      API.get("/admin/clearance").then(res => setClearanceStock(res.data)).catch(console.error);
+    } catch (e) {
+      setMsg({ type: "error", text: "Failed to update clearance price." });
+    }
+  };
+
+  const handleEducationalBroadcast = async (title, message) => {
+    try {
+      await API.post("/admin/broadcast", { title, message });
+      setMsg({ type: "success", text: "Educational broadcast sent to all farmers!" });
+    } catch (e) {
+      setMsg({ type: "error", text: "Failed to send broadcast." });
+    }
+  };
+
+  const handleSuggestFarmers = async (cropName) => {
+    try {
+      const res = await API.post("/ml/suggest-farmers", { cropName });
+      setMsg({ type: "success", text: res.data.message });
+      setTimeout(() => setMsg({ type:"", text:"" }), 3000);
+    } catch (e) {
+      setMsg({ type: "error", text: "Failed to suggest farmers." });
+    }
+  };
 
   useEffect(() => {
     loadAll();
@@ -104,17 +173,18 @@ export default function AdminDashboard() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [ur, or, cr, ag, st, dl, tk, rp, pu, pt] = await Promise.all([
+      const [ur, or, cr, ag, st, dl, tk, rp, pu, pt, sr] = await Promise.all([
         API.get("/admin/users"),
         API.get("/admin/orders"),
-        API.get("/crops"),
+        API.get("/admin/crops"),
         API.get("/admin/agents"),
         API.get("/admin/stats"),
         API.get("/admin/deliveries"),
         API.get("/tickets/admin"),
         API.get("/reports"),
         API.get("/admin/pending-users"),
-        API.get("/tours/pending")
+        API.get("/tours/pending"),
+        API.get("/soil-test/admin-all")
       ]);
       setUsers(ur.data);
       setOrders(or.data);
@@ -126,6 +196,7 @@ export default function AdminDashboard() {
       setReports(rp.data);
       setPendingUsersList(pu.data);
       setPendingTours(pt.data);
+      setSoilRequests(sr.data);
     } catch(e) {
       setMsg({ type:"error", text:"Failed to load data." });
     } finally { setLoading(false); }
@@ -261,16 +332,18 @@ export default function AdminDashboard() {
           { k:"overview", l:"📊 Overview" },
           { k:"tracking", l:"🗺️ Live Map" },
           { k:"users",   l:`👥 Users (${users.length})` },
+          { k:"crops", l:`🌾 Crops (${crops.length})` },
+          { k:"soil", l:`🧪 Soil Testing (${soilRequests.filter(s => s.status === 'pending_assignment').length})` },
           { k:"verification", l:`🌾 Verify (${pendingFarmers.length})` },
           { k:"tours", l:`🚜 Verify Tours (${pendingTours.length})` },
           { k:"orders",  l:`📦 Orders (${orders.length})` },
           { k:"deliveries", l:`🚚 Delivery (${needsDelivery.length})` },
           { k:"financials", l:"💵 Financial Ledger" },
           { k:"security",l:"🛡️ Security" },
-          { k:"support", l:`🎫 Tickets (${tickets.length})` },
-          { k:"crops", l:`🌾 Crop Lifecycles` },
+          { k:"support", l:"🎧 Support" },
+          { k:"tips", l:"💡 Tips" },
+          { k:"demand", l:"📊 Demand Prediction" },
           { k:"broadcast", l:"📢 Broadcast" },
-          { k:"tips", l:"💡 Growth Tips" },
           { k:"mlops", l:"🤖 ML Ops" }
         ].map(tb => (
           <button key={tb.k} className={`tab-btn ${tab===tb.k?"active":""}`} onClick={() => setTab(tb.k)}>
@@ -283,6 +356,39 @@ export default function AdminDashboard() {
         <div className="loader-wrapper"><div className="loader"></div><p className="loader-text">{t("loading")}</p></div>
       ) : (
         <>
+          {/* ── DEMAND PREDICTION ── */}
+          {tab === "demand" && (
+            <div className="glass-card">
+              <h3 className="section-title">📊 Search Demand Prediction</h3>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "1rem" }}>Top searched crops by customers. Suggest these to farmers to cultivate for better returns.</p>
+              <table className="rs-table">
+                <thead>
+                  <tr>
+                    <th>Crop Name</th>
+                    <th>Search Count</th>
+                    <th>Latest Search</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {demandData.map((d, i) => (
+                    <tr key={i}>
+                      <td style={{ fontWeight: 600, color: "var(--text-dark)", textTransform: "capitalize" }}>{d._id}</td>
+                      <td><span className="badge badge-yellow">{d.count} Searches</span></td>
+                      <td>{new Date(d.latestSearch).toLocaleString()}</td>
+                      <td>
+                        <button className="btn-primary" style={{ padding: "0.4rem 0.8rem", fontSize: "0.8rem" }} onClick={() => handleSuggestFarmers(d._id)}>
+                          📢 Suggest to Farmers
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {demandData.length === 0 && <tr><td colSpan="4" style={{ textAlign: "center" }}>No search data available.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {/* ── OVERVIEW ── */}
           {tab === "overview" && (
             <>
@@ -372,40 +478,144 @@ export default function AdminDashboard() {
 
           {/* ── USERS ── */}
           {tab === "users" && (
-            <div className="glass-card" style={{ overflowX:"auto" }}>
-              <table className="rs-table">
-                <thead>
-                  <tr>
-                    <th>Name</th><th>Email</th><th>Phone</th>
-                    <th>Role</th><th>Verified</th><th>Joined</th><th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map(u => (
-                    <tr key={u._id}>
-                      <td><strong style={{ color: "var(--text-dark)" }}>{u.name||"—"}</strong></td>
-                      <td style={{ color: "var(--text-muted)", fontSize:"0.85rem" }}>{u.email}</td>
-                      <td style={{ color:"var(--text-muted)", fontSize:"0.82rem" }}>{u.phone||"—"}</td>
-                      <td>
-                        <select value={u.role} onChange={(e) => changeRole(u._id, e.target.value)}
-                          style={{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(82,183,136,0.25)", borderRadius:6, color: "var(--text-dark)", padding:"3px 6px", fontSize:"0.8rem", cursor:"pointer" }}>
-                          {["farmer","customer","agent","admin"].map(r => <option key={r} value={r}>{r}</option>)}
-                        </select>
-                      </td>
-                      <td><span className={`badge ${u.isVerified?"badge-green":"badge-red"}`}>{u.isVerified?"✅":"⏳"}</span></td>
-                      <td style={{ color:"var(--text-muted)", fontSize:"0.78rem" }}>{new Date(u.createdAt).toLocaleDateString("en-IN")}</td>
-                      <td>
-                        {u.role !== "admin" && (
-                          <>
-                            <button className="btn-warn" style={{ padding:"0.35rem 0.75rem", fontSize:"0.78rem", marginRight:"0.5rem" }} onClick={() => fineUser(u._id, u.name)}>💸 Fine</button>
-                            <button className="btn-danger" style={{ padding:"0.35rem 0.75rem", fontSize:"0.78rem" }} onClick={() => deleteUser(u._id, u.name)}>🗑️</button>
-                          </>
-                        )}
-                      </td>
+            <div>
+              {/* Role filter bar */}
+              <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+                {[
+                  { id: "all", label: `All Users (${users.length})` },
+                  { id: "farmer", label: `👨‍🌾 Farmers (${users.filter(u => u.role === "farmer").length})` },
+                  { id: "customer", label: `🛒 Customers (${users.filter(u => u.role === "customer").length})` },
+                  { id: "agent", label: `🚚 Agents (${users.filter(u => u.role === "agent").length})` },
+                  { id: "admin", label: `👑 Admins (${users.filter(u => u.role === "admin").length})` }
+                ].map(rf => (
+                  <button
+                    key={rf.id}
+                    onClick={() => setUserRoleFilter(rf.id)}
+                    style={{
+                      padding: "0.4rem 0.85rem",
+                      borderRadius: "20px",
+                      fontSize: "0.82rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      border: userRoleFilter === rf.id ? "1.5px solid var(--green-mid)" : "1px solid #e2e8f0",
+                      background: userRoleFilter === rf.id ? "var(--green-pale)" : "white",
+                      color: userRoleFilter === rf.id ? "var(--green-deep)" : "var(--text-mid)"
+                    }}
+                  >
+                    {rf.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="glass-card" style={{ overflowX:"auto" }}>
+                <table className="rs-table">
+                  <thead>
+                    <tr>
+                      <th>User Profile</th>
+                      <th>Contact & Location</th>
+                      <th>Role & Status</th>
+                      <th>MongoDB Data</th>
+                      <th>Trust / Score</th>
+                      <th>Joined</th>
+                      <th>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredUsers
+                      .filter(u => userRoleFilter === "all" || u.role === userRoleFilter)
+                      .map(u => (
+                        <tr key={u._id}>
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                              <div style={{ 
+                                width: 36, height: 36, borderRadius: "50%", background: "var(--green-pale)", 
+                                color: "var(--green-deep)", display: "flex", alignItems: "center", justifyContent: "center", 
+                                fontWeight: "bold", fontSize: "0.9rem", flexShrink: 0,
+                                backgroundImage: u.avatar ? `url(${u.avatar.startsWith("http") || u.avatar.startsWith("data:") ? u.avatar : `${BASE_URL}/${u.avatar.replace(/^\/+/, "")}`})` : "none",
+                                backgroundSize: "cover", backgroundPosition: "center"
+                              }}>
+                                {!u.avatar && (u.name ? u.name.charAt(0).toUpperCase() : "U")}
+                              </div>
+                              <div>
+                                <strong style={{ color: "var(--text-dark)", fontSize: "0.9rem", display: "block" }}>{u.name || "—"}</strong>
+                                <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>{u.email}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: "0.82rem", color: "var(--text-dark)" }}>📞 {u.phone || "—"}</div>
+                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>📍 {u.location || "—"}</div>
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", gap: "0.3rem", alignItems: "center", marginBottom: "0.2rem" }}>
+                              <select 
+                                value={u.role} 
+                                onChange={(e) => changeRole(u._id, e.target.value)}
+                                style={{ background: "white", border: "1px solid #cbd5e1", borderRadius: 6, color: "var(--text-dark)", padding: "2px 6px", fontSize: "0.78rem", cursor: "pointer" }}
+                              >
+                                {["farmer","customer","agent","admin"].map(r => <option key={r} value={r}>{r}</option>)}
+                              </select>
+                              <span className={`badge ${u.isVerified ? "badge-green" : "badge-yellow"}`} style={{ fontSize: "0.7rem" }}>
+                                {u.isVerified ? "✅ Verified" : "⏳ Pending"}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: "0.7rem", color: u.accountStatus === "banned" ? "#dc2626" : u.accountStatus === "suspended" ? "#d97706" : "#16a34a", textTransform: "capitalize", fontWeight: 600 }}>
+                              ● {u.accountStatus || "active"}
+                            </span>
+                          </td>
+                          <td style={{ fontSize: "0.8rem" }}>
+                            {u.role === "farmer" && (
+                              <div>
+                                <span style={{ color: "var(--green-deep)", fontWeight: 600 }}>🌾 {u.cropsCount || 0} Crops</span>
+                                <div style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}>📦 {u.ordersCount || 0} Orders</div>
+                              </div>
+                            )}
+                            {u.role === "customer" && (
+                              <div>
+                                <span style={{ color: "#4338ca", fontWeight: 600 }}>🛍️ {u.ordersCount || 0} Orders</span>
+                                <div style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}>🪙 {u.rewardPoints || 0} pts</div>
+                              </div>
+                            )}
+                            {u.role === "agent" && (
+                              <div>
+                                <span style={{ color: "#d97706", fontWeight: 600 }}>🚚 {u.agentProfile?.vehicle || "Bike"}</span>
+                                <div style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}>💵 ₹{u.cashInHand || 0} cash</div>
+                              </div>
+                            )}
+                            {u.role === "admin" && <span style={{ color: "#991b1b", fontWeight: 600 }}>👑 Platform Admin</span>}
+                          </td>
+                          <td>
+                            <span style={{ fontWeight: 600, color: (u.trustScore || 85) > 80 ? "#16a34a" : "#d97706", fontSize: "0.82rem" }}>
+                              {u.role === "agent" ? `${u.deliveryScore || 100}/100` : `${u.trustScore || 85}/100`}
+                            </span>
+                            {u.strikes > 0 && <span style={{ color: "#dc2626", fontSize: "0.75rem", display: "block" }}>⚠️ {u.strikes} Strikes</span>}
+                          </td>
+                          <td style={{ color:"var(--text-muted)", fontSize:"0.78rem" }}>
+                            {new Date(u.createdAt).toLocaleDateString("en-IN")}
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
+                              <button 
+                                className="btn-primary" 
+                                style={{ padding: "0.35rem 0.65rem", fontSize: "0.75rem", background: "var(--green-deep)", borderColor: "var(--green-deep)" }}
+                                onClick={() => setSelectedUserModal(u)}
+                                title="View full MongoDB profile and uploaded documents"
+                              >
+                                🔍 Details
+                              </button>
+                              {u.role !== "admin" && (
+                                <>
+                                  <button className="btn-warn" style={{ padding: "0.35rem 0.6rem", fontSize: "0.75rem" }} onClick={() => fineUser(u._id, u.name)}>💸</button>
+                                  <button className="btn-danger" style={{ padding: "0.35rem 0.6rem", fontSize: "0.75rem" }} onClick={() => deleteUser(u._id, u.name)}>🗑️</button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
@@ -789,41 +999,178 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ── CROP LIFECYCLES ── */}
+          {/* ── CROPS MANAGEMENT ── */}
           {tab === "crops" && (
-            <div className="admin-section">
-              <h2 className="section-title mb-3">🌾 Crop Lifecycle Proofs</h2>
-              <div className="glass-card">
-                <table className="rs-table">
-                  <thead><tr><th>Crop / Farmer</th><th>Current Stage</th><th>Latest Proof</th><th>Notes</th><th>Date</th></tr></thead>
-                  <tbody>
-                    {crops.filter(c => c.lifecycleUpdates && c.lifecycleUpdates.length > 0).map(c => {
-                      const latestUpdate = c.lifecycleUpdates[c.lifecycleUpdates.length - 1];
-                      return (
-                        <tr key={c._id}>
-                          <td>
-                            <strong style={{ color: "var(--text-dark)" }}>{c.name}</strong>
-                            <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Farmer: {c.farmer?.name || "Unknown"}</div>
-                          </td>
-                          <td style={{ textTransform: "capitalize", color: "var(--yellow-wheat)" }}>{c.lifecycleStage}</td>
-                          <td>
-                            {latestUpdate.imageUrl ? (
-                              <img src={latestUpdate.imageUrl} alt="Proof" style={{ width: "60px", height: "60px", objectFit: "cover", borderRadius: "8px", border: "1px solid var(--green-pale)" }} />
-                            ) : (
-                              <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>No image</span>
-                            )}
-                          </td>
-                          <td style={{ color: "var(--text-dark)", fontSize: "0.85rem", maxWidth: "200px" }}>{latestUpdate.notes || "-"}</td>
-                          <td style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{new Date(latestUpdate.timestamp).toLocaleDateString()}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                {crops.filter(c => c.lifecycleUpdates && c.lifecycleUpdates.length > 0).length === 0 && (
-                  <p style={{ textAlign: "center", color: "var(--text-muted)", padding: "2rem" }}>No crop lifecycle updates found.</p>
-                )}
+            <div>
+              <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.2rem" }}>
+                <button
+                  onClick={() => setCropSubTab("catalog")}
+                  style={{
+                    padding: "0.45rem 1rem", borderRadius: "20px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer",
+                    border: cropSubTab === "catalog" ? "1.5px solid var(--green-mid)" : "1px solid #e2e8f0",
+                    background: cropSubTab === "catalog" ? "var(--green-pale)" : "white",
+                    color: cropSubTab === "catalog" ? "var(--green-deep)" : "var(--text-mid)"
+                  }}
+                >
+                  📦 All Marketplace Crops ({crops.length})
+                </button>
+                <button
+                  onClick={() => setCropSubTab("lifecycles")}
+                  style={{
+                    padding: "0.45rem 1rem", borderRadius: "20px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer",
+                    border: cropSubTab === "lifecycles" ? "1.5px solid var(--green-mid)" : "1px solid #e2e8f0",
+                    background: cropSubTab === "lifecycles" ? "var(--green-pale)" : "white",
+                    color: cropSubTab === "lifecycles" ? "var(--green-deep)" : "var(--text-mid)"
+                  }}
+                >
+                  🌱 Lifecycle Proofs ({crops.filter(c => c.lifecycleUpdates?.length > 0).length})
+                </button>
               </div>
+
+              {cropSubTab === "catalog" && (
+                <div className="glass-card" style={{ overflowX: "auto" }}>
+                  <table className="rs-table">
+                    <thead>
+                      <tr>
+                        <th>Crop Product</th>
+                        <th>Farmer Details</th>
+                        <th>Price & Stock</th>
+                        <th>Organic & Pesticide Free</th>
+                        <th>Lifecycle Stage</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {crops.map(c => {
+                        const cropImg = c.image 
+                          ? (c.image.startsWith("http") || c.image.startsWith("data:") ? c.image : `${BASE_URL}/${c.image.replace(/^\/+/, "")}`)
+                          : null;
+                        return (
+                          <tr key={c._id}>
+                            <td>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                                {cropImg ? (
+                                  <img src={cropImg} alt={c.name} style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", border: "1px solid #e2e8f0" }} />
+                                ) : (
+                                  <div style={{ width: 44, height: 44, borderRadius: 8, background: "var(--green-pale)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>🌾</div>
+                                )}
+                                <div>
+                                  <strong style={{ color: "var(--text-dark)", fontSize: "0.92rem", display: "block" }}>{c.name}</strong>
+                                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "capitalize" }}>{c.category} • {c.season || "kharif"}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <strong style={{ fontSize: "0.85rem", color: "var(--text-dark)", display: "block" }}>{c.farmer?.name || "Farmer"}</strong>
+                              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>📍 {c.location || c.farmLocation || "Telangana"}</span>
+                            </td>
+                            <td>
+                              <strong style={{ color: "var(--green-deep)", fontSize: "0.95rem" }}>₹{c.price}/{c.unit || "kg"}</strong>
+                              <div style={{ fontSize: "0.78rem", color: c.quantity < 10 ? "#dc2626" : "var(--text-mid)", fontWeight: 600 }}>
+                                {c.quantity} {c.unit || "kg"} in stock
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      await API.put(`/admin/crops/${c._id}/verify-organic`, { isOrganic: !c.isOrganic, isPesticideFree: c.isPesticideFree });
+                                      flash("success", `Organic status toggled for ${c.name}`); loadAll();
+                                    } catch { flash("error", "Failed to update organic status."); }
+                                  }}
+                                  style={{
+                                    padding: "2px 8px", borderRadius: "10px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer",
+                                    border: c.isOrganic ? "1px solid #22c55e" : "1px solid #cbd5e1",
+                                    background: c.isOrganic ? "#ecfdf5" : "#f8fafc",
+                                    color: c.isOrganic ? "#166534" : "#94a3b8"
+                                  }}
+                                  title="Click to toggle Organic certification"
+                                >
+                                  {c.isOrganic ? "🌿 Organic" : "⚪ Not Organic"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      await API.put(`/admin/crops/${c._id}/verify-organic`, { isOrganic: c.isOrganic, isPesticideFree: !c.isPesticideFree });
+                                      flash("success", `Pesticide-free status toggled for ${c.name}`); loadAll();
+                                    } catch { flash("error", "Failed to update pesticide status."); }
+                                  }}
+                                  style={{
+                                    padding: "2px 8px", borderRadius: "10px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer",
+                                    border: c.isPesticideFree ? "1px solid #059669" : "1px solid #cbd5e1",
+                                    background: c.isPesticideFree ? "#ecfdf5" : "#f8fafc",
+                                    color: c.isPesticideFree ? "#065f46" : "#94a3b8"
+                                  }}
+                                  title="Click to toggle Pesticide-Free certification"
+                                >
+                                  {c.isPesticideFree ? "🛡️ Pesticide Free" : "⚪ Chemical Used"}
+                                </button>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="badge badge-yellow" style={{ textTransform: "capitalize", fontSize: "0.75rem" }}>
+                                {c.lifecycleStage || "ready"}
+                              </span>
+                            </td>
+                            <td>
+                              <button
+                                className="btn-danger"
+                                style={{ padding: "0.35rem 0.75rem", fontSize: "0.78rem" }}
+                                onClick={async () => {
+                                  if (!confirm(`Delete crop listing "${c.name}" from marketplace?`)) return;
+                                  try {
+                                    await API.delete(`/admin/crops/${c._id}`);
+                                    flash("success", `Crop "${c.name}" deleted.`); loadAll();
+                                  } catch { flash("error", "Failed to delete crop."); }
+                                }}
+                              >
+                                🗑️ Remove
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {cropSubTab === "lifecycles" && (
+                <div className="glass-card">
+                  <table className="rs-table">
+                    <thead><tr><th>Crop / Farmer</th><th>Current Stage</th><th>Latest Proof</th><th>Notes</th><th>Date</th></tr></thead>
+                    <tbody>
+                      {crops.filter(c => c.lifecycleUpdates && c.lifecycleUpdates.length > 0).map(c => {
+                        const latestUpdate = c.lifecycleUpdates[c.lifecycleUpdates.length - 1];
+                        return (
+                          <tr key={c._id}>
+                            <td>
+                              <strong style={{ color: "var(--text-dark)" }}>{c.name}</strong>
+                              <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Farmer: {c.farmer?.name || "Unknown"}</div>
+                            </td>
+                            <td style={{ textTransform: "capitalize", color: "var(--yellow-wheat)" }}>{c.lifecycleStage}</td>
+                            <td>
+                              {latestUpdate.imageUrl ? (
+                                <img src={latestUpdate.imageUrl.startsWith("http") ? latestUpdate.imageUrl : `${BASE_URL}/${latestUpdate.imageUrl.replace(/^\/+/, "")}`} alt="Proof" style={{ width: "60px", height: "60px", objectFit: "cover", borderRadius: "8px", border: "1px solid var(--green-pale)" }} />
+                              ) : (
+                                <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>No image</span>
+                              )}
+                            </td>
+                            <td style={{ color: "var(--text-dark)", fontSize: "0.85rem", maxWidth: "200px" }}>{latestUpdate.notes || "-"}</td>
+                            <td style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{new Date(latestUpdate.timestamp).toLocaleDateString()}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {crops.filter(c => c.lifecycleUpdates && c.lifecycleUpdates.length > 0).length === 0 && (
+                    <p style={{ textAlign: "center", color: "var(--text-muted)", padding: "2rem" }}>No crop lifecycle updates found.</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -931,16 +1278,27 @@ export default function AdminDashboard() {
           {/* ── MLOPS TAB ── */}
           {tab === "mlops" && (
             <div className="glass-card mt-3">
-              <h3 className="section-title">🤖 Machine Learning Operations (MLOps)</h3>
-              <p style={{ color:"var(--text-muted)", fontSize:"0.85rem", marginBottom:"1rem" }}>
-                Manually trigger retraining of the AI models using the latest live database parameters.
-              </p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                <div>
+                  <h3 className="section-title" style={{ margin: 0 }}>🤖 Machine Learning Operations (MLOps)</h3>
+                  <p style={{ color:"var(--text-muted)", fontSize:"0.85rem", marginTop: "0.25rem" }}>
+                    Manually trigger retraining of the AI models using the latest live database parameters.
+                  </p>
+                </div>
+                <button 
+                  className="btn-primary" 
+                  style={{ background: "linear-gradient(90deg, #8B5CF6 0%, #3B82F6 100%)", padding: "0.75rem 1.5rem", border: "none", boxShadow: "0 4px 15px rgba(139, 92, 246, 0.4)", display: "flex", alignItems: "center", gap: "0.5rem" }}
+                  onClick={() => handleRetrain('All Ensemble Models')}
+                >
+                  🚀 Train ALL Models Ensemble
+                </button>
+              </div>
               
-              <div className="grid-3">
+              <div className="grid-3 mt-3">
                 <div className="glass-card-dark" style={{ textAlign: "center" }}>
                   <h4 style={{ color: "var(--yellow-wheat)" }}>Market Price Prediction</h4>
                   <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", minHeight:"40px" }}>Retrain using recent completed order prices and community intelligence data.</p>
-                  <button className="btn-primary mt-2" onClick={() => handleRetrain('Price Model')}>
+                  <button className="btn-secondary mt-2" onClick={() => handleRetrain('Price Model')}>
                     🔄 Retrain Model
                   </button>
                 </div>
@@ -948,7 +1306,7 @@ export default function AdminDashboard() {
                 <div className="glass-card-dark" style={{ textAlign: "center" }}>
                   <h4 style={{ color: "var(--blue-light)" }}>Fraud Detection Engine</h4>
                   <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", minHeight:"40px" }}>Analyze new transaction metadata and flagged reports.</p>
-                  <button className="btn-primary mt-2" onClick={() => handleRetrain('Fraud Detection Model')}>
+                  <button className="btn-secondary mt-2" onClick={() => handleRetrain('Fraud Detection Model')}>
                     🔄 Retrain Model
                   </button>
                 </div>
@@ -956,11 +1314,317 @@ export default function AdminDashboard() {
                 <div className="glass-card-dark" style={{ textAlign: "center" }}>
                   <h4 style={{ color: "var(--green-light)" }}>Seasonality & Demand</h4>
                   <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", minHeight:"40px" }}>Update optimal planting/selling predictions based on current month & region.</p>
-                  <button className="btn-primary mt-2" onClick={() => handleRetrain('Seasonality Model')}>
+                  <button className="btn-secondary mt-2" onClick={() => handleRetrain('Seasonality Model')}>
                     🔄 Retrain Model
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {tab === "waste" && (
+            <div className="glass-card mt-3">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                <div>
+                  <h3 className="section-title" style={{ margin: 0 }}>♻️ Circular Economy (Organic Waste)</h3>
+                  <p style={{ color:"var(--text-muted)", fontSize:"0.85rem", marginTop: "0.25rem" }}>
+                    Manage organic vegetable/fruit waste collected by agents during delivery.
+                  </p>
+                </div>
+                <button className="btn-primary" onClick={() => {
+                  alert("Simulating sale of 100kg organic waste to Biogas Plant for ₹1,200. Revenue added to platform!");
+                }}>
+                  💸 Sell 100kg to Biogas Plant
+                </button>
+              </div>
+              <div className="stats-grid">
+                <div className="stat-card" style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "white" }}>
+                  <h4>Total Waste Collected</h4>
+                  <p className="val">2,450 kg</p>
+                </div>
+                <div className="stat-card" style={{ background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)", color: "white" }}>
+                  <h4>Reward Pts Issued</h4>
+                  <p className="val">24,500 pts</p>
+                </div>
+                <div className="stat-card" style={{ background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)", color: "white" }}>
+                  <h4>Waste Revenue</h4>
+                  <p className="val">₹29,400</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tab === "soiltests" && (
+            <div className="glass-card mt-3">
+              <h3 className="section-title" style={{ margin: 0 }}>🧪 Physical Soil Tests Requested</h3>
+              <p style={{ color:"var(--text-muted)", fontSize:"0.85rem", marginTop: "0.25rem" }}>
+                Farmers who requested physical soil tests during registration or from their dashboard.
+              </p>
+              <table className="rs-table mt-3">
+                <thead>
+                  <tr>
+                    <th>Farmer Name</th>
+                    <th>Location</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Mock data representing physical requests */}
+                  <tr>
+                    <td>Duniya Farmer</td>
+                    <td>Hyderabad Outskirts</td>
+                    <td><span className="badge warning">Pending Assignment</span></td>
+                    <td>
+                      <button className="btn-secondary" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }} onClick={() => alert("Dispatching Soil Test Team!")}>
+                        Dispatch Team (69% Discount applied)
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {tab === "clearance" && (
+            <div className="glass-card mt-3">
+              <h3 className="section-title">❄️ Cold Storage Clearance Stock</h3>
+              <p style={{ color:"var(--text-muted)", fontSize:"0.85rem", marginBottom:"1rem" }}>
+                Perishable stock sold by farmers at the end of the day. Stored in Admin warehouses.
+              </p>
+              {clearanceStock.length === 0 ? (
+                <p>No clearance stock available.</p>
+              ) : (
+                <table className="rs-table">
+                  <thead>
+                    <tr>
+                      <th>Crop</th>
+                      <th>Quantity</th>
+                      <th>Original Farmer</th>
+                      <th>Warehouse</th>
+                      <th>Admin Selling Price</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clearanceStock.map(c => (
+                      <tr key={c._id}>
+                        <td>{c.name}</td>
+                        <td>{c.quantity} {c.unit}</td>
+                        <td>{c.originalFarmer?.name || "Unknown"}</td>
+                        <td>{c.coldStorageLocation}</td>
+                        <td style={{ color: "var(--yellow-wheat)" }}>₹{c.price}/{c.unit}</td>
+                        <td>
+                          <button className="btn-secondary" onClick={() => updateClearancePrice(c._id, c.price)}>✏️ Edit Price</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+
+          {tab === "broadcasts" && (
+            <div className="glass-card mt-3">
+              <h3 className="section-title">📢 Educational & Promotional Broadcasts</h3>
+              <p style={{ color:"var(--text-muted)", fontSize:"0.85rem", marginBottom:"1rem" }}>
+                Send push notifications directly to farmers to influence crop production and eco-friendly practices.
+              </p>
+              
+              <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginBottom: "1.5rem" }}>
+                <button className="btn-secondary" onClick={() => handleEducationalBroadcast("🌱 Promote Millets", "High demand predicted for Millets. Reduce Rice cultivation and switch to Millets for higher profits and better soil health!")}>
+                  🌾 Send "Grow Millets" Promo
+                </button>
+                <button className="btn-secondary" onClick={() => handleEducationalBroadcast("🔥 Stop Crop Burning", "Warning: Burning leftover crop waste causes severe air pollution. Use our Biogas agents to collect waste for reward points instead!")}>
+                  🚫 Send "Stop Crop Burning" Alert
+                </button>
+                <button className="btn-secondary" onClick={() => handleEducationalBroadcast("☔ Rain Alert", "Heavy rainfall expected this week. Ensure your crops are protected and delay sowing if necessary.")}>
+                  ☔ Send Rain Alert
+                </button>
+              </div>
+
+              <div style={{ background: "rgba(59, 130, 246, 0.05)", padding: "1rem", borderRadius: "8px", border: "1px solid rgba(59, 130, 246, 0.2)" }}>
+                <h4 style={{ marginBottom: "0.5rem" }}>Custom Broadcast</h4>
+                <input type="text" className="rs-input mb-2" placeholder="Broadcast Title" id="broadcastTitle" />
+                <textarea className="rs-input mb-2" placeholder="Write your educational message here..." rows={3} id="broadcastMessage"></textarea>
+                <button className="btn-primary" onClick={() => {
+                  const t = document.getElementById("broadcastTitle").value;
+                  const m = document.getElementById("broadcastMessage").value;
+                  if (t && m) handleEducationalBroadcast(t, m);
+                }}>Send Custom Broadcast 🚀</button>
+              </div>
+            </div>
+          )}
+
+          {/* ── SOIL TESTING MANAGEMENT TAB ── */}
+          {tab === "soil" && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem", flexWrap: "wrap", gap: "1rem" }}>
+                <div>
+                  <h3 style={{ color: "var(--text-dark)", fontSize: "1.3rem", margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <span>🧪</span> Soil Testing Lab & Field Team Dispatch Center
+                  </h3>
+                  <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: "0.2rem 0 0 0" }}>
+                    Review farmer soil scan requests, verify advance payments, assign mobile testing lab units, and publish certified Soil Health Cards.
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  {[
+                    { id: "all", label: `All (${soilRequests.length})` },
+                    { id: "pending_assignment", label: `⏳ Pending Team (${soilRequests.filter(s => s.status === 'pending_assignment').length})` },
+                    { id: "team_assigned", label: `👨‍🔬 Team Dispatched (${soilRequests.filter(s => s.status === 'team_assigned').length})` },
+                    { id: "report_published", label: `📜 Certified Reports (${soilRequests.filter(s => s.status === 'report_published').length})` }
+                  ].map(f => (
+                    <button
+                      key={f.id}
+                      className={`tab-btn ${soilFilter === f.id ? "active" : ""}`}
+                      onClick={() => setSoilFilter(f.id)}
+                      style={{ padding: "0.4rem 0.8rem", fontSize: "0.8rem" }}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {soilRequests.filter(s => soilFilter === "all" || s.status === soilFilter).length === 0 ? (
+                <div className="glass-card text-center" style={{ padding: "3rem" }}>
+                  <p style={{ fontSize: "3rem" }}>🧪</p>
+                  <p style={{ color: "var(--text-muted)", marginTop: "1rem" }}>No soil testing requests in this category.</p>
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Farmer & Location</th>
+                        <th>Soil Type & AI Scan</th>
+                        <th>Land & Spots</th>
+                        <th>Advance Payment</th>
+                        <th>Preferred Date</th>
+                        <th>Status</th>
+                        <th>Assigned Team / Report</th>
+                        <th>Admin Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {soilRequests
+                        .filter(s => soilFilter === "all" || s.status === soilFilter)
+                        .map(s => {
+                          const isPending = s.status === "pending_assignment";
+                          const isAssigned = s.status === "team_assigned";
+                          const isPublished = s.status === "report_published";
+
+                          return (
+                            <tr key={s._id}>
+                              <td>
+                                <strong style={{ color: "var(--text-dark)" }}>{s.farmerName}</strong>
+                                <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{s.phone}</div>
+                                <div style={{ fontSize: "0.75rem", color: "#64748b" }}>📍 {s.farmLocation}</div>
+                                {s.latitude && <div style={{ fontSize: "0.72rem", color: "#0284c7" }}>Coords: {s.latitude.toFixed(3)}, {s.longitude.toFixed(3)}</div>}
+                              </td>
+                              <td>
+                                <span style={{ fontWeight: 700, color: "#166534", fontSize: "0.85rem" }}>
+                                  🌱 {s.aiPreliminaryClassification?.soilType || "General Soil"}
+                                </span>
+                                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                                  {s.aiPreliminaryClassification?.confidence}% AI Confidence
+                                </div>
+                                <div style={{ fontSize: "0.72rem", color: "#475569", maxWidth: "180px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {s.aiPreliminaryClassification?.texture}
+                                </div>
+                              </td>
+                              <td>
+                                <div><strong>{s.farmSizeAcres}</strong> Acres</div>
+                                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{s.appointmentDetails?.samplingSpotsCount || 3} sample spots</div>
+                              </td>
+                              <td>
+                                <div style={{ fontWeight: 700, color: "#16a34a" }}>
+                                  ₹{s.appointmentDetails?.advanceAmount || 299} Paid ✅
+                                </div>
+                                <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                                  Mode: {s.appointmentDetails?.paymentMode?.toUpperCase()} • Bal: ₹{s.appointmentDetails?.balanceAmount || 500}
+                                </div>
+                              </td>
+                              <td>
+                                <div style={{ fontSize: "0.82rem", fontWeight: 600 }}>
+                                  {new Date(s.appointmentDetails?.preferredDate).toLocaleDateString("en-IN")}
+                                </div>
+                                <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                                  {s.appointmentDetails?.preferredTimeSlot}
+                                </div>
+                              </td>
+                              <td>
+                                <span className={`badge ${isPublished ? "badge-green" : isAssigned ? "badge-blue" : "badge-yellow"}`} style={{ textTransform: "capitalize" }}>
+                                  {s.status.replace("_", " ")}
+                                </span>
+                              </td>
+                              <td>
+                                {isAssigned && (
+                                  <div style={{ fontSize: "0.8rem" }}>
+                                    <strong style={{ color: "#1e40af" }}>{s.assignedTeam?.scientistName}</strong>
+                                    <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>🚐 {s.assignedTeam?.teamVehicleNumber}</div>
+                                    <div style={{ fontSize: "0.72rem", color: "#16a34a" }}>Visit: {new Date(s.assignedTeam?.scheduledVisitDate).toLocaleDateString("en-IN")}</div>
+                                  </div>
+                                )}
+                                {isPublished && (
+                                  <div style={{ fontSize: "0.8rem", color: "#166534" }}>
+                                    <strong>pH {s.soilHealthReport?.phLevel}</strong> • {s.soilHealthReport?.phCategory}
+                                    <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>OC: {s.soilHealthReport?.organicCarbonPercent}% • NPK Tested</div>
+                                  </div>
+                                )}
+                                {isPending && (
+                                  <span style={{ fontSize: "0.78rem", color: "#b45309" }}>⏳ Awaiting Team Dispatch</span>
+                                )}
+                              </td>
+                              <td>
+                                <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                                  {isPending && (
+                                    <button
+                                      className="btn-primary"
+                                      style={{ padding: "0.4rem 0.8rem", fontSize: "0.78rem", background: "linear-gradient(135deg, #2563eb, #1d4ed8)" }}
+                                      onClick={() => {
+                                        setSoilAssignModal(s);
+                                        const nextDay = new Date();
+                                        nextDay.setDate(nextDay.getDate() + 1);
+                                        setSoilAssignForm(f => ({ ...f, scheduledVisitDate: nextDay.toISOString().split("T")[0] }));
+                                      }}
+                                    >
+                                      👨‍🔬 Assign Team
+                                    </button>
+                                  )}
+                                  {isAssigned && (
+                                    <button
+                                      className="btn-primary"
+                                      style={{ padding: "0.4rem 0.8rem", fontSize: "0.78rem", background: "linear-gradient(135deg, #15803d, #166534)" }}
+                                      onClick={() => {
+                                        setSoilReportModal(s);
+                                      }}
+                                    >
+                                      📋 Publish Lab Report
+                                    </button>
+                                  )}
+                                  {isPublished && (
+                                    <button
+                                      className="btn-secondary"
+                                      style={{ padding: "0.4rem 0.8rem", fontSize: "0.78rem" }}
+                                      onClick={() => {
+                                        setSoilReportModal(s);
+                                      }}
+                                    >
+                                      ✏️ Edit Report
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -974,6 +1638,236 @@ export default function AdminDashboard() {
             <AdminTips stats={stats} />
           )}
         </>
+      )}
+
+      {/* ── ASSIGN SOIL TESTING TEAM MODAL ── */}
+      {soilAssignModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "1.5rem"
+        }}>
+          <div style={{
+            background: "white", borderRadius: "16px", maxWidth: "560px", width: "100%",
+            padding: "2rem", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)"
+          }}>
+            <h3 style={{ color: "#1d4ed8", margin: "0 0 0.5rem 0", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              👨‍🔬 Assign Mobile Soil Testing Lab Team
+            </h3>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.2rem" }}>
+              Assigning field scientist for farmer <strong>{soilAssignModal.farmerName}</strong> at <strong>{soilAssignModal.farmLocation}</strong>.
+            </p>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  const res = await API.put(`/soil-test/${soilAssignModal._id}/assign-team`, soilAssignForm);
+                  if (res.data.success) {
+                    flash("success", "✅ Soil testing team assigned successfully! Farmer notified.");
+                    setSoilAssignModal(null);
+                    loadAll();
+                  }
+                } catch (err) {
+                  flash("error", err.response?.data?.error || "Failed to assign team.");
+                }
+              }}
+              style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+            >
+              <div>
+                <label className="field-label">Select Testing Chemist / Mobile Lab Unit:</label>
+                <select
+                  className="rs-input"
+                  value={soilAssignForm.scientistName}
+                  onChange={e => {
+                    const val = e.target.value;
+                    let veh = "TS-09-LAB-1029";
+                    let ph = "9848099881";
+                    if (val.includes("Sunita")) { veh = "TS-07-AG-8812"; ph = "9440192834"; }
+                    if (val.includes("Venkatesh")) { veh = "TS-10-SL-4519"; ph = "9701182736"; }
+                    setSoilAssignForm(f => ({ ...f, scientistName: val, teamVehicleNumber: veh, contactPhone: ph }));
+                  }}
+                >
+                  <option value="Dr. Arvind Swamy (Soil Chemist - Unit 04)">Dr. Arvind Swamy, M.Sc (Soil Chemistry) — Mobile Unit 04</option>
+                  <option value="Dr. P. Sunita (Agronomy Lab Lead - Unit 02)">Dr. P. Sunita, Ph.D (Agronomy) — Regional Unit 02</option>
+                  <option value="Prof. M. Venkatesh (Soil Pathology Unit 01)">Prof. M. Venkatesh (Soil Pathology) — Mobile Van 01</option>
+                </select>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div>
+                  <label className="field-label">Vehicle / Mobile Lab No:</label>
+                  <input
+                    type="text"
+                    className="rs-input"
+                    value={soilAssignForm.teamVehicleNumber}
+                    onChange={e => setSoilAssignForm({ ...soilAssignForm, teamVehicleNumber: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="field-label">Team Contact Phone:</label>
+                  <input
+                    type="text"
+                    className="rs-input"
+                    value={soilAssignForm.contactPhone}
+                    onChange={e => setSoilAssignForm({ ...soilAssignForm, contactPhone: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="field-label">Scheduled Field Visit Date:</label>
+                <input
+                  type="date"
+                  className="rs-input"
+                  value={soilAssignForm.scheduledVisitDate}
+                  onChange={e => setSoilAssignForm({ ...soilAssignForm, scheduledVisitDate: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="field-label">Admin Instructions / Field Notes:</label>
+                <textarea
+                  rows={2}
+                  className="rs-input"
+                  value={soilAssignForm.adminNotes}
+                  onChange={e => setSoilAssignForm({ ...soilAssignForm, adminNotes: e.target.value })}
+                  placeholder="e.g. Conduct 3-spot zigzag sampling with digital pH & spectrometer..."
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "0.5rem" }}>
+                <button type="button" className="btn-secondary" onClick={() => setSoilAssignModal(null)}>Cancel</button>
+                <button type="submit" className="btn-primary" style={{ background: "linear-gradient(135deg, #2563eb, #1d4ed8)" }}>
+                  ✅ Confirm & Dispatch Team
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── PUBLISH LAB REPORT MODAL ── */}
+      {soilReportModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "1.5rem"
+        }}>
+          <div style={{
+            background: "white", borderRadius: "16px", maxWidth: "640px", width: "100%",
+            padding: "2rem", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)"
+          }}>
+            <h3 style={{ color: "#15803d", margin: "0 0 0.5rem 0", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              📜 Publish Certified Laboratory Soil Health Report
+            </h3>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.2rem" }}>
+              Enter measured spectrometer & chemical test values for farmer <strong>{soilReportModal.farmerName}</strong>.
+            </p>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  const res = await API.put(`/soil-test/${soilReportModal._id}/publish-report`, soilReportForm);
+                  if (res.data.success) {
+                    flash("success", "📜 Certified Soil Health Report published! Digital card delivered to farmer.");
+                    setSoilReportModal(null);
+                    loadAll();
+                  }
+                } catch (err) {
+                  flash("error", err.response?.data?.error || "Failed to publish report.");
+                }
+              }}
+              style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+            >
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div>
+                  <label className="field-label">Measured Soil pH (e.g. 6.5 - 7.5):</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    className="rs-input"
+                    value={soilReportForm.phLevel}
+                    onChange={e => setSoilReportForm({ ...soilReportForm, phLevel: Number(e.target.value) })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="field-label">Organic Carbon % (OC):</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="rs-input"
+                    value={soilReportForm.organicCarbonPercent}
+                    onChange={e => setSoilReportForm({ ...soilReportForm, organicCarbonPercent: Number(e.target.value) })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+                <div>
+                  <label className="field-label">Nitrogen (N):</label>
+                  <input
+                    type="text"
+                    className="rs-input"
+                    value={soilReportForm.nitrogenN}
+                    onChange={e => setSoilReportForm({ ...soilReportForm, nitrogenN: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="field-label">Phosphorus (P):</label>
+                  <input
+                    type="text"
+                    className="rs-input"
+                    value={soilReportForm.phosphorusP}
+                    onChange={e => setSoilReportForm({ ...soilReportForm, phosphorusP: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="field-label">Potassium (K):</label>
+                  <input
+                    type="text"
+                    className="rs-input"
+                    value={soilReportForm.potassiumK}
+                    onChange={e => setSoilReportForm({ ...soilReportForm, potassiumK: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="field-label">Electrical Conductivity (EC):</label>
+                <input
+                  type="text"
+                  className="rs-input"
+                  value={soilReportForm.electricalConductivityEC}
+                  onChange={e => setSoilReportForm({ ...soilReportForm, electricalConductivityEC: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="field-label">Fertilizer & Organic Manure Prescription:</label>
+                <textarea
+                  rows={3}
+                  className="rs-input"
+                  value={soilReportForm.recommendedManure}
+                  onChange={e => setSoilReportForm({ ...soilReportForm, recommendedManure: e.target.value })}
+                  placeholder="e.g. Apply 2 tonnes/acre Farm Yard Manure + 250kg Vermicompost + 5kg PSB biofertilizer..."
+                  required
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "0.5rem" }}>
+                <button type="button" className="btn-secondary" onClick={() => setSoilReportModal(null)}>Cancel</button>
+                <button type="submit" className="btn-primary" style={{ background: "linear-gradient(135deg, #15803d, #166534)" }}>
+                  📜 Publish Certified Soil Card
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* ── ASSIGN AGENT MODAL ── */}
@@ -1027,6 +1921,201 @@ export default function AdminDashboard() {
             )}
 
             <button className="btn-secondary mt-2" style={{ width:"100%" }} onClick={() => setAssignModal(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── FULL MONGODB USER PROFILE INSPECTOR MODAL ── */}
+      {selectedUserModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 9999, padding: "1.5rem"
+        }}>
+          <div style={{
+            background: "white", borderRadius: "18px", maxWidth: "780px", width: "100%",
+            maxHeight: "90vh", overflowY: "auto", padding: "2rem",
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", position: "relative"
+          }}>
+            {/* Close Button */}
+            <button 
+              onClick={() => setSelectedUserModal(null)}
+              style={{
+                position: "absolute", top: "1.2rem", right: "1.2rem", background: "#f1f5f9",
+                border: "none", borderRadius: "50%", width: 34, height: 34, fontSize: "1.1rem",
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"
+              }}
+            >
+              ✕
+            </button>
+
+            {/* Modal Header */}
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem", borderBottom: "1px solid #f1f5f9", paddingBottom: "1.2rem" }}>
+              <div style={{
+                width: 60, height: 60, borderRadius: "50%", background: "var(--green-pale)",
+                color: "var(--green-deep)", display: "flex", alignItems: "center", justifyContent: "center",
+                fontWeight: "bold", fontSize: "1.5rem", flexShrink: 0,
+                backgroundImage: selectedUserModal.avatar ? `url(${selectedUserModal.avatar.startsWith("http") || selectedUserModal.avatar.startsWith("data:") ? selectedUserModal.avatar : `${BASE_URL}/${selectedUserModal.avatar.replace(/^\/+/, "")}`})` : "none",
+                backgroundSize: "cover", backgroundPosition: "center"
+              }}>
+                {!selectedUserModal.avatar && (selectedUserModal.name ? selectedUserModal.name.charAt(0).toUpperCase() : "U")}
+              </div>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <h2 style={{ color: "var(--text-dark)", fontSize: "1.4rem", margin: 0 }}>{selectedUserModal.name}</h2>
+                  <span className={`badge ${roleColor[selectedUserModal.role] || "badge-blue"}`} style={{ textTransform: "uppercase" }}>
+                    {selectedUserModal.role}
+                  </span>
+                  <span className={`badge ${selectedUserModal.isVerified ? "badge-green" : "badge-yellow"}`}>
+                    {selectedUserModal.isVerified ? "✅ Verified" : "⏳ Pending Verification"}
+                  </span>
+                </div>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: "0.2rem 0 0 0" }}>
+                  {selectedUserModal.email} • ID: <code style={{ fontSize: "0.78rem" }}>{selectedUserModal._id}</code>
+                </p>
+              </div>
+            </div>
+
+            {/* Grid of MongoDB Information */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
+              {/* Personal & Contact Details */}
+              <div style={{ background: "#f8fafc", padding: "1.2rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                <h4 style={{ color: "var(--green-deep)", fontSize: "0.95rem", margin: "0 0 0.8rem 0" }}>👤 Personal & Contact Info</h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", fontSize: "0.84rem" }}>
+                  <div><strong>Phone:</strong> {selectedUserModal.phone || "Not provided"}</div>
+                  <div><strong>Location:</strong> {selectedUserModal.location || "Not provided"}</div>
+                  <div><strong>GPS Coords:</strong> {selectedUserModal.latitude ? `${selectedUserModal.latitude}, ${selectedUserModal.longitude}` : "Default (17.385, 78.486)"}</div>
+                  <div><strong>Preferred Lang:</strong> {selectedUserModal.language?.toUpperCase() || "EN"}</div>
+                  <div><strong>Aadhaar No:</strong> {selectedUserModal.aadhaar || "Not uploaded"}</div>
+                  <div><strong>Account Status:</strong> <span style={{ textTransform: "capitalize", fontWeight: 600, color: selectedUserModal.accountStatus === "banned" ? "#dc2626" : "#16a34a" }}>{selectedUserModal.accountStatus || "active"}</span></div>
+                  <div><strong>Joined Date:</strong> {new Date(selectedUserModal.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</div>
+                </div>
+              </div>
+
+              {/* Financial & Trust Balances */}
+              <div style={{ background: "#f8fafc", padding: "1.2rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                <h4 style={{ color: "var(--green-deep)", fontSize: "0.95rem", margin: "0 0 0.8rem 0" }}>💳 Financials & Reputation</h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", fontSize: "0.84rem" }}>
+                  <div><strong>Wallet Balance:</strong> ₹{(selectedUserModal.walletBalance || 0).toLocaleString()}</div>
+                  <div><strong>Pending Settlements:</strong> ₹{(selectedUserModal.pendingSettlement || 0).toLocaleString()}</div>
+                  <div><strong>Cash In Hand:</strong> ₹{(selectedUserModal.cashInHand || 0).toLocaleString()}</div>
+                  <div><strong>Reward Points:</strong> 🪙 {selectedUserModal.rewardPoints || 0} pts</div>
+                  <div><strong>Trust Score:</strong> 🛡️ {selectedUserModal.trustScore || 85}/100</div>
+                  <div><strong>Strikes Recorded:</strong> ⚠️ {selectedUserModal.strikes || 0} Strikes</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Farmer Specific Details */}
+            {selectedUserModal.role === "farmer" && (
+              <div style={{ background: "#f0fdf4", padding: "1.2rem", borderRadius: "12px", border: "1px solid #bbf7d0", marginBottom: "1.5rem" }}>
+                <h4 style={{ color: "#166534", fontSize: "0.95rem", margin: "0 0 0.8rem 0" }}>🌾 Farm Details (MongoDB Farmer Profile)</h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", fontSize: "0.85rem" }}>
+                  <div><strong>Farm Name:</strong> {selectedUserModal.farmerProfile?.farmName || selectedUserModal.farmName || `${selectedUserModal.name}'s Farm`}</div>
+                  <div><strong>Farm Location:</strong> {selectedUserModal.farmerProfile?.farmLocation || selectedUserModal.location || "Telangana"}</div>
+                  <div><strong>Farm Size:</strong> {selectedUserModal.farmerProfile?.farmSize || "5"} Acres</div>
+                  <div><strong>Soil Type:</strong> {selectedUserModal.farmerProfile?.soilType || "Loamy Red Soil"}</div>
+                  <div><strong>Farming Experience:</strong> {selectedUserModal.farmerProfile?.experience || "10"} Years</div>
+                  <div><strong>Trust Grade:</strong> {selectedUserModal.farmerProfile?.trustGrade || "Gold"}</div>
+                </div>
+
+                {/* Uploaded Crops by this Farmer */}
+                {selectedUserModal.crops && selectedUserModal.crops.length > 0 && (
+                  <div style={{ marginTop: "1rem", borderTop: "1px dashed #86efac", paddingTop: "0.8rem" }}>
+                    <strong style={{ fontSize: "0.85rem", color: "#166534", display: "block", marginBottom: "0.5rem" }}>
+                      📦 Uploaded Crops by {selectedUserModal.name} ({selectedUserModal.crops.length} items):
+                    </strong>
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                      {selectedUserModal.crops.map((c, i) => (
+                        <span key={i} style={{ background: "white", padding: "4px 10px", borderRadius: "8px", fontSize: "0.78rem", border: "1px solid #bbf7d0", color: "#166534", fontWeight: 600 }}>
+                          🌾 {c.name} — ₹{c.price}/{c.unit || "kg"} ({c.quantity}kg) {c.isOrganic && "🌿"}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Customer Specific Details */}
+            {selectedUserModal.role === "customer" && (
+              <div style={{ background: "#eff6ff", padding: "1.2rem", borderRadius: "12px", border: "1px solid #bfdbfe", marginBottom: "1.5rem" }}>
+                <h4 style={{ color: "#1e40af", fontSize: "0.95rem", margin: "0 0 0.8rem 0" }}>🛍️ Customer Profile (MongoDB Customer Details)</h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", fontSize: "0.85rem" }}>
+                  <div><strong>Default Address:</strong> {selectedUserModal.customerProfile?.address || selectedUserModal.location || "Hyderabad, Telangana"}</div>
+                  <div><strong>Customer Type:</strong> {selectedUserModal.customerType || "individual"}</div>
+                  <div><strong>Daily Deliveries:</strong> {selectedUserModal.requiresDailyDelivery ? "Yes" : "No"}</div>
+                  <div><strong>Total Orders Placed:</strong> {selectedUserModal.ordersCount || 0} Orders</div>
+                </div>
+              </div>
+            )}
+
+            {/* Uploaded Documents & Photos Gallery */}
+            <div style={{ marginBottom: "1.5rem" }}>
+              <h4 style={{ color: "var(--text-dark)", fontSize: "0.95rem", marginBottom: "0.8rem" }}>📷 Uploaded Photos & Documents</h4>
+              <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                {[
+                  { label: "Profile / Avatar", path: selectedUserModal.avatar },
+                  { label: "Aadhaar Card", path: selectedUserModal.aadhaarImage },
+                  { label: "Farmer Photo", path: selectedUserModal.farmerProfile?.farmerPhoto },
+                  { label: "Farm Photo", path: selectedUserModal.farmerProfile?.farmPhoto },
+                  { label: "Product Photo", path: selectedUserModal.farmerProfile?.productPhoto }
+                ].filter(p => p.path).map((photo, i) => {
+                  const url = photo.path.startsWith("http") || photo.path.startsWith("data:") ? photo.path : `${BASE_URL}/${photo.path.replace(/^\/+/, "")}`;
+                  return (
+                    <div key={i} style={{ textAlign: "center" }}>
+                      <a href={url} target="_blank" rel="noreferrer" title="Click to view full image">
+                        <img 
+                          src={url} 
+                          alt={photo.label} 
+                          style={{ width: 100, height: 100, objectFit: "cover", borderRadius: "10px", border: "2px solid #cbd5e1", display: "block" }} 
+                        />
+                      </a>
+                      <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "0.3rem", display: "block" }}>{photo.label}</span>
+                    </div>
+                  );
+                })}
+                {![selectedUserModal.avatar, selectedUserModal.aadhaarImage, selectedUserModal.farmerProfile?.farmerPhoto, selectedUserModal.farmerProfile?.farmPhoto].some(Boolean) && (
+                  <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", margin: 0 }}>No custom photo files uploaded for this user.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Complete Raw MongoDB Document Inspector */}
+            <div style={{ marginBottom: "1.5rem" }}>
+              <details style={{ background: "#0f172a", color: "#38bdf8", padding: "0.8rem 1rem", borderRadius: "10px", fontSize: "0.78rem" }}>
+                <summary style={{ cursor: "pointer", fontWeight: 700, color: "#94a3b8" }}>
+                  💻 View Complete Raw MongoDB Document JSON (Click to expand)
+                </summary>
+                <pre style={{ marginTop: "0.8rem", whiteSpace: "pre-wrap", wordBreak: "break-all", maxHeight: "200px", overflowY: "auto", color: "#4ade80", fontFamily: "monospace" }}>
+                  {JSON.stringify(selectedUserModal, null, 2)}
+                </pre>
+              </details>
+            </div>
+
+            {/* Modal Actions */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: "1.2rem", flexWrap: "wrap", gap: "0.5rem" }}>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                {!selectedUserModal.isVerified ? (
+                  <button className="btn-primary" style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }} onClick={() => { verifyFarmer(selectedUserModal._id, selectedUserModal.name); setSelectedUserModal(null); }}>
+                    ✅ Approve & Verify
+                  </button>
+                ) : (
+                  <button className="btn-warn" style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }} onClick={() => { rejectFarmer(selectedUserModal._id, selectedUserModal.name); setSelectedUserModal(null); }}>
+                    ❌ Revoke Verification
+                  </button>
+                )}
+                {selectedUserModal.role !== "admin" && (
+                  <button className="btn-danger" style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }} onClick={() => { deleteUser(selectedUserModal._id, selectedUserModal.name); setSelectedUserModal(null); }}>
+                    🗑️ Delete User
+                  </button>
+                )}
+              </div>
+              <button className="btn-secondary" style={{ padding: "0.5rem 1.2rem", fontSize: "0.85rem" }} onClick={() => setSelectedUserModal(null)}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

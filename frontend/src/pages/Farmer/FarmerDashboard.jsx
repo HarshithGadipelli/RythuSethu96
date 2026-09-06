@@ -9,18 +9,24 @@ import EcoAdvisor from "../../components/EcoAdvisor";
 import LocationButton from "../../components/LocationButton";
 import VoiceMicButton from "../../components/VoiceMicButton";
 import VoiceField from "../../components/VoiceField";
+import GuidedInput from "../../components/GuidedInput";
+import SoilTestingPanel from "../../components/SoilTestingPanel";
+import PestDetectionPanel from "../../components/PestDetectionPanel";
 import { useNavigate } from "react-router-dom";
 import API from "../../api/api";
 import { io } from "socket.io-client";
-import { parseSpokenNumber, parseVoiceToFormMultilingual, playTTS, VOICE_PROMPTS, stopTTS, isTTSPlaying } from "../../utils/voiceParser";
+import { parseSpokenNumber, parseVoiceToFormMultilingual, playTTS, VOICE_PROMPTS, stopTTS, isTTSPlaying, CROP_BENCHMARKS } from "../../utils/voiceParser";
 import LiveMapModal from "../../components/LiveMapModal";
 import FarmerGroups from "./FarmerGroups";
 import FarmerLeaderboard from "./FarmerLeaderboard";
 import FarmerProfitCalculator from "./FarmerProfitCalculator";
 import FarmerFinancialLedger from "./FarmerFinancialLedger";
 import FarmerTours from "./FarmerTours";
+import SoilTestingHub from "../../components/SoilTestingHub";
 import AssistantOverlay from "../../components/AssistantOverlay";
-import { Navigation } from "lucide-react";
+import CropVisualPicker, { VISUAL_CROPS } from "../../components/CropVisualPicker";
+import { Navigation, Volume2, Mic, Sparkles, CheckCircle2, TrendingUp, RefreshCw, IndianRupee, HelpCircle, XCircle } from "lucide-react";
+import SecurityPledgeModal from "../../components/SecurityPledgeModal";
 
 const CATEGORIES = ["vegetable", "fruit", "grain", "pulse", "spice", "dairy", "other"];
 const SEASONS    = ["kharif","rabi","zaid","perennial"];
@@ -179,6 +185,7 @@ export default function FarmerDashboard() {
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
+  const [showPledge, setShowPledge] = useState(user?.acceptedTerms === false);
   
   // Stage Update Modal State
   const [stageModal, setStageModal] = useState({
@@ -203,6 +210,8 @@ export default function FarmerDashboard() {
   // Pest Detection State
   const [pestImage, setPestImage] = useState(null);
   const [pestPreview, setPestPreview] = useState(null);
+  const [pestCropName, setPestCropName] = useState("");
+  const [pestSymptoms, setPestSymptoms] = useState("");
   const [pestLoading, setPestLoading] = useState(false);
   const [pestResult, setPestResult] = useState(null);
 
@@ -262,7 +271,12 @@ export default function FarmerDashboard() {
   const fetchPriceRecommendation = async (cropName) => {
     if (!cropName) return;
     try {
-      const res = await API.post("/ml/price-trends", { crop: cropName });
+      const payload = { crop: cropName };
+      if (user?.location?.coordinates) {
+        payload.longitude = user.location.coordinates[0];
+        payload.latitude = user.location.coordinates[1];
+      }
+      const res = await API.post("/ml/price-trends", payload);
       setPriceRecommendation(res.data);
     } catch (err) {
       console.error("Failed to fetch price recommendation", err);
@@ -298,103 +312,213 @@ export default function FarmerDashboard() {
     }
   };
 
+  const [wizardHeard, setWizardHeard] = useState("");
+  const [wizardStatus, setWizardStatus] = useState("idle"); // "idle" | "listening" | "analyzing" | "speaking" | "ready"
+  const [wizardBenchmark, setWizardBenchmark] = useState(null);
+
+  const handleVisualCropSelect = (crop) => {
+    const langKey = (lang ? lang.split("-")[0] : "en") || "en";
+    const nameInLang = crop.names[langKey] || crop.names.en;
+    
+    setForm(f => {
+      const next = { ...f, name: crop.id, category: crop.category };
+      formRef.current = next;
+      return next;
+    });
+
+    if (CROP_BENCHMARKS[crop.id]) {
+      setWizardBenchmark(CROP_BENCHMARKS[crop.id]);
+    }
+
+    const announcements = {
+      en: `Selected ${nameInLang}! How many kilograms or bags do you have available?`,
+      te: `${nameInLang} ఎంచుకోబడింది! మీ దగ్గర ఎన్ని కిలోలు లేదా బస్తాలు అందుబాటులో ఉన్నాయి?`,
+      hi: `${nameInLang} चुना गया! आपके पास कितने किलो या बोरी उपलब्ध हैं?`,
+      kn: `${nameInLang} ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ! ನಿಮ್ಮ ಬಳಿ ಎಷ್ಟು ಕಿಲೋ ಅಥವಾ ಮೂಟೆ ಲಭ್ಯವಿದೆ?`,
+      ta: `${nameInLang} தேர்ந்தெடுக்கப்பட்டது! உங்களிடம் எத்தனை கிலோ அல்லது மூட்டை உள்ளது?`
+    };
+
+    const replyText = announcements[langKey] || announcements.en;
+    setAiMessage(replyText);
+    setWizardStatus("speaking");
+    playTTS(replyText, langKey);
+  };
+
+  const toggleGuidedAssistant = () => startGuidedWizard();
+
   const startGuidedWizard = async () => {
     if (wizardActive) {
       setWizardActive(false);
+      setWizardStatus("idle");
       setAiMessage("");
-      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      stopTTS();
+      stopListening();
       return;
     }
     
     setWizardActive(true);
     setTab("add");
-    setWizardStep(1);
+    setWizardStatus("speaking");
     
     const p = VOICE_PROMPTS[lang] || VOICE_PROMPTS["en"];
     setAiMessage(p.start);
     
-    isProcessingRef.current = false;
-
-    const startContinuous = () => {
-      if (isProcessingRef.current) return;
-      isProcessingRef.current = true;
-      
-      startListening(async (transcript) => {
-        if (!transcript || transcript.trim() === "") {
-          isProcessingRef.current = false;
-          return;
-        }
-        setMsg({ type: "info", text: "AI is analyzing your input..." });
-        
-        const f = formRef.current;
-        const contextText = `I already have: ${JSON.stringify({ name: f.name, category: f.category, price: f.price, quantity: f.quantity, description: f.description, isOrganic: f.isOrganic, isPesticideFree: f.isPesticideFree, farmTourUrl: f.farmTourUrl })}. User says: "${transcript}"`;
-        
+    // Auto detect farm location if not present
+    if (!formRef.current.farmLocation && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async ({ coords }) => {
         try {
-          const res = await API.post("/ai/parse", { text: contextText, context: "farmer_add_crop", lang });
-          const data = res.data.data;
-          
-          if (data) {
-            if (data.action === "cancel") {
-              setWizardActive(false);
-              setAiMessage("");
-              if (data.reply) await playTTS(data.reply, lang);
-              setMsg({ type: "info", text: "Guided Assistant cancelled." });
-              return;
-            }
-            
-            setForm(curr => {
-              const next = {
-                ...curr,
-                name: data.name || curr.name,
-                category: data.category || curr.category,
-                quantity: data.quantity || curr.quantity,
-                unit: data.unit || curr.unit,
-                price: data.price || curr.price,
-                description: data.description || curr.description,
-                farmTourUrl: data.farmTourUrl || curr.farmTourUrl,
-                isOrganic: data.isOrganic !== undefined ? data.isOrganic : curr.isOrganic,
-                isPesticideFree: data.isPesticideFree !== undefined ? data.isPesticideFree : curr.isPesticideFree
-              };
-              if (next.name && next.category && next.price && next.quantity && next.description) setWizardStep(3);
-              else if (next.name) setWizardStep(2);
-              return next;
-            });
-            setMsg({ type: "success", text: "Form updated via voice!" });
-            
-            if (data.reply) {
-              setAiMessage(data.reply);
-              if (window.speechSynthesis) window.speechSynthesis.cancel();
-              await playTTS(data.reply, lang);
-              setAiMessage("");
-              
-              if (data.completed) {
-                setWizardActive(false);
-                setMsg({ type: "success", text: "All details captured successfully!" });
-                isProcessingRef.current = false;
-                return;
-              }
-            }
-          }
-        } catch (err) {
-          console.error("AI Parse Error:", err);
-          setMsg({ type: "error", text: "AI Assistant is currently offline or unreachable." });
-        } finally {
-          isProcessingRef.current = false;
+          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}`);
+          const d = await r.json();
+          const addr = d.display_name || `${coords.latitude},${coords.longitude}`;
+          setForm(f => ({ ...f, farmLocation: addr, location: addr, latitude: coords.latitude, longitude: coords.longitude }));
+        } catch {}
+      });
+    }
+
+    const processTranscript = async (transcript) => {
+      if (!transcript || transcript.trim() === "") {
+        listenNext();
+        return;
+      }
+      
+      setWizardHeard(transcript);
+      setWizardStatus("analyzing");
+      setMsg({ type: "info", text: "⚡ Analyzing your voice input..." });
+
+      // 1. First run instant local multilingual parser
+      const localData = parseVoiceToFormMultilingual(transcript, lang);
+      
+      // Check for voice action commands
+      if (localData.action === "cancel") {
+        setWizardActive(false);
+        setWizardStatus("idle");
+        stopTTS();
+        stopListening();
+        setMsg({ type: "info", text: "Guided Assistant closed." });
+        return;
+      }
+      if (localData.action === "clear") {
+        setForm({ name:"", description:"", price:"", quantity:"", unit:"kg", category:"vegetable", image:null, farmLocation:"", location:"", sameLocation:true, isOrganic:false, isPesticideFree:false, season:"kharif", harvestDate:"", latitude:"", longitude:"", isPrebooking:false, lifecycleStage: "ready", farmTourUrl:"", qualityGrade:null, isBulk:false, minOrderQty:1 });
+        setWizardBenchmark(null);
+        setAiMessage("Form cleared. What crop would you like to sell?");
+        await playTTS("Form cleared. What crop would you like to sell?", lang);
+        listenNext();
+        return;
+      }
+      if (localData.action === "submit") {
+        setWizardStatus("ready");
+        await playTTS("Submitting your crop now!", lang);
+        setWizardActive(false);
+        handleAddCrop();
+        return;
+      }
+
+      // 2. Query backend AI parse for deep contextual extraction
+      let combinedData = { ...localData };
+      try {
+        const f = formRef.current;
+        const contextText = `I already have: ${JSON.stringify({ name: f.name, category: f.category, price: f.price, quantity: f.quantity, description: f.description, isOrganic: f.isOrganic, isPesticideFree: f.isPesticideFree, farmLocation: f.farmLocation })}. User says: "${transcript}"`;
+        
+        const res = await API.post("/ai/parse", { text: contextText, context: "farmer_add_crop", lang });
+        if (res.data && res.data.data) {
+          combinedData = { ...combinedData, ...res.data.data };
         }
-      }, { 
-        fieldId: "assistant", 
-        continuous: true,
-        onEnd: () => {
-          if (wizardActiveRef.current && !isProcessingRef.current) {
-            setTimeout(startContinuous, 1000); 
+      } catch (err) {
+        console.warn("Backend AI parse fallback:", err);
+      }
+
+      // 3. Apply updates to form
+      setForm(curr => {
+        const next = {
+          ...curr,
+          name: combinedData.name || curr.name,
+          category: combinedData.category || curr.category,
+          quantity: combinedData.quantity || curr.quantity,
+          unit: combinedData.unit || curr.unit,
+          price: combinedData.price || curr.price,
+          description: combinedData.description || curr.description,
+          farmLocation: combinedData.farmLocation || curr.farmLocation,
+          location: combinedData.location || curr.location || curr.farmLocation,
+          isOrganic: combinedData.isOrganic !== undefined ? combinedData.isOrganic : curr.isOrganic,
+          isPesticideFree: combinedData.isPesticideFree !== undefined ? combinedData.isPesticideFree : curr.isPesticideFree
+        };
+        formRef.current = next;
+
+        if (next.name) {
+          fetchPriceRecommendation(next.name);
+          if (CROP_BENCHMARKS[next.name]) {
+            setWizardBenchmark(CROP_BENCHMARKS[next.name]);
           }
         }
+
+        if (next.name && next.category && next.price && next.quantity) {
+          setWizardStep(3);
+        } else if (next.name) {
+          setWizardStep(2);
+        }
+        return next;
+      });
+
+      setMsg({ type: "success", text: "✅ Form updated via voice!" });
+
+      // 4. Generate conversational response and speak
+      let replyText = combinedData.reply;
+      if (!replyText) {
+        const f = formRef.current;
+        const nextName = combinedData.name || f.name;
+        const nextQty = String(combinedData.quantity || f.quantity || "");
+        const nextPrice = String(combinedData.price || f.price || "");
+        const langKey = (lang || "en").split("-")[0];
+
+        const PROMPTS = {
+          en: {
+            needName: "What crop are you selling? You can say tomato, onion, rice, cotton, or any other crop name.",
+            needQty: (n) => `How many kilograms or bags of ${n} do you have for sale?`,
+            needPrice: (n, q) => `What is the price per kilogram for your ${n}? For example, say 30 rupees per kg.`,
+            allDone: (n, q, p) => `Perfect! ${n}, ${q} kg at ₹${p} per kg. Total earnings: ₹${Number(q) * Number(p)}. Say 'Submit' to list on marketplace, or correct any detail.`
+          },
+          te: {
+            needName: "మీరు ఏ పంట అమ్ముతున్నారు? టమోటా, ఉల్లి, వరి, పత్తి లేదా ఏ పంట అయినా చెప్పండి.",
+            needQty: (n) => `మీ దగ్గర ${n} ఎన్ని కిలోలు లేదా బస్తాలు ఉన్నాయి?`,
+            needPrice: (n) => `${n} కిలోకి ఎంత ధర? ఉదాహరణకు, కిలో 30 రూపాయలు అని చెప్పండి.`,
+            allDone: (n, q, p) => `బాగుంది! ${n}, ${q} కేజీలు, కేజీకి ₹${p}. మొత్తం ₹${Number(q) * Number(p)}. 'సమర్పించు' అని చెప్పి మార్కెట్‌కి అప్‌లోడ్ చేయండి.`
+          },
+          hi: {
+            needName: "आप कौन सी फसल बेच रहे हैं? टमाटर, प्याज, चावल, कपास या कोई भी बोलें।",
+            needQty: (n) => `आपके पास ${n} कितने किलो या बोरी हैं?`,
+            needPrice: (n) => `${n} का किलो का दाम क्या है? जैसे 30 रुपये प्रति किलो।`,
+            allDone: (n, q, p) => `बढ़िया! ${n}, ${q} किलो, ₹${p} प्रति किलो। कुल ₹${Number(q) * Number(p)}। 'जमा करें' बोलें।`
+          },
+        };
+        const L = PROMPTS[langKey] || PROMPTS.en;
+
+        if (!nextName) replyText = L.needName;
+        else if (!nextQty) replyText = L.needQty(nextName);
+        else if (!nextPrice) replyText = L.needPrice(nextName, nextQty);
+        else replyText = L.allDone(nextName, nextQty, nextPrice);
+      }
+
+      setAiMessage(replyText);
+      setWizardStatus("speaking");
+      await playTTS(replyText, lang);
+
+      // Keep listening for next command (e.g. 'Submit', 'Change price to 40', 'Make organic')
+      listenNext();
+    };
+
+    const listenNext = () => {
+      if (!wizardActiveRef.current) return;
+      setWizardStatus("listening");
+      startListening(processTranscript, {
+        fieldId: "guided_assistant",
+        continuous: false,
+        silenceDelay: 1400,
+        onInterim: (text) => setWizardHeard(text)
       });
     };
 
-    playTTS(p.start, lang).then(() => {
-       startContinuous();
-    });
+    await playTTS(p.start, lang);
+    listenNext();
   };
 
   const [weatherLive, setWeatherLive] = useState(null);
@@ -423,13 +547,14 @@ export default function FarmerDashboard() {
   };
 
   const set = (k) => (val) => {
-    if (typeof val === "function") {
-      setForm((f) => ({ ...f, [k]: val(f[k]) }));
-    } else if (typeof val === "object" && val?.target) {
-      setForm((f) => ({ ...f, [k]: val.target.value }));
-    } else {
-      setForm((f) => ({ ...f, [k]: val }));
-    }
+    setForm((f) => {
+      let nextVal = val;
+      if (typeof val === "function") nextVal = val(f[k]);
+      else if (typeof val === "object" && val?.target) nextVal = val.target.value;
+      const next = { ...f, [k]: nextVal };
+      formRef.current = next;
+      return next;
+    });
   };
 
   const speak = (field) => startListening((transcript) => {
@@ -603,9 +728,16 @@ export default function FarmerDashboard() {
     if (!form.name || !form.price || !form.quantity) { setMsg({ type:"error", text:"Name, price & quantity required." }); return; }
     
     // Price Limit Enforcement
-    if (!form.isOrganic && priceRecommendation && priceRecommendation.suggestedMarketPrice) {
-      if (Number(form.price) > priceRecommendation.suggestedMarketPrice * 1.5) {
-        setMsg({ type:"error", text:`Price is too high! Max allowed for non-organic ${form.name} is ₹${Math.round(priceRecommendation.suggestedMarketPrice * 1.5)}.` });
+    if (!form.isOrganic && priceRecommendation) {
+      let limit = null;
+      if (priceRecommendation.localPrediction && priceRecommendation.localPrediction.suggested_price) {
+        limit = priceRecommendation.localPrediction.suggested_price * 1.5;
+      } else if (priceRecommendation.suggestedMarketPrice) {
+        limit = priceRecommendation.suggestedMarketPrice * 1.5;
+      }
+      
+      if (limit && Number(form.price) > limit) {
+        setMsg({ type:"error", text:`Price is too high! Max allowed for non-organic ${form.name} is ₹${Math.round(limit)}.` });
         return;
       }
     }
@@ -622,7 +754,7 @@ export default function FarmerDashboard() {
       if (form.image) fd.append("image", form.image);
       await API.post("/crops/add", fd, { headers: { "Content-Type": "multipart/form-data" } });
       setMsg({ type:"success", text:`✅ Crop "${form.name}" listed successfully!` });
-      setForm({ name:"", description:"", price:"", quantity:"", unit:"kg", category:"vegetable", image:null, farmLocation:"", location:"", sameLocation:true, isOrganic:false, isPesticideFree:false, season:"kharif", harvestDate:"", latitude:"", longitude:"", isPrebooking:false, farmTourUrl:"", qualityGrade:null, isBulk:false, minOrderQty:1 });
+      setForm({ name:"", description:"", price:"", quantity:"", unit:"kg", category:"vegetable", image:null, farmLocation:"", location:"", sameLocation:true, isOrganic:false, isPesticideFree:false, season:"kharif", harvestDate:"", latitude:"", longitude:"", isPrebooking:false, advancePaymentPercentage:0, farmTourUrl:"", qualityGrade:null, isBulk:false, minOrderQty:1 });
       setQualitySuggestion(null);
       setWizardStep(1);
       fetchCrops();
@@ -656,8 +788,15 @@ export default function FarmerDashboard() {
     let limit = null;
     if (!crop.isOrganic) {
       try {
-        const res = await API.post("/ml/price-trends", { crop: crop.name });
-        if (res.data && res.data.suggestedMarketPrice) {
+        const payload = { crop: crop.name };
+        if (user?.location?.coordinates) {
+          payload.longitude = user.location.coordinates[0];
+          payload.latitude = user.location.coordinates[1];
+        }
+        const res = await API.post("/ml/price-trends", payload);
+        if (res.data && res.data.localPrediction && res.data.localPrediction.suggested_price) {
+          limit = res.data.localPrediction.suggested_price * 1.5;
+        } else if (res.data && res.data.suggestedMarketPrice) {
           limit = res.data.suggestedMarketPrice * 1.5;
         }
       } catch (err) {}
@@ -726,6 +865,17 @@ export default function FarmerDashboard() {
     }
   };
 
+  const sellToAdmin = async (id) => {
+    if (!window.confirm("Are you sure? Admin will buy this leftover stock at a 40% discount for Cold Storage Clearance.")) return;
+    try {
+      await API.put(`/crops/${id}/sell-to-admin`);
+      setMsg({ type: "success", text: "Stock sold to Admin successfully! Clearance initiated." });
+      fetchCrops();
+    } catch (err) {
+      setMsg({ type: "error", text: "Failed to sell stock to Admin." });
+    }
+  };
+
   const runCropSuggest = async () => {
     if (!weatherLive) return setMsg({ type: "error", text: "Please fetch live weather first." });
     setMlLoading(true); setMlResult(null);
@@ -746,18 +896,22 @@ export default function FarmerDashboard() {
   };
 
   const runPestDetection = async () => {
-    if (!pestPreview) {
-      setMsg({ type: "error", text: "Please upload an image of the affected crop or leaf." });
+    if (!pestPreview && !pestCropName.trim() && !pestSymptoms.trim()) {
+      setMsg({ type: "error", text: "Please upload an image or describe the crop symptoms." });
       return;
     }
     setPestLoading(true);
     setPestResult(null);
     try {
-      const res = await API.post("/ai/pest-detect", { imageBase64: pestPreview });
+      const res = await API.post("/ai/pest-detect", { 
+        imageBase64: pestPreview,
+        cropName: pestCropName,
+        symptoms: pestSymptoms
+      });
       setPestResult(res.data);
-      setMsg({ type: "success", text: "Pest analysis complete!" });
+      setMsg({ type: "success", text: "Pest & Disease analysis complete!" });
     } catch (err) {
-      setMsg({ type: "error", text: "Failed to analyze image. Please try again." });
+      setMsg({ type: "error", text: "Failed to analyze pest. Please try again." });
     } finally {
       setPestLoading(false);
     }
@@ -770,6 +924,7 @@ export default function FarmerDashboard() {
 
   return (
     <div className="page-wrapper">
+      {showPledge && <SecurityPledgeModal user={user} onAccepted={() => { setShowPledge(false); user.acceptedTerms = true; }} />}
       {/* Verification Banner */}
       {!isVerified && (
         <div className="verification-banner pending">
@@ -790,7 +945,7 @@ export default function FarmerDashboard() {
         </div>
       )}
 
-      <div className="flex-between mb-3">
+      <div className="flex-between mb-3" style={{ flexWrap: "wrap", gap: "1rem" }}>
         <div>
           <h1 className="page-title" style={{ textAlign:"left", fontSize:"1.8rem" }}>
             🌾 {t("welcome")}, {user?.name?.split(" ")[0] || "Farmer"}
@@ -798,6 +953,13 @@ export default function FarmerDashboard() {
           <p style={{ color:"var(--text-muted)", fontSize:"0.85rem" }}>Manage your crops & get AI-powered insights</p>
         </div>
         <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+          <button 
+             className="btn-secondary" 
+             style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(22, 163, 74, 0.1)", color: "var(--green-deep)", border: "1px solid var(--green-light)" }}
+             onClick={() => playTTS(`Welcome Farmer ${user?.name}. You are on the dashboard. Use the tabs below to manage your crops, orders, and tools.`, lang)}
+          >
+             🔊 Audio Guide
+          </button>
           <select 
             className="rs-select" 
             style={{ width: "auto", padding: "0.5rem", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white", color: "var(--text-dark)" }}
@@ -885,6 +1047,7 @@ export default function FarmerDashboard() {
           { k:"tips",  l:"💡 Smart Advisor" },
           { k:"ledger", l:"📒 Financial Ledger" },
           { k:"profit", l:"💰 Profit Calculator" },
+          { k:"soil",   l:"🧪 Soil Testing & Lab" },
           { k:"pest",  l:"🐛 Pest Detection" },
           { k:"warehouse", l:"🏭 Warehouse Planning" },
           { k:"policies", l:"📜 Policies" },
@@ -972,7 +1135,7 @@ export default function FarmerDashboard() {
                         <tr><th>{t("crop")}</th><th>Available {t("quantity")}</th><th>{t("price")}</th><th>{t("category")}</th><th>Live Visibility</th><th>Actions</th></tr>
                       </thead>
                       <tbody>
-                        {crops.filter(c => !c.isPrebooking).map(c => (
+                        {crops.filter(c => !c.isPrebooking && !c.isAdminStock).map(c => (
                           <tr key={c._id}>
                             <td><strong style={{ color: "var(--text-dark)" }}>{c.name}</strong></td>
                             <td><span className={`badge ${statusColor(c.quantity)}`}>{c.quantity} {c.unit}</span></td>
@@ -986,6 +1149,11 @@ export default function FarmerDashboard() {
                             </td>
                             <td style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                               <button className="btn-secondary" style={{ padding:"0.35rem 0.5rem", fontSize:"0.78rem" }} onClick={() => openEditCropModal(c)}>✏️ Edit</button>
+                              
+                              {["vegetable", "fruit"].includes(c.category.toLowerCase()) && (
+                                <button className="btn-secondary" style={{ padding:"0.35rem 0.5rem", fontSize:"0.78rem", background: "var(--yellow-wheat)", color: "white", border: "none" }} onClick={() => sellToAdmin(c._id)} title="Sell leftovers to Admin at discount">❄️ Sell to Admin</button>
+                              )}
+                              
                               <button className="btn-secondary" style={{ padding:"0.35rem 0.5rem", fontSize:"0.78rem", background: "var(--blue-mid)", color: "white", border: "none" }} onClick={() => setAuctionModal({ isOpen: true, crop: c, quantity: c.quantity, startingBid: c.price, durationHours: "24" })}>🔨 Auction</button>
                               <label className="btn-secondary" style={{ padding:"0.35rem 0.5rem", fontSize:"0.78rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.2rem", margin: 0 }}>
                                 🎥 {c.farmTourVideo ? "Update Tour" : "Record Tour"}
@@ -1114,30 +1282,35 @@ export default function FarmerDashboard() {
           <AnimatePresence mode="wait">
             {wizardStep === 1 && (
               <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
-                <div className="grid-2">
-                  <AutoSuggestInput 
-                    value={form.name} onChange={set("name")} onSpeak={() => speak("name")} 
-                    onFocus={() => setFocusField("name")} 
-                    listening={listening && activeField === "name"} interim={interim} 
-                    label={`${t("cropName")} *`} placeholder="e.g. Tomato, Rice..." fieldType="crop" 
+                {/* 1. Visual Photo Grid for Quick/Illiterate Tap & Speak Selection */}
+                <CropVisualPicker 
+                  selectedCrop={form.name} 
+                  onSelectCrop={handleVisualCropSelect} 
+                />
+
+                <div className="grid-2 mt-3">
+                  <GuidedInput 
+                    label={`${t("cropName")} *`} 
+                    value={form.name} 
+                    onChange={set("name")} 
+                    placeholder="e.g. Tomato, Rice, Chilli..." 
+                    badge="Voice & Visual"
+                    helperText="Speak crop name or tap an image card above"
                   />
-                  <div className="form-group" style={{ position: "relative" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <label className="field-label" style={{ fontSize: "1.1rem" }}>{t("category")}</label>
-                      <button type="button" onClick={() => playTTS(t("category"), lang)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:"1.2rem" }}>🔊</button>
-                    </div>
-                    <select className="rs-select" style={{ fontSize: "1.1rem", padding: "0.8rem" }} value={form.category} onChange={set("category")} onFocus={() => setFocusField("name")}>
-                      {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase()+c.slice(1)}</option>)}
-                    </select>
-                  </div>
+                  <GuidedInput 
+                    label={t("category")} 
+                    value={form.category} 
+                    onChange={set("category")} 
+                    options={CATEGORIES.map(c => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) }))} 
+                    helperText="Select or speak: Vegetable, Fruit, Grain, etc."
+                  />
                 </div>
 
                 <div className="flex-between mt-3">
                   <div></div>
                   <button type="button" className="btn-primary" onClick={() => {
-                    fetchPriceRecommendation(form.name);
                     setWizardStep(2);
-                  }}>Next ➡️</button>
+                  }}>Next: Pricing & Quantity ➡️</button>
                 </div>
               </motion.div>
             )}
@@ -1145,44 +1318,50 @@ export default function FarmerDashboard() {
             {wizardStep === 2 && (
               <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
                 <div className="grid-3">
-                  <div className="form-group" style={{ position: "relative" }}>
-                    <VoiceField
-                      label={`${t("price")} (₹)`}
-                      type="number"
-                      value={form.price}
-                      onChange={(val) => setForm(f => ({ ...f, price: val }))}
-                      required={true}
-                      placeholder="e.g. 40"
-                    />
-                    {priceRecommendation && (
-                      <div style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: priceRecommendation.trend === "Upward" ? "var(--green-deep)" : "var(--text-muted)", background: "rgba(34, 197, 94, 0.05)", padding: "0.5rem", borderRadius: "8px", border: "1px dashed var(--green-pale)" }}>
-                        <strong>💡 ML Suggestion:</strong> Market is {priceRecommendation.status}. Suggested Price: ₹{priceRecommendation.suggestedMarketPrice}
-                        <button type="button" onClick={() => setForm(f => ({ ...f, price: priceRecommendation.suggestedMarketPrice }))} style={{ marginLeft: "0.5rem", background: "var(--green-mid)", color: "white", border: "none", padding: "2px 8px", borderRadius: "4px", cursor: "pointer", fontSize: "0.75rem" }}>Apply</button>
-                      </div>
-                    )}
-                  </div>
-                  <VoiceField
-                    label={t("quantity")}
+                  <GuidedInput
+                    label={`${t("price")} (₹) *`}
+                    type="number"
+                    value={form.price}
+                    onChange={set("price")}
+                    placeholder="e.g. 35"
+                    badge="Per Unit"
+                    helperText="Expected price in Rupees"
+                  />
+                  <GuidedInput
+                    label={`${t("quantity")} *`}
                     type="number"
                     value={form.quantity}
-                    onChange={(val) => setForm(f => ({ ...f, quantity: val }))}
-                    required={true}
+                    onChange={set("quantity")}
                     placeholder="e.g. 100"
+                    badge="Available Stock"
+                    helperText="Total available harvest"
                   />
-                  <div className="form-group">
-                    <label className="field-label">Unit</label>
-                    <select className="rs-select" value={form.unit} onChange={set("unit")}>
-                      {["kg","g","litre","piece","dozen"].map(u => <option key={u} value={u}>{u}</option>)}
-                    </select>
-                  </div>
+                  <GuidedInput
+                    label="Unit *"
+                    value={form.unit}
+                    onChange={set("unit")}
+                    options={["kg","g","quintal","bag","crate","ton","litre","piece","dozen"].map(u => ({ value: u, label: u }))}
+                    helperText="Standard selling unit"
+                  />
                 </div>
+
+                {wizardBenchmark && (
+                  <div style={{ marginTop: "0.5rem", marginBottom: "1rem", fontSize: "0.85rem", color: "var(--green-deep)", background: "rgba(34, 197, 94, 0.08)", padding: "0.6rem 0.9rem", borderRadius: "8px", border: "1px dashed var(--green-mid)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>
+                      <strong>💡 APMC Benchmark:</strong> Mandi Avg: ₹{wizardBenchmark.avg}/{wizardBenchmark.unit} (Range: ₹{wizardBenchmark.min} - ₹{wizardBenchmark.max})
+                    </span>
+                    <button type="button" onClick={() => setForm(f => ({ ...f, price: wizardBenchmark.avg }))} style={{ background: "var(--green-mid)", color: "white", border: "none", padding: "3px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600 }}>
+                      Apply ₹{wizardBenchmark.avg}
+                    </button>
+                  </div>
+                )}
 
                 <div className="grid-2 mt-2">
                   <div className="toggle-row" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                     <span className="toggle-label" style={{ fontWeight: 600 }}>📅 Allow Pre-booking?</span>
                     <label style={{ display:"flex", alignItems:"center", gap:"0.5rem", cursor:"pointer" }}>
                       <input type="checkbox" checked={form.isPrebooking} onChange={(e) => setForm(f=>({...f,isPrebooking:e.target.checked}))} style={{ width:18,height:18 }} />
-                      <span style={{ color:"var(--text-muted)", fontSize:"0.85rem" }}>Yes, accept advance orders</span>
+                      <span style={{ color:"var(--text-muted)", fontSize:"0.85rem" }}>Yes, accept advance pre-orders</span>
                     </label>
                   </div>
                   <div className="toggle-row" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -1196,49 +1375,57 @@ export default function FarmerDashboard() {
                     <div className="form-group mb-2" style={{ background: "rgba(234, 179, 8, 0.05)", padding: "1rem", borderRadius: "8px", border: "1px dashed rgba(234, 179, 8, 0.3)" }}>
                       <label className="field-label">Expected Harvest Date</label>
                       <input className="rs-input" type="date" value={form.harvestDate} onChange={set("harvestDate")} min={new Date().toISOString().split("T")[0]} />
+                      <label className="field-label mt-2" style={{ display: "block", marginTop: "1rem" }}>
+                        Advance Payment % Required from Customer
+                        <span style={{ marginLeft: "0.5rem", color: "var(--text-muted)", fontWeight: 400, fontSize: "0.8rem" }}>(e.g. 20 = customer pays 20% advance to confirm order)</span>
+                      </label>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <input className="rs-input" type="number" min="0" max="100" value={form.advancePaymentPercentage || 0} onChange={(e) => setForm(f => ({ ...f, advancePaymentPercentage: Math.min(100, Math.max(0, Number(e.target.value))) }))} style={{ maxWidth: "100px" }} />
+                        <span style={{ color: "var(--text-muted)", fontWeight: 700 }}>%</span>
+                        {form.advancePaymentPercentage > 0 && form.price && (
+                          <span style={{ fontSize: "0.85rem", color: "#d97706", fontWeight: 600 }}>= ₹{Math.round((form.advancePaymentPercentage / 100) * Number(form.price))} advance per {form.unit}</span>
+                        )}
+                      </div>
+                      <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "0.5rem" }}>
+                        This creates a binding pre-booking agreement. Customer pays this advance. Remainder is paid on delivery.
+                      </p>
                     </div>
                   )}
 
-                  <div className="form-group mb-2">
-                    <label className="field-label">Current Lifecycle Stage</label>
-                    <select className="rs-select" value={form.lifecycleStage} onChange={set("lifecycleStage")}>
-                      <option value="sowing">🌱 Sowing / Just Planted</option>
-                      <option value="vegetative">🌿 Vegetative / Growing</option>
-                      <option value="flowering">🌸 Flowering</option>
-                      <option value="harvesting">🚜 Harvesting</option>
-                      <option value="post_harvest">📦 Post-Harvest</option>
-                      <option value="ready">✅ Ready for Sale</option>
-                    </select>
-                  </div>
+                  <GuidedInput
+                    label="Current Lifecycle Stage"
+                    value={form.lifecycleStage}
+                    onChange={set("lifecycleStage")}
+                    options={[
+                      { value: "sowing", label: "🌱 Sowing / Just Planted" },
+                      { value: "vegetative", label: "🌿 Vegetative / Growing" },
+                      { value: "flowering", label: "🌸 Flowering" },
+                      { value: "harvesting", label: "🚜 Harvesting" },
+                      { value: "post_harvest", label: "📦 Post-Harvest" },
+                      { value: "ready", label: "✅ Ready for Sale" }
+                    ]}
+                  />
+
                   {form.isBulk && (
-                    <div className="form-group">
-                      <label className="field-label">Minimum Order Qty (for Bulk)</label>
-                      <input className="rs-input" type="number" min="1" value={form.minOrderQty} onChange={set("minOrderQty")} required />
-                    </div>
+                    <GuidedInput
+                      label="Minimum Order Qty (for Bulk)"
+                      type="number"
+                      value={form.minOrderQty}
+                      onChange={set("minOrderQty")}
+                    />
                   )}
                 </div>
 
                 <div className="grid-2 mt-2">
-                  <div className="form-group">
-                    <label className="field-label">📍 Farm Location *</label>
-                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                      <div className="input-wrapper" style={{ flex: 1, display: "flex", gap: "0.5rem" }}>
-                        <input 
-                          className="rs-input" 
-                          type="text" 
-                          placeholder="Type or speak farm address..." 
-                          value={listening && activeField === "farmLocation" && interim ? `${form.farmLocation || ""} ${interim}...` : form.farmLocation} 
-                          onChange={set("farmLocation")} 
-                          style={listening && activeField === "farmLocation" && interim ? { color: "rgba(183,228,199,0.7)", fontStyle: "italic" } : {}}
-                        />
-                        <VoiceMicButton
-                          fieldId="farmLocation"
-                          onResult={(t) => setForm(f => ({ ...f, farmLocation: f.farmLocation ? f.farmLocation + " " + t : t }))}
-                          startListening={startListening}
-                          listening={listening}
-                          activeField={activeField}
-                        />
-                      </div>
+                  <div>
+                    <GuidedInput
+                      label="📍 Farm Location *"
+                      value={form.farmLocation}
+                      onChange={set("farmLocation")}
+                      placeholder="Village, Mandal, District..."
+                      helperText="Your farm address"
+                    />
+                    <div style={{ marginTop: "-0.5rem", marginBottom: "0.5rem" }}>
                       <LocationButton
                         compact
                         onLocation={({ address, lat, lng }) => {
@@ -1247,89 +1434,79 @@ export default function FarmerDashboard() {
                       />
                     </div>
                   </div>
-                  <div className="form-group">
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
-                      <label className="field-label" style={{ margin: 0 }}>📍 Product Location *</label>
+
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem" }}>
                       <label style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.8rem", color: "var(--text-muted)", cursor: "pointer" }}>
                         <input type="checkbox" checked={form.sameLocation} onChange={(e) => {
                           const checked = e.target.checked;
                           setForm(f => ({ ...f, sameLocation: checked, location: checked ? f.farmLocation : f.location }));
                         }} />
-                        Same as Farm
+                        Same as Farm Location
                       </label>
                     </div>
-                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                      <div className="input-wrapper" style={{ flex: 1, display: "flex", gap: "0.5rem" }}>
-                        <input 
-                          className="rs-input" 
-                          type="text" 
-                          placeholder="Where is the product stored?" 
-                          value={form.sameLocation ? form.farmLocation : (listening && activeField === "location" && interim ? `${form.location || ""} ${interim}...` : form.location)} 
-                          onChange={(e) => { if(!form.sameLocation) set("location")(e); }} 
-                          disabled={form.sameLocation} 
-                          style={{ opacity: form.sameLocation ? 0.6 : 1, ...(listening && activeField === "location" && interim ? { color: "rgba(183,228,199,0.7)", fontStyle: "italic" } : {}) }} 
-                        />
-                        <VoiceMicButton
-                          fieldId="location"
-                          onResult={(t) => { if(!form.sameLocation) setForm(f => ({ ...f, location: f.location ? f.location + " " + t : t })); }}
-                          startListening={startListening}
-                          listening={listening}
-                          activeField={activeField}
-                        />
-                      </div>
-                      {!form.sameLocation && (
-                        <LocationButton 
-                          compact 
-                          onLocation={({ address, lat, lng }) => setForm(f => ({ ...f, location: address, latitude: lat, longitude: lng }))} 
-                        />
-                      )}
-                    </div>
+                    <GuidedInput
+                      label="📍 Stored Location *"
+                      value={form.sameLocation ? form.farmLocation : form.location}
+                      onChange={(e) => { if (!form.sameLocation) set("location")(e); }}
+                      placeholder="Where is harvest stored?"
+                      helperText="Warehouse or farm pickup spot"
+                    />
                   </div>
                 </div>
 
                 <div className="flex-between mt-3">
                   <button type="button" className="btn-secondary" onClick={() => setWizardStep(1)}>⬅️ Back</button>
-                  <button type="button" className="btn-primary" onClick={() => setWizardStep(3)}>Next ➡️</button>
+                  <button type="button" className="btn-primary" onClick={() => setWizardStep(3)}>Next: Quality & Description ➡️</button>
                 </div>
               </motion.div>
             )}
 
             {wizardStep === 3 && (
               <motion.div key="step3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
-                <div className="form-group">
-                  <label className="field-label">Crop Description</label>
-                  <textarea className="rs-input" value={form.description} onChange={set("description")} />
-                </div>
+                <GuidedInput
+                  label="Crop Description"
+                  type="textarea"
+                  value={form.description}
+                  onChange={set("description")}
+                  placeholder="Fresh naturally harvested crop directly from local farm..."
+                  helperText="Speak details to auto-compose appealing description"
+                />
                 
                 <div className="grid-2 mt-2">
-                  <div className="toggle-row" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                    <span className="toggle-label" style={{ fontWeight: 600 }}>🌿 Organic?</span>
+                  <div className="toggle-row" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", background: form.isOrganic ? "rgba(34, 197, 94, 0.15)" : "rgba(255,255,255,0.03)", padding: "0.8rem", borderRadius: "10px", border: form.isOrganic ? "1px solid #22c55e" : "1px solid rgba(255,255,255,0.08)" }}>
+                    <span className="toggle-label" style={{ fontWeight: 600, color: form.isOrganic ? "#22c55e" : "inherit" }}>🌿 100% Organic Produce?</span>
                     <label style={{ display:"flex", alignItems:"center", gap:"0.5rem", cursor:"pointer" }}>
                       <input type="checkbox" checked={form.isOrganic} onChange={(e) => setForm(f=>({...f,isOrganic:e.target.checked}))} style={{ width:18,height:18 }} />
-                      <span style={{ color:"var(--text-muted)", fontSize:"0.85rem" }}>Yes</span>
+                      <span style={{ fontSize:"0.85rem" }}>Yes, grown with zero chemical fertilizers</span>
                     </label>
                   </div>
-                  <div className="toggle-row" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                    <span className="toggle-label" style={{ fontWeight: 600 }}>🛡️ Pesticide Free?</span>
+                  <div className="toggle-row" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", background: form.isPesticideFree ? "rgba(34, 197, 94, 0.15)" : "rgba(255,255,255,0.03)", padding: "0.8rem", borderRadius: "10px", border: form.isPesticideFree ? "1px solid #22c55e" : "1px solid rgba(255,255,255,0.08)" }}>
+                    <span className="toggle-label" style={{ fontWeight: 600, color: form.isPesticideFree ? "#22c55e" : "inherit" }}>🛡️ Zero Pesticide Sprays?</span>
                     <label style={{ display:"flex", alignItems:"center", gap:"0.5rem", cursor:"pointer" }}>
                       <input type="checkbox" checked={form.isPesticideFree} onChange={(e) => setForm(f=>({...f,isPesticideFree:e.target.checked}))} style={{ width:18,height:18 }} />
-                      <span style={{ color:"var(--text-muted)", fontSize:"0.85rem" }}>Yes</span>
+                      <span style={{ fontSize:"0.85rem" }}>Yes, no chemical pesticide sprays</span>
                     </label>
                   </div>
                 </div>
 
-                <div className="form-group mt-2">
-                  <label className="field-label">Farm Tour URL (Optional)</label>
-                  <p style={{ color:"var(--text-muted)", fontSize:"0.8rem", marginBottom:"0.5rem" }}>Link a YouTube or Drive video showing your farm to build buyer trust!</p>
-                  <input className="rs-input" type="url" placeholder="https://youtube.com/..." value={form.farmTourUrl || ""} onChange={set("farmTourUrl")} />
+                <div className="mt-2">
+                  <GuidedInput 
+                    label="Farm Tour Video URL (Optional)" 
+                    type="url" 
+                    placeholder="https://youtube.com/..." 
+                    value={form.farmTourUrl || ""} 
+                    onChange={set("farmTourUrl")} 
+                    helperText="Link a video showing your farm to build buyer trust"
+                  />
                 </div>
 
                 <div className="form-group mt-2">
-                  <label className="field-label">Crop Image & AI Analysis</label>
+                  <label className="field-label">Crop Image & AI Quality Analysis</label>
                   <label className="file-upload-area">
                     <input type="file" accept="image/*" onChange={(e) => analyzeImage(e.target.files[0])} />
                     <span className="file-upload-icon">📷</span>
-                    <p className="file-upload-text">{form.image ? `✅ ${form.image.name}` : "Click to upload crop photo"}</p>
+                    <p className="file-upload-text">{form.image ? `✅ ${form.image.name}` : "Click or tap to take / upload crop photo"}</p>
                   </label>
                   
                   {analyzingImage && (
@@ -1342,7 +1519,7 @@ export default function FarmerDashboard() {
                     <div style={{ marginTop: "1rem", padding: "0.75rem", background: "rgba(34, 197, 94, 0.1)", border: "1px solid var(--green-mid)", borderRadius: "8px", fontSize: "0.9rem", color: "var(--green-deep)", display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
                       <span style={{ fontSize: "1.2rem" }}>✨</span>
                       <div>
-                        <strong>AI Analysis Complete</strong>
+                        <strong>AI Quality Analysis Complete</strong>
                         <p style={{ margin: 0, marginTop: "0.25rem" }}>{qualitySuggestion}</p>
                       </div>
                     </div>
@@ -1351,8 +1528,8 @@ export default function FarmerDashboard() {
 
                 <div className="flex-between mt-3">
                   <button type="button" className="btn-secondary" onClick={() => setWizardStep(2)}>⬅️ Back</button>
-                  <button type="button" className="btn-primary" onClick={handleAddCrop} disabled={loading}>
-                    {loading ? "Processing..." : "🌾 List on Marketplace"}
+                  <button type="button" className="btn-primary" onClick={handleAddCrop} disabled={loading} style={{ background: "linear-gradient(135deg, #16a34a, #15803d)", fontSize: "1rem", padding: "0.75rem 1.5rem" }}>
+                    {loading ? "Listing..." : "🌾 List Produce on Marketplace"}
                   </button>
                 </div>
               </motion.div>
@@ -1360,27 +1537,278 @@ export default function FarmerDashboard() {
           </AnimatePresence>
         </div>
 
-        {/* ── GUIDED FORM BOX ── */}
-        <div className="form-guide-box">
-          <h4 style={{ color: "var(--green-deep)", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span>🧭</span> Form Guide
-            <button type="button" className="tts-btn" onClick={() => playTTS("This is the form guide. Follow the steps to list your crop.", lang)}>🔊</button>
-          </h4>
-          <div className={`guide-step ${focusField === "name" ? "active" : ""}`}>
-            <strong>Step 1: Crop Name</strong><br/>Enter the name of your crop (e.g. Tomato, Rice).
+        {/* ── ADVANCED GUIDED ASSISTANT PANEL ── */}
+        <div className="form-guide-box" style={{ background: "rgba(15, 23, 42, 0.65)", backdropFilter: "blur(16px)", border: "1px solid rgba(34, 197, 94, 0.25)", borderRadius: "16px", padding: "1.5rem", boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}>
+          
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "0.75rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ fontSize: "1.4rem" }}>🤖</span>
+              <div>
+                <h4 style={{ margin: 0, color: "var(--green-mid)", fontSize: "1rem", fontWeight: 700 }}>AI Guided Voice Assistant</h4>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Speak in Telugu, Hindi, Tamil, Kannada, or English</span>
+              </div>
+            </div>
+            <button 
+              type="button" 
+              className="tts-btn" 
+              onClick={() => playTTS(aiMessage || "Tell me what crop you want to sell, how many kilograms, and the price.", lang)} 
+              title="Hear Assistant Guidance"
+            >
+              🔊
+            </button>
           </div>
-          <div className={`guide-step ${focusField === "price" ? "active" : ""}`}>
-            <strong>Step 2: Pricing</strong><br/>Set a competitive price per unit in Rupees.
+
+          {/* Dynamic Voice Status & Live Visualizer */}
+          <div style={{ 
+            background: wizardStatus === "listening" ? "rgba(34, 197, 94, 0.12)" : (wizardStatus === "analyzing" ? "rgba(59, 130, 246, 0.12)" : "rgba(255,255,255,0.03)"), 
+            border: wizardStatus === "listening" ? "1px solid rgba(34, 197, 94, 0.4)" : "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "12px", 
+            padding: "1rem", 
+            marginBottom: "1.2rem",
+            textAlign: "center",
+            transition: "all 0.3s ease"
+          }}>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.6rem", marginBottom: "0.5rem" }}>
+              {wizardStatus === "listening" && (
+                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <span className="pulse" style={{ width: 10, height: 10, borderRadius: "50%", background: "#22c55e", display: "inline-block" }}></span>
+                  <span style={{ color: "#22c55e", fontWeight: 600, fontSize: "0.9rem" }}>🎙️ Listening... Speak freely!</span>
+                </div>
+              )}
+              {wizardStatus === "analyzing" && (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span className="loader" style={{ width: 14, height: 14, borderWidth: 2 }}></span>
+                  <span style={{ color: "#60a5fa", fontWeight: 600, fontSize: "0.9rem" }}>⚡ AI Analyzing & Autofilling...</span>
+                </div>
+              )}
+              {wizardStatus === "speaking" && (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Volume2 size={16} color="#fbbf24" className="animate-pulse" />
+                  <span style={{ color: "#fbbf24", fontWeight: 600, fontSize: "0.9rem" }}>🔊 Speaking Response...</span>
+                </div>
+              )}
+              {(wizardStatus === "idle" || wizardStatus === "ready") && (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <CheckCircle2 size={16} color="var(--green-mid)" />
+                  <span style={{ color: "var(--green-mid)", fontWeight: 600, fontSize: "0.9rem" }}>
+                    {wizardStatus === "ready" ? "✅ All Details Captured!" : "🟢 Assistant Ready"}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Live Speech Transcript */}
+            {wizardHeard && (
+              <div style={{ background: "rgba(0,0,0,0.3)", padding: "0.6rem 0.8rem", borderRadius: "8px", fontSize: "0.85rem", color: "#e2e8f0", fontStyle: "italic", textAlign: "left", marginBottom: "0.5rem", borderLeft: "3px solid var(--green-mid)" }}>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.75rem", display: "block", fontStyle: "normal" }}>What I heard:</span>
+                "{wizardHeard}"
+              </div>
+            )}
+
+            {/* AI Assistant Spoken Message */}
+            {aiMessage && (
+              <div style={{ background: "rgba(34, 197, 94, 0.08)", padding: "0.6rem 0.8rem", borderRadius: "8px", fontSize: "0.85rem", color: "#86efac", textAlign: "left" }}>
+                <strong>AI:</strong> {aiMessage}
+              </div>
+            )}
           </div>
-          <div className={`guide-step ${focusField === "quantity" ? "active" : ""}`}>
-            <strong>Step 3: Quantity</strong><br/>How much stock do you have available right now?
+
+          {/* Extracted Fields Live Tags */}
+          <div style={{ marginBottom: "1.2rem" }}>
+            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block", marginBottom: "0.5rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Live Extracted Data</span>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+              <div style={{ background: "rgba(255,255,255,0.03)", border: form.name ? "1px solid rgba(34, 197, 94, 0.4)" : "1px solid rgba(255,255,255,0.05)", padding: "0.5rem 0.7rem", borderRadius: "8px", fontSize: "0.8rem" }}>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>🌾 Crop Name</span>
+                <div style={{ fontWeight: 600, color: form.name ? "#22c55e" : "#94a3b8" }}>{form.name || "— Not Set —"}</div>
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.03)", border: form.quantity ? "1px solid rgba(34, 197, 94, 0.4)" : "1px solid rgba(255,255,255,0.05)", padding: "0.5rem 0.7rem", borderRadius: "8px", fontSize: "0.8rem" }}>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>⚖️ Quantity</span>
+                <div style={{ fontWeight: 600, color: form.quantity ? "#22c55e" : "#94a3b8" }}>{form.quantity ? `${form.quantity} ${form.unit || 'kg'}` : "— Not Set —"}</div>
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.03)", border: form.price ? "1px solid rgba(34, 197, 94, 0.4)" : "1px solid rgba(255,255,255,0.05)", padding: "0.5rem 0.7rem", borderRadius: "8px", fontSize: "0.8rem" }}>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>💰 Price</span>
+                <div style={{ fontWeight: 600, color: form.price ? "#22c55e" : "#94a3b8" }}>{form.price ? `₹${form.price}/${form.unit || 'kg'}` : "— Not Set —"}</div>
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", padding: "0.5rem 0.7rem", borderRadius: "8px", fontSize: "0.8rem" }}>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>🌿 Organic</span>
+                <div style={{ fontWeight: 600, color: form.isOrganic ? "#22c55e" : "#cbd5e1" }}>{form.isOrganic ? "✅ 100% Organic" : "Standard"}</div>
+              </div>
+            </div>
           </div>
-          <div className={`guide-step ${focusField === "location" ? "active" : ""}`}>
-            <strong>Step 4: Location</strong><br/>Allow auto-detect so agents can find your farm easily.
+
+          {/* APMC Market Price & Projected Revenue Advisory Card */}
+          {(form.name || form.quantity || form.price) && (
+            <div style={{ 
+              background: "linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(16, 185, 129, 0.05))", 
+              border: "1px solid rgba(34, 197, 94, 0.25)", 
+              borderRadius: "12px", 
+              padding: "0.9rem", 
+              marginBottom: "1.2rem" 
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--green-mid)", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                  <TrendingUp size={14} /> Market Intelligence
+                </span>
+                {wizardBenchmark && (
+                  <span style={{ fontSize: "0.7rem", background: "rgba(34, 197, 94, 0.2)", color: "#86efac", padding: "2px 6px", borderRadius: "6px" }}>
+                    {wizardBenchmark.trend}
+                  </span>
+                )}
+              </div>
+
+              {wizardBenchmark && (
+                <div style={{ fontSize: "0.8rem", color: "#cbd5e1", marginBottom: "0.4rem" }}>
+                  APMC Benchmark: <strong>₹{wizardBenchmark.avg}/{wizardBenchmark.unit}</strong> (Range: ₹{wizardBenchmark.min} - ₹{wizardBenchmark.max})
+                </div>
+              )}
+
+              {form.quantity && form.price ? (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.25)", padding: "0.5rem 0.75rem", borderRadius: "8px", marginTop: "0.4rem" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>💵 Projected Revenue:</span>
+                  <strong style={{ fontSize: "1.1rem", color: "#4ade80" }}>
+                    ₹{(Number(form.quantity) * Number(form.price)).toLocaleString('en-IN')}
+                  </strong>
+                </div>
+              ) : null}
+
+              {wizardBenchmark?.advice && (
+                <p style={{ margin: 0, marginTop: "0.4rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                  💡 {wizardBenchmark.advice}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Read Summary Aloud & Voice Controls */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button 
+                type="button" 
+                className={`btn-primary ${wizardActive ? "pulse" : ""}`}
+                onClick={startGuidedWizard}
+                style={{ flex: 2, display: "flex", justifyContent: "center", alignItems: "center", gap: "0.4rem", padding: "0.65rem 1rem", fontSize: "0.95rem", fontWeight: 700 }}
+              >
+                <Mic size={18} /> {wizardActive ? "⏸️ Pause Voice" : "🎙️ Speak to Autofill"}
+              </button>
+              
+              <button 
+                type="button" 
+                className="btn-secondary"
+                onClick={() => {
+                  const langKey = (lang ? lang.split("-")[0] : "en") || "en";
+                  const f = form;
+                  let summary = "";
+                  if (!f.name) {
+                    summary = langKey === "te" ? "ఇంకా ఏ పంట వివరాలు నింపలేదు. దయచేసి మాట్లాడండి లేదా ఫోటో ఎంచుకోండి." : "No crop details filled yet. Please speak or pick a photo.";
+                  } else {
+                    const rev = f.quantity && f.price ? (f.quantity * f.price).toLocaleString('en-IN') : "0";
+                    if (langKey === "te") {
+                      summary = `మీ పంట ${f.name}. పరిమాణం ${f.quantity || 0} ${f.unit || 'కేజీలు'}. ధర కేజీకి ${f.price || 0} రూపాయలు. ${f.isOrganic ? 'ఇది సేంద్రీయ పంట.' : ''} మొత్తం అంచనా ఆదాయం ${rev} రూపాయలు.`;
+                    } else if (langKey === "hi") {
+                      summary = `आपकी फसल ${f.name} है। मात्रा ${f.quantity || 0} ${f.unit || 'किलो'}। दाम ₹${f.price || 0} प्रति किलो। ${f.isOrganic ? 'यह जैविक फसल है।' : ''} कुल कमाई ₹${rev}।`;
+                    } else {
+                      summary = `Crop: ${f.name}. Quantity: ${f.quantity || 0} ${f.unit || 'kg'}. Price: ₹${f.price || 0} per ${f.unit || 'kg'}. ${f.isOrganic ? '100% Organic.' : ''} Total projected earnings: ₹${rev}.`;
+                    }
+                  }
+                  setAiMessage(summary);
+                  playTTS(summary, langKey);
+                }}
+                style={{ flex: 1.5, padding: "0.6rem", fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem", background: "rgba(59, 130, 246, 0.15)", borderColor: "rgba(59, 130, 246, 0.3)", color: "#93c5fd" }}
+                title="🔊 Read Form Summary Aloud"
+              >
+                <Volume2 size={16} /> 🔊 Read Summary
+              </button>
+
+              <button 
+                type="button" 
+                className="btn-secondary"
+                onClick={() => {
+                  setForm({ name:"", description:"", price:"", quantity:"", unit:"kg", category:"vegetable", image:null, farmLocation:"", location:"", sameLocation:true, isOrganic:false, isPesticideFree:false, season:"kharif", harvestDate:"", latitude:"", longitude:"", isPrebooking:false, lifecycleStage: "ready", farmTourUrl:"", qualityGrade:null, isBulk:false, minOrderQty:1 });
+                  setWizardHeard("");
+                  setWizardBenchmark(null);
+                  setAiMessage("Form reset.");
+                }}
+                style={{ padding: "0.6rem 0.8rem", fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3rem" }}
+                title="Clear all fields"
+              >
+                <RefreshCw size={14} /> Clear
+              </button>
+            </div>
           </div>
-          <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "1rem" }}>
-            💡 Tip: Click the 🔊 icon next to fields to hear them spoken aloud.
-          </p>
+
+          {/* Illiterate-Friendly Quick Voice Presets */}
+          <div>
+            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.4rem", fontWeight: 600 }}>
+              ⚡ Quick Spoken Presets (తాకితే స్వయంచాలకంగా నిండుతుంది):
+            </span>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setForm(f => ({ ...f, name: "Tomato", category: "vegetable", quantity: 50, price: 35, unit: "kg", isOrganic: true }));
+                  setWizardStep(2);
+                  const msg = "Loaded 50 kg Organic Tomato at ₹35/kg.";
+                  setAiMessage(msg);
+                  playTTS(msg, lang);
+                }}
+                style={{ background: "rgba(34, 197, 94, 0.1)", border: "1px solid rgba(34, 197, 94, 0.3)", borderRadius: "12px", padding: "4px 9px", fontSize: "0.75rem", color: "#86efac", cursor: "pointer", fontWeight: 600 }}
+              >
+                🍅 50 kg Tomato ₹35 (Organic)
+              </button>
+              
+              <button 
+                type="button" 
+                onClick={() => {
+                  setForm(f => ({ ...f, name: "Onion", category: "vegetable", quantity: 1000, price: 30, unit: "kg", isOrganic: false }));
+                  setWizardStep(2);
+                  const msg = "Loaded 20 Bags (1000 kg) Onion at ₹30/kg.";
+                  setAiMessage(msg);
+                  playTTS(msg, lang);
+                }}
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "12px", padding: "4px 9px", fontSize: "0.75rem", color: "#e2e8f0", cursor: "pointer" }}
+              >
+                🧅 20 Bags Onion ₹30
+              </button>
+
+              <button 
+                type="button" 
+                onClick={() => {
+                  setForm(f => ({ ...f, name: "Chili", category: "spice", quantity: 100, price: 120, unit: "kg", isOrganic: true }));
+                  setWizardStep(2);
+                  const msg = "Loaded 100 kg Red Chilli at ₹120/kg.";
+                  setAiMessage(msg);
+                  playTTS(msg, lang);
+                }}
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "12px", padding: "4px 9px", fontSize: "0.75rem", color: "#e2e8f0", cursor: "pointer" }}
+              >
+                🌶️ 100 kg Chili ₹120
+              </button>
+
+              <button 
+                type="button" 
+                onClick={() => {
+                  setForm(f => ({ ...f, name: "Rice", category: "grain", quantity: 500, price: 48, unit: "kg", isOrganic: true }));
+                  setWizardStep(2);
+                  const msg = "Loaded 500 kg Sona Masoori Rice at ₹48/kg.";
+                  setAiMessage(msg);
+                  playTTS(msg, lang);
+                }}
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "12px", padding: "4px 9px", fontSize: "0.75rem", color: "#e2e8f0", cursor: "pointer" }}
+              >
+                🌾 500 kg Rice ₹48
+              </button>
+
+              <button 
+                type="button" 
+                onClick={handleAddCrop}
+                disabled={!form.name || !form.price || !form.quantity || loading}
+                style={{ background: form.name && form.price && form.quantity ? "linear-gradient(135deg, #22c55e, #16a34a)" : "rgba(255,255,255,0.04)", border: "1px solid rgba(34, 197, 94, 0.3)", borderRadius: "12px", padding: "4px 10px", fontSize: "0.75rem", color: form.name && form.price && form.quantity ? "#ffffff" : "#64748b", cursor: form.name && form.price && form.quantity ? "pointer" : "not-allowed", fontWeight: 700 }}
+              >
+                🚀 Post Crop Now
+              </button>
+            </div>
+          </div>
+
         </div>
         </div>
       )}
@@ -1827,13 +2255,38 @@ export default function FarmerDashboard() {
       {/* ── PEST DETECTION TAB ── */}
       {tab === "pest" && (
         <div className="glass-card" style={{ padding: "2rem" }}>
-          <h2 style={{ color: "var(--green-deep)", marginBottom: "0.5rem" }}>🐛 AI Pest & Disease Detection</h2>
+          <h2 style={{ color: "var(--green-deep)", marginBottom: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            🐛 AI Pest & Disease Detection & Organic Remedies
+          </h2>
           <p style={{ color: "var(--text-muted)", marginBottom: "1.5rem" }}>
-            Upload a clear photo of an affected leaf or crop. Our Gemini AI will analyze the image, detect any pests or diseases, and provide immediate organic remedy recommendations.
+            Upload a clear photo of an affected leaf/crop or describe the observed symptoms. Our Agricultural Diagnostic Engine will identify the disease, rate the severity, and provide zero-chemical organic remedies.
           </p>
           
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.25rem" }}>
+            <div className="form-group">
+              <label className="field-label">Affected Crop (Optional)</label>
+              <input 
+                type="text"
+                className="rs-input"
+                placeholder="e.g. Tomato, Chilli, Rice, Potato, Cotton, Mango"
+                value={pestCropName}
+                onChange={e => setPestCropName(e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label className="field-label">Observed Symptoms (Optional)</label>
+              <input 
+                type="text"
+                className="rs-input"
+                placeholder="e.g. Yellow spots on leaves, curled edges, white powdery residue"
+                value={pestSymptoms}
+                onChange={e => setPestSymptoms(e.target.value)}
+              />
+            </div>
+          </div>
+
           <div className="form-group mb-3">
-            <label className="field-label">Upload Crop Photo</label>
+            <label className="field-label">Upload Crop / Leaf Photo</label>
             <input 
               type="file" 
               accept="image/*"
@@ -1852,41 +2305,62 @@ export default function FarmerDashboard() {
 
           {pestPreview && (
             <div style={{ marginBottom: "1.5rem", textAlign: "center" }}>
-              <img src={pestPreview} alt="Pest Preview" style={{ maxWidth: "100%", maxHeight: "300px", borderRadius: "12px", border: "2px solid #e2e8f0" }} />
+              <img src={pestPreview} alt="Pest Preview" style={{ maxWidth: "100%", maxHeight: "280px", borderRadius: "12px", border: "2px solid #e2e8f0", boxShadow: "0 4px 15px rgba(0,0,0,0.08)" }} />
             </div>
           )}
 
           <button 
             className="btn-primary" 
-            style={{ width: "100%", marginBottom: "2rem", background: "var(--green-mid)", borderColor: "var(--green-mid)" }}
+            style={{ width: "100%", marginBottom: "2rem", background: "var(--green-mid)", borderColor: "var(--green-mid)", padding: "0.85rem", fontSize: "1rem" }}
             onClick={runPestDetection}
-            disabled={pestLoading || !pestPreview}
+            disabled={pestLoading || (!pestPreview && !pestCropName.trim() && !pestSymptoms.trim())}
           >
-            {pestLoading ? "🤖 Analyzing Image..." : "🔎 Detect Pests & Diseases"}
+            {pestLoading ? "🤖 Analyzing Crop Diagnostics..." : "🔎 Run AI Pest & Disease Diagnosis"}
           </button>
 
           {pestResult && (
-            <div style={{ background: "#f8fafc", padding: "1.5rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-              <h3 style={{ color: "var(--text-dark)", marginBottom: "1rem" }}>Analysis Result</h3>
-              <p style={{ marginBottom: "0.5rem" }}>
-                <strong>Detected Condition:</strong>{" "}
-                <span style={{ color: pestResult.disease !== "Healthy" ? "#ef4444" : "#10b981", fontWeight: "bold" }}>
-                  {pestResult.disease}
+            <div style={{ background: "#f8fafc", padding: "1.75rem", borderRadius: "14px", border: "1.5px solid rgba(22,163,74,0.25)", boxShadow: "0 8px 25px rgba(0,0,0,0.04)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                <h3 style={{ color: "var(--text-dark)", margin: 0, fontSize: "1.2rem" }}>🌾 Pathological Diagnosis Report</h3>
+                <span style={{ fontSize: "0.78rem", background: "rgba(22,163,74,0.1)", color: "var(--green-deep)", padding: "4px 10px", borderRadius: "100px", fontWeight: 600 }}>
+                  {pestResult.source || "Diagnostic Engine"}
                 </span>
-              </p>
-              <p style={{ marginBottom: "1rem" }}>
-                <strong>Severity:</strong>{" "}
-                <span className={`badge ${pestResult.severity === "Severe" || pestResult.severity === "High" ? "badge-red" : "badge-yellow"}`}>
-                  {pestResult.severity}
-                </span>
-              </p>
-              <div style={{ background: "white", padding: "1rem", borderRadius: "8px", borderLeft: "4px solid var(--green-mid)" }}>
-                <strong style={{ display: "block", marginBottom: "0.5rem", color: "var(--green-deep)" }}>Organic Treatment Plan:</strong>
-                <p style={{ whiteSpace: "pre-wrap", margin: 0, fontSize: "0.95rem", lineHeight: "1.5" }}>{pestResult.remedy}</p>
+              </div>
+              
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                <div style={{ background: "white", padding: "1rem", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block", marginBottom: "0.2rem" }}>Detected Condition</span>
+                  <strong style={{ color: pestResult.disease !== "Healthy" ? "#dc2626" : "#16a34a", fontSize: "1.05rem" }}>
+                    {pestResult.disease}
+                  </strong>
+                </div>
+                <div style={{ background: "white", padding: "1rem", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block", marginBottom: "0.2rem" }}>Risk Severity Level</span>
+                  <span className={`badge ${pestResult.severity === "Severe" || pestResult.severity === "High" ? "badge-red" : "badge-yellow"}`} style={{ fontSize: "0.85rem", padding: "4px 10px" }}>
+                    ⚠️ {pestResult.severity}
+                  </span>
+                </div>
+              </div>
+
+              {pestResult.symptoms && (
+                <div style={{ background: "white", padding: "1rem", borderRadius: "10px", border: "1px solid #e2e8f0", marginBottom: "1rem" }}>
+                  <strong style={{ display: "block", marginBottom: "0.3rem", color: "var(--text-dark)", fontSize: "0.92rem" }}>🔍 Identified Symptoms:</strong>
+                  <p style={{ margin: 0, fontSize: "0.9rem", color: "var(--text-mid)" }}>{pestResult.symptoms}</p>
+                </div>
+              )}
+
+              <div style={{ background: "white", padding: "1.25rem", borderRadius: "10px", borderLeft: "5px solid var(--green-mid)", border: "1px solid #e2e8f0", borderLeftWidth: "5px" }}>
+                <strong style={{ display: "block", marginBottom: "0.6rem", color: "var(--green-deep)", fontSize: "1.02rem" }}>🌱 Organic & Bio-Remedy Treatment Plan:</strong>
+                <p style={{ whiteSpace: "pre-wrap", margin: 0, fontSize: "0.95rem", lineHeight: "1.6", color: "var(--text-dark)" }}>{pestResult.remedy}</p>
               </div>
             </div>
           )}
         </div>
+      )}
+
+      {/* ── SOIL TESTING & LAB HUB TAB ── */}
+      {tab === "soil" && (
+        <SoilTestingHub user={user} farmerProfile={farmerProfile} />
       )}
 
       {/* ── LEADERBOARD TAB ── */}
@@ -1978,6 +2452,16 @@ export default function FarmerDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── SOIL TESTING TAB ── */}
+      {tab === "soil" && (
+        <SoilTestingPanel user={user} lang={lang} />
+      )}
+
+      {/* ── PEST DETECTION TAB ── */}
+      {tab === "pest" && (
+        <PestDetectionPanel user={user} lang={lang} />
       )}
 
       {/* Edit Crop Modal */}

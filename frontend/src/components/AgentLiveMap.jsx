@@ -43,10 +43,12 @@ const ICONS = {
 
 const MapBounds = ({ points }) => {
   const map = useMap();
+  const init = React.useRef(false);
   useEffect(() => {
-    if (points.length > 0) {
+    if (points.length > 0 && !init.current) {
       const bounds = L.latLngBounds(points.map(p => [p.lat, p.lng]));
       map.fitBounds(bounds, { padding: [50, 50] });
+      init.current = true;
     }
   }, [points, map]);
   return null;

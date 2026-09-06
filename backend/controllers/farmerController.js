@@ -15,8 +15,30 @@ export const addCrop = async (req, res) => {
     }
 
     const cropData = { ...req.body };
+    if (!cropData.farmer && req.user) {
+      cropData.farmer = req.user._id;
+    }
     if (req.file) {
       cropData.image = `/uploads/${req.file.filename}`;
+    } else if (!cropData.image || cropData.image.trim() === "") {
+      const clean = ((cropData.name || "") + " " + (cropData.category || "")).toLowerCase();
+      if (clean.includes("rice") || clean.includes("sona") || clean.includes("bpt") || clean.includes("paddy")) cropData.image = "/uploads/ai_rice.jpg";
+      else if (clean.includes("onion") || clean.includes("ullipaya")) cropData.image = "/uploads/ai_onion.jpg";
+      else if (clean.includes("tomato") || clean.includes("tamota")) cropData.image = "/uploads/ai_tomato.jpg";
+      else if (clean.includes("potato") || clean.includes("aalu")) cropData.image = "/uploads/potato.png";
+      else if (clean.includes("mango") || clean.includes("mamidi")) cropData.image = "/uploads/ai_mango.jpg";
+      else if (clean.includes("banana") || clean.includes("arati")) cropData.image = "/uploads/ai_banana.jpg";
+      else if (clean.includes("spinach") || clean.includes("palak")) cropData.image = "/uploads/ai_spinach.jpg";
+      else if (clean.includes("cabbage")) cropData.image = "/uploads/ai_cabbage.jpg";
+      else if (clean.includes("cauliflower")) cropData.image = "/uploads/ai_cauliflower.jpg";
+      else if (clean.includes("turmeric") || clean.includes("pasupu")) cropData.image = "/uploads/ai_turmeric.jpg";
+      else if (clean.includes("chilli") || clean.includes("mirchi")) cropData.image = "/uploads/ai_red_chilli.jpg";
+      else if (clean.includes("soya")) cropData.image = "/uploads/ai_soya.jpg";
+      else if (clean.includes("carrot")) cropData.image = "/uploads/carrot.png";
+      else if (cropData.category === "fruit") cropData.image = "/uploads/ai_mango.jpg";
+      else if (cropData.category === "grain") cropData.image = "/uploads/ai_rice.jpg";
+      else if (cropData.category === "vegetable") cropData.image = "/uploads/ai_tomato.jpg";
+      else cropData.image = "/uploads/ai_rice.jpg";
     }
     
     // Parse booleans from FormData

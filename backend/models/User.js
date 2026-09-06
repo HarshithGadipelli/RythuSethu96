@@ -15,9 +15,13 @@ const userSchema = new mongoose.Schema({
   location: { type: String, default: "" },
   latitude: { type: Number },
   longitude: { type: Number },
+  geoPosition: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number], required: false } // [longitude, latitude]
+  },
   
   // ─── Customer Specific Info ───
-  customerType: { type: String, enum: ["individual", "business"], default: "individual" },
+  customerType: { type: String, enum: ["individual", "business", "family", "restaurant", "supermarket", "premium"], default: "individual" },
   requiresDailyDelivery: { type: Boolean, default: false },
   avatar: { type: String, default: "" },
   aadhaar: { type: String, default: "" },
@@ -35,6 +39,9 @@ const userSchema = new mongoose.Schema({
   strikes: { type: Number, default: 0 },
   cancelledOrdersCount: { type: Number, default: 0 },
   accountStatus: { type: String, enum: ["active", "suspended", "banned"], default: "active" },
+
+  // ─── Agent Specific Info ───
+  agentType: { type: String, enum: ["bike", "auto", "truck"], default: "bike" },
   
   // ─── Farmer Specific Info ───
   farmName: { type: String, default: "" },
@@ -50,5 +57,7 @@ const userSchema = new mongoose.Schema({
 
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
+
+userSchema.index({ geoPosition: "2dsphere" });
 
 export default mongoose.model("User", userSchema);

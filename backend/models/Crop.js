@@ -32,6 +32,7 @@ const cropSchema = new mongoose.Schema({
   isLive: { type: Boolean, default: true },
   isAvailable: { type: Boolean, default: true },
   isPrebooking: { type: Boolean, default: false },
+  advancePaymentPercentage: { type: Number, default: 0 },
   isBulk: { type: Boolean, default: false },
   lifecycleStage: { type: String, enum: ["sowing", "vegetative", "flowering", "harvesting", "post_harvest", "ready"], default: "sowing" },
   lifecycleUpdates: [{
@@ -48,7 +49,12 @@ const cropSchema = new mongoose.Schema({
     fiber: Number
   },
   rating: { type: Number, default: 0 },
-  totalOrders: { type: Number, default: 0 }
+  totalOrders: { type: Number, default: 0 },
+  // ─── Admin Cold Storage Clearance Fields ───
+  isAdminStock: { type: Boolean, default: false },
+  originalFarmer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  clearanceDiscount: { type: Number, default: 0 },
+  coldStorageLocation: { type: String, default: "" }
 }, { timestamps: true });
 
 export default mongoose.model("Crop", cropSchema);

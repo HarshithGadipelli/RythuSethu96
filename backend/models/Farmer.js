@@ -34,7 +34,12 @@ const farmerSchema = new mongoose.Schema({
   farmTourEnabled: { type: Boolean, default: false },
   farmTourVerified: { type: Boolean, default: false },
   farmTourPrice: { type: Number, default: 0 },
-  farmTourDetails: { type: String, default: "" }
+  farmTourDetails: { type: String, default: "" },
+  
+  // ── Soil Testing ──
+  soilTestRequested: { type: Boolean, default: false },
+  soilTestStatus: { type: String, enum: ["none", "pending", "completed"], default: "none" },
+  soilTestDiscountAvailable: { type: Boolean, default: true }
 }, { timestamps: true });
 
 export default mongoose.model("Farmer", farmerSchema);

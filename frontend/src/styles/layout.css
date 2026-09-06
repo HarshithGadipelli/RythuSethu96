@@ -1,19 +1,24 @@
 /* force-mobile-mode: emulate mobile view on desktop */
 body.force-mobile-mode {
-  max-width: 480px;
-  margin: 0 auto;
-  border-left: 1px solid #e2e8f0;
-  border-right: 1px solid #e2e8f0;
-  box-shadow: 0 0 50px rgba(0,0,0,0.1);
+  max-width: 414px; /* standard mobile width */
+  min-height: 100vh;
+  margin: 20px auto;
+  border: 12px solid #1e1e1e;
+  border-radius: 40px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
   position: relative;
-  background-color: #f8fafc;
+  background-color: var(--bg-primary);
+  overflow-x: hidden;
+  padding-bottom: 70px; /* space for bottom nav */
 }
 
 body.force-mobile-mode .navbar {
-  max-width: 480px;
+  max-width: 414px;
   margin: 0 auto;
   left: 50%;
   transform: translateX(-50%);
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
 }
 
 body.force-mobile-mode .navbar-links {
@@ -21,11 +26,16 @@ body.force-mobile-mode .navbar-links {
 }
 
 body.force-mobile-mode .bottom-nav {
-  max-width: 480px;
+  max-width: 414px;
+  width: 100%;
   margin: 0 auto;
   left: 50%;
   transform: translateX(-50%);
-  display: flex !important; /* Force bottom nav */
+  display: flex !important;
+  position: absolute; /* Stick to bottom of the 'device' frame */
+  bottom: 0;
+  border-bottom-left-radius: 28px;
+  border-bottom-right-radius: 28px;
 }
 
 body.force-mobile-mode .grid-3,

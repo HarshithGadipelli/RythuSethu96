@@ -423,12 +423,84 @@ export default function AIAssistant() {
               </button>
             </div>
 
+            {/* Quick Action Chips for Fast Tap / Illiterate Accessibility */}
+            <div style={{ display: "flex", gap: "0.4rem", padding: "0.5rem 0.75rem", background: "rgba(34, 197, 94, 0.05)", borderBottom: "1px solid #e2e8f0", overflowX: "auto", whiteSpace: "nowrap" }}>
+              {user?.role === "farmer" && (
+                <>
+                  <button 
+                    onClick={() => handleProcessText("I want to sell a new crop")}
+                    style={{ background: "#ffffff", border: "1px solid rgba(34, 197, 94, 0.3)", borderRadius: "12px", padding: "3px 8px", fontSize: "0.75rem", color: "#15803d", cursor: "pointer", fontWeight: 600 }}
+                  >
+                    🌾 Sell Crop
+                  </button>
+                  <button 
+                    onClick={() => handleProcessText("What are today's mandi market prices?")}
+                    style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "3px 8px", fontSize: "0.75rem", color: "#334155", cursor: "pointer" }}
+                  >
+                    💰 Mandi Rates
+                  </button>
+                  <button 
+                    onClick={() => handleProcessText("Give me farming tips and pest control advice")}
+                    style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "3px 8px", fontSize: "0.75rem", color: "#334155", cursor: "pointer" }}
+                  >
+                    🌿 Crop Doctor
+                  </button>
+                </>
+              )}
+
+              {user?.role === "agent" && (
+                <>
+                  <button 
+                    onClick={() => handleProcessText("Show my current assigned deliveries")}
+                    style={{ background: "#ffffff", border: "1px solid rgba(59, 130, 246, 0.3)", borderRadius: "12px", padding: "3px 8px", fontSize: "0.75rem", color: "#2563eb", cursor: "pointer", fontWeight: 600 }}
+                  >
+                    📦 My Deliveries
+                  </button>
+                  <button 
+                    onClick={() => handleProcessText("Show available nearby orders to deliver")}
+                    style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "3px 8px", fontSize: "0.75rem", color: "#334155", cursor: "pointer" }}
+                  >
+                    🚚 Available Orders
+                  </button>
+                  <button 
+                    onClick={() => handleProcessText("What are my total earnings this week?")}
+                    style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "3px 8px", fontSize: "0.75rem", color: "#334155", cursor: "pointer" }}
+                  >
+                    💵 Earnings
+                  </button>
+                </>
+              )}
+
+              {user?.role === "customer" && (
+                <>
+                  <button 
+                    onClick={() => handleProcessText("Show fresh organic vegetables")}
+                    style={{ background: "#ffffff", border: "1px solid rgba(34, 197, 94, 0.3)", borderRadius: "12px", padding: "3px 8px", fontSize: "0.75rem", color: "#15803d", cursor: "pointer", fontWeight: 600 }}
+                  >
+                    🥦 Organic Veggies
+                  </button>
+                  <button 
+                    onClick={() => handleProcessText("Show fresh seasonal fruits")}
+                    style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "3px 8px", fontSize: "0.75rem", color: "#334155", cursor: "pointer" }}
+                  >
+                    🍎 Fresh Fruits
+                  </button>
+                  <button 
+                    onClick={() => handleProcessText("Track my order status")}
+                    style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "3px 8px", fontSize: "0.75rem", color: "#334155", cursor: "pointer" }}
+                  >
+                    📍 Track Order
+                  </button>
+                </>
+              )}
+            </div>
+
             {/* Chat Area */}
             <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem", background: "#f8fafc" }}>
               {messages.map((msg, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
                   <div style={{
-                    maxWidth: "80%", padding: "0.75rem 1rem", borderRadius: "16px",
+                    maxWidth: "85%", padding: "0.75rem 1rem", borderRadius: "16px",
                     background: msg.role === "user" ? "var(--green-mid)" : "white",
                     color: msg.role === "user" ? "white" : "var(--text-dark)",
                     boxShadow: msg.role === "user" ? "none" : "0 2px 10px rgba(0,0,0,0.03)",
@@ -438,7 +510,19 @@ export default function AIAssistant() {
                     fontSize: "0.9rem", lineHeight: 1.5,
                     display: "flex", flexDirection: "column", gap: "0.5rem"
                   }}>
-                    <span>{msg.text}</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
+                      <span>{msg.text}</span>
+                      {msg.role === "assistant" && (
+                        <button
+                          type="button"
+                          onClick={() => speak(msg.text)}
+                          style={{ background: "rgba(0,0,0,0.04)", border: "none", borderRadius: "50%", width: "22px", height: "22px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, fontSize: "0.75rem" }}
+                          title="🔊 Hear message aloud"
+                        >
+                          🔊
+                        </button>
+                      )}
+                    </div>
                     {msg.role === "assistant" && msg.logId && !msg.rated && (
                       <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem", borderTop: "1px solid #e2e8f0", paddingTop: "0.5rem" }}>
                         <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Helpful?</span>

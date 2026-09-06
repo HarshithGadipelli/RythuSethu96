@@ -1,0 +1,1364 @@
+================================================================================
+          RYTHU SETHU PLATFORM - ULTIMATE TECHNICAL ARCHITECTURE MANUAL
+                    Comprehensive Master Specification (v4.0.0)
+================================================================================
+
+TABLE OF CONTENTS:
+1. EXECUTIVE SUMMARY & PLATFORM VISION
+2. EXHAUSTIVE TECHNOLOGY STACK MATRIX (TOOLS, APIS, LIBS, HARDWARE & RUNTIMES)
+3. COMPLETE SYSTEM ARCHITECTURE & INTER-SERVICE COMMUNICATION TOPOLOGY
+4. EXHAUSTIVE DIRECTORY STRUCTURE & COMPONENT-BY-COMPONENT CODEBASE BREAKDOWN
+   4.1 Backend (Node.js/Express, Models, Controllers, Middlewares, Services, Routes, Utils)
+   4.2 Frontend (React 18/Vite, Components, Contexts, Hooks, Utils, Pages, Styling)
+   4.3 ML Models (Python Core, FastAPI Microservice, Inference, Training, Data Assets)
+   4.4 Root Infrastructure, Scripts & Diagrams
+5. DEEP DIVE: MATHEMATICS, ALGORITHMS, MACHINE LEARNING & CRYPTOGRAPHY
+   5.1 Haversine Spherical Distance Metric
+   5.2 OSRM Driving Distance Matrix & API Integration
+   5.3 Dabbawala-Style 2km Zone Clustering & Nearest-Neighbor TSP Route Optimization
+   5.4 Random Forest Regression (Price & Demand Forecasting)
+   5.5 XGBoost Gradient Boosting (Elastic Price Optimization)
+   5.6 Apriori Association Rule Mining (Market Basket / Cross-Selling)
+   5.7 Multi-Factor 10-Parameter Farmer Trust Score Formulation
+   5.8 Real-Time Demand Velocity Tensor Algorithm
+   5.9 Agro-Climatic Zone Classification & Live Weather Suitability Scoring Engine
+   5.10 Cryptographic Blockchain Ledger Simulation (SHA-256 Chained Blocks)
+   5.11 Web Audio API Procedural Acoustic Synthesizer (Raag Bhupali & Farm Ambience)
+   5.12 Multilingual Phonetic & Dialect Intent Parser (Telugu, Hindi, English, Tamil, Kannada)
+   5.13 Google Gemini 1.5 Flash Multi-Modal Vision & NLP Cascade
+6. REAL-TIME EVENT ARCHITECTURE (SOCKET.IO) & END-TO-END WORKFLOWS
+   6.1 WebSocket Event Topology & Channel Rooms
+   6.2 Complete Multi-Location Order & Escrow Settlement Lifecycle
+   6.3 Live Agent GPS Telemetry & Interactive Map Sync
+7. CYBERSECURITY DEFENSE ARCHITECTURE & OWASP TOP 10 MITIGATION
+8. DEVELOPER-LEVEL ENGINEERING & SOFTWARE DEVELOPMENT LIFE CYCLE (SDLC) DEEP DIVE
+   8.1 Local Environment Setup & Multi-Process Orchestration
+   8.2 Environment Variable Matrix (.ENV & Runtime Flags)
+   8.3 Port Allocation, Networking & Reverse Proxies
+   8.4 Branching Strategy, Git Hygiene & Code Quality
+9. QA / GTESTER / SOFTWARE TESTING LIFE CYCLE (STLC) DEEP DIVE
+   9.1 Testing Pyramid & Test Architecture (Unit, Integration, E2E, Smoke, Sanity)
+   9.2 Test Automation Infrastructure (Jest, Supertest, Puppeteer-Core)
+   9.3 Boundary Value Analysis (BVA) & Equivalence Class Partitioning (ECP)
+   9.4 Concurrency, Load & Performance Benchmarking
+   9.5 Security Vulnerability & Penetration Testing Checklist
+10. PRODUCTION READINESS, DEVOPS & SCALABILITY ROADMAP
+11. NEWLY IMPLEMENTED ADVANCED PRODUCTION MODULES
+    11.1 End-of-Day Clearance Sale & Cold Storage Liquidations
+    11.2 Administrative Educational Broadcasting
+    11.3 Real-Time Weather-Based Seasonal Crop Prediction
+12. EXHAUSTIVE SCHEMA-BY-SCHEMA & FIELD-BY-FIELD DATABASE DICTIONARY (ALL 28 SCHEMAS)
+13. EXHAUSTIVE REST API ENDPOINT REFERENCE (ALL 22 ROUTE MODULES)
+14. EXHAUSTIVE FRONTEND COMPONENT ARCHITECTURE & PROPS/STATE CONTRACTS (37 WIDGETS)
+15. DEVELOPER-LEVEL ENGINEERING BLUEPRINT & WORKFLOWS (PATTERNS & STATE MACHINES)
+16. ADVANCED GTESTER / QA TEST AUTOMATION & VERIFICATION PLAYBOOK (TEST MATRIX)
+17. END-TO-END SOFTWARE DEVELOPMENT & TESTING LIFE CYCLES (SDLC & STLC)
+================================================================================
+
+
+================================================================================
+1. EXECUTIVE SUMMARY & PLATFORM VISION
+================================================================================
+Rythu Sethu (రైతు సేతు / किसान सेतु / "Farmer's Bridge") is a decentralized, full-stack, enterprise-grade agricultural trade and logistics platform. Built to eliminate exploitative agricultural middlemen, Rythu Sethu empowers marginal, smallholder, and progressive commercial farmers by connecting them directly with consumers, institutional buyers, and decentralized logistics agents.
+
+The platform orchestrates complex agricultural commerce across four distinct authenticated user roles:
+1. Farmers: Publish live harvest inventory, track lifecycle stages (Seeding, Growing, Harvested), receive AI-powered dynamic pricing and agro-climatic crop recommendations, access cold storage clearance liquidation, and manage farm-tour agritourism.
+2. Customers: Browse farm-fresh produce with verified farmer Trust Badges, execute single or multi-location checkout (dispatching different basket items to friends/family in distinct locations within a single order), track real-time agent GPS delivery on Leaflet maps, and access community group buying.
+3. Logistics Agents: Receive automated route assignments, navigate delivery routes optimized via a Dabbawala-style hub-and-spoke Travelling Salesperson Problem (TSP) heuristic algorithm, utilize multi-modal Gemini Vision for proof-of-delivery verification, and monitor SLA countdowns.
+4. Platform Administrators: Supervise financial ledgers and escrow releases, analyze real-time market demand and velocity tensors, broadcast push advisories to farmers (e.g., anti-crop burning, millet promotion), and liquidate perishable clearance stock through central cold storage.
+
+
+================================================================================
+2. EXHAUSTIVE TECHNOLOGY STACK MATRIX
+================================================================================
+The entire Rythu Sethu codebase is architected using a decoupled modern technology stack spanning frontend web applications, asynchronous Node.js backend engines, Python machine learning pipelines, and cloud APIs.
+
+A. FRONTEND CLIENT TIER:
+- Core Framework: React 18.2.0 (Component-based architecture, Functional Components, Strict Mode support, Hooks)
+- Build System & Dev Server: Vite 5.2.0 with Hot Module Replacement (HMR) and Rollup-based production chunking
+- Routing: React Router DOM 6.23.0 (Declarative client-side routing, nested routes, route guards)
+- Global State Management: React Context API (AuthContext, CartContext, LangContext, LayoutContext, SocketContext)
+- Iconography: Lucide-React 1.17.0 (Tree-shakeable SVG micro-icons)
+- Motion & Micro-Interactions: Framer Motion 12.40.0 (Spring physics, layout animations, hover elevations, page transitions)
+- Mapping & GIS Visualization:
+  * Leaflet 1.9.4 (Open-source interactive maps)
+  * React-Leaflet 4.2.1 (React abstraction for Leaflet DOM manipulation)
+  * React-Leaflet-Cluster 4.1.3 (High-performance marker clustering for dense farm/store locations)
+- Network Transport & HTTP Client: Axios 1.6.0 (Global request/response interceptors for JWT injection and unified error handling)
+- Real-Time Bidirectional Protocol: Socket.io-Client 4.8.3 (WebSocket fallback to HTTP long-polling, auto-reconnect engine)
+- QR Code Generation: React-QR-Code 2.2.0 (Vector SVG QR codes for offline verification and payment receipts)
+- Browser Automation & Headless Verification: Puppeteer-Core 25.9.0 (Client-side report/PDF extraction and snapshotting)
+- Audio & Acoustic Engineering:
+  * Web Audio API (Native browser AudioContext, BiquadFilterNode, OscillatorNode, GainNode, StereoPannerNode)
+  * Web Speech API (Native browser SpeechRecognition for speech-to-text, SpeechSynthesis for text-to-speech)
+  * Custom Web Audio Synthesis Engine: Real-time procedural generation of morning bird song, night crickets, and Indian Raag Bhupali flute melodies
+- Typography & Styling: Vanilla CSS3 with CSS Custom Properties (Design Tokens), Glassmorphism (backdrop-filter), CSS Grid, and Flexbox layouts.
+
+B. BACKEND APPLICATION TIER:
+- Runtime Environment: Node.js (v18.x / v20.x LTS) running in native ECMAScript Modules (ESM) mode (`"type": "module"`)
+- Web Application Framework: Express.js 4.18.2
+- HTTP Server: Node.js native `http.createServer` wrapping Express to support Socket.io dual-binding
+- WebSocket Server: Socket.io 4.8.3 (Room-based isolation: `agent_{id}`, `customer_{id}`, broadcast topologies)
+- Database ODM: Mongoose 8.3.0 (Strict schemas, middleware hooks, 2dsphere geospatial indexing, aggregation pipelines)
+- Authentication & Cryptography:
+  * JSON Web Tokens (jsonwebtoken 9.0.2): Stateless signed bearer tokens containing user identity and role claims
+  * Bcrypt.js 2.4.3: Cryptographic password hashing (Salt Rounds: 10)
+  * Node.js native `crypto` module: SHA-256 blockchain hashing and HMAC-SHA256 signature verification
+- Security & Sanitization Middlewares:
+  * Helmet 8.3.0: Secure HTTP response headers (CSP, HSTS, X-Frame-Options, X-Content-Type-Options)
+  * Express-Rate-Limit 8.7.0: Sliding window IP request throttling (1000 requests per 15-minute window)
+  * Express-Mongo-Sanitize 2.2.0: NoSQL injection mitigation (stripping `$` and `.` from inputs)
+  * DOMPurify 3.4.14 + JSDOM 30.0.1: Recursive server-side HTML/XSS sanitization
+- File & Media Handling: Multer 1.4.5-lts.1 (Multipart form-data parsing, file size validation, disk storage engine)
+- Payment Gateway SDK: Razorpay 2.9.6 (Order initialization, payment capture, webhook HMAC verification)
+- Artificial Intelligence SDKs:
+  * Google Generative AI (@google/generative-ai 0.24.1 & @google/genai 2.8.0): Gemini 1.5 Flash connectivity
+  * Google TTS API (google-tts-api 2.0.2): Audio synthesis fallback for regional Indian dialects
+- Utility & Process Management:
+  * Dotenv 16.3.1: Environment variable injection
+  * Cors 2.8.5: Cross-Origin Resource Sharing control
+  * Nodemon 3.1.14: Development file-watch and auto-restart daemon
+  * Kill-Port 2.0.1: Pre-launch port cleanup daemon
+
+C. MACHINE LEARNING & DATA SCIENCE TIER:
+- Language: Python 3.10+
+- Microservice Framework: FastAPI 0.100+ running on Uvicorn ASGI server (Port 8000)
+- Validation & Data Typing: Pydantic v2
+- Core Numerical & Tabular Processing:
+  * NumPy: Vectorized multidimensional array mathematics
+  * Pandas: High-performance dataframes, feature engineering, categorical one-hot encoding
+- Machine Learning Engines:
+  * Scikit-Learn (RandomForestRegressor, DecisionTreeRegressor, train_test_split, metrics)
+  * XGBoost (Extreme Gradient Boosting Regressor for dynamic pricing optimization)
+- Serialization & Persistence: Joblib (High-efficiency binary serialization for large model weights: `crop_model.pkl`, `demand_model.pkl`, `price_model.pkl`, `seasonal_model.pkl`)
+- Database Connector: PyMongo (Direct MongoDB connection for transaction log mining in Apriori analysis)
+- Telemetry & HTTP: Requests (Python client for external telemetry and API polling)
+
+D. EXTERNAL TELEMETRY & CLOUD APIS:
+- Weather Telemetry: Open-Meteo API (Free, high-resolution global weather model: temperature, relative humidity, surface precipitation, wind speed, daily max/min, 7-day forecast)
+- Geospatial Routing & Distance:
+  * Open Source Routing Machine (OSRM) Table API (`http://router.project-osrm.org/table/v1/driving/`) for real road driving distance matrices
+  * OpenStreetMap Nominatim API: Reverse geocoding of latitude/longitude coordinates into human-readable Indian addresses
+- Large Language Models (LLMs): Google Gemini 1.5 Flash (Multi-modal vision analysis, NLP intent extraction, agricultural advisory synthesis)
+- Translation Engine: Google Translate API Bridge (`translate.googleapis.com/translate_a/single`) for real-time translation across English, Telugu, Hindi, Tamil, Kannada
+- Payment Processing: Razorpay Payment Gateway & National Payments Corporation of India (NPCI) UPI protocol
+
+E. HARDWARE, RUNTIME & OS REQUIREMENTS:
+- Operating System Compatibility: Windows 10/11 (PowerShell/CMD), Linux (Ubuntu 20.04/22.04 LTS), macOS (Darwin ARM64/x86_64)
+- Minimum Hardware:
+  * CPU: Dual-Core 2.0 GHz x86_64 / ARM64
+  * RAM: 4 GB System Memory
+  * Disk: 2 GB free storage space
+- Recommended Production Hardware:
+  * CPU: Quad-Core 3.0+ GHz
+  * RAM: 8 GB to 16 GB (to comfortably load `demand_model.pkl` [364MB] into RAM alongside MongoDB and Node.js)
+  * Disk: NVMe SSD with 10 GB+ storage
+- Active Network Ports:
+  * Port 3000: Frontend React (Vite Dev Server)
+  * Port 5000: Backend Node.js / Express REST API & Socket.io WebSockets
+  * Port 8000: Python FastAPI Machine Learning Microservice
+  * Port 27017: MongoDB Local Daemon (`mongod`)
+
+
+================================================================================
+3. COMPLETE SYSTEM ARCHITECTURE & INTER-SERVICE COMMUNICATION TOPOLOGY
+================================================================================
+The platform utilizes an asynchronous, event-driven topology where the Node.js backend serves as the central API gateway and message broker, coordinating between clients, storage, AI microservices, and external cloud endpoints.
+
+[Client Browsers: React 18 / Vite (Port 3000)]
+      │                     ▲
+      │ HTTPS REST / Axios  │ WSS (WebSockets) via Socket.io
+      ▼                     │
+[Node.js / Express API Gateway (Port 5000)]
+      │
+      ├── MongoDB Database (Port 27017) [28 Schemas, 2dsphere Indexes, Aggregations]
+      │
+      ├── Python FastAPI ML Microservice (Port 8000) [Scikit-learn, XGBoost, Apriori]
+      │     └── Serialized Models (Pickle/Joblib: RF, Demand, Price, Season)
+      │
+      ├── Google Gemini 1.5 Flash Cloud [Multi-modal Vision Verification & NLP Intent]
+      │
+      ├── Open-Meteo Weather API [Live Temperature, Humidity, Rainfall Telemetry]
+      │
+      ├── OSRM Driving Distance Engine [Road Driving Distance Matrix]
+      │
+      ├── Razorpay Payment Gateway [UPI / Card Escrow Transactions]
+      │
+      └── Local Static File Store [`backend/public/uploads` for KYC & Crop Images]
+
+
+================================================================================
+4. EXHAUSTIVE DIRECTORY STRUCTURE & COMPONENT-BY-COMPONENT CODEBASE BREAKDOWN
+================================================================================
+
+4.1 BACKEND TIER (`/backend`):
+- `server.js`: Master application bootstrap. Binds Express to native HTTP server, initializes Socket.io with open CORS, connects to MongoDB, mounts security middleware stack (Helmet, rate-limiting, NoSQL sanitization, DOMPurify), registers 22 REST route modules, configures static uploads with cache-invalidation headers, and sets up real-time socket events (`join_agent_room`, `agent_location_update`, `admin_broadcast`).
+
+- `/backend/config/`:
+  * `db.js`: Mongoose connection manager. Establishes TCP connection pool to MongoDB (local or Atlas) with auto-reconnection listeners (`error`, `disconnected`, `reconnected`).
+
+- `/backend/models/` (28 Mongoose Data Schemas):
+  * `User.js`: Unified polymorphic user schema. Stores authentication credentials (`email`, `phone`, `password` hashed with bcrypt), `role` enum (`farmer`, `customer`, `agent`, `admin`), `geoPosition` (GeoJSON Point with `2dsphere` index for spatial queries), `walletBalance`, `rewardPoints`, embedded sub-profiles (`farmerProfile`, `customerProfile`, `agentProfile`), and trust ratings.
+  * `Crop.js`: Farmer inventory entity. Tracks `name`, `category`, `price`, `quantity`, `unit` (kg, quintal, bag), `lifecycleStage` (`seeding`, `vegetative`, `harvesting`, `ready_to_sell`), `isOrganic`, `shelfLifeDays`, `harvestDate`, `images`, `isAdminStock` (Clearance liquidation flag), `originalFarmer`, `clearanceDiscount`, `coldStorageLocation`, and text index on crop name.
+  * `Order.js`: Core transaction schema. Holds references to `customer`, `farmer`, `crop`, `quantity`, `totalAmount`, `status` (`pending`, `confirmed`, `assigned`, `picked_up`, `delivered`, `cancelled`), `escrowStatus` (`held`, `released`, `refunded`), `multiLocationGroupId` (linking multi-drop items), `deliveryAddress`, and payment references.
+  * `Delivery.js`: Logistics execution schema. Stores `order`, `agent`, `status` (`assigned`, `in_transit`, `delivered`), `agentLatitude`, `agentLongitude`, `lastLocationUpdate`, `dropoffs` subdocument array (coordinates, addresses, drop status for multi-location runs), `optimizedRoute` path coordinates, and `estimatedDeliveryTime`.
+  * `Block.js`: Cryptographic ledger block schema. Stores `index`, `timestamp`, `transactions` array (order payloads), `previousHash`, and `hash` (SHA-256). Ensures transaction immutability.
+  * `Demand.js`: Region-specific demand metrics. Stores `cropName`, `region`, `demandScore`, `velocityScore`, `searchCount`, `orderCount`, and timestamp.
+  * `SearchHistory.js`: Marketplace query audit log. Stores `query`, `category`, `user`, `coordinates`, and `timestamp` with a 30-day Time-To-Live (TTL) index.
+  * `Review.js`: Post-delivery customer rating and review schema. Stores `order`, `crop`, `farmer`, `customer`, `rating` (1-5), `comment`, `sentimentScore` (computed via Gemini NLP), and `isVerifiedPurchase`.
+  * `Farmer.js`: Detailed farmer biographical and agronomic profile schema. Tracks land size (acres), soil type, primary crops, Aadhaar KYC verification status, organic certification certificates, and historical fulfillment rate.
+  * `Customer.js`: Customer preference schema (favorite crops, default delivery addresses, dietary preferences).
+  * `Agent.js`: Logistics agent operational profile (vehicle type [bike, truck, van], license number, current shift status, active deliveries, SLA score).
+  * `Admin.js`: System administrator credentials, audit logs, and operational privilege flags.
+  * `Cart.js`: Server-side persistent customer cart schema.
+  * `Auction.js`: Live B2B crop auction schema (starting bid, current highest bid, reserve price, bid history, expiry timer).
+  * `BoxSubscription.js`: Recurring curated vegetable/fruit box subscription schema (weekly, bi-weekly, monthly plans).
+  * `Subscription.js`: General farmer/customer recurring platform service subscriptions.
+  * `CropRequest.js`: B2B customer custom demand request for unlisted crops.
+  * `Farm.js`: Farm geolocation, acreage, and agritourism infrastructure profile.
+  * `FarmTourBooking.js`: Agritourism physical tour reservation schema (visitor count, date, status, payment status).
+  * `GlobalConfig.js`: Dynamic platform runtime settings (commission percentage, base delivery fee, per-km rate).
+  * `Group.js`: Community group-buying pools for collective wholesale discounts.
+  * `Notification.js`: User notifications with read/unread tracking and push metadata.
+  * `Payment.js`: Escrow payment tracking schema (Razorpay order ID, payment ID, signature, status).
+  * `Policy.js`: Government and platform agricultural subsidies, crop insurance, and policy advisories.
+  * `Prediction.js`: Cached machine learning outputs (price trends, yield predictions).
+  * `SoilTestRequest.js`: Farmer soil laboratory testing requests (NPK levels, pH, micronutrients, AI advisory).
+  * `Ticket.js`: User dispute and customer service support tickets.
+  * `AILog.js`: Audit logging for Gemini and ML inference latencies, tokens, and errors.
+
+- `/backend/controllers/` (11 Business Logic Controllers):
+  * `adminController.js`: Administrative analytics, aggregate sales pipelines, user verification management, cold storage clearance inventory management (`getClearanceCrops`, `updateClearancePrice`), and broadcast emissions (`broadcastMessage`).
+  * `authController.js`: User onboarding, bcrypt authentication, stateless JWT issuance, profile updates, and role validation.
+  * `cropController.js`: Farmer crop CRUD operations, stock adjustments, organic certification tagging, and lifecycle updates.
+  * `deliveryController.js`: Logistics dispatching, live agent location updates, proof-of-delivery Gemini Vision photo verification, and status advancement.
+  * `farmerController.js`: Farmer dashboard aggregations, revenue analytics, dynamic pricing recommendations, and inventory management.
+  * `mlController.js`: Gateway to predictive models. Manages:
+    - `getSeasonalPrediction`: Real-time weather fetch from Open-Meteo, agro-climatic zone classification, crop suitability scoring (0-100%), and agricultural insight synthesis.
+    - `suggestCrop`: Soil and weather-based crop suggestions.
+    - `predictDemand`: Regional crop demand forecasting.
+    - `predictPriceTrends`: Multi-parameter price regression.
+    - `routeOptimize`: TSP route optimization using OSRM matrices.
+    - `marketBasketAnalysis`: Apriori frequent itemset correlations.
+  * `orderController.js`: Checkout execution, multi-location grouping (`/create-multi`), cryptographic block creation, and radial agent assignment.
+  * `paymentController.js`: Razorpay escrow order initialization, webhook signature validation, and funds release.
+  * `agentController.js`: Agent shift toggling, active route retrieval, and earnings ledger access.
+  * `customerController.js`: Customer order history, favorite farms, and address management.
+  * `aiController.js`: Gemini 1.5 Flash multi-modal processing, speech intent parsing, and free Google Translate bridge.
+
+- `/backend/middleware/` (6 Interceptors):
+  * `authMiddleware.js`: JWT verification interceptor; extracts `Bearer` token from `Authorization` header, verifies signature, and attaches authenticated `User` to `req.user`.
+  * `roleMiddleware.js`: Role-Based Access Control (RBAC) guard (`adminOnly`, `farmerOnly`, `agentOnly`, `customerOnly`).
+  * `sanitizeMiddleware.js`: Custom recursive payload sanitizer utilizing DOMPurify and JSDOM to neutralize XSS vectors in `req.body`, `req.query`, and `req.params`.
+  * `errorMiddleware.js`: Global exception handler mapping Mongoose validation errors, duplicate keys (code 11000), and JWT expiration to clean HTTP responses.
+  * `upload.js` & `uploadMiddleware.js`: Multer configurations for file upload limits, MIME-type filtering, and disk destinations.
+
+- `/backend/services/` (7 Heavy Processing & Integration Services):
+  * `trustScoreService.js`: Computes 10-parameter weighted farmer trust score (0-100) using real customer reviews, order fulfillment rates, sales volume, and certifications.
+  * `deliveryRouteService.js`: Dabbawala-style 2km zone clustering, OSRM driving distance matrix fetching, and TSP nearest-neighbor route ordering.
+  * `demandPredictionService.js`: Real-time order velocity tensor calculation with seasonal and weekend demand multipliers.
+  * `cropSuggestionService.js`: ML-driven crop recommendations with mathematical Gaussian probability fallback.
+  * `nutritionAnalysisService.js`: 3-tier cascade nutrition engine (local JSON hashmap -> Gemini 1.5 Flash -> failsafe).
+  * `geminiService.js`: Wrapper for Google Generative AI API calls with strict JSON formatting prompts.
+  * `weatherService.js`: Weather API client for external forecasts.
+
+- `/backend/routes/` (22 Express Route Modules):
+  * `authRoutes.js`, `farmerRoutes.js`, `cropRoutes.js`, `orderRoutes.js`, `deliveryRoutes.js`, `adminRoutes.js`, `mlRoutes.js`, `farmTourRoutes.js`, `paymentRoutes.js`, `aiRoutes.js`, `notificationRoutes.js`, `publicRoutes.js`, `reportRoutes.js`, `policyRoutes.js`, `ticketRoutes.js`, `groupRoutes.js`, `ecommerceRoutes.js`, `auctionRoutes.js`, `boxRoutes.js`, `subscriptionRoutes.js`, `translationRoutes.js`, `soilTestRoutes.js`.
+
+- `/backend/utils/` (4 Helper Modules):
+  * `blockchain.js`: Implements `Block` creation and SHA-256 block hashing using Node.js `crypto`.
+  * `helpers.js`: Haversine great-circle distance formula and coordinate validators.
+  * `logger.js`: Console and file logging formats.
+  * `validators.js`: Regex validation for Indian mobile numbers, emails, and Aadhaar numbers.
+
+4.2 FRONTEND TIER (`/frontend`):
+- `index.html`: Single-page application entry point with mobile viewport configuration, Google Fonts preconnect, and root mounting node (`#root`).
+- `vite.config.js`: Vite configuration specifying React plugin, local network exposure (`--host`), allowed development tunneling hosts (`ngrok-free.dev`), and Rollup manual chunks (`vendor`, `ui`, `map`).
+- `package.json`: Client script definitions and UI library dependencies.
+
+- `/frontend/src/context/` (5 Global State Providers):
+  * `AuthContext.jsx`: User authentication state, JWT persistence in `localStorage`, role privileges, and login/logout handlers.
+  * `CartContext.jsx`: Shopping cart state, multi-location delivery address assignments per item, and subtotal calculations.
+  * `LangContext.jsx`: Complete internationalization (i18n) dictionary supporting English, Telugu, and Hindi with thousands of agricultural and UI translations.
+  * `LayoutContext.jsx`: Global UI state (sidebar open/closed, mobile navigation visibility).
+  * `SocketContext.jsx`: Singleton Socket.io client instance managing connection lifecycle, room subscriptions, and event listeners.
+
+- `/frontend/src/components/` (37 Specialized Widgets & Visualizations):
+  * `Navbar.jsx`: Responsive top navigation bar with role-based links, language selector, cart indicator, audio ambience toggle, and user avatar.
+  * `BottomNav.jsx`: Mobile app-style bottom navigation bar with floating action buttons.
+  * `AIAssistant.jsx`: Floating interactive AI voice and chat interface powered by Gemini 1.5 Flash.
+  * `AssistantOverlay.jsx`: Full-screen hands-free voice overlay with real-time audio waveform visualizer.
+  * `AudioManager.jsx`: Audio control center managing ambient farm soundscapes and TTS playback.
+  * `AmbientAtmosphere.jsx`: Canvas-based ambient particle generator rendering falling leaves, rain drops, and sunlight rays.
+  * `AuthenticityCertificate.jsx`: Cryptographic certificate display validating farm origin, organic status, and blockchain block hash.
+  * `AutoSuggestInput.jsx`: Debounced predictive search input for crops and locations.
+  * `CartSidebar.jsx`: Slide-out shopping cart supporting single-click multi-location address assignments.
+  * `CompareModal.jsx`: Side-by-side comparison modal for comparing crop prices, trust scores, and nutritional data.
+  * `CropVisualPicker.jsx`: Icon-based visual crop selector designed for low-literacy farmers.
+  * `EcoAdvisor.jsx`: Environmental footprint calculator and carbon-offset rating component.
+  * `FarmTourModal.jsx`: Agritourism booking modal with calendar date picker and group size controls.
+  * `GuidedInput.jsx`: Step-by-step form wizard for listing new harvest inventory.
+  * `LiveMapModal.jsx`: Full-screen interactive map displaying live delivery agent movements.
+  * `LocationButton.jsx`: Geolocation detection button fetching browser GPS coordinates.
+  * `LocationPickerMap.jsx` & `LocationPickerModal.jsx`: Leaflet-based map pin dragger for choosing exact delivery lat/lng.
+  * `MapComponent.jsx`: Base Leaflet wrapper with OpenStreetMap tile layer.
+  * `MarketAnnouncer.jsx`: Audio speech announcer periodically reading top deals and fresh arrivals.
+  * `MarketplaceMap.jsx`: High-performance clustered map displaying nearby farms, stores, and clearance warehouses.
+  * `OrderTracking.jsx`: Visual delivery milestone tracker (`Confirmed` -> `Assigned` -> `Picked Up` -> `Delivered`).
+  * `PaymentModal.jsx`: Razorpay payment modal with UPI QR code integration and Escrow security pledges.
+  * `PestDetectionPanel.jsx`: Camera capture and image upload widget for leaf disease analysis.
+  * `ReviewModal.jsx`: Star rating and customer review submission modal with sentiment analysis preview.
+  * `RouteMap.jsx`: Route polyline renderer drawing TSP-optimized paths between farmer, agent, and customers.
+  * `RythuSethuAnimation.jsx`: SVG animated loader depicting growing crops and agricultural motifs.
+  * `SecurityPledgeModal.jsx`: Interactive modal explaining Escrow fund protection and blockchain immutability.
+  * `SmartCuratedBasket.jsx`: Algorithmic basket builder recommending personalized vegetable baskets.
+  * `SoilTestingHub.jsx` & `SoilTestingPanel.jsx`: Soil health card interface displaying NPK ratios and crop recommendations.
+  * `ToastNotification.jsx`: Non-intrusive floating toast alerts for socket messages and system feedback.
+  * `VoiceField.jsx`: Voice-enabled form input field with built-in mic trigger.
+  * `VoiceMicButton.jsx`: Animated microphone button with pulse animations during speech recognition.
+  * `AdminGlobalMap.jsx`: Admin dashboard map monitoring all nationwide active agents and orders.
+  * `AgentLiveMap.jsx`: Turn-by-turn map for delivery agents showing upcoming dropoff sequences.
+
+- `/frontend/src/pages/` (Role-Specific Views):
+  * `Admin/`:
+    - `AdminDashboard.jsx` (127KB): Master administrative control suite. Includes KPI summary cards, user verification queues, demand prediction analytics with "Suggest to Farmers" triggers, clearance stock management, educational broadcast dispatchers, and dispute arbitrations.
+    - `AdminFinancials.jsx`: Platform revenue ledger, commission tracking, and escrow balance sheets.
+  * `Agent/`:
+    - `AgentDashboard.jsx` (60KB): Agent logistics cockpit. Displays assigned deliveries, SLA countdown timers, Dabbawala-style route optimizer triggers, and Gemini Vision photo verification inputs.
+    - `AgentFinancialLedger.jsx`: Agent earnings breakdown, tips, and completed delivery compensation.
+  * `Auth/`:
+    - `Login.jsx` & `Register.jsx`: Multi-role onboarding workflows with GPS location capture, role selectors, and Aadhaar validation.
+  * `Farmer/`:
+    - `FarmerDashboard.jsx` (143KB): Central hub for farmers. Contains inventory cards, weather forecasts, "Sell to Admin" clearance sale buttons for perishable produce, dynamic price alerts, and incoming orders.
+    - `AddCrop.jsx`: Visual crop listing form with voice input support and AI price recommendation.
+    - `Analytics.jsx`: Historical sales charts, revenue trends, and demand forecasts.
+    - `FarmerFinancialLedger.jsx`: Farmer wallet management, pending escrow funds, and bank withdrawal requests.
+    - `FarmerGroups.jsx`: FPO (Farmer Producer Organization) group management for collective bargaining.
+    - `FarmerLeaderboard.jsx`: Gamified rankings based on Trust Scores, organic practices, and fulfillment rates.
+    - `FarmerProfitCalculator.jsx`: Interactive calculator estimating profits across different crops and acreage.
+    - `FarmerTours.jsx`: Agritourism visit management and tour scheduling.
+  * `Landing/`:
+    - `LandingPage.jsx` (89KB): Animated hero section, platform statistics, role value propositions, and trust badges.
+  * `Marketplace/`:
+    - `Marketplace.jsx` (144KB): Core marketplace. Features AI-driven Real-Time Weather-Based Seasonal Predictions, clearance produce badges (`❄️ Clearance`), organic filters, distance sorting, category tabs, audio soundscapes, and comparison drawers.
+    - `CustomerOrders.jsx`: Order history, real-time live map tracking, and invoice downloads.
+    - `CuratedBoxes.jsx`: Subscription vegetable boxes tailored to family size.
+    - `CustomerFarmTours.jsx` & `CustomerOfflineTours.jsx`: Browse and book rural agritourism farm tours.
+    - `CustomerGroups.jsx`: Community group-buying pools.
+  * `Support/`:
+    - `Support.jsx`: Ticket submission form and live FAQ knowledge base.
+
+- `/frontend/src/hooks/` & `/frontend/src/utils/`:
+  * `useMarketAudio.js`: Hook managing Web Audio API soundscape synthesis and audio volume balances.
+  * `ambientSoundEngine.js`: Procedural audio synthesis code generating bird chirps, cricket chirps, and Indian flute melodies.
+  * `tts.js`: Text-to-speech utility connecting to browser speech synthesis and Google TTS.
+  * `voiceParser.js`: 600-line multilingual agricultural tokenizer and intent parser mapping 50+ crops across Telugu, Hindi, and English.
+  * `useAutoSuggest.js` & `useVoiceInput.js`: Reusable hooks for debounced input and Web Speech API mic capture.
+
+4.3 MACHINE LEARNING TIER (`/ml_models`):
+- `requirements.txt`: Python package specifications (scikit-learn, xgboost, pandas, numpy, joblib, pymongo, fastapi, uvicorn).
+- `api.py`: FastAPI server exposing endpoints (`/predict/season`, `/predict/market_basket`, `/predict/demand`, `/predict/price`, `/health`).
+- `/ml_models/inference/`:
+  * `price_prediction.py`: Advanced price forecasting regression model taking crop name, rainfall, past orders, climate change index, and competitor pricing.
+  * `demand_prediction.py`: Predicts regional demand volume based on search volume, order velocity, and available stock.
+  * `crop_suggestion.py`: Classifies top recommended crops based on soil pH, temperature, humidity, and rainfall.
+  * `seasonal_prediction.py`: Evaluates seasonal suitability across agricultural cycles.
+  * `market_basket.py`: Mines frequent itemsets using the Apriori algorithm directly from MongoDB order records.
+  * `farmer_suggestion.py`: Recommends optimal crop diversification strategies.
+  * `nutrition_analysis.py`: Statistical nutritional profiles per crop category.
+- `/ml_models/models/`:
+  * `crop_model.pkl` (63 MB): Pre-trained Random Forest model for multi-crop suitability.
+  * `demand_model.pkl` (364 MB): High-capacity ensemble model for regional agricultural demand.
+  * `price_model.pkl` (1.8 MB): Regression model for fair market price determination.
+  * `seasonal_model.pkl` (1.0 MB): Time-series seasonal harvest prediction model.
+  * `model_columns.pkl`: Pickled categorical column index ensuring consistent one-hot encoded feature vector dimensions.
+- `/ml_models/training/`:
+  * `dataset_generator.py`: Generates 50,000+ realistic synthetic agricultural records mimicking Indian agro-climatic conditions.
+  * `train_model.py`, `train_crop_model.py`, `train_demand_model.py`, `train_seasonal_model.py`: Model training pipelines.
+- `/ml_models/data/`:
+  * `nutrition_data.json`: Local reference database of nutritional macro and micronutrients.
+
+4.4 ROOT INFRASTRUCTURE & SCRIPTS:
+- `setup_and_run.bat`: Automated multi-terminal startup batch script for Windows. Checks MongoDB service, installs backend, frontend, and Python ML dependencies, trains models if `.pkl` files are absent, and spawns three independent terminals (MongoDB monitor, Express backend on port 5000, Vite frontend on port 3000).
+- `/Diagrams/`: Comprehensive visual UML diagrams:
+  * `1_System_Architecture.png` & `1_System_Architecture_UML.png`
+  * `2_Use_Case_Diagram.png` & `2_Use_Case_Diagram_UML.png`
+  * `3_Class_Diagram.png` & `3_Class_Diagram_UML.png`
+  * `4_Sequence_Diagram.png` & `4_Sequence_Diagram_UML.png`
+  * `5_Activity_Diagram_Order.png` & `5_Activity_Diagram_Order_UML.png`
+  * `Realistic_Architecture.png`
+
+
+================================================================================
+5. DEEP DIVE: MATHEMATICS, ALGORITHMS, MACHINE LEARNING & CRYPTOGRAPHY
+================================================================================
+
+5.1 THE HAVERSINE SPHERICAL DISTANCE FORMULA
+Calculates the great-circle distance between two geographic coordinates on a spherical Earth model:
+- Formula:
+  Δlat = (lat2 - lat1) * π / 180
+  Δlon = (lon2 - lon1) * π / 180
+  a = sin²(Δlat / 2) + cos(lat1 * π / 180) * cos(lat2 * π / 180) * sin²(Δlon / 2)
+  c = 2 * atan2(√a, √(1 - a))
+  Distance (km) = R * c   [where R = 6371 km]
+- Time Complexity: O(1) per coordinate pair.
+- Database Integration: Complemented by MongoDB `2dsphere` indexes on `User.geoPosition` enabling O(log N) geospatial spherical filtering.
+
+5.2 OSRM DRIVING DISTANCE MATRIX API
+To account for actual road networks, rivers, and traffic geometries, the system queries the Open Source Routing Machine (OSRM) Table API:
+- Endpoint: `http://router.project-osrm.org/table/v1/driving/{lon1,lat1;lon2,lat2;...}?annotations=distance`
+- Returns an N x N matrix of real driving distances in meters.
+- Fallback: Automatically falls back to the Haversine formula if the external network is unreachable.
+
+5.3 DABBAWALA-STYLE ZONE CLUSTERING & NEAREST-NEIGHBOR TSP HEURISTIC
+Multi-location agricultural deliveries present an NP-hard Travelling Salesperson Problem with pickup-before-delivery precedence constraints.
+- Step 1: Spatial Grid Binning (Dabbawala Concept):
+  Each coordinate is mapped to an approximate 2km geographic zone:
+  ZoneID = `${floor(lat * 50)}_${floor(lon * 50)}`
+- Step 2: Constrained Nearest-Neighbor Traversal:
+  Starting from the agent's current location, the algorithm prioritizes tasks in the *same* zone before moving across zones.
+  Precedence Rule: A `delivery` dropoff cannot be visited until its corresponding `pickup` has been added to `completedPickups`.
+- Time Complexity: O(N²) where N is the number of delivery stops (typically N < 25 per agent run).
+
+5.4 RANDOM FOREST REGRESSION (PRICE & DEMAND)
+The core predictive engine uses an ensemble of B decorrelated decision trees:
+- Output Prediction: ŷ = (1 / B) * Σ f_b(x)
+- Tree Induction: Uses bootstrap aggregation (bagging) with random feature subsampling at each split to minimize variance without increasing bias.
+- Evaluation Metrics: Mean Squared Error (MSE) and Coefficient of Determination (R² ~ 0.85).
+
+5.5 XGBOOST GRADIENT BOOSTING (ELASTIC DYNAMIC PRICING)
+Optimizes fair agricultural pricing by minimizing an objective function containing training loss and model complexity penalties:
+- Obj = Σ L(y_i, ŷ_i) + Σ [γ T_m + (1/2) λ ||w_m||²]
+- Utilizes second-order Taylor expansion to approximate the loss function, enabling fast convergence across market supply elasticity features.
+
+5.6 APRIORI ASSOCIATION RULE MINING (MARKET BASKET ANALYSIS)
+Identifies cross-selling combinations (e.g., "Customer buying Tomatoes also buys Onions") from historical transaction logs:
+- Support(A) = Frequency(A) / Total_Orders
+- Confidence(A -> B) = Support(A ∪ B) / Support(A)
+- Lift(A -> B) = Confidence(A -> B) / Support(B)
+- Thresholds: Minimum Support = 0.05, Minimum Confidence = 0.60. A Lift > 1.0 indicates a statistically significant positive correlation.
+
+5.7 MULTI-FACTOR 10-PARAMETER FARMER TRUST SCORE FORMULATION
+Computes an objective, tamper-proof score (0 to 100) determining badge status:
+  TrustScore = Σ (Weight_i * Points_i)
+  Parameters:
+  1. Verification Status (Aadhaar KYC): Weight 10% (10 pts)
+  2. Average Customer Review Rating: Weight 20% (20 pts, normalized from 1-5 scale)
+  3. Order Fulfillment Rate: Weight 15% (15 pts, fulfilled / accepted orders)
+  4. Farming Experience: Weight 5% (5 pts, capped at 10+ years)
+  5. Organic Certification: Weight 10% (10 pts)
+  6. Total Sales Volume: Weight 10% (10 pts, scaled logarithmically)
+  7. Account Age / Platform Tenure: Weight 5% (5 pts)
+  8. Profile Completeness: Weight 10% (10 pts)
+  9. Customer Response Rate: Weight 5% (5 pts)
+  10. Low Return / Dispute Rate: Weight 10% (10 pts)
+  Grade Classification:
+  - 90 - 100: 🏆 Platinum ("Exceptional")
+  - 75 - 89:  🥇 Gold ("Highly Trusted")
+  - 60 - 74:  🥈 Silver ("Trusted")
+  - 40 - 59:  🥉 Bronze ("Building Trust")
+  - 0 - 39:   🌱 New ("Getting Started")
+
+5.8 REAL-TIME DEMAND VELOCITY TENSOR ALGORITHM
+Calculates live product demand velocity using a non-linear velocity score:
+  VelocityScore = [1.5 * TotalSold] + [2.5 * (OrderCount^1.2)] + [0.05 * Revenue]
+  Multipliers:
+  - Deep Seasonality Multiplier: 2.5x boost for biological seasonal crops.
+  - Weekend Perishable Multiplier: 1.5x boost on Saturdays and Sundays for fresh kitchen staples.
+
+5.9 AGRO-CLIMATIC ZONE CLASSIFICATION & LIVE WEATHER SUITABILITY SCORING
+Replaces arbitrary seasonal filters with a meteorological engine:
+- Live Telemetry: Fetches exact current temperature, relative humidity, surface precipitation, and wind speed via Open-Meteo.
+- Agro-Climatic Zone Mapping:
+  * Hot Arid (Rajasthan, North Gujarat): Temp > 32°C, Humidity < 40%, Rainfall < 2mm
+  * Tropical Humid (Kerala, Coastal Karnataka, Konkan): Temp > 24°C, Humidity > 75%, Rainfall > 5mm
+  * Sub-Tropical Continental (Punjab, Haryana, UP, MP): Seasonal extremes
+  * Temperate Highland (Himachal Pradesh, J&K, Uttarakhand): Lat > 30°N, Temp < 18°C
+  * Coastal Maritime (TN, Andhra, Odisha, Bengal coasts): Humidity 65-85%, moderate rainfall
+- Bell-Curve Weather Suitability Scoring:
+  Score = 100 - (|T_current - T_ideal| * W_temp) - (|H_current - H_ideal| * W_humidity) - RainPenalty
+  Bonus: +8% promotion incentive for drought-resistant Millets (Ragi, Jowar, Bajra).
+
+5.10 CRYPTOGRAPHIC BLOCKCHAIN LEDGER SIMULATION
+Provides immutable provenance for every completed transaction:
+- Block Structure: { Index, Timestamp, Transactions: [OrderPayload], PreviousHash, Hash }
+- Hash Function: SHA-256 (Secure Hash Algorithm 256-bit)
+- Block Invalidation: Tampering with any historical order modifies that block's hash, breaking the cryptographic chain (`block[i].previousHash !== block[i-1].hash`).
+
+5.11 WEB AUDIO API PROCEDURAL ACOUSTIC SYNTHESIZER
+Generates a living acoustic soundscape directly inside the browser without downloading heavy audio files:
+- Birdsong Generation: Randomly triggered OscillatorNodes sweeping high-frequency exponential ramps (2600 Hz - 3800 Hz) shaped by rapid attack/decay GainNodes.
+- Cricket Night Chorus: White noise audio buffers passed through resonant BiquadFilterNodes (bandpass at 4500 Hz) modulated at 12 Hz.
+- Krishna Bansuri Flute: Web Audio synthesis reproducing peaceful Indian Raag Bhupali melodies.
+
+5.12 MULTILINGUAL PHONETIC INTENT PARSER
+A specialized natural language tokenizer supporting rural Indian agricultural vocabulary:
+- Mappings: Cross-maps hundreds of colloquial crop names across Telugu (టమోటా, ఉల్లిపాయ, వరి), Hindi (टमाटर, प्याज, चावल), English, Tamil, and Kannada to canonical entities.
+- Unit Parser: Recognizes rural metrics: "biyyam 5 bastalu" -> `{ crop: "Rice", quantity: 5, unit: "bag" }`.
+
+5.13 GOOGLE GEMINI 1.5 FLASH MULTI-MODAL VISION & NLP CASCADE
+- Visual Proof of Delivery: Delivery agent captures a photo of the handed-over produce. Gemini 1.5 Flash compares the visual features of the delivery photo against the marketplace listing image to verify produce authenticity and prevent delivery fraud.
+- Dynamic Nutrition Synthesis: If a rare indigenous crop lacks pre-computed nutrition facts, Gemini acts as an API, synthesizing standard macro-nutrients into validated JSON schemas.
+
+
+================================================================================
+6. REAL-TIME EVENT ARCHITECTURE (SOCKET.IO) & END-TO-END WORKFLOWS
+================================================================================
+
+6.1 SOCKET.IO CHANNEL TOPOLOGY & EVENT MATRIX
+The system maintains persistent, full-duplex WebSocket connections with the following event architecture:
+- Connection Lifecycle:
+  * Client connects -> `connection` event fired -> client receives socket ID.
+  * Agent authentication -> client emits `join_agent_room(agentId)` -> server binds connection to room `agent_${agentId}`.
+- Operational Events:
+  * `order_created`: Broadcast to all active logistics agents when a customer checks out.
+  * `agent_location_update`: Emitted by agent's mobile browser with GPS `{ agentId, lat, lng }`.
+  * `agent_location_changed`: Broadcast to customer tracking room and admin global map.
+  * `admin_broadcast`: Dispatched by Admin -> server emits `admin_broadcast_received` to all connected farmer sockets.
+  * `disconnect`: Connection cleanup.
+
+6.2 END-TO-END MULTI-LOCATION ORDER & ESCROW LIFECYCLE
+1. Product Discovery: Customer navigates `Marketplace.jsx`. Search triggers debounced logging to `SearchHistory`. Customer adds produce to cart.
+2. Multi-Location Allocation: In `CartSidebar.jsx`, customer toggles Multi-Location delivery. Item 1 is allocated to "Home Address", Item 2 to "Parents Address".
+3. Checkout & Payment: Customer submits order. Backend `/api/orders/create-multi` verifies stock, calculates distance-based delivery charges, initiates Razorpay Escrow payment, creates linked `Order` records, and appends the transaction to the SHA-256 `Block` ledger.
+4. Agent Radial Assignment: The backend invokes `autoAssignMultiDelivery()`. Using MongoDB `2dsphere` spatial indexing, nearby available agents within 15km are queried. An agent is assigned, and a `Delivery` record is created containing the multi-stop `dropoffs` array.
+5. Real-Time Dispatch: Socket event `order_created` updates the assigned agent's `AgentDashboard.jsx`.
+6. Route Execution: Agent clicks "Optimize Route". The Dabbawala TSP heuristic orders pickups and deliveries into a minimal-mileage sequence.
+7. Verification & Escrow Release: At delivery, the agent uploads a photo. Gemini 1.5 Flash validates the produce. The order shifts to `delivered`. The backend releases the escrowed funds directly to the farmer's wallet. Customer is prompted for a review.
+
+
+================================================================================
+7. CYBERSECURITY DEFENSE ARCHITECTURE & OWASP TOP 10 MITIGATION
+================================================================================
+Rythu Sethu incorporates defense-in-depth security mitigations:
+
+1. A01:2021 - Broken Access Control:
+   - Enforced by `authMiddleware.js` and `roleMiddleware.js`. Endpoints verify both cryptographic JWT signatures and role claims (`adminOnly`, `farmerOnly`, `agentOnly`). Users cannot access or modify resources belonging to other tenants.
+
+2. A02:2021 - Cryptographic Failures:
+   - Passwords hashed using Bcrypt with 10 salt rounds.
+   - JWT tokens signed with high-entropy `JWT_SECRET` using HMAC-SHA256.
+   - All transactions immutably linked in SHA-256 blockchain blocks.
+
+3. A03:2021 - Injection (NoSQL & XSS):
+   - NoSQL Injection: Neutralized by `express-mongo-sanitize`, which recursively deletes any keys starting with `$` or containing `.` from incoming payloads.
+   - Cross-Site Scripting (XSS): Defended by a custom `sanitizeMiddleware.js` combining DOMPurify and JSDOM, stripping malicious `<script>`, `onerror`, and HTML injection vectors prior to Mongoose processing.
+
+4. A04:2021 - Insecure Design:
+   - Financial transactions utilize an Escrow state machine. Farmers cannot withdraw funds until visual proof-of-delivery is established or confirmed by the customer.
+
+5. A05:2021 - Security Misconfiguration:
+   - Helmet sets strict security headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security` (HSTS), and strips `X-Powered-By: Express`.
+
+6. A07:2021 - Identification & Authentication Failures:
+   - Sliding-window rate limiter (`express-rate-limit`) restricts clients to 1000 requests per 15 minutes, neutralizing brute-force credential stuffing.
+
+
+================================================================================
+8. DEVELOPER-LEVEL ENGINEERING & SDLC DEEP DIVE
+================================================================================
+
+8.1 LOCAL ENVIRONMENT ORCHESTRATION (`setup_and_run.bat`)
+The platform includes an automated multi-terminal launcher that:
+1. Validates the local MongoDB service (`net start MongoDB`).
+2. Installs backend dependencies (`npm install`).
+3. Installs frontend dependencies (`npm install`).
+4. Installs Python ML dependencies (`pip install -r requirements.txt`).
+5. Checks for serialized model weights (`.pkl`). If absent, automatically invokes `train_model.py` to synthesize datasets and train models.
+6. Spawns 3 dedicated development terminals:
+   - Terminal 1: MongoDB Service Monitor (Port 27017)
+   - Terminal 2: Node.js / Express Server with Nodemon (Port 5000)
+   - Terminal 3: React / Vite Development Client (Port 3000)
+
+8.2 RUNTIME ENVIRONMENT MATRIX (.ENV CONFIGURATION)
+- `PORT`: HTTP port for Express backend (Default: 5000).
+- `MONGO_URI`: MongoDB connection string (`mongodb://127.0.0.1:27017/rythu_sethu` or Atlas cloud URI).
+- `JWT_SECRET`: High-entropy secret string for signing stateless user session tokens.
+- `ADMIN_SECRET`: Master key for administrative elevation.
+- `RAZORPAY_KEY_ID` & `RAZORPAY_KEY_SECRET`: Test/Production credentials for payment gateway.
+- `MERCHANT_UPI_ID`: Direct UPI VPA for peer-to-peer escrow payments.
+- `DELIVERY_BASE_CHARGE`: Base logistics fee in INR (Default: ₹30).
+- `DELIVERY_PER_KM_CHARGE`: Incremental logistics fee per kilometer (Default: ₹5/km).
+- `PLATFORM_COMMISSION_PERCENT`: Platform maintenance deduction (Default: 5%).
+- `GEMINI_API_KEY`: Google Generative AI developer key.
+
+8.3 PORT ALLOCATION & PROCESS CLEANUP
+To prevent orphaned background processes from locking development ports on Windows, both `backend/package.json` and `frontend/package.json` utilize `kill-port` in their lifecycle hooks:
+`"prestart": "kill-port 5000 || exit 0"` / `"predev": "kill-port 3000 || exit 0"`.
+
+
+================================================================================
+9. QA / GTESTER / SOFTWARE TESTING LIFE CYCLE (STLC) DEEP DIVE
+================================================================================
+
+9.1 TESTING PYRAMID ARCHITECTURE
+The testing methodology for Rythu Sethu encompasses five distinct layers:
+1. Unit Tests: Testing isolated helper functions (Haversine math, Trust Score weights, sanitizers).
+2. Integration Tests: Testing REST API endpoint response codes, Mongoose validations, and middleware chains.
+3. Component Tests: Testing React components, Context providers, and form validation states.
+4. End-to-End (E2E) Tests: Full browser automation testing complete user journeys (Farmer listing -> Customer purchase -> Agent delivery).
+5. Regression & Sanity Tests: Verification that changes to ML models do not break the API contract.
+
+9.2 TEST AUTOMATION INFRASTRUCTURE
+- Test Runner: Jest 30.4.2 running in experimental ES module mode (`node --experimental-vm-modules node_modules/jest/bin/jest.js`).
+- HTTP Assertion Library: Supertest 7.2.2 for spinning up ephemeral Express instances to test HTTP routes without binding actual TCP ports.
+- Headless Browser Automation: Puppeteer-Core 25.9.0 for headless Chrome/Chromium navigation, screenshot capture, and PDF report verification.
+
+9.3 BOUNDARY VALUE ANALYSIS (BVA) & EQUIVALENCE PARTITIONING (ECP)
+QA test specifications mandate boundary validation for all agricultural domain inputs:
+- Soil pH Range:
+  * Invalid Low: pH < 0.0 (Must reject with HTTP 400)
+  * Valid Acidic: 0.0 <= pH < 6.5
+  * Valid Neutral: 6.5 <= pH <= 7.5
+  * Valid Alkaline: 7.5 < pH <= 14.0
+  * Invalid High: pH > 14.0 (Must reject with HTTP 400)
+- Crop Pricing & Inventory:
+  * Zero / Negative Price: Price <= 0 (Rejected)
+  * Fractional Currency: Rounded to 2 decimal places.
+  * Perishable Shelf-Life: 1 to 365 days.
+- Geographic Coordinates:
+  * Latitude: [-90.0, +90.0]
+  * Longitude: [-180.0, +180.0]
+
+9.4 PERFORMANCE, CONCURRENCY & LOAD BENCHMARKS
+- API Rate Limiter: Tested using concurrent Apache Bench (`ab -n 2000 -c 50 http://localhost:5000/api/crops`) to confirm that requests exceeding 1000 per 15-minute window receive HTTP 429 Too Many Requests.
+- Socket.io Scalability: Verified connection stability under 500+ concurrent simulated agent GPS telemetry streams.
+- ML Microservice Latency: Tested via Python FastAPI benchmarks; response latency for price and demand predictions stays below 250ms.
+
+9.5 SECURITY & PENETRATION TESTING CHECKLIST
+- NoSQL Injection: Sending `{"email": {"$gt": ""}}` must be sanitized to `{}`.
+- Stored XSS: Submitting `<script>alert('xss')</script>` in crop descriptions must be stripped by DOMPurify.
+- JWT Tampering: Modifying token payload role from `customer` to `admin` without valid signature must return HTTP 401 Unauthorized.
+- IDOR (Insecure Direct Object Reference): Attempting to mark another farmer's crop as sold must return HTTP 403 Forbidden.
+
+
+================================================================================
+10. PRODUCTION READINESS, DEVOPS & SCALABILITY ROADMAP
+================================================================================
+1. Microservices Containerization (Docker):
+   - Decouple the Python ML tier into a standalone Docker container (`Dockerfile.ml`) running FastAPI on Uvicorn.
+   - Package Node.js backend into `Dockerfile.backend`.
+   - Build static React frontend into Nginx alpine container (`Dockerfile.frontend`).
+   - Coordinate via `docker-compose.yml` with shared internal networking.
+
+2. Database Scalability:
+   - Transition MongoDB from standalone development instance to MongoDB Atlas Replica Set with automatic sharding on `Order` and `SearchHistory` collections.
+   - Implement Redis caching layer for high-read, low-write queries (Crop catalog, Trust Scores, Weather forecasts).
+
+3. CI/CD Pipeline (GitHub Actions):
+   - Automated workflow executing:
+     `npm run lint` -> `npm test` -> `docker build` -> Deploy to AWS ECS / DigitalOcean Kubernetes.
+
+4. Monitoring & Observability:
+   - Integrate Prometheus metrics endpoint (`/metrics`) tracking HTTP request latencies and Socket.io active connections.
+   - Winston/Morgan logging aggregated to Grafana Loki or ELK Stack.
+
+
+================================================================================
+11. NEWLY IMPLEMENTED ADVANCED PRODUCTION MODULES
+================================================================================
+
+11.1 END-OF-DAY CLEARANCE SALE & COLD STORAGE LIQUIDATIONS
+- Context & Business Driver: Highly perishable vegetable and fruit crops have strict shelf lives (24-72 hours). Farmers frequently suffer 100% losses if produce remains unsold at day's end.
+- Architectural Solution:
+  * A "Sell to Admin" liquidation pathway in `FarmerDashboard.jsx`.
+  * The farmer liquidates unsold stock to the platform at a 40% clearance discount.
+  * Backend endpoint `PUT /api/crops/:id/sell-to-admin` transfers crop ownership to the platform admin (`isAdminStock: true`), tags the original farmer (`originalFarmer`), assigns storage to "RythuSethu Central Cold Storage", and marks it for immediate clearance.
+  * Admin Dashboard (`AdminDashboard.jsx`) provides a dedicated "Clearance" management tab with endpoints `GET /api/admin/clearance` and `PUT /api/admin/clearance/:id/price` to fine-tune markdown pricing.
+  * The Marketplace displays prominent `❄️ Clearance` badges with high-visibility pricing to rapidly liquidate stock, generating platform maintenance revenue while protecting farmers from complete harvest losses.
+
+11.2 ADMINISTRATIVE EDUCATIONAL BROADCASTING
+- Context & Business Driver: Sustainable agricultural transformation requires dynamic advisory intervention (promoting water-efficient millets over water-intensive paddy, preventing hazardous stubble burning, and issuing immediate weather alerts).
+- Architectural Solution:
+  * Admin Dashboard provides a dedicated "Broadcasts" management suite.
+  * Administrators can trigger pre-configured advisories ("Promote Millets", "Anti-Crop Burning", "Weather Alert") or draft bespoke bulletins.
+  * Backend endpoint `POST /api/admin/broadcast` validates administrative privileges and broadcasts the message via Socket.io (`admin_broadcast_received`) to all online farmers while asynchronously creating persistent `Notification` documents for offline farmers.
+
+11.3 REAL-TIME WEATHER-BASED SEASONAL CROP PREDICTION
+- Context & Business Driver: Previous seasonal recommendations relied on static month-to-crop lookup tables, resulting in identical recommendations for climatically disparate regions (e.g., arid Western Rajasthan vs. tropical coastal Kerala).
+- Architectural Solution:
+  * Backend Controller `mlController.js` implements `getSeasonalPrediction`, registered at `GET /api/ml/seasonal-prediction?lat={lat}&lng={lng}`.
+  * The service queries the Open-Meteo API using the user's exact coordinates to obtain live temperature, relative humidity, precipitation, wind speed, and 7-day forecast data.
+  * The algorithm determines the local Agro-Climatic Zone (Hot Arid, Tropical Humid, Sub-Tropical, Temperate Highland, Coastal Maritime, or Mixed).
+  * Evaluates a database of 50+ regional Indian crops across Kharif, Rabi, and Zaid seasons.
+  * Calculates an objective Weather Suitability Score (0 to 100%) based on how closely current weather aligns with each crop's agronomic requirements, applying an automatic +8% promotion bonus for drought-resilient millets.
+  * Frontend `Marketplace.jsx` renders a weather dashboard with live metrics, 7-day forecasts, medal-ranked crop cards (🥇, 🥈, 🥉), percentage suitability badges, dynamic agronomy insights, and a curated "Season-Matched Products" carousel.
+
+================================================================================
+12. EXHAUSTIVE SCHEMA-BY-SCHEMA & FIELD-BY-FIELD DATABASE DICTIONARY
+================================================================================
+The Rythu Sethu persistence layer is powered by MongoDB utilizing Mongoose 8.3 ODM. Below is the field-by-field dictionary of all 28 Mongoose models:
+
+1. User Schema (`User.js`):
+   - `name`: { type: String, required: true, trim: true }
+   - `email`: { type: String, required: true, unique: true, lowercase: true }
+   - `phone`: { type: String, required: true, unique: true, index: true }
+   - `password`: { type: String, required: true } (Hashed with Bcrypt salt rounds: 10)
+   - `role`: { type: String, enum: ["farmer", "customer", "agent", "admin"], required: true, index: true }
+   - `geoPosition`: { type: { type: String, enum: ["Point"], default: "Point" }, coordinates: { type: [Number], default: [0, 0] } } (Indexed with 2dsphere)
+   - `walletBalance`: { type: Number, default: 0.0, min: 0 }
+   - `rewardPoints`: { type: Number, default: 0 }
+   - `farmerProfile`: {
+       farmSizeAcres: { type: Number, default: 0 },
+       soilType: { type: String, default: "" },
+       aadhaarNumber: { type: String, default: "" },
+       kycStatus: { type: String, enum: ["pending", "verified", "rejected"], default: "pending" },
+       organicCertificateUrl: { type: String, default: "" },
+       bankAccount: { accountNumber: String, ifscCode: String, bankName: String }
+     }
+   - `customerProfile`: {
+       defaultAddress: { type: String, default: "" },
+       preferredLanguages: [{ type: String, default: "en" }],
+       dietaryPreferences: [{ type: String }]
+     }
+   - `agentProfile`: {
+       vehicleType: { type: String, enum: ["bike", "auto", "truck", "van"], default: "bike" },
+       drivingLicenseNumber: { type: String, default: "" },
+       activeDeliveryCount: { type: Number, default: 0 },
+       lifetimeDeliveredCount: { type: Number, default: 0 },
+       slaComplianceRate: { type: Number, default: 100.0 }
+     }
+   - `isVerified`: { type: Boolean, default: false }
+   - `status`: { type: String, enum: ["active", "suspended", "inactive"], default: "active" }
+   - `timestamps`: true
+
+2. Crop Schema (`Crop.js`):
+   - `name`: { type: String, required: true, text: true }
+   - `description`: { type: String, default: "" }
+   - `category`: { type: String, enum: ["vegetable", "fruit", "grain", "pulse", "spice", "dairy", "byproduct", "other"], default: "vegetable", index: true }
+   - `price`: { type: Number, required: true, min: 0 }
+   - `quantity`: { type: Number, required: true, min: 0 }
+   - `unit`: { type: String, enum: ["kg", "g", "litre", "piece", "dozen", "bale", "tonne"], default: "kg" }
+   - `minOrderQty`: { type: Number, default: 1 }
+   - `farmer`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true }
+   - `image`: { type: String, default: "" }
+   - `images`: [{ type: String }]
+   - `location`: { type: String, default: "" }
+   - `farmLocation`: { type: String, default: "" }
+   - `latitude`: { type: Number }
+   - `longitude`: { type: Number }
+   - `farmTourUrl`: { type: String, default: "" }
+   - `farmTourVideo`: { type: String, default: "" }
+   - `harvestDate`: { type: Date }
+   - `expiryDate`: { type: Date }
+   - `season`: { type: String, enum: ["kharif", "rabi", "zaid", "perennial"], default: "kharif" }
+   - `isOrganic`: { type: Boolean, default: false, index: true }
+   - `certificationStatus`: { type: String, enum: ["none", "pending", "approved", "rejected"], default: "none" }
+   - `certificationDocument`: { type: String, default: "" }
+   - `isPesticideFree`: { type: Boolean, default: false }
+   - `qualityGrade`: { type: String, enum: ["A", "B", "C", null], default: null }
+   - `isLive`: { type: Boolean, default: true }
+   - `isAvailable`: { type: Boolean, default: true }
+   - `isPrebooking`: { type: Boolean, default: false }
+   - `advancePaymentPercentage`: { type: Number, default: 0 }
+   - `isBulk`: { type: Boolean, default: false }
+   - `lifecycleStage`: { type: String, enum: ["sowing", "vegetative", "flowering", "harvesting", "post_harvest", "ready"], default: "sowing" }
+   - `lifecycleUpdates`: [{ stage: String, imageUrl: String, notes: String, timestamp: { type: Date, default: Date.now } }]
+   - `nutritionInfo`: { calories: Number, carbs: Number, protein: Number, fat: Number, fiber: Number }
+   - `rating`: { type: Number, default: 0 }
+   - `totalOrders`: { type: Number, default: 0 }
+   - `isAdminStock`: { type: Boolean, default: false, index: true }
+   - `originalFarmer`: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+   - `clearanceDiscount`: { type: Number, default: 0 }
+   - `coldStorageLocation`: { type: String, default: "" }
+   - `timestamps`: true
+
+3. Order Schema (`Order.js`):
+   - `crop`: { type: mongoose.Schema.Types.ObjectId, ref: "Crop", required: true }
+   - `customer`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true }
+   - `farmer`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true }
+   - `agent`: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true }
+   - `quantity`: { type: Number, required: true }
+   - `totalAmount`: { type: Number, required: true }
+   - `subtotal`: { type: Number, default: 0 }
+   - `deliveryCharges`: { type: Number, default: 0 }
+   - `platformFee`: { type: Number, default: 0 }
+   - `status`: { type: String, enum: ["pending", "prebooked", "confirmed", "processing", "assigned", "picked_up", "in_transit", "delivered", "cancelled"], default: "pending", index: true }
+   - `isPrebooked`: { type: Boolean, default: false }
+   - `pointsEarned`: { type: Number, default: 0 }
+   - `pointsUsed`: { type: Number, default: 0 }
+   - `paymentMode`: { type: String, enum: ["cod", "upi", "card", "wallet", "online"], default: "cod" }
+   - `paymentStatus`: { type: String, enum: ["pending", "paid", "refunded"], default: "pending" }
+   - `pickupAddress`: { type: String, default: "" }
+   - `pickupLatitude`: Number, `pickupLongitude`: Number
+   - `deliveryAddress`: { type: String, default: "" }
+   - `deliveryLatitude`: Number, `deliveryLongitude`: Number
+   - `agentCurrentLatitude`: Number, `agentCurrentLongitude`: Number
+   - `deliveryType`: { type: String, enum: ["standard", "express", "farm_pickup", "delivery", "pickup", "fast"], default: "standard" }
+   - `deliveryTime`: { type: String, default: "asap" }
+   - `deliveryDistance`: { type: Number, default: 0 }
+   - `estimatedDeliveryMinutes`: { type: Number, default: 0 }
+   - `estimatedDeliveryDeadline`: { type: Date }
+   - `deliveryPerformance`: {
+       deliveredAt: Date, deadline: Date, diffMinutes: Number, isEarly: Boolean, isLate: Boolean,
+       speedBonusPoints: Number, speedBonusCash: Number, latePenaltyPoints: Number, latePenaltyDeduction: Number,
+       deliveryScoreChange: Number, delayReason: String, isDisputed: Boolean
+     }
+   - `notes`: String, `billNumber`: String (Auto-generated pre-save hook), `timeline`: [timelineSchema]
+   - `verificationCode`: String (6-digit OTP generated pre-save)
+   - `productSnapshot`: productSnapshotSchema
+   - `agentVerified`: { type: Boolean, default: false }
+   - `isReported`: { type: Boolean, default: false }
+   - `agentReportReason`: String, `reportResolvedBy`: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, `reportResolution`: String
+   - `reviewText`: String, `sentimentScore`: Number, `reviewSentiment`: String
+   - `isSettledWithFarmer`: { type: Boolean, default: false }
+   - `isSettledWithAgent`: { type: Boolean, default: false }
+   - `adminRevenue`: { type: Number, default: 0 }
+   - `multiLocationGroupId`: { type: String, default: "", index: true }
+   - `timestamps`: true
+
+4. Delivery Schema (`Delivery.js`):
+   - `order`: { type: mongoose.Schema.Types.ObjectId, ref: "Order" }
+   - `agent`: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true }
+   - `pickupLocation`: String, `deliveryLocation`: String
+   - `pickupLatitude`: Number, `pickupLongitude`: Number, `deliveryLatitude`: Number, `deliveryLongitude`: Number
+   - `agentLatitude`: Number, `agentLongitude`: Number, `lastLocationUpdate`: Date
+   - `route`: String
+   - `dropoffs`: [{
+       location: String, latitude: Number, longitude: Number,
+       status: { type: String, enum: ["pending", "delivered", "failed"], default: "pending" },
+       orderIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Order" }],
+       deliveredAt: Date
+     }]
+   - `vehicleType`: { type: String, enum: ["bike", "auto", "truck", "van"], default: "bike" }
+   - `agentPhone`: String, `estimatedTime`: String, `estimatedMinutes`: Number, `estimatedDeliveryDeadline`: Date
+   - `deliveryPerformance`: Object, `trackingCode`: String
+   - `status`: { type: String, enum: ["assigned", "picked_up", "in_transit", "delivered", "failed"], default: "assigned", index: true }
+   - `pickupPhoto`: String, `deliveryPhoto`: String
+   - `aiVerificationResult`: { type: String, enum: ["pending", "match", "mismatch"], default: "pending" }
+   - `aiVerificationNotes`: String, `deliveredAt`: Date
+   - `wasteCollectedKg`: { type: Number, default: 0 }, `wastePointsAwarded`: { type: Number, default: 0 }
+   - `timestamps`: true
+
+5. Cryptographic Block Schema (`Block.js`):
+   - `orderId`: { type: mongoose.Schema.Types.ObjectId, ref: "Order", required: true }
+   - `cropId`: { type: mongoose.Schema.Types.ObjectId, ref: "Crop", required: true }
+   - `action`: { type: String, required: true }
+   - `details`: String, `actor`: String, `location`: String, `timestamp`: { type: Date, default: Date.now }
+   - `previousHash`: { type: String, required: true }
+   - `hash`: { type: String, required: true }
+   - Pre-validation hook computes SHA-256 hash using Node.js `crypto`.
+
+6. Soil Test Request Schema (`SoilTestRequest.js`):
+   - `farmer`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
+   - `farmerName`: String, `phone`: String, `farmLocation`: String, `latitude`: Number, `longitude`: Number, `farmSizeAcres`: Number
+   - `soilPhoto`: String
+   - `aiPreliminaryClassification`: {
+       soilType: String, confidence: Number, texture: String, colorProfile: String,
+       organicMatterEstimate: String, suitableCrops: [String], suggestedOrganicFertilizers: [String], recommendations: String, notice: String
+     }
+   - `appointmentDetails`: {
+       preferredDate: Date, preferredTimeSlot: String, samplingSpotsCount: Number,
+       advanceAmount: Number, totalEstimatedFee: Number, balanceAmount: Number,
+       paymentMode: String, paymentStatus: String, paymentTxnId: String
+     }
+   - `status`: { type: String, enum: ["pending_assignment", "team_assigned", "sample_collected", "lab_testing", "report_published", "cancelled"], default: "pending_assignment" }
+   - `assignedTeam`: { scientistName: String, teamVehicleNumber: String, contactPhone: String, assignedAt: Date, scheduledVisitDate: Date, adminNotes: String }
+   - `soilHealthReport`: {
+       phLevel: Number, phCategory: String, nitrogenN: String, phosphorusP: String, potassiumK: String,
+       organicCarbonPercent: Number, electricalConductivityEC: String, micronutrients: { zinc: String, iron: String, boron: String },
+       recommendedManure: String, reportPdfUrl: String, publishedAt: Date
+     }
+   - `timestamps`: true
+
+7. Live Auction Schema (`Auction.js`):
+   - `crop`: { type: mongoose.Schema.Types.ObjectId, ref: "Crop", required: true }
+   - `farmer`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
+   - `quantity`: { type: Number, required: true }
+   - `startingBid`: { type: Number, required: true }
+   - `currentHighestBid`: { type: Number, default: function() { return this.startingBid; } }
+   - `highestBidder`: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null }
+   - `endTime`: { type: Date, required: true }
+   - `status`: { type: String, enum: ["active", "closed", "cancelled"], default: "active", index: true }
+   - `bids`: [{ bidder: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, amount: Number, timestamp: { type: Date, default: Date.now } }]
+   - `timestamps`: true
+
+8. Group Pool Schema (`Group.js`):
+   - `name`: { type: String, required: true }
+   - `type`: { type: String, enum: ["customer_buy", "farmer_sell"], required: true }
+   - `crop`: { type: mongoose.Schema.Types.ObjectId, ref: "Crop", required: true }
+   - `targetQuantity`: { type: Number, required: true }
+   - `currentQuantity`: { type: Number, default: 0 }
+   - `status`: { type: String, enum: ["open", "closed", "completed"], default: "open" }
+   - `members`: [{ user: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, quantity: Number, joinedAt: { type: Date, default: Date.now } }]
+   - `discountPercent`: { type: Number, default: 0 }
+   - `poolId`: String, `region`: String, `tiers`: [{ qty: Number, discount: Number }]
+   - `timestamps`: true
+
+9. Curated Box Subscription Schema (`BoxSubscription.js`):
+   - `customer`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
+   - `boxType`: String, `price`: Number, `frequency`: { type: String, enum: ["weekly", "biweekly", "monthly"], required: true }
+   - `status`: { type: String, enum: ["active", "paused", "cancelled"], default: "active" }
+   - `nextDeliveryDate`: { type: Date, required: true }
+   - `deliveryAddress`: String, `history`: [{ dateDelivered: Date, orderId: { type: mongoose.Schema.Types.ObjectId, ref: "Order" } }]
+   - `timestamps`: true
+
+10. Regional Demand Schema (`Demand.js`):
+    - `cropName`: String, `region`: String, `demandScore`: Number, `velocityScore`: Number, `searchCount`: Number, `orderCount`: Number, `timestamp`: Date
+
+11. Search Audit Log Schema (`SearchHistory.js`):
+    - `query`: String, `category`: String, `user`: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+    - `coordinates`: { latitude: Number, longitude: Number }
+    - `createdAt`: { type: Date, default: Date.now, expires: "30d" } (MongoDB TTL Auto-purging Index)
+
+12. Verified Review Schema (`Review.js`):
+    - `user`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
+    - `crop`: { type: mongoose.Schema.Types.ObjectId, ref: "Crop", required: true }
+    - `farmer`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true }
+    - `rating`: { type: Number, min: 1, max: 5, required: true }
+    - `comment`: String, `sentimentScore`: Number, `isVerifiedPurchase`: { type: Boolean, default: true }
+    - `timestamps`: true
+
+13. Farmer Agronomy Profile Schema (`Farmer.js`):
+    - `user`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, unique: true }
+    - `farmSize`: Number, `soilType`: String, `farmingExperience`: Number, `aadhaarNumber`: String
+    - `kycVerified`: Boolean, `trustScore`: { type: Number, default: 50, min: 0, max: 100 }
+    - `organicCertified`: Boolean, `totalSales`: Number, `completedOrders`: Number, `responseRate`: Number
+
+14. Customer Preference Schema (`Customer.js`):
+    - `user`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, unique: true }
+    - `deliveryAddresses`: [{ title: String, address: String, latitude: Number, longitude: Number, isDefault: Boolean }]
+    - `favoriteCrops`: [{ type: mongoose.Schema.Types.ObjectId, ref: "Crop" }]
+    - `savedFarms`: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
+
+15. Logistics Agent Profile Schema (`Agent.js`):
+    - `user`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, unique: true }
+    - `vehicleType`: String, `licenseNumber`: String, `isActive`: Boolean, `currentLatitude`: Number, `currentLongitude`: Number
+    - `activeDeliveries`: Number, `onTimeDeliveryRate`: Number, `rating`: Number
+
+16. Platform Admin Schema (`Admin.js`):
+    - `user`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, unique: true }
+    - `permissions`: [String], `superAdmin`: Boolean, `lastLoginIP`: String, `auditLogs`: Array
+
+17. Persistent Cart Schema (`Cart.js`):
+    - `user`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, unique: true }
+    - `items`: [{ crop: { type: mongoose.Schema.Types.ObjectId, ref: "Crop" }, quantity: Number, priceAtAdd: Number }]
+    - `totalAmount`: { type: Number, default: 0 }
+
+18. Agritourism Tour Booking Schema (`FarmTourBooking.js`):
+    - `farmer`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
+    - `customer`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
+    - `date`: Date, `time`: String, `numberOfPeople`: Number, `totalPrice`: Number
+    - `status`: { type: String, enum: ["pending", "confirmed", "completed", "cancelled"], default: "pending" }
+    - `paymentStatus`: { type: String, enum: ["pending", "paid", "refunded"], default: "pending" }
+
+19. Physical Farm Profile Schema (`Farm.js`):
+    - `farmer`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
+    - `farmName`: String, `acreage`: Number, `facilities`: [String], `photos`: [String], `tourAvailable`: Boolean
+
+20. Global Runtime Config Schema (`GlobalConfig.js`):
+    - `platformCommission`: Number, `baseDeliveryCharge`: Number, `perKmCharge`: Number, `maintenanceMode`: Boolean
+
+21. Notification Schema (`Notification.js`):
+    - `recipient`: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true }
+    - `title`: String, `message`: String, `type`: String, `read`: { type: Boolean, default: false }
+    - `metadata`: Object, `createdAt`: { type: Date, default: Date.now }
+
+22. Escrow Payment Audit Schema (`Payment.js`):
+    - `order`: { type: mongoose.Schema.Types.ObjectId, ref: "Order" }
+    - `customer`: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+    - `amount`: Number, `currency`: { type: String, default: "INR" }
+    - `razorpayOrderId`: String, `razorpayPaymentId`: String, `razorpaySignature`: String
+    - `escrowStatus`: { type: String, enum: ["held", "released", "refunded"], default: "held" }
+    - `payoutTxnId`: String
+
+23. Agricultural Policy Schema (`Policy.js`):
+    - `title`: String, `category`: String, `subsidyPercent`: Number, `eligibleCrops`: [String], `applicationDeadline`: Date, `documentUrl`: String
+
+24. Cached Prediction Schema (`Prediction.js`):
+    - `crop`: String, `predictedPrice`: Number, `predictedDemand`: Number, `modelConfidence`: Number, `validUntil`: Date
+
+25. Recurring Subscription Schema (`Subscription.js`):
+    - `user`: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+    - `planType`: String, `status`: String, `startDate`: Date, `expiryDate`: Date, `autoRenew`: Boolean
+
+26. Dispute & Support Ticket Schema (`Ticket.js`):
+    - `user`: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+    - `subject`: String, `description`: String, `category`: String, `priority`: String, `status`: String, `assignedTo`: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, `resolution`: String
+
+27. Custom Crop Request Schema (`CropRequest.js`):
+    - `customer`: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+    - `cropName`: String, `quantityRequired`: Number, `targetPrice`: Number, `fulfilled`: Boolean, `matchedFarmer`: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+
+28. AI Token & Latency Audit Schema (`AILog.js`):
+    - `modelName`: String, `promptTokens`: Number, `completionTokens`: Number, `latencyMs`: Number, `status`: String, `error`: String, `timestamp`: { type: Date, default: Date.now }
+
+
+================================================================================
+13. EXHAUSTIVE REST API ENDPOINT REFERENCE (ALL 22 MODULES)
+================================================================================
+Every route registered on the Express application (`server.js`) maps to strict controller functions guarded by authentication and RBAC middleware chains:
+
+1. Authentication & Onboarding (`/api/auth`):
+   - `POST /register`: Registers user. Encrypts password using Bcrypt (10 rounds). Stores GPS `geoPosition` as GeoJSON Point. Returns user entity + signed JWT.
+   - `POST /login`: Authenticates email/phone and password. Validates Bcrypt hash. Issues JWT containing `{ id, role }`.
+   - `GET /me`: Returns profile of authenticated user from `req.user`. Requires `authMiddleware`.
+   - `PUT /profile`: Updates user metadata (name, address, profile photo, vehicle details).
+   - `POST /logout`: Client-side token invalidation.
+
+2. Farmer Cockpit (`/api/farmer` & `/api/farmers`):
+   - `GET /dashboard`: Aggregates active listings, pending orders, completed deliveries, and escrow wallet balance.
+   - `GET /inventory`: Lists all crops owned by the logged-in farmer with lifecycle stages and clearance flags.
+   - `GET /analytics`: Computes historical revenue curves, month-over-month yield growth, and top-selling produce.
+   - `GET /financials`: Retrieves ledger of all settled and held escrow transactions.
+   - `GET /leaderboard`: Public gamified ranking of farmers by Trust Score and verified organic acres.
+
+3. Crop Catalog & Inventory (`/api/crops`):
+   - `GET /`: Retrieves marketplace crops. Supports query parameters (`?category=`, `?search=`, `?lat=&lng=&radius=`, `?organic=true`, `?sort=price_asc|trust_desc`).
+   - `GET /:id`: Retrieves single crop document with farmer profile, reviews, and nutritional breakdown.
+   - `POST /add`: Creates new crop entity. Handles multipart image uploads via Multer. Enforces `farmerOnly` middleware.
+   - `PUT /:id`: Updates crop price, available stock, or lifecycle updates (`sowing` -> `harvested`).
+   - `DELETE /:id`: Sets `isLive: false` or deletes crop document.
+   - `PUT /:id/sell-to-admin`: End-of-Day liquidation. Transcribes crop to admin ownership (`isAdminStock: true`), tags `originalFarmer`, applies 40% discount, and allocates to central cold storage.
+   - `GET /category/:category`: Filters crops by category enum.
+
+4. Transaction & Multi-Location Orders (`/api/orders`):
+   - `POST /create`: Single checkout order creation. Deducts crop stock atomically. Generates 6-digit OTP verification code and bill number. Appends transaction to SHA-256 blockchain ledger.
+   - `POST /create-multi`: Multi-location delivery checkout. Groups multiple items with custom delivery coordinates under a single `multiLocationGroupId`. Runs geospatial 2dsphere queries to auto-assign nearest logistics agent.
+   - `GET /customer/:id`: Retrieves order history for a specific customer.
+   - `GET /farmer/:id`: Retrieves incoming and completed orders for a farmer.
+   - `GET /:id`: Retrieves detailed order record including timeline, tracking code, and product snapshot.
+   - `PUT /:id/status`: Updates order state machine (`pending` -> `confirmed` -> `assigned` -> `picked_up` -> `delivered`).
+   - `PUT /:id/verify-agent`: Resolves agent product mismatch report.
+
+5. Decentralized Logistics (`/api/delivery`):
+   - `GET /agent/:id/tasks`: Retrieves assigned deliveries for a logistics agent.
+   - `POST /optimize-route`: Invokes Dabbawala-style TSP heuristic. Calls OSRM Table API to fetch road driving distance matrix, clusters stops into 2km zones, and returns optimized waypoint sequence.
+   - `PUT /location`: Ingests live agent GPS telemetry and updates MongoDB `Delivery` document.
+   - `PUT /update-status`: Progresses delivery status (`assigned` -> `in_transit` -> `delivered`).
+   - `POST /verify-photo`: Uploads delivery photo to Gemini 1.5 Flash for visual verification against original crop photo.
+   - `GET /track/:orderId`: Live tracking endpoint for customers, returning agent coordinates and ETA.
+
+6. Administrator Control Suite (`/api/admin`):
+   - `GET /analytics`: System-wide aggregate sales, GMV, platform commission revenue, and active user distribution.
+   - `GET /users`: Paginated user list with role filters and KYC status.
+   - `PUT /verify-user/:id`: Approves or rejects farmer Aadhaar KYC and organic certifications.
+   - `GET /demand-prediction`: Returns regional demand velocity scores and over/undersupplied crop lists.
+   - `POST /broadcast`: Broadcasts push notification and WebSocket alert to all online farmers (Millets, Anti-Burning, Weather).
+   - `GET /clearance`: Lists all liquidated cold storage clearance crops.
+   - `PUT /clearance/:id/price`: Adjusts resale markdown price for clearance stock.
+
+7. Machine Learning & Forecasting Gateway (`/api/ml`):
+   - `GET /seasonal-prediction`: Fetches live weather telemetry from Open-Meteo, classifies agro-climatic zone, and returns scored crop recommendations (0-100%).
+   - `POST /suggest-crop`: Evaluates soil pH, temperature, and rainfall inputs to predict optimal crop.
+   - `POST /predict-demand`: Forecasts demand volume (kg) based on search history and order velocity.
+   - `POST /price-trends`: Multi-factor price regression model.
+   - `POST /route-optimize`: Direct API wrapper for TSP routing.
+   - `GET /market-basket`: Returns Apriori frequent itemsets and cross-sell rules from MongoDB transaction logs.
+
+8. Farm Tourism & Agritourism (`/api/tours`):
+   - `GET /farmer/:id`: Lists available farm tour slots.
+   - `POST /book`: Books agritourism visit with group size and advance fee payment.
+   - `GET /customer/:id`: Customer's booked farm visits.
+   - `PUT /booking/:id/status`: Farmer confirms or cancels booking.
+
+9. Escrow Payments (`/api/payment`):
+   - `POST /create-razorpay-order`: Initializes payment order on Razorpay servers; returns `order_id`.
+   - `POST /verify-payment`: Validates Razorpay HMAC-SHA256 signature against `RAZORPAY_KEY_SECRET`.
+   - `POST /release-escrow`: Disburses escrowed order funds to farmer's wallet upon delivery verification.
+   - `POST /refund`: Initiates refund for cancelled or disputed orders.
+
+10. Multi-Modal AI & Speech (`/api/ai`):
+    - `POST /intent`: Ingests speech transcript, executes NLP intent parsing via Gemini 1.5 Flash, and returns structured commands.
+    - `POST /verify-photo`: Compares delivery photo with marketplace image via Gemini Vision.
+    - `POST /nutrition`: Synthesizes macro/micronutrient breakdown for uncommon agricultural produce.
+    - `POST /chat`: Conversational agronomy AI chatbot for farmers and consumers.
+
+11. Push Notifications (`/api/notifications`):
+    - `GET /:userId`: Retrieves user notifications with read status.
+    - `PUT /mark-read/:id`: Marks single notification as read.
+    - `PUT /mark-all-read/:userId`: Marks all notifications as read.
+
+12. Public & Health (`/api/public`):
+    - `GET /stats`: High-level landing page counters (active farmers, total kg sold, intermediate savings).
+    - `GET /featured-crops`: Returns top-rated, certified organic crops.
+    - `GET /health`: Microservice health check returning uptime and database status.
+
+13. Report & PDF Generation (`/api/reports`):
+    - `GET /farmer-pdf/:id`: Renders HTML farm performance certificate and converts to PDF via Puppeteer.
+    - `GET /sales-csv`: Streams CSV export of financial orders for accounting.
+    - `GET /order-invoice/:id`: Returns GST-compliant tax invoice.
+
+14. Government Policies & Subsidies (`/api/policies`):
+    - `GET /all`: Returns agricultural subsidies, crop insurance schemes, and eligibility rules.
+    - `GET /:id`: Detailed policy document with application links.
+
+15. Dispute & Support Tickets (`/api/tickets`):
+    - `POST /create`: Creates support ticket for damaged goods or delivery delays.
+    - `GET /user/:id`: User's ticket history.
+    - `PUT /resolve/:id`: Admin resolves ticket and triggers refund or penalty.
+
+16. Community Group Buying Pools (`/api/groups`):
+    - `GET /crop/:cropId`: Retrieves open buying pools for a crop.
+    - `POST /create`: Initiates new bulk buying pool with tiered volume discounts.
+    - `POST /join/:groupId`: Contributes quantity to pool; automatically locks pool at target.
+    - `POST /join-by-id`: Joins pool using shareable pool ID.
+
+17. E-Commerce Cart, Wishlist & Reviews (`/api/shop`):
+    - `GET /cart/:userId`: Retrieves user's cart populated with crop details.
+    - `POST /cart/:userId/add`: Adds or increments item in cart.
+    - `POST /wishlist/:userId/toggle`: Toggles crop in user's saved wishlist.
+    - `POST /reviews/add`: Submits customer review and updates farmer Trust Score.
+
+18. Live B2B Auctions (`/api/auctions`):
+    - `GET /`: Lists all active auctions sorted by ending soonest.
+    - `GET /farmer/:id`: Auctions created by a farmer.
+    - `POST /create`: Deducts harvest stock and creates live auction with countdown timer.
+    - `POST /bid/:id`: Validates bid increment, updates highest bidder, and broadcasts `auction_update` via Socket.io.
+    - `PUT /close/:id`: Closes auction and assigns crop to winning bidder.
+
+19. Curated Produce Boxes (`/api/boxes`):
+    - `POST /subscribe`: Creates recurring vegetable box subscription (weekly, bi-weekly, monthly).
+    - `GET /user/:id`: Customer's active box subscriptions.
+    - `PUT /toggle/:id`: Pauses or resumes recurring subscription.
+
+20. Platform Subscriptions (`/api/subscriptions`):
+    - `GET /user/:id`: Premium seller membership plans.
+    - `POST /create`: Subscribes farmer to analytics and featured placement tier.
+    - `PUT /cancel/:id`: Cancels subscription.
+
+21. Real-Time Translation Bridge (`/api/translate`):
+    - `POST /text`: Translates text between English, Telugu, Hindi, Tamil, and Kannada via free Google Translate API bridge.
+
+22. Soil Laboratory Testing (`/api/soil-test`):
+    - `POST /scan-photo`: AI photo scan identifying physical soil type, moisture, and organic matter estimate.
+    - `POST /book-appointment`: Schedules on-field laboratory soil sample collection appointment.
+    - `GET /farmer/:id`: Soil testing appointments and reports for a farmer.
+    - `GET /all`: Admin queue of pending soil tests.
+    - `PUT /assign-team/:id`: Admin assigns agricultural scientist team and visit date.
+    - `PUT /publish-report/:id`: Publishes chemical NPK, pH, and micronutrient test results with custom manure recommendations.
+
+
+================================================================================
+14. EXHAUSTIVE FRONTEND COMPONENT ARCHITECTURE & CONTRACTS
+================================================================================
+The React 18 client architecture in `frontend/src/components/` is organized into modular widgets:
+
+1. `Navbar.jsx` (27.7 KB):
+   - Global application header. Ingests `AuthContext`, `CartContext`, `LangContext`.
+   - Renders animated logo, localized navigation links (`Marketplace`, `Farmer Hub`, `Logistics`, `Admin`, `Tours`), cart badge counter, language dropdown, acoustic audio ambience toggle, and user profile drawer.
+
+2. `BottomNav.jsx` & `BottomNav.css`:
+   - Mobile-first fixed bottom navigation bar rendering thumb-friendly icons for Home, Categories, Voice Search, Orders, and Profile.
+
+3. `AIAssistant.jsx` (33.2 KB):
+   - Floating interactive AI companion. Manages local chat transcript array, Web Speech API speech recognition triggers, and Gemini 1.5 Flash backend connectivity. Supports voice-driven hands-free navigation.
+
+4. `AssistantOverlay.jsx`:
+   - Full-screen voice interaction modal displaying animated canvas audio frequency waveforms during user speech input.
+
+5. `AudioManager.jsx`:
+   - Audio controller managing Web Audio API procedural synthesis volume, background Krishna flute playback, and Google TTS speech queues.
+
+6. `AmbientAtmosphere.jsx` (11.0 KB):
+   - HTML5 Canvas particle physics engine rendering atmospheric farming visual effects: drifting pollen, falling leaves, gentle rain, and sunlight rays.
+
+7. `AuthenticityCertificate.jsx` (7.4 KB):
+   - Displays printable cryptographic certificate of authenticity for organic crops, showcasing farm GPS coordinates, harvest date, and SHA-256 block hash.
+
+8. `AutoSuggestInput.jsx` (3.1 KB):
+   - Controlled search input with built-in 300ms debounce hook (`useAutoSuggest.js`) to prevent excessive backend queries.
+
+9. `CartSidebar.jsx` (24.1 KB):
+   - Slide-over shopping cart drawer. Features the Multi-Location Delivery toggle. Dynamically renders address input pickers per cart item when enabled. Calculates distance charges and subtotal in real time.
+
+10. `CompareModal.jsx` (6.1 KB):
+    - Side-by-side comparison matrix evaluating up to 4 selected crops across price per kg, Trust Score, distance from customer, organic certification, and macronutrients.
+
+11. `CropVisualPicker.jsx` (9.3 KB):
+    - High-accessibility visual grid rendering pictorial cards for non-literate farmers to select crops without typing.
+
+12. `EcoAdvisor.jsx` (5.6 KB):
+    - Carbon footprint estimator calculating transport carbon offset achieved by buying directly from local farmers compared to centralized supermarket supply chains.
+
+13. `FarmTourModal.jsx` (5.6 KB):
+    - Agritourism reservation modal with interactive calendar, time slot selector, visitor count counter, and advance payment checkout.
+
+14. `GuidedInput.jsx` (9.0 KB):
+    - Multi-step wizard guiding farmers through crop listing: Step 1 (Basic Details), Step 2 (Photos & Pricing), Step 3 (Organic Verification).
+
+15. `LiveMapModal.jsx` (7.5 KB):
+    - Full-screen modal housing React-Leaflet map to display real-time delivery agent GPS movement and route polyline.
+
+16. `LocationButton.jsx` (3.9 KB):
+    - One-click GPS locator button querying `navigator.geolocation.getCurrentPosition` with reverse geocoding fallback.
+
+17. `LocationPickerMap.jsx` & `LocationPickerModal.jsx`:
+    - Draggable Leaflet map marker allowing customers to drop a pin on their exact rooftop or gate for pinpoint delivery accuracy.
+
+18. `MapComponent.jsx`:
+    - Base Leaflet tile wrapper utilizing OpenStreetMap tile layers with custom styled SVG markers.
+
+19. `MarketAnnouncer.jsx` (7.9 KB):
+    - Auditory notification component that uses speech synthesis to vocally announce new clearance deals and discounts to marketplace shoppers.
+
+20. `MarketplaceMap.jsx` (35.4 KB):
+    - Clustered interactive map rendering hundreds of farm locations, roadside stalls, and cold storage warehouses with popups showing available produce.
+
+21. `OrderTracking.jsx` (13.7 KB):
+    - Progress bar component illustrating the 4-step delivery lifecycle: `Confirmed` -> `Assigned` -> `Picked Up` -> `Delivered`, with estimated time of arrival.
+
+22. `PaymentModal.jsx` (19.9 KB):
+    - Multi-payment modal supporting Razorpay, UPI QR code display, Cash on Delivery, and Escrow protection guarantee badges.
+
+23. `PestDetectionPanel.jsx` (10.5 KB):
+    - Camera capture widget allowing farmers to photograph diseased leaves and submit them for CNN/Gemini diagnostic analysis.
+
+24. `ReviewModal.jsx` (5.7 KB):
+    - Interactive 5-star rating modal with comment textarea and real-time client-side sentiment evaluation.
+
+25. `RouteMap.jsx` (4.3 KB):
+    - Turn-by-turn logistics route visualizer rendering waypoints and connecting polylines between farm pickups and customer dropoffs.
+
+26. `RythuSethuAnimation.jsx` (10.7 KB):
+    - SVG micro-animation engine rendering agricultural lifecycle motifs (seeds sprouting, wheat swaying in the wind).
+
+27. `SecurityPledgeModal.jsx` (6.3 KB):
+    - Educational security modal detailing the cryptographic blockchain ledger, escrow mechanism, and farmer insurance guarantees.
+
+28. `SmartCuratedBasket.jsx` (24.4 KB):
+    - Intelligent shopping basket component recommending pre-bundled weekly vegetables based on family size (Bachelor, Couple, Family of 4).
+
+29. `SoilTestingHub.jsx` (34.8 KB) & `SoilTestingPanel.jsx` (15.0 KB):
+    - Comprehensive soil health management suite. Displays AI visual preliminary scan results, lab visit booking status, and interactive chemical soil health cards (pH meter gauge, NPK bar charts).
+
+30. `ToastNotification.jsx` (3.5 KB):
+    - Animated notification banner rendering real-time system alerts, order updates, and administrative broadcasts.
+
+31. `VoiceField.jsx` (3.7 KB) & `VoiceMicButton.jsx` (1.9 KB):
+    - Form field wrapper integrating speech-to-text directly into text inputs with visual pulse indicators during recording.
+
+32. `AdminGlobalMap.jsx` (5.4 KB):
+    - Nationwide administrative map rendering active delivery agents as moving bike/truck icons and live delivery routes.
+
+33. `AgentLiveMap.jsx` (6.0 KB):
+    - Logistics navigation view displaying the agent's current location, pickup farm coordinates, and sequential dropoff waypoints.
+
+
+================================================================================
+15. DEVELOPER-LEVEL ENGINEERING BLUEPRINT & WORKFLOWS
+================================================================================
+
+1. Architectural Design Patterns:
+   - Service-Repository Pattern: Business logic is decoupled from Express route handlers into dedicated service files (`trustScoreService.js`, `deliveryRouteService.js`, `demandPredictionService.js`), ensuring testability and separation of concerns.
+   - Observer / Pub-Sub Pattern: Socket.io handles event-driven pub-sub communication across clients and servers.
+   - Strategy Pattern: Dynamic pricing adapts algorithm strategies based on data availability (ML XGBoost regression -> Gaussian heuristic fallback).
+   - Middleware Pipeline: Express intercepts requests sequentially (Helmet -> RateLimiter -> MongoSanitize -> DOMPurifySanitizer -> JWTAuth -> RoleRBAC).
+
+2. State Machine Transitions:
+   - Escrow Funds Lifecycle:
+     [Held in Escrow on Checkout]
+          │
+          ▼
+     [Delivery Completed & Verified via Gemini Vision]
+          │
+          ├─────────────────────────┬─────────────────────────┐
+          ▼                         ▼                         ▼
+     [Released to Farmer]    [Disputed by Customer]     [Refunded to Customer]
+
+   - Order Status Lifecycle:
+     [Pending] -> [Confirmed] -> [Assigned] -> [Picked Up] -> [In Transit] -> [Delivered]
+          │             │            │
+          └─────────────┴────────────┴─────────────> [Cancelled / Refunded]
+
+   - Soil Testing Lifecycle:
+     [Pending Assignment] -> [Team Assigned] -> [Sample Collected] -> [Lab Testing] -> [Report Published]
+
+3. Database Concurrency & Race Conditions:
+   - Stock Deduction: When an order is placed, stock deduction is executed atomically using MongoDB `$inc`:
+     `await Crop.findOneAndUpdate({ _id: cropId, quantity: { $gte: orderedQty } }, { $inc: { quantity: -orderedQty } })`
+     If the query returns null, the stock was insufficient, preventing overselling in high-concurrency flash sales.
+   - Live Auction Bidding: Bids are validated against `currentHighestBid` in a single atomic transaction to avoid race conditions between simultaneous bidders.
+
+4. Database Indexing Strategy:
+   - Geospatial Index: `User.geoPosition` indexed with `2dsphere` for rapid Haversine radial agent queries.
+   - Text Search Index: `Crop.name` indexed with `text` for partial keyword matching.
+   - TTL Auto-Purge Index: `SearchHistory.createdAt` indexed with `expires: "30d"` to automatically remove queries older than 30 days.
+   - Compound Indexes: `{ farmer: 1, status: 1 }` on `Order` for fast farmer dashboard queries.
+
+
+================================================================================
+16. ADVANCED GTESTER / QA TEST AUTOMATION & VERIFICATION PLAYBOOK
+================================================================================
+
+1. Comprehensive QA Test Cases Matrix:
+   - TC-AUTH-01: User Registration with Valid Data -> Expect HTTP 201 + valid JWT.
+   - TC-AUTH-02: User Registration with Duplicate Email -> Expect HTTP 400 with duplicate key error.
+   - TC-AUTH-03: Login with Invalid Password -> Expect HTTP 401 Unauthorized.
+   - TC-AUTH-04: Role Elevation Attack (Customer accessing `/api/admin/*`) -> Expect HTTP 403 Forbidden.
+   - TC-CROP-01: Farmer lists crop with valid pricing and stock -> Expect HTTP 201 + crop in marketplace.
+   - TC-CROP-02: Listing crop with negative price or zero quantity -> Expect HTTP 400 Validation Error.
+   - TC-ORDER-01: Single-item checkout with valid Escrow payment -> Expect Order created, stock deducted, Block appended.
+   - TC-ORDER-02: Multi-location checkout with 3 distinct addresses -> Expect 3 linked Orders under one `multiLocationGroupId` and Delivery created with 3 dropoff waypoints.
+   - TC-LOG-01: Agent runs TSP route optimization -> Expect waypoints sorted in minimal distance order with pickups before dropoffs.
+   - TC-LOG-02: Agent uploads photo at delivery -> Expect Gemini Vision verification to return `match` or `mismatch`.
+   - TC-CLEAR-01: Farmer clicks "Sell to Admin" for perishable crop -> Expect crop ownership assigned to admin, 40% discount applied, `isAdminStock: true`.
+   - TC-BROAD-01: Admin broadcasts push advisory -> Expect Socket.io event `admin_broadcast_received` received by connected farmer sockets.
+   - TC-SEASON-01: Customer requests seasonal prediction with valid lat/lng -> Expect Open-Meteo weather telemetry, agro-climatic zone classification, and scored crop cards (0-100%).
+
+2. Negative & Chaos Testing Scenarios:
+   - Scenario A: Database Connection Failure -> Verify backend logs reconnection attempts without crashing and returns HTTP 500 cleanly.
+   - Scenario B: External Weather API Timeout -> Verify `getSeasonalPrediction` falls back to agro-climatic zone defaults without crashing.
+   - Scenario C: Socket.io Disconnect -> Verify frontend automatically attempts reconnection with exponential backoff.
+   - Scenario D: Python ML Microservice Down -> Verify `cropSuggestionService.js` automatically activates Gaussian probability fallback without user disruption.
+
+3. Security Penetration Test Payloads:
+   - NoSQL Injection Payload: `{"email": {"$gt": ""}, "password": "xyz"}` -> Sanitized by `express-mongo-sanitize`.
+   - Stored XSS Payload: `<img src=x onerror=alert('XSS')>` -> Stripped by `sanitizeMiddleware.js` (DOMPurify/JSDOM).
+   - JWT Tampering: Header/Payload altered without valid signature -> Rejected with HTTP 401.
+
+
+================================================================================
+17. END-TO-END SOFTWARE DEVELOPMENT & TESTING LIFE CYCLES (SDLC & STLC)
+================================================================================
+
+1. Agile SDLC Phases:
+   - Phase 1: Requirements Analysis & Agricultural Domain Modeling (Interviews with rural farmers, APMC mandi commission agents, consumers).
+   - Phase 2: Architectural Specification (UML diagrams, schema definitions, microservice boundary establishment).
+   - Phase 3: Sprint Execution (2-week sprints, CI/CD automated builds, daily standups).
+   - Phase 4: Quality Assurance & Hardening (Supertest integration suites, Jest unit tests, Puppeteer E2E tests).
+   - Phase 5: Production Deployment & Observability (Docker containerization, Prometheus metrics, Grafana dashboards).
+
+2. Automated CI/CD Pipeline (GitHub Actions Workflow):
+   ```yaml
+   name: Rythu Sethu CI/CD Pipeline
+   on: [push, pull_request]
+   jobs:
+     test-and-build:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: actions/checkout@v3
+         - name: Setup Node.js
+           uses: actions/setup-node@v3
+           with:
+             node-version: '20'
+         - name: Install Backend & Run Tests
+           run: |
+             cd backend
+             npm install
+             npm test
+         - name: Install Frontend & Build Production Bundle
+           run: |
+             cd frontend
+             npm install
+             npm run build
+         - name: Setup Python & Validate ML Models
+           uses: actions/setup-python@v4
+           with:
+             python-version: '3.10'
+         - run: |
+             cd ml_models
+             pip install -r requirements.txt
+             python training/train_model.py
+   ```
+
+3. Docker Multi-Container Compose Topology (`docker-compose.yml`):
+   - Service 1: `mongo` (MongoDB 7.0 database, persistent volume, port 27017).
+   - Service 2: `backend` (Node.js 20 Express server, depends on `mongo`, port 5000).
+   - Service 3: `ml-service` (Python 3.10 FastAPI / Uvicorn ASGI server, port 8000).
+   - Service 4: `frontend` (Nginx Alpine serving optimized React production bundle, port 3000).
+
+================================================================================
+END OF ULTIMATE ARCHITECTURE MANUAL - RYTHU SETHU PLATFORM
+================================================================================
+

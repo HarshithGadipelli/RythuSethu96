@@ -6,6 +6,7 @@ import API from "../../api/api";
 import LiveMapModal from "../../components/LiveMapModal";
 import AuthenticityCertificate from "../../components/AuthenticityCertificate";
 import { useAuth } from "../../context/AuthContext";
+import { getImgSrc } from "./Marketplace";
 
 export default function CustomerOrders({ orders, fetchOrders }) {
   const { user } = useAuth();
@@ -48,18 +49,11 @@ export default function CustomerOrders({ orders, fetchOrders }) {
     if (!reviewModal) return;
     setSubmitting(true);
     try {
-      await API.post("/shop/reviews/add", {
-        userId: user._id,
-        cropId: reviewModal.crop._id,
-        farmerId: typeof reviewModal.farmer === 'object' ? reviewModal.farmer._id : reviewModal.farmer,
-        orderId: reviewModal._id,
-        rating,
-        comment
+      await API.post(`/orders/${reviewModal._id}/review`, {
+        farmerRating: rating,
+        agentRating: agentRating,
+        reviewText: comment
       });
-
-      if (reviewModal.agent) {
-        await API.post(`/delivery/rate-agent/${reviewModal._id}`, { rating: agentRating });
-      }
 
       setMsg("Review submitted successfully! Thank you.");
       setTimeout(() => {
@@ -77,17 +71,18 @@ export default function CustomerOrders({ orders, fetchOrders }) {
     if (!cancelModal) return;
     setCancelling(true);
     try {
-      await API.put(`/orders/${cancelModal._id}/cancel`, { userId: user._id });
-      setMsg("Order cancelled successfully.");
+      const res = await API.put(`/orders/${cancelModal._id}/cancel`, { userId: user?._id });
+      setMsg(res.data?.message || "Order cancelled successfully.");
+      if (typeof fetchOrders === "function") fetchOrders();
       setTimeout(() => {
         setCancelModal(null);
         setMsg("");
-        fetchOrders();
-      }, 1500);
+      }, 1200);
     } catch (err) {
       setMsg(err.response?.data?.error || "Failed to cancel order");
+    } finally {
+      setCancelling(false);
     }
-    setCancelling(false);
   };
 
   return (
@@ -110,8 +105,8 @@ export default function CustomerOrders({ orders, fetchOrders }) {
               border: "1px solid #e2e8f0", display: "flex", flexWrap: "wrap", gap: "1.5rem", justifyContent: "space-between", alignItems: "center" 
             }}>
               <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
-                <div style={{ width: 80, height: 80, borderRadius: "12px", background: "var(--green-pale)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem" }}>
-                  {o.crop?.image ? <img src={`${BASE_URL}${o.crop.image}`} style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"12px"}} alt=""/> : "🌿"}
+                <div style={{ width: 80, height: 80, borderRadius: "12px", background: "var(--green-pale)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem", overflow: "hidden" }}>
+                  <img src={getImgSrc(o.crop?.image, o.cropName || o.crop?.name, o.crop?.category)} style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"12px"}} alt=""/>
                 </div>
                 <div>
                   <h3 style={{ margin: "0 0 0.25rem", color: "var(--text-dark)", fontSize: "1.2rem" }}>{o.cropName || o.crop?.name}</h3>
@@ -214,8 +209,8 @@ export default function CustomerOrders({ orders, fetchOrders }) {
                   </button>
                 )}
 
-                {["pending", "assigned", "accepted"].includes(o.status) && (
-                  <button onClick={() => setCancelModal(o)} className="btn-secondary" style={{ padding: "0.6rem 1rem", fontSize: "0.9rem", display: "flex", gap: "0.5rem", alignItems: "center", background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5" }}>
+                {o.status !== "delivered" && o.status !== "cancelled" && (
+                  <button onClick={() => { setCancelModal(o); setMsg(""); }} className="btn-secondary" style={{ padding: "0.6rem 1rem", fontSize: "0.9rem", display: "flex", gap: "0.5rem", alignItems: "center", background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5" }}>
                     ❌ Cancel Order
                   </button>
                 )}
@@ -339,49 +334,73 @@ export default function CustomerOrders({ orders, fetchOrders }) {
         )}
       </AnimatePresence>
 
-      {/* Cancel Order Modal */}
+      {/* Cancel Order Modal with Farmer Sympathy Graphic */}
       <AnimatePresence>
         {cancelModal && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} style={{ background: "white", padding: "2rem", borderRadius: "var(--radius-lg)", width: "100%", maxWidth: "450px" }}>
-              <h3 style={{ marginTop: 0, color: "#dc2626", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                ❌ Cancel Order
-              </h3>
-              
-              {(() => {
-                const isLate = (new Date() - new Date(cancelModal.createdAt)) / 60000 > 2;
-                return (
-                  <>
-                    <p style={{ color: "var(--text-mid)", fontSize: "0.95rem", marginBottom: "1rem" }}>
-                      Are you sure you want to cancel your order for <strong>{cancelModal.cropName || cancelModal.crop?.name}</strong>?
-                    </p>
-                    
-                    {isLate ? (
-                      <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", padding: "1rem", borderRadius: "8px", marginBottom: "1.5rem" }}>
-                        <strong style={{ color: "#dc2626" }}>⚠️ Penalty Warning</strong>
-                        <p style={{ margin: "0.5rem 0 0", color: "#991b1b", fontSize: "0.85rem" }}>
-                          Since more than 2 minutes have passed since placing this order, a <strong>5% cancellation fee</strong> will be deducted from your refund/wallet to compensate the farmer and system overhead.
-                        </p>
-                      </div>
-                    ) : (
-                      <div style={{ background: "#dcfce7", border: "1px solid #86efac", padding: "1rem", borderRadius: "8px", marginBottom: "1.5rem" }}>
-                        <strong style={{ color: "#16a34a" }}>✅ Free Cancellation</strong>
-                        <p style={{ margin: "0.5rem 0 0", color: "#166534", fontSize: "0.85rem" }}>
-                          You are cancelling within the 2-minute grace period. No fees will be charged.
-                        </p>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(5px)", padding: "1rem" }}>
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} style={{ background: "white", borderRadius: "24px", width: "100%", maxWidth: "480px", overflow: "hidden", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.3)" }}>
+              {/* Sympathetic Farmer Illustration Header */}
+              <div style={{ position: "relative", width: "100%", height: "200px", overflow: "hidden", background: "#fef3c7" }}>
+                <img 
+                  src="/assets/farmer_sympathy_cancel.jpg" 
+                  alt="Please support fresh harvest" 
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+                <div style={{
+                  position: "absolute", bottom: 0, left: 0, right: 0,
+                  background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)",
+                  padding: "0.8rem 1.2rem 0.5rem", color: "white"
+                }}>
+                  <span style={{ background: "#d97706", color: "white", padding: "2px 8px", borderRadius: "12px", fontSize: "0.72rem", fontWeight: 700 }}>
+                    🌾 Direct Farm Harvest
+                  </span>
+                  <h3 style={{ margin: "0.2rem 0 0", fontSize: "1.15rem", fontWeight: 700 }}>Please Don't Cancel Your Fresh Produce!</h3>
+                </div>
+              </div>
 
-              {msg && <p style={{ color: msg.includes("success") ? "var(--green-mid)" : "red", fontSize: "0.9rem", marginBottom: "1rem", textAlign: "center" }}>{msg}</p>}
+              <div style={{ padding: "1.5rem" }}>
+                <p style={{ color: "var(--text-dark)", fontSize: "0.92rem", lineHeight: 1.5, margin: "0 0 1rem 0" }}>
+                  🥺 Our farmers prepare and harvest <strong>{cancelModal.cropName || cancelModal.crop?.name}</strong> specifically for your order. Getting direct farm-fresh goods guarantees peak nutrition for your family and prevents wastage of rural harvests!
+                </p>
+                
+                {(() => {
+                  const isLate = (new Date() - new Date(cancelModal.createdAt)) / 60000 > 2;
+                  return isLate ? (
+                    <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", padding: "0.8rem 1rem", borderRadius: "10px", marginBottom: "1.2rem" }}>
+                      <strong style={{ color: "#dc2626", fontSize: "0.85rem" }}>⚠️ 5% Cancellation Surcharge</strong>
+                      <p style={{ margin: "0.2rem 0 0", color: "#991b1b", fontSize: "0.8rem" }}>
+                        Since more than 2 minutes have passed, a small 5% cancellation charge applies to offset harvest packing.
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "0.8rem 1rem", borderRadius: "10px", marginBottom: "1.2rem" }}>
+                      <strong style={{ color: "#166534", fontSize: "0.85rem" }}>🌱 100% Farm-Fresh Guarantee</strong>
+                      <p style={{ margin: "0.2rem 0 0", color: "#15803d", fontSize: "0.8rem" }}>
+                        Harvested fresh from the field with zero artificial chemical ripening.
+                      </p>
+                    </div>
+                  );
+                })()}
 
-              <div style={{ display: "flex", gap: "1rem" }}>
-                <button className="btn-secondary" onClick={() => setCancelModal(null)} style={{ flex: 1 }}>Keep Order</button>
-                <button className="btn-primary" onClick={handleCancelOrder} disabled={cancelling} style={{ flex: 1, background: "#dc2626", borderColor: "#dc2626" }}>
-                  {cancelling ? "Cancelling..." : "Yes, Cancel"}
-                </button>
+                {msg && <p style={{ color: msg.includes("success") ? "var(--green-mid)" : "#dc2626", fontSize: "0.9rem", marginBottom: "1rem", textAlign: "center", fontWeight: 600 }}>{msg}</p>}
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                  <button 
+                    className="btn-primary" 
+                    onClick={() => setCancelModal(null)} 
+                    style={{ width: "100%", padding: "0.85rem", fontSize: "0.95rem", borderRadius: "12px", background: "var(--green-deep)", borderColor: "var(--green-deep)" }}
+                  >
+                    💚 Keep Order & Enjoy Fresh Harvest
+                  </button>
+                  <button 
+                    className="btn-secondary" 
+                    onClick={handleCancelOrder} 
+                    disabled={cancelling} 
+                    style={{ width: "100%", padding: "0.65rem", fontSize: "0.85rem", borderRadius: "12px", color: "#dc2626", borderColor: "#fca5a5", background: "#fff5f5" }}
+                  >
+                    {cancelling ? "Cancelling..." : "Cancel Order Anyway"}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

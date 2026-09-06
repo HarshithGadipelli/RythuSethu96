@@ -5,9 +5,27 @@ import User from "../models/User.js";
 import Farmer from "../models/Farmer.js";
 import Notification from "../models/Notification.js";
 import Delivery from "../models/Delivery.js";
+import Review from "../models/Review.js";
 import { addBlockToChain } from "../utils/blockchain.js";
+import { protect } from "../middleware/authMiddleware.js";
+import { calculateTrustScore } from "../services/trustScoreService.js";
 
 const router = express.Router();
+
+// Get orders for current logged-in user (Customer or Farmer)
+router.get("/my-orders", protect, async (req, res) => {
+  try {
+    const filter = req.user.role === "farmer" ? { farmer: req.user._id } : { customer: req.user._id };
+    const orders = await Order.find(filter)
+      .populate("crop")
+      .populate("farmer", "name location trustScore phone")
+      .populate("customer", "name location phone")
+      .sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Helper: send notification + socket event
 async function notify(app, userId, title, message, type = "order", priority = "normal", metadata = {}) {
@@ -428,7 +446,7 @@ router.post("/checkout-multi", async (req, res) => {
         platformFee,
         totalAmount: itemTotalAmount,
         paymentMode: paymentMode || "cod",
-        paymentStatus: paymentMode === "wallet" ? "paid" : "pending",
+        paymentStatus: (paymentMode === "wallet" || paymentMode === "online" || paymentMode === "upi") ? "paid" : "pending",
         deliveryAddress: item.deliveryAddress,
         deliveryLatitude: item.deliveryLatitude,
         deliveryLongitude: item.deliveryLongitude,
@@ -609,20 +627,100 @@ router.put("/:id/complete", async (req, res) => {
       order.pointsDistributed = true;
     }
     
-    // Add deliveryScore to Agent based on order completion
-    if (order.agent) {
-      await User.findByIdAndUpdate(order.agent, { $inc: { deliveryScore: 10 } });
+    // Performance, Fast Delivery Incentive & Late Penalty Engine
+    const now = new Date();
+    const deadline = order.estimatedDeliveryDeadline || new Date(new Date(order.createdAt).getTime() + (order.estimatedDeliveryMinutes || 35) * 60 * 1000);
+    const diffMinutes = Math.round((deadline.getTime() - now.getTime()) / (60 * 1000));
+    const isEarly = diffMinutes >= 0;
+    const isLate = diffMinutes < 0;
+
+    let speedBonusPoints = 0;
+    let speedBonusCash = 0;
+    let latePenaltyPoints = 0;
+    let latePenaltyDeduction = 0;
+    let scoreChange = 0;
+
+    if (isEarly) {
+      // Fast / On-time Delivery Bonus
+      speedBonusPoints = Math.min(50, Math.max(20, 20 + diffMinutes * 2));
+      speedBonusCash = Math.min(30, Math.max(10, Math.round(diffMinutes * 1.5)));
+      scoreChange = Math.min(5, Math.max(2, Math.round(diffMinutes / 5) + 2));
+
+      if (order.agent) {
+        await User.findByIdAndUpdate(order.agent, {
+          $inc: {
+            rewardPoints: speedBonusPoints,
+            experiencePoints: speedBonusPoints,
+            walletBalance: speedBonusCash,
+            deliveryScore: scoreChange
+          }
+        });
+
+        await notify(req.app, order.agent,
+          "⚡ Lightning Fast Delivery Bonus!",
+          `Delivered ${diffMinutes} mins early! Received +${speedBonusPoints} Speed Points, +${scoreChange} Delivery Score, and ₹${speedBonusCash} Instant Wallet Tip!`,
+          "reward", "high", { orderId: order._id, bonusPoints: speedBonusPoints, bonusCash: speedBonusCash }
+        );
+      }
+    } else {
+      // Late Delivery Penalty
+      const lateMins = Math.abs(diffMinutes);
+      const isDisputed = order.deliveryPerformance?.isDisputed;
+
+      if (!isDisputed) {
+        latePenaltyPoints = Math.min(50, Math.max(10, 10 + Math.floor(lateMins / 5) * 5));
+        scoreChange = -Math.min(10, Math.max(2, Math.floor(lateMins / 10) * 2));
+        if (lateMins > 15) latePenaltyDeduction = 20;
+
+        if (order.agent) {
+          const agentUser = await User.findById(order.agent);
+          const newPoints = Math.max(0, (agentUser.rewardPoints || 0) - latePenaltyPoints);
+          const newScore = Math.max(30, (agentUser.deliveryScore || 100) + scoreChange);
+          const walletDeduction = latePenaltyDeduction > 0 ? { $inc: { walletBalance: -latePenaltyDeduction } } : {};
+
+          await User.findByIdAndUpdate(order.agent, {
+            rewardPoints: newPoints,
+            deliveryScore: newScore,
+            ...walletDeduction
+          });
+
+          await notify(req.app, order.agent,
+            "⚠️ Late Delivery Points Deduction",
+            `Order was delivered ${lateMins} mins past deadline. Points reduced by -${latePenaltyPoints} pts and Delivery Score updated (${scoreChange}).`,
+            "delivery", "high", { orderId: order._id, penaltyPoints: latePenaltyPoints }
+          );
+        }
+      }
     }
+
+    order.deliveryPerformance = {
+      deliveredAt: now,
+      deadline,
+      diffMinutes,
+      isEarly,
+      isLate,
+      speedBonusPoints,
+      speedBonusCash,
+      latePenaltyPoints,
+      latePenaltyDeduction,
+      deliveryScoreChange: scoreChange,
+      delayReason: order.deliveryPerformance?.delayReason || "",
+      isDisputed: order.deliveryPerformance?.isDisputed || false
+    };
 
     await order.save();
 
     // Also update Delivery document
     await Delivery.findOneAndUpdate(
       { order: order._id, status: { $ne: "delivered" } },
-      { status: "delivered", deliveredAt: new Date() }
+      { 
+        status: "delivered", 
+        deliveredAt: now,
+        deliveryPerformance: order.deliveryPerformance
+      }
     );
 
-    res.json({ success: true, message: "Order delivered successfully." });
+    res.json({ success: true, message: "Order delivered successfully.", performance: order.deliveryPerformance });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -729,7 +827,8 @@ router.put("/:id/cancel", async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ error: "Order not found" });
-    if (order.status !== "pending") return res.status(400).json({ error: "Only pending orders can be cancelled." });
+    if (order.status === "delivered") return res.status(400).json({ error: "Delivered orders cannot be cancelled." });
+    if (order.status === "cancelled") return res.status(400).json({ error: "Order is already cancelled." });
 
     const customer = await User.findById(order.customer);
     const now = new Date();
@@ -743,7 +842,7 @@ router.put("/:id/cancel", async (req, res) => {
     // Restore stock
     if (order.crop && order.quantity) {
       await Crop.findByIdAndUpdate(order.crop, {
-        $inc: { quantity: Number(order.quantity) },
+        $inc: { quantity: Number(order.quantity), totalOrders: -1 },
         isAvailable: true
       });
     }
@@ -755,10 +854,12 @@ router.put("/:id/cancel", async (req, res) => {
       // If payment was already made via wallet, refund total minus penalty
       if (order.paymentStatus === "paid" && order.paymentMode === "wallet") {
         const refundAmount = Math.max(0, order.totalAmount - penaltyFee);
-        await User.findByIdAndUpdate(order.customer, { $inc: { walletBalance: refundAmount } });
+        if (customer) {
+          await User.findByIdAndUpdate(order.customer, { $inc: { walletBalance: refundAmount } });
+        }
       } 
       // If it was COD, deduct penalty from customer's reward points or wallet
-      else if (order.paymentMode === "cod") {
+      else if (order.paymentMode === "cod" && customer) {
         if (customer.walletBalance >= penaltyFee) {
           await User.findByIdAndUpdate(order.customer, { $inc: { walletBalance: -penaltyFee } });
         } else {
@@ -768,51 +869,80 @@ router.put("/:id/cancel", async (req, res) => {
       }
     } else {
       // Free cancellation, full refund
-      if (order.paymentStatus === "paid" && order.paymentMode === "wallet") {
+      if (order.paymentStatus === "paid" && order.paymentMode === "wallet" && customer) {
         await User.findByIdAndUpdate(order.customer, { $inc: { walletBalance: order.totalAmount } });
       }
     }
 
     // Update order status
     order.status = "cancelled";
-    order.timeline.push({ status: "cancelled", note: message });
+    order.timeline.push({ status: "cancelled", note: message, timestamp: new Date() });
     await order.save();
 
-    // Notify customer
-    await notify(req.app, order.customer,
-      "🚫 Order Cancelled",
-      message,
-      "order", "high", { orderId: order._id }
+    // Also cancel any linked Delivery records
+    await Delivery.updateMany(
+      { order: order._id, status: { $ne: "delivered" } },
+      { status: "cancelled" }
     );
 
-    // Fraud Detection Engine: Flag accounts with >5 cancellations
-    customer.cancelledOrdersCount = (customer.cancelledOrdersCount || 0) + 1;
-    if (customer.cancelledOrdersCount >= 5) {
-      customer.strikes = (customer.strikes || 0) + 1;
-      customer.trustScore = Math.max(0, (customer.trustScore || 85) - 10);
-      
-      await notify(req.app, customer._id,
-        "⚠️ Fraud Detection Alert",
-        "Your account has been flagged for excessive cancellations (>5). This negatively impacts your trust score and may lead to account suspension.",
-        "system", "high"
+    // Notify customer
+    if (order.customer) {
+      await notify(req.app, order.customer,
+        "🚫 Order Cancelled",
+        message,
+        "order", "high", { orderId: order._id }
       );
-      
-      const admin = await User.findOne({ role: "admin" });
-      if (admin) {
-        await notify(req.app, admin._id,
-          "🚨 Fraud Alert: High Cancellations",
-          `User ${customer.name} (${customer.email}) has reached ${customer.cancelledOrdersCount} cancelled orders.`,
+    }
+
+    // Notify farmer
+    if (order.farmer) {
+      await notify(req.app, order.farmer,
+        "🚫 Order Cancelled by Customer",
+        `Order #${order.billNumber || order._id.toString().slice(-6)} was cancelled by the customer. Stock has been restored.`,
+        "order", "normal", { orderId: order._id }
+      );
+    }
+
+    // Notify assigned agent if any
+    if (order.agent) {
+      await notify(req.app, order.agent,
+        "🚫 Delivery Cancelled",
+        `Delivery task for order #${order.billNumber || order._id.toString().slice(-6)} has been cancelled.`,
+        "delivery", "normal", { orderId: order._id }
+      );
+    }
+
+    // Fraud Detection Engine: Flag accounts with >5 cancellations
+    if (customer) {
+      customer.cancelledOrdersCount = (customer.cancelledOrdersCount || 0) + 1;
+      if (customer.cancelledOrdersCount >= 5) {
+        customer.strikes = (customer.strikes || 0) + 1;
+        customer.trustScore = Math.max(0, (customer.trustScore || 85) - 10);
+        
+        await notify(req.app, customer._id,
+          "⚠️ Fraud Detection Alert",
+          "Your account has been flagged for excessive cancellations (>5). This negatively impacts your trust score and may lead to account suspension.",
           "system", "high"
         );
+        
+        const admin = await User.findOne({ role: "admin" });
+        if (admin) {
+          await notify(req.app, admin._id,
+            "🚨 Fraud Alert: High Cancellations",
+            `User ${customer.name} (${customer.email}) has reached ${customer.cancelledOrdersCount} cancelled orders.`,
+            "system", "high"
+          );
+        }
       }
+      await customer.save();
     }
-    await customer.save();
 
     const io = req.app.get("io");
     if (io) io.emit("order_updated", order);
 
     res.json({ success: true, message, order });
   } catch (err) {
+    console.error("Cancel Order Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1021,6 +1151,162 @@ router.get("/blockchain/:id", async (req, res) => {
   try {
     const chain = await Block.find({ orderId: req.params.id }).sort({ timestamp: 1 });
     res.json(chain);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ─── Multi-Location Order Creation ───
+router.post("/create-multi", async (req, res) => {
+  try {
+    const { destinations, customer, paymentMode } = req.body;
+    // destinations: [{ crop, quantity, deliveryAddress, deliveryLatitude, deliveryLongitude, totalAmount, ... }]
+    if (!destinations || !destinations.length) return res.status(400).json({ error: "Destinations required" });
+
+    const groupId = "MLG-" + Date.now().toString(36).toUpperCase();
+    const createdOrders = [];
+
+    for (const dest of destinations) {
+      const cropDoc = await Crop.findById(dest.crop);
+      if (!cropDoc || cropDoc.quantity < Number(dest.quantity)) continue; // skip invalid or out of stock
+
+      const productSnapshot = {
+        name: cropDoc.name,
+        category: cropDoc.category,
+        quantity: Number(dest.quantity),
+        unit: cropDoc.unit || "kg",
+        price: cropDoc.price,
+        image: cropDoc.image || "",
+        location: cropDoc.location || ""
+      };
+
+      const order = await Order.create({
+        ...dest,
+        customer,
+        paymentMode,
+        status: "pending",
+        multiLocationGroupId: groupId,
+        productSnapshot,
+        timeline: [{ status: "pending", note: "Multi-location order placed" }]
+      });
+      createdOrders.push(order);
+    }
+
+    if (createdOrders.length === 0) {
+      return res.status(400).json({ error: "Failed to create any orders due to stock unavailability." });
+    }
+
+    // Auto-assign agent for this group
+    await autoAssignMultiDelivery(req.app, groupId, createdOrders);
+
+    res.json({ message: "Multi-location orders created", groupId, orders: createdOrders });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+async function autoAssignMultiDelivery(app, groupId, orders) {
+  try {
+    if (!orders || orders.length === 0) return;
+    
+    // Pick the first order's pickup location as the starting point
+    let pickupLat = orders[0].pickupLatitude || 0;
+    let pickupLng = orders[0].pickupLongitude || 0;
+    
+    if (pickupLat === 0) {
+      const crop = await Crop.findById(orders[0].crop);
+      pickupLat = crop?.latitude || 0;
+      pickupLng = crop?.longitude || 0;
+    }
+
+    const agents = await User.find({ role: "agent", isActive: true });
+    if (!agents.length) return;
+
+    let bestAgent = null;
+    let minScore = Infinity;
+
+    for (const agent of agents) {
+      const dist = haversineDistance(agent.latitude || 0, agent.longitude || 0, pickupLat, pickupLng);
+      const score = (dist * 10) - (agent.deliveryScore || 0);
+      if (score < minScore) {
+        minScore = score;
+        bestAgent = agent;
+      }
+    }
+
+    if (!bestAgent) return;
+
+    const dropoffs = orders.map(o => ({
+      location: o.deliveryAddress,
+      latitude: o.deliveryLatitude,
+      longitude: o.deliveryLongitude,
+      status: "pending",
+      orderIds: [o._id]
+    }));
+
+    const delivery = await Delivery.create({
+      agent: bestAgent._id,
+      pickupLocation: orders[0].pickupAddress || "Farmer Location",
+      pickupLatitude: pickupLat,
+      pickupLongitude: pickupLng,
+      vehicleType: "bike",
+      dropoffs,
+      trackingCode: "TRK-ML-" + Date.now().toString(36).toUpperCase()
+    });
+
+    for (const o of orders) {
+      await Order.findByIdAndUpdate(o._id, { 
+        agent: bestAgent._id, 
+        status: "assigned",
+        $push: { timeline: { status: "assigned", note: `Multi-location delivery assigned to ${bestAgent.name}.` } }
+      });
+    }
+
+    const io = app.get("io");
+    if (io) {
+      io.emit("delivery_assigned", delivery);
+    }
+    
+    await notify(app, bestAgent._id, 
+      "🚀 New Multi-Drop Delivery!", 
+      `You have been assigned a delivery with ${orders.length} dropoffs.`,
+      "delivery", "high", { deliveryId: delivery._id }
+    );
+  } catch (err) {
+    console.error("Auto assign multi-delivery failed:", err);
+  }
+}
+// Submit order review
+router.post("/:id/review", protect, async (req, res) => {
+  try {
+    const { reviewText, reviewSentiment, sentimentScore, agentRating, farmerRating, platformRating } = req.body;
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    order.reviewText = reviewText;
+    order.reviewSentiment = reviewSentiment;
+    order.sentimentScore = sentimentScore;
+    
+    // Agent score update
+    if (order.agent && agentRating) {
+      await User.findByIdAndUpdate(order.agent, { $inc: { deliveryScore: agentRating >= 4 ? 5 : -5 } });
+    }
+
+    // Save Farmer Review and Trigger Real-Time Trust Score Update
+    if (order.farmer && farmerRating) {
+      await Review.create({
+        user: req.user._id,
+        crop: order.crop,
+        farmer: order.farmer,
+        rating: farmerRating,
+        comment: reviewText || ""
+      });
+      // Automatically triggers real-time Trust Score recalculation
+      await calculateTrustScore(order.farmer);
+    }
+
+    await order.save();
+    res.json({ success: true, message: "Review submitted and Trust Score updated successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

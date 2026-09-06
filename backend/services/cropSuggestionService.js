@@ -1,5 +1,17 @@
-// Advanced Crop Suggestion Service — Pure Node.js ML fallback
-// No Python dependency required. Uses weighted scoring with environmental factors.
+const runPythonScript = async (endpoint, payload) => {
+  try {
+    const res = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(`FastAPI responded with ${res.status}`);
+    return await res.json();
+  } catch (error) {
+    console.error("FastAPI call failed:", error);
+    throw error;
+  }
+};
 
 const CROP_DATABASE = [
   // Kharif (Monsoon Jun-Oct)
@@ -59,7 +71,20 @@ export const suggestAdvancedCrop = async (temp, hum, rain) => {
   const t = parseFloat(temp);
   const h = parseFloat(hum);
   const r = parseFloat(rain);
-  const currentSeason = getCurrentSeason();
+  
+  let currentSeason = getCurrentSeason();
+  let isMLPredicted = false;
+  
+  // Use XGBoost ML Model to predict realistic season based on actual weather params!
+  try {
+    const mlResult = await runPythonScript("/predict/season", { temp: t, hum: h, rain: r, ph: 7.0 });
+    if (mlResult && mlResult.predicted_season) {
+      currentSeason = mlResult.predicted_season.toLowerCase();
+      isMLPredicted = true;
+    }
+  } catch (err) {
+    console.error("XGBoost Seasonal Model fallback:", err.message);
+  }
   
   // Score each crop
   const scored = CROP_DATABASE.map(crop => {
@@ -129,9 +154,11 @@ export const suggestAdvancedCrop = async (temp, hum, rain) => {
     farming_tips: [
       `${top.name} grows best in ${top.bestSoil.join(" or ")} soil with ${top.waterNeed} water needs.`,
       `Expected growth cycle: ~${top.growDays} days from sowing to harvest.`,
-      `Current season (${currentSeason}) ${top.season === currentSeason || top.season === "perennial" ? "is ideal" : "may not be optimal"} for ${top.name}.`,
+      `Current predicted season (${currentSeason}) ${top.season === currentSeason || top.season === "perennial" ? "is ideal" : "may not be optimal"} for ${top.name}.`,
       r < 10 ? `Low rainfall detected. Plan drip irrigation for water-efficient cultivation.` : `Adequate moisture available. Monitor drainage to prevent waterlogging.`,
     ],
-    note: `AI recommendation based on real-time weather (${t}°C, ${h}% humidity, ${r}mm rain) and ${currentSeason} season analysis.`,
+    note: isMLPredicted 
+      ? `AI recommendation based on real-time weather (${t}°C, ${h}% humidity, ${r}mm rain) and ML Seasonal Prediction (${currentSeason}).`
+      : `AI recommendation based on real-time weather (${t}°C, ${h}% humidity, ${r}mm rain) and static season analysis.`,
   };
 };

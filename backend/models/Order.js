@@ -49,10 +49,25 @@ const orderSchema = new mongoose.Schema({
   agentCurrentLatitude: { type: Number },
   agentCurrentLongitude: { type: Number },
   
-  deliveryType: { type: String, enum: ["standard", "express", "farm_pickup"], default: "standard" },
+  deliveryType: { type: String, enum: ["standard", "express", "farm_pickup", "delivery", "pickup", "fast"], default: "standard" },
   deliveryTime: { type: String, default: "asap" },
   deliveryDistance: { type: Number, default: 0 }, // in km
   estimatedDeliveryMinutes: { type: Number, default: 0 },
+  estimatedDeliveryDeadline: { type: Date },
+  deliveryPerformance: {
+    deliveredAt: { type: Date },
+    deadline: { type: Date },
+    diffMinutes: { type: Number, default: 0 },
+    isEarly: { type: Boolean, default: false },
+    isLate: { type: Boolean, default: false },
+    speedBonusPoints: { type: Number, default: 0 },
+    speedBonusCash: { type: Number, default: 0 },
+    latePenaltyPoints: { type: Number, default: 0 },
+    latePenaltyDeduction: { type: Number, default: 0 },
+    deliveryScoreChange: { type: Number, default: 0 },
+    delayReason: { type: String, default: "" },
+    isDisputed: { type: Boolean, default: false }
+  },
   notes: { type: String, default: "" },
   billNumber: { type: String, default: "" },
   timeline: [timelineSchema],
@@ -74,7 +89,10 @@ const orderSchema = new mongoose.Schema({
   // ─── Financial Ledger ───
   isSettledWithFarmer: { type: Boolean, default: false },
   isSettledWithAgent: { type: Boolean, default: false },
-  adminRevenue: { type: Number, default: 0 }
+  adminRevenue: { type: Number, default: 0 },
+
+  // ─── Multi-Location Delivery ───
+  multiLocationGroupId: { type: String, default: "" }
 }, { timestamps: true });
 
 // Auto-generate bill number

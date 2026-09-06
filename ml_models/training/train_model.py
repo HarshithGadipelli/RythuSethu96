@@ -1,13 +1,13 @@
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor
+from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 import joblib
 import os
 from pymongo import MongoClient
 
-print("Rythu Sethu Advanced ML: Training Price Prediction Model...")
+print("Rythu Sethu Advanced ML: Training Price Prediction Model with XGBoost...")
 
 def fetch_and_augment_price_data(target_rows=50000):
     np.random.seed(42)
@@ -50,7 +50,7 @@ def fetch_and_augment_price_data(target_rows=50000):
     if padding_needed > 0:
         print(f"Cold Start Detected: Augmenting {real_rows} real rows with {padding_needed} synthetic rows...")
         
-        # Base deterministic prices to lock ML accuracy to 99%
+        # Base realistic prices
         crop_base_prices = {
             'Tomato': 40, 'Potato': 30, 'Onion': 45, 'Rice': 60, 
             'Wheat': 55, 'Mango': 120, 'Cotton': 200, 'Apple': 150, 'Banana': 50
@@ -60,18 +60,16 @@ def fetch_and_augment_price_data(target_rows=50000):
         for _ in range(padding_needed):
             crop = np.random.choice(crops_list)
             season = np.random.choice(seasons)
-            demand_index = np.random.uniform(0.5, 2.0)
-            supply_volume = np.random.randint(50, 1000)
+            demand_index = np.random.uniform(0.5, 2.5)
+            supply_volume = np.random.randint(50, 2000)
             
-            # Strict deterministic mathematical relationship
             base = crop_base_prices.get(crop, 50)
             sm = season_multipliers.get(season, 1.0)
             
-            # optimal_price calculation that the Random Forest can perfectly learn
-            # Introduce a tiny bit of noise (1%) so it doesn't overfit perfectly to 1.0000000 R2
-            optimal_price = (base * sm * demand_index) + (1000 / supply_volume)
-            noise = optimal_price * np.random.uniform(-0.01, 0.01)
-            optimal_price += noise
+            # Realistic optimal price calculation with significant real-world noise (20%)
+            optimal_price = (base * sm * demand_index) + (1500 / (supply_volume + 1))
+            noise = optimal_price * np.random.uniform(-0.20, 0.20)
+            optimal_price = max(10, optimal_price + noise)
                 
             data.append({
                 'crop': crop,
@@ -92,9 +90,9 @@ y = df["optimal_price"]
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# 3. Model Training
-print("Training RandomForestRegressor...")
-model = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42)
+# 3. Model Training (Advanced XGBoost)
+print("Training XGBRegressor...")
+model = XGBRegressor(n_estimators=200, max_depth=8, learning_rate=0.05, random_state=42)
 model.fit(X_train, y_train)
 
 # 4. Evaluation
@@ -107,10 +105,11 @@ print(f"Mean Squared Error: {mse:.2f}")
 print(f"R2 Score: {r2:.2f} ({(r2*100):.1f}% Accuracy)")
 
 # 5. Save Model
+os.makedirs(os.path.join(os.path.dirname(__file__), "../models"), exist_ok=True)
 model_path = os.path.join(os.path.dirname(__file__), "../models/price_model.pkl")
 columns_path = os.path.join(os.path.dirname(__file__), "../models/model_columns.pkl")
 
 joblib.dump(model, model_path)
 joblib.dump(X.columns.tolist(), columns_path)
 
-print(f"Price Model saved successfully to: {model_path}")
+print(f"Price Model (XGBoost) saved successfully to: {model_path}")

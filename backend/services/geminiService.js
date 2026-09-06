@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 let genAI;
 try {
-  if (process.env.GEMINI_API_KEY) {
+  if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 10) {
     genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   }
 } catch (error) {
@@ -40,7 +40,7 @@ Suggest the best crop to plant right now. Return EXACTLY and ONLY valid JSON in 
 
 Do not include markdown blocks like \`\`\`json or \`\`\`. Just output raw JSON.`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     const response = await model.generateContent(prompt);
     
     let text = response.response.text().trim();
@@ -84,7 +84,7 @@ Return EXACTLY and ONLY valid JSON in this structure:
 
 Do not include markdown blocks like \`\`\`json or \`\`\`. Just output raw JSON.`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     const response = await model.generateContent(prompt);
 
     let text = response.response.text().trim();

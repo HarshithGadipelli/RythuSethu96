@@ -3,10 +3,47 @@ import Crop from "../models/Crop.js";
 import Farmer from "../models/Farmer.js";
 import { calculateTrustScore, getCachedTrustScore } from "../services/trustScoreService.js";
 import { getTrustLeaderboard } from "../controllers/farmerController.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 router.get("/leaderboard", getTrustLeaderboard);
+
+// Get current farmer's profile
+router.get("/profile", protect, async (req, res) => {
+  try {
+    let farmer = await Farmer.findOne({ user: req.user._id }).populate("user", "-password");
+    if (!farmer) {
+      // Create minimal farmer document if missing
+      farmer = await Farmer.create({ user: req.user._id });
+      farmer = await Farmer.findById(farmer._id).populate("user", "-password");
+    }
+    res.json(farmer);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get current farmer's crops
+router.get("/my-crops", protect, async (req, res) => {
+  try {
+    const crops = await Crop.find({ farmer: req.user._id }).sort({ createdAt: -1 });
+    res.json(crops);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get farmer by user ID
+router.get("/:id", async (req, res) => {
+  try {
+    const farmer = await Farmer.findOne({ user: req.params.id });
+    if (!farmer) return res.status(404).json({ error: "Farmer not found" });
+    res.json(farmer);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Get farmer's crops
 router.get("/my-crops/:id", async (req, res) => {

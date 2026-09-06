@@ -59,29 +59,48 @@ export const optimizeDeliveryRoute = async (agentLat, agentLng, orders) => {
     return getDistance(coords[fromIdx].lat, coords[fromIdx].lng, coords[toIdx].lat, coords[toIdx].lng);
   };
 
+  const getZone = (lat, lng) => `${Math.floor(lat * 50)}_${Math.floor(lng * 50)}`; // Approx 2km zones
+
   const optimized = [];
   let totalDistance = 0;
   let currentMatrixIdx = 0; // Starts at agent (index 0)
   const completedPickups = new Set();
+  
+  let currentZone = getZone(coords[0].lat, coords[0].lng);
 
   while (unvisitedTasks.length > 0) {
     let nearestIdx = -1;
     let minDistance = Infinity;
     
+    // First pass: try to find the nearest task in the CURRENT zone
     for (let i = 0; i < unvisitedTasks.length; i++) {
       const task = unvisitedTasks[i];
+      if (task.type === "delivery" && task.order.status === "assigned" && !completedPickups.has(task.orderId)) continue;
       
-      // Enforce Pickup and Delivery precedence
-      if (task.type === "delivery" && task.order.status === "assigned" && !completedPickups.has(task.orderId)) {
-        continue;
-      }
+      const taskZone = getZone(task.lat, task.lng);
+      if (taskZone !== currentZone) continue; // Skip out-of-zone tasks in this pass
       
       const dist = getRouteDistance(currentMatrixIdx, task.matrixIdx);
-      const bundledDist = dist < 2 ? dist * 0.1 : dist; // Discount for clustered tasks
-
-      if (bundledDist < minDistance) {
-        minDistance = bundledDist;
+      if (dist < minDistance) {
+        minDistance = dist;
         nearestIdx = i;
+      }
+    }
+
+    // Second pass: if no tasks left in current zone, find the absolute nearest task anywhere
+    if (nearestIdx === -1) {
+      for (let i = 0; i < unvisitedTasks.length; i++) {
+        const task = unvisitedTasks[i];
+        if (task.type === "delivery" && task.order.status === "assigned" && !completedPickups.has(task.orderId)) continue;
+        
+        const dist = getRouteDistance(currentMatrixIdx, task.matrixIdx);
+        // Smart Routing: Apply budget-friendly shortcut penalty to distant deliveries to favor grouping
+        const bundledDist = dist < 2 ? dist * 0.1 : dist;
+
+        if (bundledDist < minDistance) {
+          minDistance = bundledDist;
+          nearestIdx = i;
+        }
       }
     }
     
@@ -94,16 +113,20 @@ export const optimizeDeliveryRoute = async (agentLat, agentLng, orders) => {
     if (isPickup) completedPickups.add(nearestTask.orderId);
     
     const actualDist = getRouteDistance(currentMatrixIdx, nearestTask.matrixIdx);
+    
+    // Update current location and zone
+    currentMatrixIdx = nearestTask.matrixIdx;
+    currentZone = getZone(nearestTask.lat, nearestTask.lng);
 
     optimized.push({
       action: isPickup ? "Pickup" : "Deliver",
       location: (isPickup ? o.pickupLocation : o.deliveryLocation) || "Unknown Location",
       deliveryId: o._id,
-      trackingCode: o.trackingCode
+      trackingCode: o.trackingCode,
+      zone: currentZone
     });
     
     totalDistance += actualDist;
-    currentMatrixIdx = nearestTask.matrixIdx;
   }
   
   return { optimized, totalDistance };

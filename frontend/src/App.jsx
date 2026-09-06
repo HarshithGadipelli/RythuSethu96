@@ -22,6 +22,7 @@ import CustomerOfflineTours from "./pages/Marketplace/CustomerOfflineTours";
 import CuratedBoxes from "./pages/Marketplace/CuratedBoxes";
 import Support from "./pages/Support/Support";
 import AIAssistant from "./components/AIAssistant";
+import AmbientAtmosphere from "./components/AmbientAtmosphere";
 // Ensure Google Translate re-translates when React Router changes pages
 function RouteChangeListener() {
   const location = useLocation();

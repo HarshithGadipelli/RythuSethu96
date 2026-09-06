@@ -5,7 +5,7 @@
 
 import { LANG_MAP } from "./useVoiceInput";
 
-function speakWithVoice(text, langCode) {
+function speakWithVoice(text, langCode, resolve) {
   const synth = window.speechSynthesis;
   synth.cancel(); // stop any ongoing speech first
 
@@ -16,7 +16,6 @@ function speakWithVoice(text, langCode) {
 
   const voices = synth.getVoices();
   if (voices.length > 0) {
-    // Try to find a premium voice for the target language
     const matchLang    = utterance.lang.split("-")[0];
     const langVoices   = voices.filter(v => v.lang.startsWith(matchLang) || v.lang.startsWith(utterance.lang));
     const premiumVoice = langVoices.find(v =>
@@ -32,7 +31,6 @@ function speakWithVoice(text, langCode) {
 
   synth.speak(utterance);
 
-  // Chrome has a bug where long utterances get cut off — this heartbeat fixes it
   const heartbeat = setInterval(() => {
     if (!synth.speaking) {
       clearInterval(heartbeat);
@@ -42,34 +40,40 @@ function speakWithVoice(text, langCode) {
     }
   }, 10000);
 
-  utterance.onend = () => clearInterval(heartbeat);
-  utterance.onerror = () => clearInterval(heartbeat);
+  utterance.onend = () => {
+    clearInterval(heartbeat);
+    resolve();
+  };
+  utterance.onerror = () => {
+    clearInterval(heartbeat);
+    resolve();
+  };
 }
 
 export function playTTS(text, langCode = "en") {
-  if (!("speechSynthesis" in window)) {
-    console.warn("Text-to-Speech not supported in this browser.");
-    return;
-  }
-  if (!text) return;
+  return new Promise((resolve) => {
+    if (!("speechSynthesis" in window)) {
+      console.warn("Text-to-Speech not supported in this browser.");
+      return resolve();
+    }
+    if (!text) return resolve();
 
-  const synth = window.speechSynthesis;
+    const synth = window.speechSynthesis;
 
-  // Chrome loads voices asynchronously — wait for them if not ready
-  const voices = synth.getVoices();
-  if (voices.length === 0) {
-    // Voices not loaded yet — wait for the voiceschanged event
-    const onVoicesChanged = () => {
-      synth.removeEventListener("voiceschanged", onVoicesChanged);
-      speakWithVoice(text, langCode);
-    };
-    synth.addEventListener("voiceschanged", onVoicesChanged);
-    // Fallback in case event never fires (some browsers don't fire it)
-    setTimeout(() => {
-      synth.removeEventListener("voiceschanged", onVoicesChanged);
-      speakWithVoice(text, langCode);
-    }, 1000);
-  } else {
-    speakWithVoice(text, langCode);
-  }
+    const voices = synth.getVoices();
+    if (voices.length === 0) {
+      const onVoicesChanged = () => {
+        synth.removeEventListener("voiceschanged", onVoicesChanged);
+        speakWithVoice(text, langCode, resolve);
+      };
+      synth.addEventListener("voiceschanged", onVoicesChanged);
+      setTimeout(() => {
+        synth.removeEventListener("voiceschanged", onVoicesChanged);
+        speakWithVoice(text, langCode, resolve);
+      }, 1000);
+    } else {
+      speakWithVoice(text, langCode, resolve);
+    }
+  });
 }
+

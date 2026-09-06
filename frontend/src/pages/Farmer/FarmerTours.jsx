@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import API from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { MapPin, Users, Calendar, Banknote } from "lucide-react";
+import GuidedInput from "../../components/GuidedInput";
 
 export default function FarmerTours() {
   const { user } = useAuth();
@@ -84,26 +85,22 @@ export default function FarmerTours() {
         <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginLeft: "2rem" }}>Turn this on to accept tour bookings. Customers will only see this option if your farm is Verified.</p>
       </div>
 
-      <div className="form-group mb-3">
-        <label className="field-label">Price per Person (₹)</label>
-        <input 
-          type="number" 
-          className="rs-input" 
-          value={settings.farmTourPrice}
-          onChange={(e) => setSettings({ ...settings, farmTourPrice: Number(e.target.value) })}
-        />
-      </div>
+      <GuidedInput
+        label="Price per Person (₹)"
+        type="number"
+        value={settings.farmTourPrice}
+        onChange={(e) => setSettings({ ...settings, farmTourPrice: Number(e.target.value) })}
+        placeholder="e.g. 100"
+      />
 
-      <div className="form-group mb-3">
-        <label className="field-label">Tour Details & Schedule</label>
-        <textarea 
-          className="rs-input" 
-          rows="4"
-          placeholder="E.g. Tours available on weekends. We will show you our greenhouse and organic composting process. Kids under 5 are free."
-          value={settings.farmTourDetails}
-          onChange={(e) => setSettings({ ...settings, farmTourDetails: e.target.value })}
-        ></textarea>
-      </div>
+      <GuidedInput
+        label="Tour Details & Schedule"
+        type="textarea"
+        value={settings.farmTourDetails}
+        onChange={(e) => setSettings({ ...settings, farmTourDetails: e.target.value })}
+        placeholder="E.g. Tours available on weekends. We will show you our greenhouse and organic composting process. Kids under 5 are free."
+        rows={4}
+      />
 
       <button className="btn-primary" onClick={handleSave} disabled={loading}>
         {loading ? "Saving..." : "Save Tour Settings"}

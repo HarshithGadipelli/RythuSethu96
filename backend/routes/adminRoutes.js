@@ -7,14 +7,69 @@ import Farmer from "../models/Farmer.js";
 import Agent from "../models/Agent.js";
 import Notification from "../models/Notification.js";
 import GlobalConfig from "../models/GlobalConfig.js";
+import { getLiveStockAnalysis, getClearanceStock, updateClearancePrice, broadcastPromotion } from "../controllers/adminController.js";
 
 const router = express.Router();
 
-// ─── USERS ───
+// ─── USERS (Enriched with MongoDB profiles, documents, photos, and stats) ───
 router.get("/users", async (req, res) => {
   try {
-    const users = await User.find().select("-password").sort({ createdAt: -1 });
-    res.json(users);
+    const Customer = (await import("../models/Customer.js")).default;
+    const [users, farmers, customers, agents, cropsList, ordersList] = await Promise.all([
+      User.find().select("-password").sort({ createdAt: -1 }),
+      Farmer.find(),
+      Customer.find(),
+      Agent.find(),
+      Crop.find().select("farmer name price quantity unit isOrganic isPesticideFree image category"),
+      Order.find().select("customer farmer totalAmount status createdAt")
+    ]);
+
+    const farmerMap = new Map(farmers.map(f => [f.user?.toString(), f]));
+    const customerMap = new Map(customers.map(c => [c.user?.toString(), c]));
+    const agentMap = new Map(agents.map(a => [a.user?.toString(), a]));
+
+    const enriched = users.map(u => {
+      const uId = u._id.toString();
+      const uObj = u.toObject();
+
+      if (u.role === "farmer") {
+        uObj.farmerProfile = farmerMap.get(uId) || {};
+        uObj.crops = cropsList.filter(c => c.farmer?.toString() === uId);
+        uObj.cropsCount = uObj.crops.length;
+        uObj.ordersCount = ordersList.filter(o => o.farmer?.toString() === uId).length;
+      } else if (u.role === "customer") {
+        uObj.customerProfile = customerMap.get(uId) || {};
+        uObj.ordersCount = ordersList.filter(o => o.customer?.toString() === uId).length;
+      } else if (u.role === "agent") {
+        uObj.agentProfile = agentMap.get(uId) || {};
+      }
+
+      return uObj;
+    });
+
+    res.json(enriched);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get("/users/:id", async (req, res) => {
+  try {
+    const Customer = (await import("../models/Customer.js")).default;
+    const u = await User.findById(req.params.id).select("-password");
+    if (!u) return res.status(404).json({ error: "User not found" });
+    const uObj = u.toObject();
+
+    if (u.role === "farmer") {
+      uObj.farmerProfile = (await Farmer.findOne({ user: u._id })) || {};
+      uObj.crops = await Crop.find({ farmer: u._id });
+      uObj.cropsCount = uObj.crops.length;
+      uObj.ordersCount = await Order.countDocuments({ farmer: u._id });
+    } else if (u.role === "customer") {
+      uObj.customerProfile = (await Customer.findOne({ user: u._id })) || {};
+      uObj.ordersCount = await Order.countDocuments({ customer: u._id });
+    } else if (u.role === "agent") {
+      uObj.agentProfile = (await Agent.findOne({ user: u._id })) || {};
+    }
+    res.json(uObj);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -30,6 +85,34 @@ router.put("/users/:id/role", async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(req.params.id, { role: req.body.role }, { new: true }).select("-password");
     res.json(user);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── CROPS MANAGEMENT ───
+router.get("/stock-analysis", getLiveStockAnalysis);
+router.get("/clearance", getClearanceStock);
+router.put("/clearance/:id/price", updateClearancePrice);
+router.post("/broadcast", broadcastPromotion);
+
+router.get("/crops", async (req, res) => {
+  try {
+    const crops = await Crop.find().populate("farmer", "name email phone location").sort({ createdAt: -1 });
+    res.json(crops);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete("/crops/:id", async (req, res) => {
+  try {
+    await Crop.findByIdAndDelete(req.params.id);
+    res.json({ message: "Crop listing deleted by Admin" });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.put("/crops/:id/verify-organic", async (req, res) => {
+  try {
+    const { isOrganic, isPesticideFree } = req.body;
+    const crop = await Crop.findByIdAndUpdate(req.params.id, { isOrganic, isPesticideFree }, { new: true });
+    res.json(crop);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

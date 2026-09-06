@@ -13,6 +13,42 @@ const razorpay = (RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) ? new Razorpay({
 
 const router = express.Router();
 
+router.get("/razorpay/config", (req, res) => {
+  res.json({ 
+    key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_TU3fEg7yVGE3do", 
+    merchantUpiId: process.env.MERCHANT_UPI_ID || "8688938604@upi",
+    merchantName: "Rythu Sethu Agri Direct",
+    isRazorpayEnabled: !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET)
+  });
+});
+
+// Manual UPI Verification
+router.post("/upi/confirm", async (req, res) => {
+  try {
+    const { orderId, utr, amount, customerId } = req.body;
+    const payment = await Payment.create({
+      order: orderId,
+      customer: customerId,
+      amount: amount || 0,
+      method: "upi",
+      status: "paid",
+      upiReference: utr || `UPI${Date.now()}`,
+      paidAt: new Date()
+    });
+
+    if (orderId) {
+      await Order.findByIdAndUpdate(orderId, {
+        paymentStatus: "paid",
+        $push: { timeline: { status: "paid", note: `UPI Payment confirmed (UTR: ${utr || "Verified"})` } }
+      });
+    }
+
+    res.json({ success: true, message: "UPI payment confirmed successfully", payment });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post("/create", async (req, res) => {
   try {
     const payment = await Payment.create(req.body);

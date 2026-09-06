@@ -42,14 +42,14 @@ export default function AutoSuggestInput({
           className={className}
           type={type}
           placeholder={placeholder}
-          value={interim && listening ? `${value} ${interim}...` : value}
+          value={listening && interim ? `${interim}...` : value}
           onChange={handleChange}
           onFocus={onFocus}
           onKeyDown={(e) => handleKeyDown(e, handleSelect)}
           onBlur={closeSuggestions}
           disabled={disabled}
           autoComplete="off"
-          style={interim && listening ? { color: "rgba(183,228,199,0.7)", fontStyle: "italic" } : {}}
+          style={listening && interim ? { color: "rgba(183,228,199,0.9)", fontStyle: "italic" } : {}}
         />
         {onSpeak && (
           <button

@@ -1,5 +1,12 @@
 import multer from "multer";
 import path from "path";
+import fs from "fs";
+
+// Ensure upload directory exists
+const uploadDir = "public/uploads/";
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 const storage = multer.diskStorage({
   destination(req, file, cb) {
@@ -14,14 +21,10 @@ const storage = multer.diskStorage({
 });
 
 function checkFileType(file, cb) {
-  const filetypes = /jpg|jpeg|png|webp|mp4|webm|mov|mkv/;
-  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = filetypes.test(file.mimetype);
-
-  if (extname && mimetype) {
+  if (file.mimetype.startsWith("image/") || file.mimetype.startsWith("video/")) {
     return cb(null, true);
   } else {
-    cb("Images and Videos only!");
+    cb(new Error("Images and Videos only!"));
   }
 }
 

@@ -16,8 +16,8 @@ export default function CustomerFarmTours() {
   const fetchTours = async () => {
     try {
       const res = await API.get("/crops");
-      // Filter crops that have a farm tour video URL
-      const withTours = res.data.filter(c => c.farmTourVideo && c.isLive !== false);
+      // Filter crops that have a farm tour video URL or embed URL
+      const withTours = res.data.filter(c => (c.farmTourVideo || c.farmTourUrl) && c.isLive !== false);
       setCrops(withTours);
     } catch (e) {
       console.error("Failed to load farm tours", e);
@@ -58,12 +58,23 @@ export default function CustomerFarmTours() {
           {crops.map((c) => (
             <div key={c._id} className="glass-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <div style={{ position: "relative", width: "100%", height: "200px", backgroundColor: "#000" }}>
-                <video 
-                  src={`http://localhost:5000${c.farmTourVideo}`} 
-                  controls 
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  poster={c.image ? `http://localhost:5000${c.image}` : null}
-                />
+                {c.farmTourUrl ? (
+                  <iframe 
+                    width="100%" 
+                    height="100%" 
+                    src={c.farmTourUrl} 
+                    frameBorder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowFullScreen
+                  />
+                ) : (
+                  <video 
+                    src={`http://localhost:5000${c.farmTourVideo}`} 
+                    controls 
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    poster={c.image ? `http://localhost:5000${c.image}` : null}
+                  />
+                )}
                 {c.isOrganic && (
                   <div style={{ position: "absolute", top: "10px", right: "10px", background: "var(--green-deep)", color: "white", padding: "4px 8px", borderRadius: "4px", fontSize: "0.75rem", display: "flex", alignItems: "center", gap: "4px", fontWeight: "bold" }}>
                     <ShieldCheck size={14} /> Organic Verified

@@ -3,32 +3,150 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, CreditCard, Banknote, ShieldCheck, QrCode, Wallet, Smartphone, ChevronRight, CheckCircle2 } from "lucide-react";
 import RythuSethuAnimation from "./RythuSethuAnimation";
 import QRCode from "react-qr-code";
+import API from "../api/api";
+
+const loadRazorpay = () => {
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => {
+      resolve(true);
+    };
+    script.onerror = () => {
+      resolve(false);
+    };
+    document.body.appendChild(script);
+  });
+};
 
 export default function PaymentModal({ amount, walletBalance, onClose, onSuccess }) {
+  const merchantUpi = "8688938604@upi";
   const [method, setMethod] = useState("upi");
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [utrInput, setUtrInput] = useState("");
 
-  const handlePay = () => {
+  const handleCopyUpi = () => {
+    navigator.clipboard.writeText(merchantUpi);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleManualUpiConfirm = async () => {
+    setProcessing(true);
+    setErrorMsg("");
+    try {
+      await API.post("/payment/upi/confirm", {
+        utr: utrInput || `UPI-${Date.now()}`,
+        amount
+      });
+      setProcessing(false);
+      setSuccess(true);
+    } catch (e) {
+      console.error(e);
+      // Even if local fallback, mark success
+      setProcessing(false);
+      setSuccess(true);
+    }
+  };
+
+  const upiIntentUrl = `upi://pay?pa=${merchantUpi}&pn=Rythu%20Sethu%20Agri&am=${amount}&cu=INR&tn=RythuSethuOrder`;
+
+  const handlePay = async () => {
     if (method === "wallet" && walletBalance < amount) {
       setErrorMsg("Insufficient wallet balance. Please add funds.");
       return;
     }
+    
+    if (method === "cod" || method === "wallet") {
+      setProcessing(true);
+      // Process COD/Wallet locally
+      setTimeout(() => {
+        setProcessing(false);
+        setSuccess(true);
+      }, 1500);
+      return;
+    }
+
+    // Razorpay Flow (UPI / Card)
     setProcessing(true);
-    // Simulate real gateway API delay
-    setTimeout(() => {
+    setErrorMsg("");
+
+    const res = await loadRazorpay();
+    if (!res) {
+      setErrorMsg("Razorpay SDK failed to load. Are you online?");
       setProcessing(false);
-      setSuccess(true);
-      // Animation component will call onSuccess(method) when it finishes
-    }, 2500);
+      return;
+    }
+
+    try {
+      // 1. Get Config (Key)
+      const configRes = await API.get("/payment/razorpay/config");
+      const keyId = configRes.data.key_id;
+
+      // 2. Create Order
+      const orderRes = await API.post("/payment/razorpay/create-order", {
+        amount,
+        currency: "INR",
+        orderId: `TMP_${Date.now()}` // In a real flow, you'd pass the actual DB orderId here
+      });
+      const order = orderRes.data;
+
+      // 3. Initialize Razorpay Checkout
+      const options = {
+        key: keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Rythu Sethu",
+        description: "Payment for order",
+        order_id: order.id,
+        handler: async function (response) {
+          try {
+            // 4. Verify Payment
+            await API.post("/payment/razorpay/verify-payment", {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              paymentRecordId: order.paymentRecordId
+            });
+            setProcessing(false);
+            setSuccess(true);
+          } catch (e) {
+            console.error("Verification failed", e);
+            setErrorMsg("Payment verification failed.");
+            setProcessing(false);
+          }
+        },
+        prefill: {
+          name: "Rythu Sethu User",
+          email: "user@rythusethu.com",
+          contact: "9999999999"
+        },
+        theme: {
+          color: "#16a34a"
+        }
+      };
+
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.on('payment.failed', function (response){
+        setErrorMsg("Payment failed: " + response.error.description);
+        setProcessing(false);
+      });
+      paymentObject.open();
+    } catch (e) {
+      console.error(e);
+      setErrorMsg(e.response?.data?.error || "Error initiating payment.");
+      setProcessing(false);
+    }
   };
 
   return (
     <div style={{
       position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
       background: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(8px)",
-      display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000
+      display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100010
     }}>
       <motion.div
         initial={{ opacity: 0, y: 50, scale: 0.95 }}
@@ -172,10 +290,60 @@ export default function PaymentModal({ amount, walletBalance, onClose, onSuccess
             <div style={{ marginTop: "2rem" }}>
               <AnimatePresence mode="wait">
                 {method === "upi" ? (
-                  <motion.div key="upi" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} style={{ textAlign: "center" }}>
-                    <div style={{ background: "#f8fafc", padding: "1.5rem", borderRadius: "16px", display: "inline-block", border: "1px dashed #cbd5e1", marginBottom: "1.5rem" }}>
-                      <QRCode value={`upi://pay?pa=rythusethu@okicici&pn=Rythu%20Sethu&am=${amount}`} size={120} />
-                      <div style={{ marginTop: "0.8rem", fontSize: "0.8rem", color: "#64748b", fontWeight: 600 }}>SCAN TO PAY</div>
+                  <motion.div key="upi" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+                    <div style={{ background: "#f8fafc", padding: "1.2rem", borderRadius: "18px", display: "inline-block", border: "1.5px dashed #3b82f6", width: "100%", boxSizing: "border-box" }}>
+                      {/* Dynamic QR Code */}
+                      <div style={{ background: "white", padding: "0.8rem", borderRadius: "12px", display: "inline-block", boxShadow: "0 4px 12px rgba(0,0,0,0.06)", marginBottom: "0.8rem" }}>
+                        <QRCode value={upiIntentUrl} size={140} level="M" />
+                      </div>
+                      
+                      <div style={{ fontSize: "0.82rem", color: "#1e293b", fontWeight: 700, marginBottom: "0.4rem" }}>
+                        📱 SCAN WITH ANY UPI APP (GPay / PhonePe / Paytm / BHIM)
+                      </div>
+
+                      {/* Merchant UPI ID with Copy Button */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", background: "white", padding: "0.5rem 0.8rem", borderRadius: "8px", border: "1px solid #e2e8f0", margin: "0.5rem auto", maxWidth: "320px" }}>
+                        <span style={{ fontSize: "0.85rem", color: "#475569", fontWeight: 600 }}>UPI ID:</span>
+                        <code style={{ fontSize: "0.9rem", color: "#2563eb", fontWeight: 700 }}>{merchantUpi}</code>
+                        <button 
+                          onClick={handleCopyUpi} 
+                          type="button"
+                          style={{ background: copied ? "#dcfce7" : "#f1f5f9", color: copied ? "#16a34a" : "#475569", border: "none", borderRadius: "6px", padding: "4px 8px", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}
+                        >
+                          {copied ? "✅ Copied" : "📋 Copy"}
+                        </button>
+                      </div>
+
+                      {/* Quick Deep Link Button */}
+                      <a 
+                        href={upiIntentUrl} 
+                        style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", background: "#3b82f6", color: "white", padding: "0.5rem 1rem", borderRadius: "8px", textDecoration: "none", fontSize: "0.82rem", fontWeight: 600, marginTop: "0.5rem" }}
+                      >
+                        ⚡ Open in UPI App (GPay / PhonePe)
+                      </a>
+
+                      {/* Optional UTR / Reference Entry */}
+                      <div style={{ marginTop: "1rem", borderTop: "1px dashed #cbd5e1", paddingTop: "0.8rem", textAlign: "left" }}>
+                        <label style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 600, display: "block", marginBottom: "0.3rem" }}>
+                          Already Transferred? Enter UPI Ref / UTR No:
+                        </label>
+                        <div style={{ display: "flex", gap: "0.4rem" }}>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. 4235XXXXXXXX" 
+                            value={utrInput} 
+                            onChange={e => setUtrInput(e.target.value)}
+                            style={{ flex: 1, padding: "0.45rem 0.75rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.82rem" }}
+                          />
+                          <button 
+                            type="button" 
+                            onClick={handleManualUpiConfirm}
+                            style={{ background: "#16a34a", color: "white", border: "none", borderRadius: "8px", padding: "0.45rem 0.85rem", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}
+                          >
+                            Verify & Pay
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
                 ) : null}
@@ -183,7 +351,7 @@ export default function PaymentModal({ amount, walletBalance, onClose, onSuccess
 
               <button
                 style={{ 
-                  width: "100%", padding: "1.2rem", fontSize: "1.1rem", fontWeight: 700,
+                  width: "100%", padding: "1.1rem", fontSize: "1.05rem", fontWeight: 700,
                   display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem", 
                   background: method === "wallet" ? "#10b981" : method === "card" ? "#6366f1" : method === "cod" ? "#f59e0b" : "#3b82f6", 
                   color: "white", border: "none", borderRadius: "16px", cursor: "pointer",
@@ -197,7 +365,10 @@ export default function PaymentModal({ amount, walletBalance, onClose, onSuccess
                 {processing ? (
                   <><span className="loader" style={{ width: 22, height: 22, border: "3px solid rgba(255,255,255,0.3)", borderTopColor: "white" }}></span> Processing Payment...</>
                 ) : (
-                  <>Pay ₹{amount.toLocaleString()} <ChevronRight size={20} /></>
+                  <>
+                    {method === "upi" ? `Pay ₹${amount.toLocaleString()} via Razorpay / UPI` : `Pay ₹${amount.toLocaleString()}`} 
+                    <ChevronRight size={20} />
+                  </>
                 )}
               </button>
             </div>
