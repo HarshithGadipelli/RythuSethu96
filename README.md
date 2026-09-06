@@ -22,4 +22,4 @@ This script will automatically:
 If you prefer to run it manually or are on Mac/Linux:
 1. **Backend**: `cd backend`, copy `.env.example` to `.env`, and run `npm install` then `npm run dev`.
 2. **Frontend**: `cd frontend` and run `npm install` then `npm run dev`.
-3. **Machine Learning**: `cd ml_models`, run `pip install -r requirements.txt`, then `cd training` and run `python train_model.py`. Ensure you have MongoDB running locally.95
+3. **Machine Learning**: `cd ml_models`, run `pip install -r requirements.txt`, then `cd training` and run `python train_model.py`. Ensure you have MongoDB running locally.95"# RythuSethu96" 
