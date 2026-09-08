@@ -696,6 +696,87 @@ Output the transcription as pure plain text. Do not wrap in quotes or markdown.
   }
 });
 
+// ── Step-by-Step Conversational AI Parser for Add Crop Wizard ──
+router.post("/parse-wizard-step", async (req, res) => {
+  try {
+    const { step, transcript, lang } = req.body;
+    if (!transcript) return res.status(400).json({ error: "No transcript provided" });
+
+    const lower = transcript.toLowerCase().trim();
+
+    // Fast heuristic extraction
+    if (step === "QUANTITY") {
+      const numMatch = transcript.match(/\d+(?:\.\d+)?/);
+      let foundUnit = "kg";
+      if (/(quintal|క్వింటాల్|क्विंटल|qntl)/i.test(lower)) foundUnit = "quintal";
+      else if (/(bag|bori|బస్తా|बोरी|మూటే)/i.test(lower)) foundUnit = "bag";
+      else if (/(ton|tonne|టన్|टन)/i.test(lower)) foundUnit = "tonne";
+      else if (/(litre|liter|లీటర్|लीटर)/i.test(lower)) foundUnit = "litre";
+      else if (/(bale|బేల్)/i.test(lower)) foundUnit = "bale";
+      else if (/(piece|పీస్|पीस)/i.test(lower)) foundUnit = "piece";
+      else if (/(dozen|డజన్|दर्जन)/i.test(lower)) foundUnit = "dozen";
+
+      if (numMatch) {
+        return res.json({ quantity: parseFloat(numMatch[0]), unit: foundUnit });
+      }
+    } else if (step === "PRICE") {
+      const numMatch = transcript.match(/\d+(?:\.\d+)?/);
+      if (numMatch) {
+        return res.json({ price: parseFloat(numMatch[0]) });
+      }
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey.trim().length < 10) {
+      if (step === "NAME") return res.json({ name: transcript.trim() });
+      if (step === "QUANTITY") return res.json({ quantity: 10, unit: "kg" });
+      if (step === "PRICE") return res.json({ price: 30 });
+    }
+
+    const ai = getGenAI() || new GoogleGenAI({ apiKey: apiKey.trim() });
+
+    let prompt = "";
+    if (step === "NAME") {
+      prompt = `You are an agricultural parser. The farmer was asked "What crop do you want to list?". They said: "${transcript}". Extract the primary crop/product name (in English, e.g. Tomato, Potato, Rice, Wheat, Cotton, Hay, Slurry). Reply strictly in JSON: { "name": "extracted_name" } without markdown.`;
+    } else if (step === "QUANTITY") {
+      prompt = `You are an agricultural parser. The farmer was asked "How much quantity do you have?". They said: "${transcript}". Extract the number and standard unit (e.g. kg, tonne, litre, piece, bag, quintal). Default to kg if unclear. Reply strictly in JSON: { "quantity": number, "unit": "extracted_unit" } without markdown.`;
+    } else if (step === "PRICE") {
+      prompt = `You are an agricultural parser. The farmer was asked "What is the price per unit?". They said: "${transcript}". Extract the price as a single number. Reply strictly in JSON: { "price": number } without markdown.`;
+    } else {
+      return res.status(400).json({ error: "Invalid step" });
+    }
+
+    // Call with 5-second timeout
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI Timeout")), 5000));
+    const aiCall = (async () => {
+      const result = await ai.models.generateContent({
+        model: "gemini-3.5-flash-lite",
+        contents: [prompt]
+      });
+      return result.text;
+    })();
+
+    const rawText = await Promise.race([aiCall, timeoutPromise]);
+    const cleanJson = (rawText || "").trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
+    const parsedData = JSON.parse(cleanJson);
+    res.json(parsedData);
+  } catch (err) {
+    console.warn("Parse Wizard Step Fallback for", req.body.step, err.message);
+    const { step, transcript } = req.body;
+    if (step === "NAME") {
+      res.json({ name: transcript ? transcript.trim() : "Farm Produce" });
+    } else if (step === "QUANTITY") {
+      const match = (transcript || "").match(/\d+/);
+      res.json({ quantity: match ? parseInt(match[0]) : 50, unit: "kg" });
+    } else if (step === "PRICE") {
+      const match = (transcript || "").match(/\d+/);
+      res.json({ price: match ? parseInt(match[0]) : 40 });
+    } else {
+      res.json({});
+    }
+  }
+});
+
 // ─── 🛒 SMART AI SHOPPING LIST PARSER (Voice / Text ➡️ Auto-Filled Cart) ───
 const CROP_SYNONYMS = {
   "tomato": ["tamota", "tamatar", "tomato", "tomatoes", "tamatam"],

@@ -13,6 +13,7 @@ export default function FarmerGroups({ crops = [] }) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newPool, setNewPool] = useState({ name: "", cropId: "", targetQuantity: "", quantity: "", region: "" });
   const [joinById, setJoinById] = useState({ poolId: "", quantity: "" });
+  const [platformCrops, setPlatformCrops] = useState([]);
 
   const fetchGroups = async () => {
     try {
@@ -25,23 +26,29 @@ export default function FarmerGroups({ crops = [] }) {
     setLoading(false);
   };
 
-  useEffect(() => { fetchGroups(); }, []);
+  useEffect(() => { 
+    fetchGroups();
+    API.get("/crops")
+      .then(res => setPlatformCrops(res.data || []))
+      .catch(() => {});
+  }, []);
 
   const handleJoin = async (groupId, qty) => {
     if (!qty || qty < 1) return;
     try {
-      await API.post(`/groups/join/${groupId}`, { userId: user._id, quantity: qty });
+      await API.post(`/groups/join/${groupId}`, { userId: user?._id, quantity: qty });
       setMsg("Successfully pledged your harvest to the group!");
+      setJoinQty(prev => ({ ...prev, [groupId]: "" }));
       fetchGroups();
     } catch (e) {
-      setMsg("Failed to join group.");
+      setMsg(e.response?.data?.error || "Failed to join group.");
     }
   };
 
   const handleJoinByPoolId = async () => {
     if (!joinById.poolId || !joinById.quantity) return;
     try {
-      const res = await API.post("/groups/join-by-id", { poolId: joinById.poolId, userId: user._id, quantity: joinById.quantity });
+      await API.post("/groups/join-by-id", { poolId: joinById.poolId, userId: user?._id, quantity: joinById.quantity });
       setMsg(`Successfully joined pool ${joinById.poolId}!`);
       setJoinById({ poolId: "", quantity: "" });
       fetchGroups();
@@ -145,8 +152,12 @@ export default function FarmerGroups({ crops = [] }) {
               <div className="form-group mb-2">
                 <label className="field-label">Select Crop to Pool</label>
                 <select className="rs-select" value={newPool.cropId} onChange={e => setNewPool({...newPool, cropId: e.target.value})}>
-                  <option value="">-- Choose from your listed crops --</option>
-                  {crops.map(c => <option key={c._id} value={c._id}>{c.name} (Current: {c.quantity} {c.unit})</option>)}
+                  <option value="">-- Choose crop to pool --</option>
+                  {(crops && crops.length > 0 ? crops : platformCrops).map(c => (
+                    <option key={c._id} value={c._id}>
+                      {c.name} {c.quantity ? `(Available: ${c.quantity} ${c.unit || "kg"})` : `(₹${c.price}/${c.unit || "kg"})`}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="form-group mb-2">
@@ -180,15 +191,16 @@ export default function FarmerGroups({ crops = [] }) {
                       cropId: newPool.cropId,
                       targetQuantity: Number(newPool.targetQuantity),
                       quantity: Number(newPool.quantity),
-                      userId: user._id,
+                      userId: user?._id,
                       region: newPool.region,
                       poolId: poolId
                     });
                     setMsg(`Pool created successfully! Your Pool ID is ${poolId}`);
+                    setNewPool({ name: "", cropId: "", targetQuantity: "", quantity: "", region: "" });
                     setShowCreateModal(false);
                     fetchGroups();
                   } catch(e) {
-                    setMsg("Failed to create pool.");
+                    setMsg(e.response?.data?.error || "Failed to create pool.");
                   }
                 }}
               >

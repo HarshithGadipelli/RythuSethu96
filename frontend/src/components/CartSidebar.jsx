@@ -6,6 +6,7 @@ import API from "../api/api";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import PaymentModal from "./PaymentModal";
+import OrderInvoiceModal from "./OrderInvoiceModal";
 import { getImgSrc } from "../pages/Marketplace/Marketplace";
 
 export default function CartSidebar() {
@@ -18,6 +19,7 @@ export default function CartSidebar() {
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [placedOrderDetails, setPlacedOrderDetails] = useState(null);
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState(null);
   const [selectedPayMode, setSelectedPayMode] = useState("cod"); // "cod" | "online" | "wallet"
   const [showOnlinePaymentModal, setShowOnlinePaymentModal] = useState(false);
   const [isMultiLocation, setIsMultiLocation] = useState(false);
@@ -168,7 +170,7 @@ export default function CartSidebar() {
                 </button>
               </div>
               
-              {cart.length > 1 && (
+              {cart.length > 0 && (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.1)", padding: "4px 8px", borderRadius: "6px" }}>
                   <div style={{ fontSize: "0.75rem", fontWeight: 600 }}>🚚 Multi-Address Delivery?</div>
                   <label style={{ display: "flex", alignItems: "center", cursor: "pointer", background: "white", padding: "1px 6px", borderRadius: "10px" }}>
@@ -390,7 +392,23 @@ export default function CartSidebar() {
               </div>
 
               {/* Action Buttons */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "1.5rem", width: "100%", maxWidth: "600px" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", width: "100%", maxWidth: "650px" }}>
+                <button 
+                  onClick={() => {
+                    const firstOrder = placedOrderDetails.orders?.[0] || {
+                      totalAmount: placedOrderDetails.total,
+                      quantity: placedOrderDetails.count,
+                      customer: user,
+                      billNumber: `RS-INV-${Date.now().toString(36).toUpperCase()}`
+                    };
+                    setSelectedInvoiceOrder(firstOrder);
+                  }}
+                  className="hover-scale"
+                  style={{ flex: "1 1 100%", padding: "1rem", fontSize: "1.05rem", borderRadius: "14px", background: "#f0fdf4", color: "#166534", border: "2px solid #86efac", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.6rem", cursor: "pointer", fontWeight: 800, boxShadow: "0 4px 12px rgba(22,163,74,0.15)" }}
+                >
+                  📄 View & Print Official Tax Invoice / Bill
+                </button>
+
                 <button 
                   onClick={() => {
                     setPlacedOrderDetails(null);
@@ -398,7 +416,7 @@ export default function CartSidebar() {
                     navigate("/marketplace?tab=orders");
                   }}
                   className="btn-primary hover-scale"
-                  style={{ flex: "1 1 250px", padding: "1.25rem", fontSize: "1.1rem", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.6rem", boxShadow: "0 10px 25px rgba(22,163,74,0.3)" }}
+                  style={{ flex: "1 1 250px", padding: "1.1rem", fontSize: "1rem", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.6rem", boxShadow: "0 10px 25px rgba(22,163,74,0.3)" }}
                 >
                   🚚 Track My Orders
                 </button>
@@ -409,7 +427,7 @@ export default function CartSidebar() {
                     setIsCartOpen(false);
                   }}
                   className="hover-scale"
-                  style={{ flex: "1 1 250px", padding: "1.25rem", fontSize: "1.1rem", borderRadius: "14px", background: "white", color: "var(--text-dark)", border: "2px solid #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.6rem", cursor: "pointer", fontWeight: 700 }}
+                  style={{ flex: "1 1 250px", padding: "1.1rem", fontSize: "1rem", borderRadius: "14px", background: "white", color: "var(--text-dark)", border: "2px solid #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.6rem", cursor: "pointer", fontWeight: 700 }}
                 >
                   🛍️ Continue Shopping
                 </button>
@@ -417,6 +435,14 @@ export default function CartSidebar() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── TAX INVOICE & BILL MODAL ── */}
+      {selectedInvoiceOrder && (
+        <OrderInvoiceModal
+          order={selectedInvoiceOrder}
+          onClose={() => setSelectedInvoiceOrder(null)}
+        />
       )}
     </>
   );

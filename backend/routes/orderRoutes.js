@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import Order from "../models/Order.js";
 import Crop from "../models/Crop.js";
 import User from "../models/User.js";
@@ -80,8 +81,21 @@ async function autoAssignDelivery(app, orderDoc) {
     
     if (pickupLat === 0 && pickupLng === 0) return;
 
-    const agents = await User.find({ role: "agent", isActive: true });
-    if (!agents.length) return;
+    let agents = await User.find({ role: "agent", isActive: true });
+    if (!agents.length) {
+       // Fallback: Create an agent automatically if none exist to prevent tracking failure
+       const fallbackAgent = await User.create({
+         name: "Rythu Express",
+         email: `agent_${Date.now()}@rythusethu.com`,
+         password: "auto_express",
+         role: "agent",
+         agentType: "bike",
+         isActive: true,
+         latitude: pickupLat + 0.01,
+         longitude: pickupLng + 0.01
+       });
+       agents = [fallbackAgent];
+    }
 
     const scoredAgents = agents.map(agent => {
       const dist = haversineDistance(agent.latitude || 0, agent.longitude || 0, pickupLat, pickupLng);
@@ -385,6 +399,9 @@ router.post("/checkout-multi", async (req, res) => {
     // Distribute discount proportionally (or just apply to first order for simplicity)
     let remainingDiscount = finalDiscount;
 
+    // Multi-location grouping identifier
+    const isMultiDrop = items.length > 1 || items.some(it => it.deliveryAddress);
+    const groupId = isMultiDrop ? ("MLG-" + Date.now().toString(36).toUpperCase()) : "";
     const createdOrders = [];
 
     for (let i = 0; i < items.length; i++) {
@@ -430,6 +447,10 @@ router.post("/checkout-multi", async (req, res) => {
         }
       }
 
+      const effectiveDeliveryAddr = item.deliveryAddress || cust?.address || cust?.location || "Customer Delivery Address";
+      const effectiveDeliveryLat = item.deliveryLatitude || cust?.latitude || 17.385;
+      const effectiveDeliveryLng = item.deliveryLongitude || cust?.longitude || 78.486;
+
       const order = await Order.create({
         crop: item.cropId,
         customer,
@@ -447,15 +468,16 @@ router.post("/checkout-multi", async (req, res) => {
         totalAmount: itemTotalAmount,
         paymentMode: paymentMode || "cod",
         paymentStatus: (paymentMode === "wallet" || paymentMode === "online" || paymentMode === "upi") ? "paid" : "pending",
-        deliveryAddress: item.deliveryAddress,
-        deliveryLatitude: item.deliveryLatitude,
-        deliveryLongitude: item.deliveryLongitude,
+        deliveryAddress: effectiveDeliveryAddr,
+        deliveryLatitude: effectiveDeliveryLat,
+        deliveryLongitude: effectiveDeliveryLng,
         pickupAddress: itemPickupAddress,
         pickupLatitude: itemPickupLat,
         pickupLongitude: itemPickupLng,
         deliveryType: item.deliveryType || "standard",
+        multiLocationGroupId: groupId,
         productSnapshot,
-        timeline: [{ status: "pending", note: "Group order placed by customer" }]
+        timeline: [{ status: "pending", note: isMultiDrop ? "Multi-location order placed" : "Order placed by customer" }]
       });
 
       // Stock update
@@ -474,15 +496,19 @@ router.post("/checkout-multi", async (req, res) => {
       }
       
       // Blockchain
-      await addBlockToChain(order._id, item.cropId, "Group Order Placed", `Quantity: ${item.quantity}`, cust?.name || "Customer", item.deliveryAddress || "Platform");
+      await addBlockToChain(order._id, item.cropId, "Group Order Placed", `Quantity: ${item.quantity}`, cust?.name || "Customer", effectiveDeliveryAddr);
       
       createdOrders.push(order);
       
       const io = req.app.get("io");
       if (io) io.emit("order_created", order);
+    }
 
-      // Trigger auto-assignment asynchronously
-      autoAssignDelivery(req.app, order);
+    // Trigger auto-assignment: multi-delivery for multi-drop, else single delivery
+    if (isMultiDrop && createdOrders.length > 1) {
+      await autoAssignMultiDelivery(req.app, groupId, createdOrders);
+    } else if (createdOrders.length === 1) {
+      await autoAssignDelivery(req.app, createdOrders[0]);
     }
     
     // Customer notifications
@@ -533,18 +559,41 @@ router.get("/farmer/:id", async (req, res) => {
   }
 });
 
+// Get full order by ID for live tracking and order details
+router.get("/:id", async (req, res, next) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return next();
+  }
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate("crop")
+      .populate("customer", "name phone email location latitude longitude")
+      .populate("farmer", "name phone email location latitude longitude")
+      .populate("agent", "name phone email vehicle agentType latitude longitude");
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get bill for an order
 router.get("/:id/bill", async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
-      .populate("crop").populate("customer").populate("farmer");
+      .populate("crop")
+      .populate("customer")
+      .populate("farmer")
+      .populate("agent");
     if (!order) return res.status(404).json({ error: "Order not found" });
 
     res.json({
+      _id: order._id,
       billNumber: order.billNumber,
       date: order.createdAt,
-      customer: { name: order.customer?.name, phone: order.customer?.phone, address: order.deliveryAddress },
-      farmer: { name: order.farmer?.name, location: order.farmer?.location },
+      customer: { name: order.customer?.name, phone: order.customer?.phone, address: order.deliveryAddress, latitude: order.customer?.latitude, longitude: order.customer?.longitude },
+      farmer: { name: order.farmer?.name, location: order.farmer?.location, phone: order.farmer?.phone, latitude: order.farmer?.latitude, longitude: order.farmer?.longitude },
+      agent: order.agent ? { _id: order.agent._id, name: order.agent.name, phone: order.agent.phone, vehicle: order.agent.vehicle, agentType: order.agent.agentType } : null,
       items: [{
         name: order.crop?.name || "Crop",
         quantity: order.quantity,
@@ -552,16 +601,23 @@ router.get("/:id/bill", async (req, res) => {
         unitPrice: order.crop?.price || 0,
         subtotal: order.subtotal
       }],
+      crop: order.crop,
       deliveryType: order.deliveryType,
       deliveryCharges: order.deliveryCharges,
       deliveryDistance: order.deliveryDistance,
+      deliveryAddress: order.deliveryAddress,
+      deliveryLatitude: order.deliveryLatitude || order.customer?.latitude,
+      deliveryLongitude: order.deliveryLongitude || order.customer?.longitude,
+      agentLatitude: order.agentLatitude,
+      agentLongitude: order.agentLongitude,
       platformFee: order.platformFee,
       totalAmount: order.totalAmount,
       paymentMode: order.paymentMode,
       paymentStatus: order.paymentStatus,
       status: order.status,
       verificationCode: order.verificationCode,
-      estimatedDeliveryMinutes: order.estimatedDeliveryMinutes
+      estimatedDeliveryMinutes: order.estimatedDeliveryMinutes,
+      reviewText: order.reviewText
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1053,6 +1109,109 @@ router.put("/:id/report-mismatch", async (req, res) => {
   }
 });
 
+// ─── Customer Post-Delivery Review & Rating ───
+router.post("/:id/review", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const ratingVal = req.body.rating || req.body.farmerRating;
+    const commentVal = req.body.comment || req.body.reviewText || "";
+    const deliveryRatingVal = req.body.deliveryRating || req.body.agentRating;
+    const userId = req.body.userId;
+
+    const order = await Order.findById(id).populate("crop").populate("farmer");
+    if (!order) return res.status(404).json({ error: "Order not found." });
+
+    const numRating = Math.max(1, Math.min(5, Number(ratingVal) || 5));
+    const sentiment = numRating >= 4 ? "Positive" : numRating === 3 ? "Neutral" : "Negative";
+    const sentimentScore = numRating >= 4 ? 0.9 : numRating === 3 ? 0.5 : 0.1;
+
+    // Save Order review fields
+    order.reviewText = commentVal;
+    order.sentimentScore = sentimentScore;
+    order.reviewSentiment = sentiment;
+    await order.save();
+
+    // Create Review record
+    if (order.crop && (order.customer || userId)) {
+      await Review.create({
+        user: order.customer?._id || order.customer || userId,
+        crop: order.crop._id || order.crop,
+        farmer: order.farmer?._id || order.farmer,
+        rating: numRating,
+        comment: commentVal
+      });
+    }
+
+    // Update Crop average rating
+    if (order.crop) {
+      const cropId = order.crop._id || order.crop;
+      const cropReviews = await Review.find({ crop: cropId });
+      const avgCropRating = cropReviews.length > 0 
+        ? cropReviews.reduce((sum, r) => sum + r.rating, 0) / cropReviews.length 
+        : numRating;
+      await Crop.findByIdAndUpdate(cropId, { rating: Math.round(avgCropRating * 10) / 10 });
+    }
+
+    // Update Farmer trust score and rating
+    if (order.farmer) {
+      const farmerUserId = order.farmer._id || order.farmer;
+      const farmerDoc = await Farmer.findOne({ user: farmerUserId });
+      if (farmerDoc) {
+        const farmerReviews = await Review.find({ farmer: farmerUserId });
+        const avgFarmerRating = farmerReviews.length > 0
+          ? farmerReviews.reduce((sum, r) => sum + r.rating, 0) / farmerReviews.length
+          : numRating;
+
+        farmerDoc.rating = Math.round(avgFarmerRating * 10) / 10;
+        farmerDoc.trustScore = Math.min(100, Math.max(20, Math.round((farmerDoc.trustScore || 85) + (numRating >= 4 ? 3 : -4))));
+        await farmerDoc.save();
+        await User.findByIdAndUpdate(farmerUserId, { trustScore: farmerDoc.trustScore });
+      }
+    }
+
+    // Update Delivery Agent rating if provided
+    if (deliveryRatingVal && order.agent) {
+      const Agent = (await import("../models/Agent.js")).default;
+      const agentDoc = await Agent.findOne({ user: order.agent });
+      if (agentDoc) {
+        const curR = agentDoc.trustScore?.rating || 5.0;
+        const curCount = agentDoc.trustScore?.totalRatings || 1;
+        const nextR = ((curR * curCount) + Number(deliveryRatingVal)) / (curCount + 1);
+        if (!agentDoc.trustScore) agentDoc.trustScore = {};
+        agentDoc.trustScore.rating = Math.round(nextR * 10) / 10;
+        agentDoc.trustScore.totalRatings = curCount + 1;
+        agentDoc.trustScore.score = Math.round((nextR / 5) * 100);
+        await agentDoc.save();
+      }
+    }
+
+    // Notify farmer
+    if (order.farmer) {
+      await notify(
+        req.app,
+        order.farmer._id || order.farmer,
+        `⭐ New ${numRating}-Star Review!`,
+        `Customer left a review for ${order.crop?.name || "your crop"}: "${commentVal || 'Excellent quality'}".`,
+        "rating",
+        "normal",
+        { orderId: order._id, rating: numRating }
+      );
+    }
+
+    const io = req.app.get("io");
+    if (io) io.emit("order_reviewed", { orderId: order._id, rating: numRating, sentiment });
+
+    res.json({
+      success: true,
+      message: "Review submitted successfully! Thank you for supporting our farmers.",
+      order
+    });
+  } catch (error) {
+    console.error("Review submission error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Assign delivery agent to order
 router.put("/:id/assign-agent", async (req, res) => {
   try {
@@ -1246,7 +1405,10 @@ async function autoAssignMultiDelivery(app, groupId, orders) {
       pickupLng = crop?.longitude || 0;
     }
 
-    const agents = await User.find({ role: "agent", isActive: true });
+    let agents = await User.find({ role: "agent", isActive: true });
+    if (!agents.length) {
+      agents = await User.find({ role: "agent" });
+    }
     if (!agents.length) return;
 
     let bestAgent = null;

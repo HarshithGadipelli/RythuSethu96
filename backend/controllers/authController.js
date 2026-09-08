@@ -315,9 +315,124 @@ export const getProfile = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.user._id, req.body, { new: true }).select("-password");
+    const updateData = { ...req.body };
+    if (updateData.latitude !== undefined && updateData.longitude !== undefined) {
+      const lat = parseFloat(updateData.latitude);
+      const lng = parseFloat(updateData.longitude);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        updateData.latitude = lat;
+        updateData.longitude = lng;
+        updateData.geoPosition = { type: "Point", coordinates: [lng, lat] };
+      }
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id, updateData, { new: true }).select("-password");
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Sync to role profile if location or coords updated
+    if (updateData.location || updateData.latitude) {
+      if (user.role === "farmer") {
+        await Farmer.findOneAndUpdate({ user: user._id }, {
+          ...(updateData.location ? { farmLocation: updateData.location } : {}),
+          ...(updateData.latitude ? { latitude: updateData.latitude, longitude: updateData.longitude } : {})
+        });
+      } else if (user.role === "customer") {
+        await Customer.findOneAndUpdate({ user: user._id }, {
+          ...(updateData.location ? { address: updateData.location } : {}),
+          ...(updateData.latitude ? { latitude: updateData.latitude, longitude: updateData.longitude } : {})
+        });
+      } else if (user.role === "agent") {
+        await Agent.findOneAndUpdate({ user: user._id }, {
+          ...(updateData.location ? { location: updateData.location } : {}),
+          ...(updateData.latitude ? { latitude: updateData.latitude, longitude: updateData.longitude } : {})
+        });
+      }
+    }
+
     res.json(user ? formatUserPayload(user) : null);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateLocation = async (req, res) => {
+  try {
+    const { location, latitude, longitude } = req.body;
+    if (latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ error: "Latitude and longitude are required" });
+    }
+
+    const latNum = parseFloat(latitude);
+    const lngNum = parseFloat(longitude);
+
+    if (isNaN(latNum) || isNaN(lngNum)) {
+      return res.status(400).json({ error: "Invalid coordinates format" });
+    }
+
+    const updateData = {
+      latitude: latNum,
+      longitude: lngNum,
+      geoPosition: { type: "Point", coordinates: [lngNum, latNum] }
+    };
+
+    if (location !== undefined) {
+      updateData.location = location;
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id, updateData, { new: true }).select("-password");
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Sync to role profile
+    let profile = null;
+    if (user.role === "farmer") {
+      profile = await Farmer.findOneAndUpdate(
+        { user: user._id },
+        { 
+          farmLocation: user.location || location || "",
+          latitude: latNum,
+          longitude: lngNum
+        },
+        { new: true }
+      );
+    } else if (user.role === "customer") {
+      profile = await Customer.findOneAndUpdate(
+        { user: user._id },
+        { 
+          address: user.location || location || "",
+          latitude: latNum,
+          longitude: lngNum
+        },
+        { new: true }
+      );
+    } else if (user.role === "agent") {
+      profile = await Agent.findOneAndUpdate(
+        { user: user._id },
+        { 
+          location: user.location || location || "",
+          latitude: latNum,
+          longitude: lngNum
+        },
+        { new: true }
+      );
+      // Emit live agent location to active listeners
+      const io = req.app?.get?.("io");
+      if (io) {
+        io.emit("agent_location_update", {
+          agentId: user._id,
+          name: user.name,
+          lat: latNum,
+          lng: lngNum
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      user: formatUserPayload(user),
+      profile
+    });
+  } catch (error) {
+    console.error("updateLocation error:", error);
     res.status(500).json({ error: error.message });
   }
 };

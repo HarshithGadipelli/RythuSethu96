@@ -5,6 +5,7 @@ import { ShoppingBag, Star, Package, CheckCircle, Clock, MapPin } from "lucide-r
 import API from "../../api/api";
 import LiveMapModal from "../../components/LiveMapModal";
 import AuthenticityCertificate from "../../components/AuthenticityCertificate";
+import OrderInvoiceModal from "../../components/OrderInvoiceModal";
 import { useAuth } from "../../context/AuthContext";
 import { getImgSrc } from "./Marketplace";
 
@@ -18,6 +19,7 @@ export default function CustomerOrders({ orders, fetchOrders }) {
   const [msg, setMsg] = useState("");
   const [trackingOrder, setTrackingOrder] = useState(null);
   const [certificateOrder, setCertificateOrder] = useState(null);
+  const [invoiceOrder, setInvoiceOrder] = useState(null);
   const [cancelModal, setCancelModal] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [subscriptions, setSubscriptions] = useState([]);
@@ -203,6 +205,10 @@ export default function CustomerOrders({ orders, fetchOrders }) {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "flex-end" }}>
+                <button onClick={() => setInvoiceOrder(o)} className="btn-secondary" style={{ padding: "0.6rem 1rem", fontSize: "0.9rem", display: "flex", gap: "0.5rem", alignItems: "center", background: "#f0fdf4", color: "#166534", border: "1px solid #86efac", fontWeight: 700 }}>
+                  📄 View Tax Bill
+                </button>
+
                 {(o.status === "in_transit" || o.status === "assigned" || o.status === "picked_up") && (
                   <button onClick={() => setTrackingOrder(o)} className="btn-primary" style={{ padding: "0.6rem 1rem", fontSize: "0.9rem", display: "flex", gap: "0.5rem", alignItems: "center", background: "#2563eb" }}>
                     <MapPin size={16} /> Track Live
@@ -413,6 +419,10 @@ export default function CustomerOrders({ orders, fetchOrders }) {
 
       {certificateOrder && (
         <AuthenticityCertificate order={certificateOrder} onClose={() => setCertificateOrder(null)} />
+      )}
+
+      {invoiceOrder && (
+        <OrderInvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} />
       )}
     </div>
   );

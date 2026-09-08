@@ -1,167 +1,214 @@
 import React, { useState, useEffect } from "react";
-import { Wallet, TrendingUp, TrendingDown, Clock, CreditCard, Banknote, Calendar, BarChart3, Receipt, IndianRupee } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, Clock, CreditCard, Banknote, Calendar, BarChart3, Receipt, IndianRupee, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import API from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 
 export default function FarmerFinancialLedger({ orders = [] }) {
   const { user } = useAuth();
-  const [ledgerData, setLedgerData] = useState([]);
-  const [summary, setSummary] = useState({ totalSales: 0, platformFees: 0, netEarnings: 0, pendingCOD: 0, settledOnline: 0 });
+  const [settlementData, setSettlementData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
 
   const PLATFORM_FEE_PERCENT = 2; // 2%
 
   useEffect(() => {
-    // Generate ledger from orders
-    if (!orders || orders.length === 0) return;
+    fetchSettlements();
+  }, [user]);
 
-    let ts = 0, pf = 0, ne = 0, pc = 0, so = 0;
-    
-    const transactions = orders.map(order => {
-      const isDelivered = order.status === "delivered";
-      const isPaid = order.paymentStatus === "paid";
-      const isCOD = order.paymentMode === "cod";
-      
-      const saleAmount = order.totalAmount || 0;
-      const fee = saleAmount * (PLATFORM_FEE_PERCENT / 100);
-      const net = saleAmount - fee;
-      
-      // Accumulate totals based on delivered/paid status
-      if (isDelivered || isPaid) {
-        ts += saleAmount;
-        pf += fee;
-        ne += net;
-        
-        if (isCOD && !isPaid) {
-          pc += net;
-        } else if (isPaid) {
-          so += net;
-        }
-      }
+  const fetchSettlements = async () => {
+    try {
+      setLoading(true);
+      const res = await API.get("/farmer/settlements");
+      setSettlementData(res.data);
+    } catch (err) {
+      console.error("Failed to load farmer settlements", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      return {
-        id: order._id,
-        date: new Date(order.createdAt),
-        crop: order.crop?.name || "Crop",
-        customer: order.customer?.name || "Customer",
-        amount: saleAmount,
-        fee,
-        net,
-        paymentMode: order.paymentMode || "online",
-        status: order.status,
-        paymentStatus: order.paymentStatus
-      };
-    }).sort((a, b) => b.date - a.date);
+  const nextPayoutDate = settlementData?.nextPayoutDate 
+    ? new Date(settlementData.nextPayoutDate).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })
+    : "Next Bi-Weekly Cutoff";
 
-    setLedgerData(transactions);
-    setSummary({ totalSales: ts, platformFees: pf, netEarnings: ne, pendingCOD: pc, settledOnline: so });
-  }, [orders]);
+  const daysRemaining = settlementData?.daysRemainingInCycle ?? 14;
+  const pastSettlements = settlementData?.pastSettlements || [];
+  const pendingBalance = user?.pendingSettlement || settlementData?.pendingSettlementBalance || 0;
 
-  const filteredLedger = ledgerData.filter(tx => {
-    if (filter === "all") return true;
-    if (filter === "settled") return tx.paymentStatus === "paid";
-    if (filter === "pending") return tx.paymentStatus === "pending" || tx.paymentStatus === "cod_pending";
-    return true;
-  });
+  // Compute stats from orders
+  const totalSales = orders
+    .filter(o => o.status === "delivered" || o.paymentStatus === "paid")
+    .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+
+  const platformFees = Math.round(totalSales * (PLATFORM_FEE_PERCENT / 100));
+  const netEarnings = Math.max(0, totalSales - platformFees);
 
   return (
-    <div className="glass-card" style={{ padding: "1.5rem" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
-        <Wallet size={28} color="var(--green-mid)" />
-        <h2 style={{ margin: 0, color: "var(--text-dark)" }}>Financial Ledger</h2>
-      </div>
-
-      <p style={{ color: "var(--text-muted)", marginBottom: "2rem" }}>
-        Track your sales, platform fees, and net earnings. Monitor COD collections vs Online settlements.
-      </p>
-
-      {/* SUMMARY CARDS */}
-      <div className="grid-4" style={{ marginBottom: "2rem" }}>
-        <div style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", padding: "1.2rem", borderRadius: "12px", color: "white", boxShadow: "0 4px 15px rgba(16, 185, 129, 0.2)" }}>
-          <p style={{ fontSize: "0.85rem", opacity: 0.9, marginBottom: "0.3rem", display: "flex", alignItems: "center", gap: "0.4rem" }}><TrendingUp size={16}/> Gross Sales</p>
-          <h3 style={{ fontSize: "1.8rem", margin: 0 }}>₹{summary.totalSales.toLocaleString(undefined, {maximumFractionDigits: 0})}</h3>
-        </div>
-
-        <div style={{ background: "white", padding: "1.2rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 2px 10px rgba(0,0,0,0.02)" }}>
-          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "0.3rem", display: "flex", alignItems: "center", gap: "0.4rem" }}><Receipt size={16}/> Platform Fees (-2%)</p>
-          <h3 style={{ fontSize: "1.8rem", margin: 0, color: "var(--red-deep)" }}>-₹{summary.platformFees.toLocaleString(undefined, {maximumFractionDigits: 0})}</h3>
-        </div>
-
-        <div style={{ background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)", padding: "1.2rem", borderRadius: "12px", color: "white", boxShadow: "0 4px 15px rgba(59, 130, 246, 0.2)" }}>
-          <p style={{ fontSize: "0.85rem", opacity: 0.9, marginBottom: "0.3rem", display: "flex", alignItems: "center", gap: "0.4rem" }}><CreditCard size={16}/> Online Settled</p>
-          <h3 style={{ fontSize: "1.8rem", margin: 0 }}>₹{summary.settledOnline.toLocaleString(undefined, {maximumFractionDigits: 0})}</h3>
-        </div>
-
-        <div style={{ background: "white", padding: "1.2rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 2px 10px rgba(0,0,0,0.02)" }}>
-          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "0.3rem", display: "flex", alignItems: "center", gap: "0.4rem" }}><Banknote size={16}/> Pending COD</p>
-          <h3 style={{ fontSize: "1.8rem", margin: 0, color: "var(--yellow-wheat)" }}>₹{summary.pendingCOD.toLocaleString(undefined, {maximumFractionDigits: 0})}</h3>
+    <div className="glass-card" style={{ padding: "1.75rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div style={{ width: 44, height: 44, borderRadius: "12px", background: "rgba(22, 163, 74, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "#16a34a" }}>
+            <Wallet size={24} />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, color: "var(--text-dark)", fontSize: "1.4rem" }}>Farmer Financial & Settlement Ledger</h2>
+            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.85rem" }}>
+              14-day bi-weekly payout accounting, harvest sales, and bank settlements.
+            </p>
+          </div>
         </div>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <h3 style={{ fontSize: "1.2rem", color: "var(--text-dark)" }}>Transaction History</h3>
-        <select className="rs-select" style={{ width: "auto" }} value={filter} onChange={e => setFilter(e.target.value)}>
-          <option value="all">All Transactions</option>
-          <option value="settled">Settled</option>
-          <option value="pending">Pending</option>
-        </select>
+      {/* ─── 2-WEEK BI-WEEKLY SETTLEMENT POLICY BANNER ─── */}
+      <div style={{
+        background: "linear-gradient(135deg, #064e3b 0%, #166534 100%)",
+        borderRadius: "16px", padding: "1.25rem 1.5rem", color: "white",
+        marginBottom: "1.75rem", boxShadow: "0 8px 20px rgba(6, 78, 59, 0.25)"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <Calendar size={28} style={{ color: "#86efac" }} />
+            <div>
+              <div style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "1px", color: "#bbf7d0", fontWeight: 700 }}>
+                Bi-Weekly Payout Cycle
+              </div>
+              <div style={{ fontSize: "1.15rem", fontWeight: 800 }}>
+                14-Day Farmer Settlement Schedule
+              </div>
+              <p style={{ margin: "3px 0 0 0", fontSize: "0.82rem", color: "#dcfce7" }}>
+                🔒 Harvest sales are locked and disbursed every 2 weeks directly to your registered UPI / Bank account.
+              </p>
+            </div>
+          </div>
+
+          <div style={{
+            background: "rgba(255, 255, 255, 0.12)", backdropFilter: "blur(6px)",
+            padding: "0.6rem 1.2rem", borderRadius: "12px", border: "1px solid rgba(255, 255, 255, 0.2)",
+            textAlign: "right"
+          }}>
+            <div style={{ fontSize: "0.75rem", color: "#bbf7d0", fontWeight: 600 }}>NEXT SETTLEMENT DATE</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#ffffff" }}>{nextPayoutDate}</div>
+            <div style={{ fontSize: "0.72rem", color: "#fef08a", fontWeight: 700 }}>
+              ⏱️ {daysRemaining} days remaining in cycle
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div style={{ overflowX: "auto" }}>
-        <table className="rs-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Order Ref</th>
-              <th>Crop & Customer</th>
-              <th>Payment Mode</th>
-              <th>Gross Amount</th>
-              <th>Platform Fee</th>
-              <th>Net Earnings</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredLedger.length === 0 ? (
-              <tr><td colSpan="8" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No transactions found.</td></tr>
-            ) : (
-              filteredLedger.map((tx) => (
-                <tr key={tx.id}>
-                  <td>
-                    <span style={{ fontSize: "0.85rem", color: "var(--text-mid)" }}>{tx.date.toLocaleDateString()}</span>
-                  </td>
-                  <td>
-                    <span style={{ fontFamily: "monospace", color: "var(--primary)", background: "var(--green-pale)", padding: "0.2rem 0.4rem", borderRadius: "4px" }}>
-                      #{tx.id.substring(0,6).toUpperCase()}
-                    </span>
-                  </td>
-                  <td>
-                    <strong>{tx.crop}</strong><br/>
-                    <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{tx.customer}</span>
-                  </td>
-                  <td>
-                    {tx.paymentMode === "cod" ? (
-                      <span className="badge" style={{ background: "#fef3c7", color: "#d97706" }}><Banknote size={12}/> COD</span>
-                    ) : (
-                      <span className="badge" style={{ background: "#e0e7ff", color: "#4338ca" }}><CreditCard size={12}/> Online</span>
-                    )}
-                  </td>
-                  <td>₹{tx.amount.toLocaleString(undefined, {maximumFractionDigits: 2})}</td>
-                  <td style={{ color: "var(--red-deep)" }}>-₹{tx.fee.toLocaleString(undefined, {maximumFractionDigits: 2})}</td>
-                  <td style={{ color: "var(--green-deep)", fontWeight: "bold" }}>₹{tx.net.toLocaleString(undefined, {maximumFractionDigits: 2})}</td>
-                  <td>
-                    {tx.paymentStatus === "paid" ? (
-                      <span className="badge" style={{ background: "#dcfce7", color: "#15803d" }}>Settled</span>
-                    ) : (
-                      <span className="badge" style={{ background: "#f1f5f9", color: "#64748b" }}>Pending</span>
-                    )}
-                  </td>
+      {/* ─── SUMMARY STATS ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
+        {/* Pending Settlement Balance */}
+        <div style={{ background: "white", padding: "1.25rem", borderRadius: "14px", border: "1.5px solid #86efac", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+            <span style={{ fontSize: "0.82rem", color: "#166534", fontWeight: 700 }}>PENDING 2-WEEK SETTLEMENT</span>
+            <div style={{ width: 32, height: 32, borderRadius: "8px", background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center", color: "#16a34a" }}>
+              <TrendingUp size={18} />
+            </div>
+          </div>
+          <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "#166534" }}>
+            ₹{pendingBalance.toLocaleString()}
+          </div>
+          <div style={{ fontSize: "0.75rem", color: "#15803d", marginTop: "4px", fontWeight: 600 }}>
+            Scheduled for disbursement on {nextPayoutDate}
+          </div>
+        </div>
+
+        {/* Total Gross Sales */}
+        <div style={{ background: "white", padding: "1.25rem", borderRadius: "14px", border: "1.5px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+            <span style={{ fontSize: "0.82rem", color: "#64748b", fontWeight: 700 }}>TOTAL HARVEST SALES</span>
+            <div style={{ width: 32, height: 32, borderRadius: "8px", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", color: "#475569" }}>
+              <IndianRupee size={18} />
+            </div>
+          </div>
+          <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "#1e293b" }}>
+            ₹{totalSales.toLocaleString()}
+          </div>
+          <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px", fontWeight: 600 }}>
+            Across {orders.filter(o => o.status === 'delivered').length} completed deliveries
+          </div>
+        </div>
+
+        {/* Registered Bank/UPI Account */}
+        <div style={{ background: "white", padding: "1.25rem", borderRadius: "14px", border: "1.5px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+            <span style={{ fontSize: "0.82rem", color: "#64748b", fontWeight: 700 }}>PAYOUT DESTINATION</span>
+            <div style={{ width: 32, height: 32, borderRadius: "8px", background: "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", color: "#2563eb" }}>
+              <CreditCard size={18} />
+            </div>
+          </div>
+          <div style={{ fontSize: "1rem", fontWeight: 800, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {user?.upiId || settlementData?.upiId || user?.bankAccountNumber || "Direct Bank Deposit"}
+          </div>
+          <div style={{ fontSize: "0.75rem", color: "#2563eb", marginTop: "4px", fontWeight: 600 }}>
+            ✅ Verified Bank / UPI Account
+          </div>
+        </div>
+      </div>
+
+      {/* ─── PAST BI-WEEKLY SETTLEMENTS TABLE ─── */}
+      <div style={{ marginTop: "2rem" }}>
+        <h3 style={{ fontSize: "1.15rem", color: "#1e293b", fontWeight: 800, marginBottom: "1rem" }}>
+          📜 Bi-Weekly Settlement Disbursement History
+        </h3>
+
+        {pastSettlements.length === 0 ? (
+          <div style={{
+            padding: "2.5rem", textAlign: "center", background: "#f8fafc",
+            borderRadius: "14px", border: "1px dashed #cbd5e1"
+          }}>
+            <Calendar size={36} color="#94a3b8" style={{ marginBottom: "0.5rem" }} />
+            <div style={{ fontWeight: 700, color: "#475569" }}>No Prior Settlements Disbursed Yet</div>
+            <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+              Your accrued sales will be disbursed in the upcoming bi-weekly settlement cycle ({nextPayoutDate}).
+            </p>
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table className="rs-table">
+              <thead>
+                <tr>
+                  <th>Settlement Ref</th>
+                  <th>Cycle Period</th>
+                  <th>Payout Date</th>
+                  <th>Amount</th>
+                  <th>Payment Method</th>
+                  <th>Status</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {pastSettlements.map(s => (
+                  <tr key={s._id}>
+                    <td>
+                      <strong style={{ fontFamily: "monospace", color: "#166534" }}>{s.transactionReference}</strong>
+                    </td>
+                    <td style={{ fontSize: "0.82rem" }}>
+                      {new Date(s.cycleStartDate).toLocaleDateString()} - {new Date(s.cycleEndDate).toLocaleDateString()}
+                    </td>
+                    <td style={{ fontSize: "0.82rem" }}>
+                      {new Date(s.payoutDate || s.createdAt).toLocaleDateString()}
+                    </td>
+                    <td>
+                      <strong style={{ color: "#166534", fontSize: "1rem" }}>₹{s.amount.toLocaleString()}</strong>
+                    </td>
+                    <td style={{ fontSize: "0.82rem" }}>
+                      {s.paymentMethod?.toUpperCase()} {s.upiId ? `(${s.upiId})` : ""}
+                    </td>
+                    <td>
+                      <span style={{
+                        background: "#dcfce7", color: "#166534", padding: "3px 8px",
+                        borderRadius: "100px", fontSize: "0.75rem", fontWeight: 700
+                      }}>
+                        ✅ Completed
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

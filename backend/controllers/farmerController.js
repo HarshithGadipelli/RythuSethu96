@@ -51,33 +51,56 @@ export const addCrop = async (req, res) => {
     if (cropData.isPesticideFree === 'true' || cropData.isPesticideFree === true) cropData.isPesticideFree = true;
     else cropData.isPesticideFree = false;
 
-    // Backend geocoding fallback if frontend didn't send coordinates, OR if farmer typed a custom location
-    // We prioritize the typed text `farmLocation` over the device's GPS if the text explicitly doesn't match
-    const addr = cropData.location || cropData.farmLocation;
-    
-    // If a manual address was typed, ALWAYS try to geocode it instead of just trusting the browser's GPS
-    // Because a farmer might be in Hyderabad but typing "Jagtial" to list their farm's crop.
-    if (addr && addr.trim().length > 3) {
+    // Handle exact location & coordinates:
+    let lat = cropData.latitude !== undefined && cropData.latitude !== null && cropData.latitude !== "" ? parseFloat(cropData.latitude) : null;
+    let lng = cropData.longitude !== undefined && cropData.longitude !== null && cropData.longitude !== "" ? parseFloat(cropData.longitude) : null;
+
+    const addr = (cropData.farmLocation || cropData.location || "").trim();
+
+    // If explicit coordinates weren't sent, but an address was typed, try geocoding
+    if ((lat === null || lng === null || isNaN(lat) || isNaN(lng)) && addr.length > 3) {
       try {
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`;
         const r = await fetch(url, { headers: { "User-Agent": "RythuSethuApp/1.0" } });
         const data = await r.json();
         if (data && data.length > 0) {
-          // Overwrite any device GPS with the actual geocoded location they typed
-          cropData.latitude = parseFloat(data[0].lat);
-          cropData.longitude = parseFloat(data[0].lon);
+          lat = parseFloat(data[0].lat);
+          lng = parseFloat(data[0].lon);
         }
       } catch (e) {
         console.error("Geocoding failed during crop creation:", e.message);
       }
-    } else if (!cropData.latitude || cropData.latitude === "" || cropData.latitude === "null" ||
-               !cropData.longitude || cropData.longitude === "" || cropData.longitude === "null") {
-      // If no address was typed AND no coordinates were sent, we'll try to let mongoose handle it (will be null)
     }
 
-    // Cleanup empty strings to prevent Mongoose CastError
-    if (cropData.latitude === "" || cropData.latitude === "null" || isNaN(cropData.latitude)) delete cropData.latitude;
-    if (cropData.longitude === "" || cropData.longitude === "null" || isNaN(cropData.longitude)) delete cropData.longitude;
+    // If still no coordinates, inherit from farmer user profile
+    if ((lat === null || lng === null || isNaN(lat) || isNaN(lng)) && cropData.farmer) {
+      try {
+        const farmerUser = await User.findById(cropData.farmer);
+        if (farmerUser) {
+          if (farmerUser.latitude && farmerUser.longitude) {
+            lat = parseFloat(farmerUser.latitude);
+            lng = parseFloat(farmerUser.longitude);
+          }
+          if (!cropData.location && farmerUser.location) {
+            cropData.location = farmerUser.location;
+          }
+          if (!cropData.farmLocation) {
+            cropData.farmLocation = farmerUser.farmName || farmerUser.location || "";
+          }
+        }
+      } catch (e) {
+        console.error("Farmer profile coordinates inheritance error:", e.message);
+      }
+    }
+
+    if (lat !== null && !isNaN(lat)) cropData.latitude = lat;
+    else delete cropData.latitude;
+
+    if (lng !== null && !isNaN(lng)) cropData.longitude = lng;
+    else delete cropData.longitude;
+
+    if (!cropData.farmLocation && cropData.location) cropData.farmLocation = cropData.location;
+    if (!cropData.location && cropData.farmLocation) cropData.location = cropData.farmLocation;
 
     const crop = await Crop.create(cropData);
     

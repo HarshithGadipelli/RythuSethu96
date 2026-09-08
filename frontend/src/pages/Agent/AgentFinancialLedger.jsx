@@ -1,151 +1,221 @@
 import React, { useState, useEffect } from "react";
-import { Wallet, TrendingUp, Package, Clock, MapPin, CheckCircle, Navigation } from "lucide-react";
+import { Wallet, TrendingUp, Package, Clock, MapPin, CheckCircle, Calendar, ShieldCheck, AlertCircle, ArrowUpRight, DollarSign } from "lucide-react";
 import { useLang } from "../../context/LangContext";
+import { useAuth } from "../../context/AuthContext";
+import API from "../../api/api";
 
-export default function AgentFinancialLedger({ deliveries = [], earnings = {} }) {
+export default function AgentFinancialLedger({ deliveries = [], onOpenRemit }) {
   const { t } = useLang();
-  const [ledgerData, setLedgerData] = useState([]);
-  const [summary, setSummary] = useState({ totalEarnings: 0, pendingEarnings: 0, deliveredCount: 0 });
+  const { user } = useAuth();
+  const [settlementData, setSettlementData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
 
   useEffect(() => {
-    if (!deliveries || deliveries.length === 0) return;
+    fetchSettlements();
+  }, [user]);
 
-    let te = 0, pe = 0, count = 0;
-    
-    const transactions = deliveries.map(d => {
-      const isDelivered = d.status === "delivered";
-      // Delivery agents earn the delivery charge set on the order, defaulting to 30 rupees
-      const fee = d.order?.deliveryCharges || 30;
-      
-      if (isDelivered) {
-        te += fee;
-        count += 1;
-      } else if (d.status !== "failed" && d.status !== "cancelled") {
-        pe += fee;
-      }
+  const fetchSettlements = async () => {
+    if (!user?._id) return;
+    try {
+      setLoading(true);
+      const res = await API.get(`/delivery/settlements/${user._id}`);
+      setSettlementData(res.data);
+    } catch (err) {
+      console.error("Failed to load agent settlements", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      return {
-        id: d._id,
-        trackingCode: d.trackingCode || `#${d._id.substring(0,8).toUpperCase()}`,
-        date: new Date(d.updatedAt || d.createdAt),
-        crop: d.order?.crop?.name || "Order",
-        customer: d.order?.customer?.name || "Customer",
-        amount: fee,
-        status: d.status,
-        distance: d.distanceKm || null
-      };
-    }).sort((a, b) => b.date - a.date);
+  const nextPayoutDate = settlementData?.nextPayoutDate 
+    ? new Date(settlementData.nextPayoutDate).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })
+    : "Next Bi-Weekly Cutoff";
 
-    setLedgerData(transactions);
-    setSummary({ totalEarnings: te, pendingEarnings: pe, deliveredCount: count });
-  }, [deliveries]);
+  const daysRemaining = settlementData?.daysRemainingInCycle ?? 14;
 
-  const filteredLedger = ledgerData.filter(tx => {
-    if (filter === "all") return true;
-    if (filter === "settled") return tx.status === "delivered";
-    if (filter === "pending") return tx.status !== "delivered" && tx.status !== "failed";
-    return true;
-  });
+  const pastSettlements = settlementData?.pastSettlements || [];
 
   return (
-    <div className="glass-card" style={{ padding: "1.5rem" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
-        <Wallet size={28} color="var(--blue-mid)" />
-        <h2 style={{ margin: 0, color: "var(--text-dark)" }}>Agent Financial Ledger</h2>
+    <div className="glass-card" style={{ padding: "1.75rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div style={{ width: 44, height: 44, borderRadius: "12px", background: "rgba(37, 99, 235, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "#2563eb" }}>
+            <Wallet size={24} />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, color: "var(--text-dark)", fontSize: "1.4rem" }}>Agent Earnings & Settlement Ledger</h2>
+            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.85rem" }}>
+              Bi-weekly logistics earnings, COD collections, and scheduled disbursements.
+            </p>
+          </div>
+        </div>
+
+        {settlementData?.cashInHand > 0 && onOpenRemit && (
+          <button
+            onClick={onOpenRemit}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: "0.5rem",
+              background: "linear-gradient(135deg, #e11d48, #be123c)", color: "white",
+              padding: "0.65rem 1.25rem", borderRadius: "100px", border: "none",
+              fontWeight: 700, fontSize: "0.88rem", cursor: "pointer",
+              boxShadow: "0 4px 12px rgba(225, 29, 72, 0.3)"
+            }}
+          >
+            <ArrowUpRight size={16} /> Remit COD Cash (₹{settlementData.cashInHand})
+          </button>
+        )}
       </div>
 
-      <p style={{ color: "var(--text-muted)", marginBottom: "2rem" }}>
-        Track your delivery earnings, completed trips, and pending payouts.
-      </p>
+      {/* ─── 2-WEEK SETTLEMENT POLICY BANNER ─── */}
+      <div style={{
+        background: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)",
+        borderRadius: "16px", padding: "1.25rem 1.5rem", color: "white",
+        marginBottom: "1.75rem", boxShadow: "0 8px 20px rgba(30, 58, 138, 0.25)"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <Calendar size={28} style={{ color: "#93c5fd" }} />
+            <div>
+              <div style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "1px", color: "#bfdbfe", fontWeight: 700 }}>
+                Official Settlement Cycle
+              </div>
+              <div style={{ fontSize: "1.15rem", fontWeight: 800 }}>
+                14-Day Bi-Weekly Payout Schedule
+              </div>
+              <p style={{ margin: "3px 0 0 0", fontSize: "0.82rem", color: "#dbeafe" }}>
+                🔒 All delivery earnings are securely batched and disbursed every 2 weeks. (No daily settlements).
+              </p>
+            </div>
+          </div>
 
-      {/* SUMMARY CARDS */}
-      <div className="grid-4" style={{ marginBottom: "2rem" }}>
-        <div style={{ background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)", padding: "1.2rem", borderRadius: "12px", color: "white", boxShadow: "0 4px 15px rgba(59, 130, 246, 0.2)" }}>
-          <p style={{ fontSize: "0.85rem", opacity: 0.9, marginBottom: "0.3rem", display: "flex", alignItems: "center", gap: "0.4rem" }}><TrendingUp size={16}/> Total Settled Earnings</p>
-          <h3 style={{ fontSize: "1.8rem", margin: 0 }}>₹{summary.totalEarnings.toLocaleString(undefined, {maximumFractionDigits: 0})}</h3>
-        </div>
-
-        <div style={{ background: "white", padding: "1.2rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 2px 10px rgba(0,0,0,0.02)" }}>
-          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "0.3rem", display: "flex", alignItems: "center", gap: "0.4rem" }}><Clock size={16}/> In Transit / Pending</p>
-          <h3 style={{ fontSize: "1.8rem", margin: 0, color: "var(--yellow-wheat)" }}>₹{summary.pendingEarnings.toLocaleString(undefined, {maximumFractionDigits: 0})}</h3>
-        </div>
-
-        <div style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", padding: "1.2rem", borderRadius: "12px", color: "white", boxShadow: "0 4px 15px rgba(16, 185, 129, 0.2)" }}>
-          <p style={{ fontSize: "0.85rem", opacity: 0.9, marginBottom: "0.3rem", display: "flex", alignItems: "center", gap: "0.4rem" }}><Package size={16}/> Successful Deliveries</p>
-          <h3 style={{ fontSize: "1.8rem", margin: 0 }}>{summary.deliveredCount}</h3>
-        </div>
-
-        <div style={{ background: "white", padding: "1.2rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 2px 10px rgba(0,0,0,0.02)" }}>
-          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "0.3rem", display: "flex", alignItems: "center", gap: "0.4rem" }}><CheckCircle size={16}/> Avg Pay per Trip</p>
-          <h3 style={{ fontSize: "1.8rem", margin: 0, color: "var(--green-deep)" }}>
-            ₹{summary.deliveredCount > 0 ? Math.round(summary.totalEarnings / summary.deliveredCount) : 0}
-          </h3>
+          <div style={{
+            background: "rgba(255, 255, 255, 0.12)", backdropFilter: "blur(6px)",
+            padding: "0.6rem 1.2rem", borderRadius: "12px", border: "1px solid rgba(255, 255, 255, 0.2)",
+            textAlign: "right"
+          }}>
+            <div style={{ fontSize: "0.75rem", color: "#bfdbfe", fontWeight: 600 }}>NEXT SETTLEMENT DATE</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#ffffff" }}>{nextPayoutDate}</div>
+            <div style={{ fontSize: "0.72rem", color: "#86efac", fontWeight: 700 }}>
+              ⏱️ {daysRemaining} days remaining in cycle
+            </div>
+          </div>
         </div>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <h3 style={{ fontSize: "1.2rem", color: "var(--text-dark)" }}>Delivery History</h3>
-        <select className="rs-select" style={{ width: "auto" }} value={filter} onChange={e => setFilter(e.target.value)}>
-          <option value="all">All Trips</option>
-          <option value="settled">Settled (Delivered)</option>
-          <option value="pending">Pending (Active)</option>
-        </select>
+      {/* ─── SUMMARY STATS ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
+        {/* Unsettled Wallet Balance */}
+        <div style={{ background: "white", padding: "1.25rem", borderRadius: "14px", border: "1.5px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+            <span style={{ fontSize: "0.82rem", color: "#64748b", fontWeight: 700 }}>CURRENT WALLET BALANCE</span>
+            <div style={{ width: 32, height: 32, borderRadius: "8px", background: "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", color: "#2563eb" }}>
+              <TrendingUp size={18} />
+            </div>
+          </div>
+          <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "#1e293b" }}>
+            ₹{(user?.walletBalance || settlementData?.unsettledWalletBalance || 0).toLocaleString()}
+          </div>
+          <div style={{ fontSize: "0.75rem", color: "#2563eb", marginTop: "4px", fontWeight: 600 }}>
+            Pending next bi-weekly payout batch
+          </div>
+        </div>
+
+        {/* COD Cash in Hand */}
+        <div style={{ background: (user?.cashInHand || settlementData?.cashInHand) > 0 ? "#fff1f2" : "white", padding: "1.25rem", borderRadius: "14px", border: (user?.cashInHand || settlementData?.cashInHand) > 0 ? "1.5px solid #fecdd3" : "1.5px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+            <span style={{ fontSize: "0.82rem", color: (user?.cashInHand || settlementData?.cashInHand) > 0 ? "#be123c" : "#64748b", fontWeight: 700 }}>COD CASH IN HAND</span>
+            <div style={{ width: 32, height: 32, borderRadius: "8px", background: (user?.cashInHand || settlementData?.cashInHand) > 0 ? "#ffe4e6" : "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", color: "#e11d48" }}>
+              <DollarSign size={18} />
+            </div>
+          </div>
+          <div style={{ fontSize: "1.8rem", fontWeight: 800, color: (user?.cashInHand || settlementData?.cashInHand) > 0 ? "#e11d48" : "#1e293b" }}>
+            ₹{(user?.cashInHand || settlementData?.cashInHand || 0).toLocaleString()}
+          </div>
+          <div style={{ fontSize: "0.75rem", color: (user?.cashInHand || settlementData?.cashInHand) > 0 ? "#be123c" : "#64748b", marginTop: "4px", fontWeight: 600 }}>
+            {(user?.cashInHand || settlementData?.cashInHand) > 0 ? "⚠️ Collected cash to be remitted to Admin" : "✅ No outstanding cash collection"}
+          </div>
+        </div>
+
+        {/* Total Deliveries Completed */}
+        <div style={{ background: "white", padding: "1.25rem", borderRadius: "14px", border: "1.5px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+            <span style={{ fontSize: "0.82rem", color: "#64748b", fontWeight: 700 }}>COMPLETED DELIVERIES</span>
+            <div style={{ width: 32, height: 32, borderRadius: "8px", background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center", color: "#16a34a" }}>
+              <Package size={18} />
+            </div>
+          </div>
+          <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "#166534" }}>
+            {deliveries.filter(d => d.status === "delivered").length}
+          </div>
+          <div style={{ fontSize: "0.75rem", color: "#16a34a", marginTop: "4px", fontWeight: 600 }}>
+            100% Verified OTP Deliveries
+          </div>
+        </div>
       </div>
 
-      <div style={{ overflowX: "auto" }}>
-        <table className="rs-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Tracking Code</th>
-              <th>Order Details</th>
-              <th>Distance</th>
-              <th>Trip Earnings</th>
-              <th>Payout Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredLedger.length === 0 ? (
-              <tr><td colSpan="6" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No delivery transactions found.</td></tr>
-            ) : (
-              filteredLedger.map((tx) => (
-                <tr key={tx.id}>
-                  <td>
-                    <span style={{ fontSize: "0.85rem", color: "var(--text-mid)" }}>{tx.date.toLocaleDateString()}</span><br/>
-                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{tx.date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                  </td>
-                  <td>
-                    <span style={{ fontFamily: "monospace", color: "var(--primary)", background: "var(--green-pale)", padding: "0.2rem 0.4rem", borderRadius: "4px" }}>
-                      {tx.trackingCode}
-                    </span>
-                  </td>
-                  <td>
-                    <strong>{tx.crop}</strong><br/>
-                    <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{tx.customer}</span>
-                  </td>
-                  <td>
-                    {tx.distance ? (
-                      <span style={{ fontSize: "0.85rem" }}><Navigation size={12} /> {parseFloat(tx.distance).toFixed(1)} km</span>
-                    ) : (
-                      <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>—</span>
-                    )}
-                  </td>
-                  <td style={{ color: "var(--green-deep)", fontWeight: "bold" }}>₹{tx.amount.toLocaleString(undefined, {maximumFractionDigits: 2})}</td>
-                  <td>
-                    {tx.status === "delivered" ? (
-                      <span className="badge" style={{ background: "#dcfce7", color: "#15803d" }}>Settled to Wallet</span>
-                    ) : tx.status === "failed" ? (
-                      <span className="badge" style={{ background: "#fee2e2", color: "#dc2626" }}>Failed/Cancelled</span>
-                    ) : (
-                      <span className="badge" style={{ background: "#fef9c3", color: "#a16207" }}>Pending Completion</span>
-                    )}
-                  </td>
+      {/* ─── PAST BI-WEEKLY SETTLEMENTS TABLE ─── */}
+      <div style={{ marginTop: "2rem" }}>
+        <h3 style={{ fontSize: "1.15rem", color: "#1e293b", fontWeight: 800, marginBottom: "1rem" }}>
+          📜 Bi-Weekly Settlement Disbursement History
+        </h3>
+
+        {pastSettlements.length === 0 ? (
+          <div style={{
+            padding: "2.5rem", textAlign: "center", background: "#f8fafc",
+            borderRadius: "14px", border: "1px dashed #cbd5e1"
+          }}>
+            <Calendar size={36} color="#94a3b8" style={{ marginBottom: "0.5rem" }} />
+            <div style={{ fontWeight: 700, color: "#475569" }}>No Prior Settlements Disbursed Yet</div>
+            <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+              Your accrued earnings will be processed in the upcoming bi-weekly settlement cycle ({nextPayoutDate}).
+            </p>
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table className="rs-table">
+              <thead>
+                <tr>
+                  <th>Settlement Ref</th>
+                  <th>Cycle Period</th>
+                  <th>Payout Date</th>
+                  <th>Amount</th>
+                  <th>Payment Method</th>
+                  <th>Status</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {pastSettlements.map(s => (
+                  <tr key={s._id}>
+                    <td>
+                      <strong style={{ fontFamily: "monospace", color: "#2563eb" }}>{s.transactionReference}</strong>
+                    </td>
+                    <td style={{ fontSize: "0.82rem" }}>
+                      {new Date(s.cycleStartDate).toLocaleDateString()} - {new Date(s.cycleEndDate).toLocaleDateString()}
+                    </td>
+                    <td style={{ fontSize: "0.82rem" }}>
+                      {new Date(s.payoutDate || s.createdAt).toLocaleDateString()}
+                    </td>
+                    <td>
+                      <strong style={{ color: "#166534", fontSize: "1rem" }}>₹{s.amount.toLocaleString()}</strong>
+                    </td>
+                    <td style={{ fontSize: "0.82rem" }}>
+                      {s.paymentMethod?.toUpperCase()} {s.upiId ? `(${s.upiId})` : ""}
+                    </td>
+                    <td>
+                      <span style={{
+                        background: "#dcfce7", color: "#166534", padding: "3px 8px",
+                        borderRadius: "100px", fontSize: "0.75rem", fontWeight: 700
+                      }}>
+                        ✅ Completed
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

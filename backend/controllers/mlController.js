@@ -1,3 +1,9 @@
+import { getGeminiCropSuggestion, getGeminiFarmerTips } from "../services/geminiService.js";
+import { suggestAdvancedCrop } from "../services/cropSuggestionService.js";
+import { predictAdvancedDemand } from "../services/demandPredictionService.js";
+import { getNutritionAnalysis } from "../services/nutritionAnalysisService.js";
+import { optimizeDeliveryRoute } from "../services/deliveryRouteService.js";
+
 const runPythonScript = async (endpoint, payload) => {
   try {
     const res = await fetch(`http://127.0.0.1:8000${endpoint}`, {
@@ -83,15 +89,22 @@ export const farmerSuggestions = async (req, res) => {
 
 export const routeOptimize = async (req, res) => {
   try {
-    const { agentLat, agentLng, orders, agentType } = req.body;
-    if (!agentLat || !agentLng || !orders || orders.length === 0) return res.status(400).json({ error: "Missing data" });
+    const agentLat = req.body.agentLat ?? req.body.agentLocation?.latitude ?? req.body.latitude;
+    const agentLng = req.body.agentLng ?? req.body.agentLocation?.longitude ?? req.body.longitude;
+    const { orders, agentType, algorithm } = req.body;
+
+    if (agentLat === undefined || agentLat === null || agentLng === undefined || agentLng === null || !orders || orders.length === 0) {
+      return res.status(400).json({ error: "Missing required agent coordinates or delivery orders." });
+    }
     
     // Determine agent type, defaulting to bike
     const type = agentType || (req.user && req.user.agentType) || "bike";
+    const selectedAlgo = algorithm || (type === "truck" ? "tsp_genetic" : "dabbawala_cluster");
     
-    const { optimized, totalDistance } = await optimizeDeliveryRoute(agentLat, agentLng, orders, type);
-    res.json({ optimizedRoute: optimized, totalDistance: totalDistance.toFixed(2) });
+    const result = await optimizeDeliveryRoute(agentLat, agentLng, orders, { agentType: type, algorithm: selectedAlgo });
+    res.json(result);
   } catch (error) {
+    console.error("Route optimization error:", error);
     res.status(500).json({ error: error.message });
   }
 };

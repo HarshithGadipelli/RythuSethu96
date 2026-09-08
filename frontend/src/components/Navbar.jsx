@@ -6,13 +6,14 @@ import { useLayout } from "../context/LayoutContext";
 import { useCart } from "../context/CartContext";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, ShoppingBag, Leaf, Truck, Shield, LogOut, User, Bell, Headphones, Volume2, VolumeX, ShoppingCart } from "lucide-react";
+import { Home, ShoppingBag, Leaf, Truck, Shield, LogOut, User, Bell, Headphones, Volume2, VolumeX, ShoppingCart, MapPin } from "lucide-react";
 import API from "../api/api";
 import { io } from "socket.io-client";
 import { createPortal } from "react-dom";
 import { toggleFarmAmbience, toggleKrishnaFlute } from "../utils/ambientSoundEngine";
 
 import CartSidebar from "./CartSidebar";
+import LocationUpdateModal from "./LocationUpdateModal";
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { lang, changeLang, t } = useLang();
@@ -47,6 +48,29 @@ export default function Navbar() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState("");
   const [settingsTab, setSettingsTab] = useState("profile");
+
+  // Universal Location States
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [currentLocText, setCurrentLocText] = useState("");
+
+  useEffect(() => {
+    const updateLocFromUserOrStorage = () => {
+      if (user?.location) {
+        setCurrentLocText(user.location);
+      } else {
+        try {
+          const guest = JSON.parse(localStorage.getItem("guest_location") || "{}");
+          if (guest.location) setCurrentLocText(guest.location);
+        } catch {}
+      }
+    };
+    updateLocFromUserOrStorage();
+    const handler = (e) => {
+      if (e.detail?.location) setCurrentLocText(e.detail.location);
+    };
+    window.addEventListener("user_location_updated", handler);
+    return () => window.removeEventListener("user_location_updated", handler);
+  }, [user]);
   
   const notifRef = useRef(null);
 
@@ -203,6 +227,33 @@ export default function Navbar() {
             <option value="kn">🇮🇳 Kannada (ಕನ್)</option>
             <option value="ml">🇮🇳 Malayalam (മല)</option>
           </select>
+        </li>
+        <li>
+          <button
+            type="button"
+            onClick={() => setShowLocationModal(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              background: "rgba(22, 163, 74, 0.08)",
+              border: "1.5px solid rgba(22, 163, 74, 0.3)",
+              borderRadius: "100px",
+              padding: "0.35rem 0.8rem",
+              fontSize: "0.8rem",
+              fontWeight: 700,
+              color: "#166534",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              maxWidth: "190px"
+            }}
+            title="Click to update your location & coordinates"
+          >
+            <MapPin size={15} color="#16a34a" style={{ flexShrink: 0 }} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {currentLocText ? (currentLocText.split(",")[0] || currentLocText) : (user ? (user.role === 'farmer' ? "Farm GPS" : "Set Location") : "Detect GPS")}
+            </span>
+          </button>
         </li>
         <li>
           <button className="icon-btn" onClick={handleAnnouncerToggle} title="Market Voices">
@@ -529,6 +580,7 @@ export default function Navbar() {
       )}
 
       <CartSidebar />
+      <LocationUpdateModal isOpen={showLocationModal} onClose={() => setShowLocationModal(false)} />
     </nav>
   );
 }

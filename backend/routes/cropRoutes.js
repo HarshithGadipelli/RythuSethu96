@@ -154,7 +154,7 @@ router.get("/search", async (req, res) => {
 
     // Fetch crops
     let crops = await Crop.find(query)
-      .populate("farmer", "name email location latitude longitude")
+      .populate("farmer", "name email location latitude longitude farmName phone avatar trustScore")
       .sort(sortOption)
       .skip(skip)
       .limit(Number(limit));
@@ -372,7 +372,7 @@ router.get("/suggestions", async (req, res) => {
 // Get all crops
 router.get("/", async (req, res) => {
   try {
-    const crops = await Crop.find({ isLive: { $ne: false } }).populate("farmer", "name email location latitude longitude").sort({ createdAt: -1 });
+    const crops = await Crop.find({ isLive: { $ne: false } }).populate("farmer", "name email location latitude longitude farmName phone avatar trustScore").sort({ createdAt: -1 });
     res.json(crops);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -397,7 +397,7 @@ router.get("/seasonal/current", async (req, res) => {
     const crops = await Crop.find({ 
       isLive: { $ne: false },
       $or: allowedCrops.map(regex => ({ name: regex }))
-    }).populate("farmer", "name email location latitude longitude").sort({ createdAt: -1 });
+    }).populate("farmer", "name email location latitude longitude farmName phone avatar trustScore").sort({ createdAt: -1 });
     
     res.json(crops);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -406,7 +406,7 @@ router.get("/seasonal/current", async (req, res) => {
 // Get single crop
 router.get("/:id", async (req, res) => {
   try {
-    const crop = await Crop.findById(req.params.id).populate("farmer", "name email location");
+    const crop = await Crop.findById(req.params.id).populate("farmer", "name email location latitude longitude farmName phone avatar trustScore");
     if (!crop) return res.status(404).json({ error: "Crop not found" });
     res.json(crop);
   } catch (err) { res.status(500).json({ error: err.message }); }

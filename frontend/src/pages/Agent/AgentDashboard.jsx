@@ -9,7 +9,8 @@ import { io } from "socket.io-client";
 import AgentLiveMap from "../../components/AgentLiveMap";
 import AgentFinancialLedger from "./AgentFinancialLedger";
 import SecurityPledgeModal from "../../components/SecurityPledgeModal";
-import { Volume2 } from "lucide-react";
+import { Volume2, MapPin, LocateFixed, Compass, Radio, Camera, CheckCircle2, ShieldCheck, KeyRound, Coins, Sparkles, UploadCloud, Loader2, Check, X, ArrowUpRight, ShieldAlert, Star } from "lucide-react";
+import LocationUpdateModal from "../../components/LocationUpdateModal";
 import { playTTS } from "../../utils/voiceParser";
 const STATUS_STEPS = ["assigned","picked_up","in_transit","delivered"];
 const STATUS_ICONS = { assigned:"📋", picked_up:"📦", in_transit:"🚚", delivered:"✅", failed:"❌" };
@@ -204,13 +205,54 @@ export default function AgentDashboard() {
   const [routeData, setRouteData] = useState(null);
   const [optimizing, setOptimizing] = useState(false);
   const [agentPos, setAgentPos] = useState(null);
+  const [showLocModal, setShowLocModal] = useState(false);
   const [radiusFilter, setRadiusFilter] = useState("");
+
+  useEffect(() => {
+    if (user?.latitude && user?.longitude && !agentPos) {
+      setAgentPos({ lat: user.latitude, lng: user.longitude });
+    }
+  }, [user, agentPos]);
+
+  useEffect(() => {
+    const handleLocUpdate = (e) => {
+      if (e.detail?.latitude && e.detail?.longitude) {
+        setAgentPos({ lat: e.detail.latitude, lng: e.detail.longitude });
+      }
+    };
+    window.addEventListener("user_location_updated", handleLocUpdate);
+    return () => window.removeEventListener("user_location_updated", handleLocUpdate);
+  }, []);
   const [perfData, setPerfData] = useState({ totalCompleted: 0, earlyDeliveries: 0, lateDeliveries: 0, onTimeRate: 100, totalSpeedPoints: 0, totalSpeedCash: 0, totalPenaltyPoints: 0 });
   const [delayModal, setDelayModal] = useState(null);
   const [delayReason, setDelayReason] = useState("Traffic Jam");
   const [delayNote, setDelayNote] = useState("");
   const { listening, activeField, interim, startListening, stopListening } = useVoiceInput(lang || "en");
   const [showPledge, setShowPledge] = useState(user?.acceptedTerms === false);
+
+  // ─── AI Farm Produce Inspection State ───
+  const [inspectModal, setInspectModal] = useState(null);
+  const [inspectImageFile, setInspectImageFile] = useState(null);
+  const [inspectPreview, setInspectPreview] = useState(null);
+  const [inspecting, setInspecting] = useState(false);
+  const [inspectResult, setInspectResult] = useState(null);
+
+  // ─── Secure Doorstep Handover & OTP State ───
+  const [handoverModal, setHandoverModal] = useState(null);
+  const [handoverOtp, setHandoverOtp] = useState("");
+  const [handoverWasteKg, setHandoverWasteKg] = useState("");
+  const [handoverSubmitting, setHandoverSubmitting] = useState(false);
+
+  // ─── COD Cash Remittance to Admin State ───
+  const [remitModal, setRemitModal] = useState(false);
+  const [remitAmount, setRemitAmount] = useState("");
+  const [remitMethod, setRemitMethod] = useState("UPI");
+  const [remitTxRef, setRemitTxRef] = useState("");
+  const [remitting, setRemitting] = useState(false);
+
+  // ─── Multi-Algorithm Routing Constraint State ───
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState("dabbawala_cluster");
+
   const [ridealongForm, setRidealongForm] = useState({
     fromLocation: user?.ridealongRoute?.fromLocation || "",
     toLocation: user?.ridealongRoute?.toLocation || "",
@@ -251,6 +293,14 @@ export default function AgentDashboard() {
     socket.on("delivery_assigned", () => loadAll());
     socket.on("delivery_updated", () => loadAll());
     socket.on("order_created", () => fetchAvailable());
+    
+    // Live Admin Route Dispatch listener
+    socket.on("admin_route_dispatched", (data) => {
+      if (data.agentId === user?._id || data.agentId?.toString() === user?._id?.toString()) {
+        setRouteData(data.routeData);
+        setMsg({ type: "success", text: `📢 ${data.message || "Admin has optimized and dispatched your live route!"}` });
+      }
+    });
 
     const handleAINavigate = (e) => {
       if (e.detail.targetTab) setTab(e.detail.targetTab);
@@ -461,6 +511,96 @@ export default function AgentDashboard() {
       setMsg({ type:"error", text: err.response?.data?.error || "Failed to verify waste." });
     } finally {
       setUpdating(null);
+      setTimeout(() => setMsg({ type:"", text:"" }), 4000);
+    }
+  };
+
+  // ─── AI Produce Inspection Handlers ───
+  const handleOpenInspection = (deliveryItem) => {
+    setInspectModal(deliveryItem);
+    setInspectImageFile(null);
+    setInspectPreview(null);
+    setInspectResult(null);
+  };
+
+  const handleRunAIInspection = async () => {
+    if (!inspectModal || !inspectImageFile) {
+      setMsg({ type: "error", text: "Please capture or choose a live photo of the farm produce first." });
+      return;
+    }
+    setInspecting(true);
+    try {
+      const formData = new FormData();
+      formData.append("producePhoto", inspectImageFile);
+      const res = await API.post(`/delivery/${inspectModal._id}/verify-produce`, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      setInspectResult(res.data);
+      setMsg({ type: "success", text: `✨ AI Quality Inspection Complete: ${res.data.grade} (${res.data.freshnessScore}% Freshness)!` });
+      loadAll();
+    } catch (err) {
+      console.error(err);
+      setMsg({ type: "error", text: err.response?.data?.error || "AI Produce Inspection failed." });
+    } finally {
+      setInspecting(false);
+    }
+  };
+
+  // ─── Secure Handover & OTP Completion ───
+  const handleOpenHandover = (deliveryItem) => {
+    setHandoverModal(deliveryItem);
+    setHandoverOtp("");
+    setHandoverWasteKg("");
+  };
+
+  const handleCompleteHandover = async () => {
+    if (!handoverModal || !handoverOtp.trim() || handoverOtp.trim().length !== 6) {
+      setMsg({ type: "error", text: "Please enter the valid 6-digit Delivery OTP provided by the customer." });
+      return;
+    }
+    setHandoverSubmitting(true);
+    try {
+      const res = await API.post(`/delivery/${handoverModal._id}/complete-handover`, {
+        otp: handoverOtp.trim(),
+        wasteCollectedKg: Number(handoverWasteKg) || 0
+      });
+      setMsg({
+        type: "success",
+        text: `🎉 Secure Handover Verified! ${res.data.codCollected > 0 ? `Collected ₹${res.data.codCollected} COD.` : ""} Earned ₹${res.data.agentEarnings} credited to your Bi-Weekly Settlement Ledger.`
+      });
+      setHandoverModal(null);
+      loadAll();
+    } catch (err) {
+      setMsg({ type: "error", text: err.response?.data?.error || "Failed to verify OTP." });
+    } finally {
+      setHandoverSubmitting(false);
+      setTimeout(() => setMsg({ type: "", text: "" }), 5000);
+    }
+  };
+
+  // ─── Remit COD Cash to Admin ───
+  const handleRemitCodCash = async (e) => {
+    e.preventDefault();
+    if (!user?._id) return;
+    setRemitting(true);
+    try {
+      const res = await API.post("/delivery/remit-cod", {
+        agentId: user._id,
+        amount: Number(remitAmount) || user.cashInHand || 0,
+        paymentMethod: remitMethod,
+        transactionRef: remitTxRef
+      });
+      setMsg({ type: "success", text: `💵 ${res.data.message}` });
+      if (user) user.cashInHand = res.data.cashInHand;
+      setRemitModal(false);
+      setRemitAmount("");
+      setRemitTxRef("");
+      loadAll();
+    } catch (err) {
+      setMsg({ type: "error", text: err.response?.data?.error || "Failed to submit COD remittance." });
+    } finally {
+      setRemitting(false);
+      setTimeout(() => setMsg({ type: "", text: "" }), 5000);
     }
   };
 
@@ -568,31 +708,54 @@ export default function AgentDashboard() {
     return idx < STATUS_STEPS.length - 1 ? STATUS_STEPS[idx + 1] : null;
   };
 
-  const optimizeRoute = async () => {
-    if (!agentPos) {
-      setMsg({ type: "error", text: "Waiting for GPS location..." });
-      return;
-    }
+  const optimizeRoute = async (overrideAlgo) => {
+    const algoToUse = overrideAlgo || selectedAlgorithm;
     const activeDeliveries = deliveries.filter(d => ["assigned", "picked_up", "in_transit"].includes(d.status));
-    if (activeDeliveries.length < 2) {
-      setMsg({ type: "info", text: "Need at least 2 active deliveries to optimize." });
+    
+    if (activeDeliveries.length === 0) {
+      setMsg({ type: "info", text: "No active or assigned deliveries to optimize." });
       return;
     }
 
-    setOptimizing(true);
-    setMsg({ type: "info", text: "🗺️ Calculating optimal route using AI..." });
-    try {
-      const res = await API.post("/ml/route-optimize", { 
-        agentLat: agentPos.lat, 
-        agentLng: agentPos.lng, 
-        orders: activeDeliveries 
-      });
-      setRouteData(res.data);
-      setMsg({ type: "success", text: `✅ Route optimized! Shortest path calculated.` });
-    } catch (err) {
-      setMsg({ type: "error", text: "Failed to optimize route." });
-    } finally {
-      setOptimizing(false);
+    const runWithCoords = async (lat, lng) => {
+      setOptimizing(true);
+      setMsg({ type: "info", text: `🗺️ Calculating route using [${algoToUse.toUpperCase()}] algorithm...` });
+      try {
+        const res = await API.post("/ml/route-optimize", { 
+          agentLat: lat, 
+          agentLng: lng, 
+          orders: activeDeliveries,
+          agentType: user?.agentType || "bike",
+          algorithm: algoToUse
+        });
+        setRouteData(res.data);
+        setMsg({ type: "success", text: `✅ Route optimized with ${res.data.stopsCount || res.data.optimized?.length || 0} stops! Distance: ${res.data.totalDistance} km (${res.data.totalMinutes} mins)` });
+      } catch (err) {
+        console.error("Optimize route error:", err);
+        setMsg({ type: "error", text: err.response?.data?.error || "Failed to optimize route." });
+      } finally {
+        setOptimizing(false);
+      }
+    };
+
+    if (!agentPos || !agentPos.lat) {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            setAgentPos(p);
+            runWithCoords(p.lat, p.lng);
+          },
+          () => {
+            // Fallback to default Telangana hub
+            runWithCoords(user?.latitude || 17.3850, user?.longitude || 78.4867);
+          }
+        );
+      } else {
+        runWithCoords(user?.latitude || 17.3850, user?.longitude || 78.4867);
+      }
+    } else {
+      runWithCoords(agentPos.lat, agentPos.lng);
     }
   };
 
@@ -699,6 +862,89 @@ export default function AgentDashboard() {
         </div>
       </div>
 
+      {/* ── Agent Live Location & GPS Status Banner ── */}
+      <div style={{
+        background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
+        border: "1.5px solid #93c5fd",
+        borderRadius: "14px",
+        padding: "0.9rem 1.25rem",
+        marginBottom: "1.5rem",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: "0.75rem",
+        boxShadow: "0 2px 8px rgba(37, 99, 235, 0.1)"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div style={{
+            background: "#2563eb", color: "white", width: 40, height: 40,
+            borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 4px 10px rgba(37, 99, 235, 0.25)", flexShrink: 0
+          }}>
+            <MapPin size={22} />
+          </div>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+              <strong style={{ fontSize: "0.95rem", color: "#1e3a8a" }}>
+                Delivery Dispatch Hub: {user?.location || "No base address set"}
+              </strong>
+              {agentPos && (
+                <span style={{
+                  background: "#16a34a", color: "white", padding: "2px 8px", borderRadius: "100px",
+                  fontSize: "0.72rem", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "3px"
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "white" }}></span>
+                  Live GPS Active
+                </span>
+              )}
+            </div>
+            <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: "#475569" }}>
+              {agentPos
+                ? `📍 Current Location: ${agentPos.lat.toFixed(4)}° N, ${agentPos.lng.toFixed(4)}° E • Broadcasting live to Marketplace Map & active customers`
+                : "⚠️ Waiting for GPS lock. Click update to set your delivery dispatch hub."}
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                  setAgentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                  setMsg({ type: "success", text: "✅ GPS coordinates refreshed successfully!" });
+                  setTimeout(() => setMsg({ type:"", text:"" }), 3000);
+                });
+              }
+            }}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: "0.4rem",
+              padding: "0.55rem 0.9rem", borderRadius: "100px",
+              background: "white", color: "#2563eb", border: "1.5px solid #2563eb",
+              fontSize: "0.82rem", fontWeight: 700, cursor: "pointer"
+            }}
+          >
+            <LocateFixed size={15} /> Refresh GPS
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowLocModal(true)}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: "0.4rem",
+              padding: "0.55rem 1.1rem", borderRadius: "100px",
+              background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "white", border: "none",
+              fontSize: "0.85rem", fontWeight: 700, cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(37, 99, 235, 0.25)"
+            }}
+          >
+            <MapPin size={16} /> Update Location
+          </button>
+        </div>
+      </div>
+
       {/* Earnings, Speed Bonuses & Trust Row */}
       <div className="grid-5 mb-3" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem" }}>
         <div className="earnings-card">
@@ -747,29 +993,141 @@ export default function AgentDashboard() {
       </div>
 
       {tab === "my" && (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>
-          <button className="btn-primary" onClick={optimizeRoute} disabled={optimizing || deliveries.filter(d=>["assigned", "picked_up", "in_transit"].includes(d.status)).length < 2} style={{ width:"100%", background: "linear-gradient(135deg, #eab308, #ca8a04)", border: "none" }}>
-            {optimizing ? `🔄 Optimizing...` : `🗺️ Smart Route Optimize`}
-          </button>
-        </div>
-      )}
-
-      {routeData && tab === "my" && (
-        <div className="glass-card mb-3" style={{ background:"var(--green-pale)", border:"1px solid var(--green-mid)" }}>
-            <h3 style={{ color:"var(--green-deep)", marginBottom:"0.5rem" }}>{t("routeGenerated")}</h3>
-            <p style={{ color:"var(--green-mid)", fontSize:"0.9rem", marginBottom:"1rem" }}>
-              {t("totalDistance")}: {parseFloat(routeData.totalDistance).toFixed(2)} km
-            </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "center" }}>
-            {routeData.optimizedRoute.map((stop, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                <div style={{ background: "var(--gradient-btn)", color: "white", padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: 600 }}>
-                  {i+1}. {stop.action} at {stop.location}
-                </div>
-                {i < routeData.optimizedRoute.length - 1 && <span style={{ color: "var(--text-muted)" }}>➡️</span>}
+        <div className="glass-card mb-3" style={{ background: "linear-gradient(135deg, #0f172a, #1e293b)", color: "white", padding: "1.25rem", borderRadius: "16px", border: "1px solid #334155" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "1.3rem" }}>🗺️</span>
+                <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#f8fafc", fontWeight: 800 }}>Multi-Algorithm Smart Route Optimizer</h3>
               </div>
-            ))}
+              <p style={{ margin: "4px 0 0", color: "#94a3b8", fontSize: "0.8rem" }}>
+                AI-optimized itinerary considering pickup precedence, cold-chain perishability, and vehicle type.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+              <select
+                value={selectedAlgorithm}
+                onChange={(e) => {
+                  setSelectedAlgorithm(e.target.value);
+                  optimizeRoute(e.target.value);
+                }}
+                style={{
+                  background: "#1e293b", color: "#e2e8f0", border: "1px solid #475569",
+                  padding: "8px 12px", borderRadius: "10px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer"
+                }}
+              >
+                <option value="dabbawala_cluster">🚲 Dabbawala Zone Cluster (Bike)</option>
+                <option value="tsp_genetic">🚚 TSP Genetic Annealing (Min KM / Truck)</option>
+                <option value="perishable_priority">🥬 Cold-Chain Perishable First (Freshness Priority)</option>
+                <option value="greedy_fastest">⚡ Fastest ETA (Nearest Urgent Drop)</option>
+                <option value="eco_fuel_saver">🌱 Eco-Fuel Saver (Low Emission)</option>
+              </select>
+
+              <button
+                className="btn-primary hover-scale"
+                onClick={() => optimizeRoute(selectedAlgorithm)}
+                disabled={optimizing || deliveries.filter(d => ["assigned", "picked_up", "in_transit"].includes(d.status)).length === 0}
+                style={{
+                  background: "linear-gradient(135deg, #16a34a, #15803d)", border: "none",
+                  padding: "8px 16px", borderRadius: "10px", fontWeight: 800, fontSize: "0.85rem",
+                  boxShadow: "0 4px 12px rgba(22,163,74,0.3)"
+                }}
+              >
+                {optimizing ? `🔄 Optimizing Route...` : `🚀 Optimize & Refresh Itinerary`}
+              </button>
+            </div>
           </div>
+
+          {/* Route Optimization Result & Map */}
+          {routeData && (
+            <div style={{ marginTop: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", background: "rgba(255,255,255,0.06)", padding: "10px 14px", borderRadius: "10px", marginBottom: "1rem" }}>
+                <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "0.85rem", color: "#cbd5e1" }}>
+                    Total Distance: <strong style={{ color: "#4ade80", fontSize: "1rem" }}>{routeData.totalDistance} km</strong>
+                  </span>
+                  <span style={{ fontSize: "0.85rem", color: "#cbd5e1" }}>
+                    Est. Travel Duration: <strong style={{ color: "#60a5fa", fontSize: "1rem" }}>~{routeData.totalMinutes || Math.round(Number(routeData.totalDistance) * 2 + 10)} mins</strong>
+                  </span>
+                  <span style={{ fontSize: "0.75rem", background: "#334155", color: "#f8fafc", padding: "2px 8px", borderRadius: "6px", textTransform: "uppercase", fontWeight: 800 }}>
+                    Algorithm: {routeData.algorithmUsed || selectedAlgorithm}
+                  </span>
+                </div>
+              </div>
+
+              {/* Live Route Map */}
+              <div style={{ marginBottom: "1.2rem" }}>
+                <RouteMap routeData={routeData} agentPos={agentPos} />
+              </div>
+
+              {/* Stop-by-Stop Itinerary Cards */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "0.75rem" }}>
+                {(routeData.optimized || routeData.optimizedRoute || []).map((stop, i) => {
+                  const isPickup = stop.action === "Pickup" || stop.type === "pickup";
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        background: isPickup ? "rgba(22, 163, 74, 0.15)" : "rgba(234, 88, 12, 0.15)",
+                        border: isPickup ? "1px solid rgba(34, 197, 94, 0.3)" : "1px solid rgba(249, 115, 22, 0.3)",
+                        borderRadius: "12px", padding: "12px", display: "flex", flexDirection: "column", gap: "6px"
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ background: isPickup ? "#16a34a" : "#ea580c", color: "white", padding: "2px 8px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 900 }}>
+                          STOP #{stop.stopNumber || i + 1}: {isPickup ? "🌾 FARM PICKUP" : "🏠 DOORSTEP DELIVERY"}
+                        </span>
+                        {stop.isPerishable && (
+                          <span style={{ background: "#fee2e2", color: "#dc2626", fontSize: "0.65rem", padding: "1px 6px", borderRadius: "4px", fontWeight: 800 }}>
+                            🥬 Perishable Priority
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{ fontWeight: 800, fontSize: "0.9rem", color: "#f8fafc" }}>
+                        {stop.cropName || "Produce Order"} {stop.quantityKg ? `(${stop.quantityKg} kg)` : ""}
+                      </div>
+
+                      <div style={{ fontSize: "0.78rem", color: "#94a3b8" }}>
+                        📍 {stop.location}
+                      </div>
+
+                      <div style={{ fontSize: "0.75rem", color: "#cbd5e1", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
+                        <span>Contact: <strong>{stop.farmerName || stop.customerName || "Recipient"}</strong></span>
+                        {stop.legDistanceKm && <span style={{ color: "#60a5fa" }}>+{stop.legDistanceKm} km (~{stop.estimatedMinutes}m)</span>}
+                      </div>
+
+                      <div style={{ marginTop: "6px", display: "flex", gap: "6px" }}>
+                        <a
+                          href={stop.googleMapsUrl || `https://www.google.com/maps/dir/?api=1&destination=${stop.latitude || stop.lat},${stop.longitude || stop.lng}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            flex: 1, background: "#2563eb", color: "white", padding: "6px 0",
+                            borderRadius: "8px", fontSize: "0.75rem", fontWeight: 700, textAlign: "center", textDecoration: "none"
+                          }}
+                        >
+                          🧭 Turn Navigation
+                        </a>
+                        {(stop.customerPhone || stop.farmerPhone) && (
+                          <a
+                            href={`tel:${stop.customerPhone || stop.farmerPhone}`}
+                            style={{
+                              background: "#334155", color: "#f8fafc", padding: "6px 12px",
+                              borderRadius: "8px", fontSize: "0.75rem", fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center"
+                            }}
+                          >
+                            📞 Call
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -910,27 +1268,67 @@ export default function AgentDashboard() {
                       </div>
                     )}
 
-                    {/* Actions */}
-                    {d.status !== "delivered" && d.status !== "failed" && next && (
-                      <div style={{ display: "flex", gap: "0.5rem", width: "100%" }}>
-                        {d.status === "in_transit" && (
-                          <button 
-                            className="btn-secondary" 
-                            style={{ flex: 1 }}
-                            disabled={updating === d._id} 
-                            onClick={() => generateOtp(d)}
+                    {/* ── Action Buttons for Active Workflow ── */}
+                    {d.status !== "delivered" && d.status !== "failed" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", width: "100%" }}>
+                        {d.status === "assigned" && (
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            onClick={() => handleOpenInspection(d)}
+                            style={{
+                              background: "linear-gradient(135deg, #16a34a, #15803d)",
+                              display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+                              padding: "0.85rem", fontSize: "0.95rem", fontWeight: 700, borderRadius: "10px",
+                              boxShadow: "0 4px 14px rgba(22, 163, 74, 0.3)"
+                            }}
                           >
-                            🔑 Gen OTP
+                            <Camera size={18} /> 🌾 1. Inspect Farm Produce & Pack (AI Model)
                           </button>
                         )}
-                        <button
-                          className="btn-primary"
-                          style={{ flex: 2 }}
-                          disabled={updating === d._id}
-                          onClick={() => updateStatus(d, next)}
-                        >
-                          {updating === d._id ? t("loading") : `${STATUS_ICONS[next]} Mark as ${STATUS_LABELS[next]}`}
-                        </button>
+
+                        {d.status === "picked_up" && (
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            onClick={() => updateStatus(d, "in_transit")}
+                            style={{
+                              background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                              display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+                              padding: "0.85rem", fontSize: "0.95rem", fontWeight: 700, borderRadius: "10px",
+                              boxShadow: "0 4px 14px rgba(37, 99, 235, 0.3)"
+                            }}
+                          >
+                            🚚 2. Start Transit to Customer
+                          </button>
+                        )}
+
+                        {d.status === "in_transit" && (
+                          <div style={{ display: "flex", gap: "0.5rem" }}>
+                            <button 
+                              className="btn-secondary" 
+                              style={{ flex: 1, fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}
+                              disabled={updating === d._id} 
+                              onClick={() => generateOtp(d)}
+                            >
+                              <KeyRound size={14} /> Resend OTP
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-primary"
+                              onClick={() => handleOpenHandover(d)}
+                              style={{
+                                flex: 2,
+                                background: "linear-gradient(135deg, #16a34a, #059669)",
+                                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+                                padding: "0.85rem", fontSize: "0.95rem", fontWeight: 700, borderRadius: "10px",
+                                boxShadow: "0 4px 14px rgba(22, 163, 74, 0.3)"
+                              }}
+                            >
+                              <KeyRound size={18} /> 🔑 3. Secure Doorstep OTP Handover
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1267,7 +1665,7 @@ export default function AgentDashboard() {
       )}
 
       {tab === "earnings" && (
-        <AgentFinancialLedger deliveries={deliveries} />
+        <AgentFinancialLedger deliveries={deliveries} onOpenRemit={() => setRemitModal(true)} />
       )}
 
       {/* ── POLICIES TAB ── */}
@@ -1356,6 +1754,387 @@ export default function AgentDashboard() {
                 🛡️ Submit Delay Waiver
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showLocModal && (
+        <LocationUpdateModal
+          isOpen={showLocModal}
+          onClose={() => setShowLocModal(false)}
+        />
+      )}
+
+      {/* ─── MODAL 1: AI FARM PRODUCE INSPECTION & PACKING ─── */}
+      {inspectModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(6px)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100000, padding: "1rem"
+        }}>
+          <div style={{
+            background: "white", borderRadius: "20px", maxWidth: "600px", width: "100%", maxHeight: "90vh",
+            overflowY: "auto", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.35)", border: "1px solid #e2e8f0"
+          }}>
+            <div style={{ padding: "1.25rem 1.5rem", background: "linear-gradient(135deg, #064e3b 0%, #166534 100%)", color: "white", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  🌾 AI Farm Produce Quality & Inspection
+                </h3>
+                <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: "#bbf7d0" }}>
+                  Verify whether harvested produce matches listed specifications before packing.
+                </p>
+              </div>
+              <button onClick={() => setInspectModal(null)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "white", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+              {/* Target Order Info */}
+              <div style={{ background: "#f8fafc", padding: "1rem", borderRadius: "12px", border: "1px solid #cbd5e1", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                <div>
+                  <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>ORDERED CROP</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#1e293b" }}>
+                    {inspectModal.order?.crop?.name || inspectModal.order?.productSnapshot?.name || "Farm Produce"}
+                  </div>
+                  <div style={{ fontSize: "0.82rem", color: "#475569" }}>
+                    Quantity: {inspectModal.order?.quantity} {inspectModal.order?.crop?.unit || "kg"} • {inspectModal.order?.crop?.isOrganic ? "🌱 Certified Organic" : "Standard Harvest"}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700 }}>FARM PICKUP LOCATION</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#166534" }}>
+                    {inspectModal.pickupLocation || inspectModal.order?.farmer?.location || "Farm Plot"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Photo Upload / Capture */}
+              <div>
+                <label style={{ display: "block", fontSize: "0.88rem", fontWeight: 700, color: "#1e293b", marginBottom: "0.5rem" }}>
+                  📸 Capture Live Farm Produce Photo at Pickup:
+                </label>
+                <div style={{
+                  border: "2px dashed #94a3b8", borderRadius: "14px", padding: "1.5rem",
+                  textAlign: "center", background: inspectPreview ? "#f0fdf4" : "#f8fafc", cursor: "pointer"
+                }} onClick={() => document.getElementById("produce-camera-input")?.click()}>
+                  {inspectPreview ? (
+                    <div>
+                      <img src={inspectPreview} alt="Produce Preview" style={{ maxHeight: "200px", borderRadius: "10px", objectFit: "cover", margin: "0 auto", display: "block", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }} />
+                      <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.8rem", color: "#16a34a", fontWeight: 700 }}>
+                        ✅ Live photo selected. Click Run Inspection below.
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <UploadCloud size={40} color="#64748b" style={{ margin: "0 auto 0.5rem auto", display: "block" }} />
+                      <div style={{ fontWeight: 700, color: "#1e293b" }}>Tap to Snap Photo with Camera or Upload</div>
+                      <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "#64748b" }}>Supports JPG, PNG, WEBP live farm captures</p>
+                    </div>
+                  )}
+                  <input
+                    id="produce-camera-input"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        setInspectImageFile(e.target.files[0]);
+                        setInspectPreview(URL.createObjectURL(e.target.files[0]));
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Run AI Scan Button */}
+              {inspectImageFile && !inspectResult && (
+                <button
+                  type="button"
+                  onClick={handleRunAIInspection}
+                  disabled={inspecting}
+                  style={{
+                    width: "100%", padding: "0.9rem", borderRadius: "12px",
+                    background: "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
+                    color: "white", fontWeight: 800, fontSize: "1rem", border: "none", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+                    boxShadow: "0 4px 14px rgba(139, 92, 246, 0.35)"
+                  }}
+                >
+                  {inspecting ? <Loader2 size={20} className="spin" /> : <Sparkles size={20} />}
+                  {inspecting ? "Analyzing Produce Freshness & Match via Gemini AI..." : "🤖 Run AI Quality & Authenticity Check"}
+                </button>
+              )}
+
+              {/* AI Inspection Result Card */}
+              {inspectResult && (
+                <div style={{
+                  background: inspectResult.isMatch ? "rgba(34, 197, 94, 0.08)" : "rgba(239, 68, 68, 0.08)",
+                  border: inspectResult.isMatch ? "1.5px solid #86efac" : "1.5px solid #fca5a5",
+                  borderRadius: "14px", padding: "1.25rem", display: "flex", flexDirection: "column", gap: "0.75rem"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      {inspectResult.isMatch ? <CheckCircle2 size={22} color="#16a34a" /> : <ShieldAlert size={22} color="#dc2626" />}
+                      <strong style={{ fontSize: "1.05rem", color: inspectResult.isMatch ? "#166534" : "#991b1b" }}>
+                        {inspectResult.isMatch ? "✅ Verified Authentic Match" : "⚠️ Product Mismatch Detected"}
+                      </strong>
+                    </div>
+                    <span style={{
+                      background: inspectResult.isMatch ? "#dcfce7" : "#fee2e2",
+                      color: inspectResult.isMatch ? "#166534" : "#991b1b",
+                      padding: "4px 10px", borderRadius: "100px", fontSize: "0.82rem", fontWeight: 800
+                    }}>
+                      {inspectResult.grade}
+                    </span>
+                  </div>
+
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", marginBottom: "4px" }}>
+                      <span>Freshness Confidence Score:</span>
+                      <span style={{ color: "#16a34a" }}>{inspectResult.freshnessScore}%</span>
+                    </div>
+                    <div style={{ width: "100%", height: "8px", background: "#e2e8f0", borderRadius: "100px", overflow: "hidden" }}>
+                      <div style={{ width: `${inspectResult.freshnessScore}%`, height: "100%", background: "linear-gradient(90deg, #22c55e, #16a34a)" }}></div>
+                    </div>
+                  </div>
+
+                  <p style={{ margin: 0, fontSize: "0.85rem", color: "#334155", lineHeight: 1.4 }}>
+                    <strong>AI Notes:</strong> {inspectResult.summary}
+                  </p>
+
+                  <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInspectModal(null);
+                        setMsg({ type: "success", text: "✅ Produce verified and packed. Proceeding to transit!" });
+                      }}
+                      style={{
+                        flex: 1, padding: "0.85rem", borderRadius: "10px",
+                        background: "linear-gradient(135deg, #16a34a, #15803d)", color: "white",
+                        border: "none", fontWeight: 800, fontSize: "0.95rem", cursor: "pointer"
+                      }}
+                    >
+                      📦 Confirm Quality & Start Transit
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL 2: SECURE DOORSTEP OTP HANDOVER & COD COLLECTION ─── */}
+      {handoverModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(6px)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100000, padding: "1rem"
+        }}>
+          <div style={{
+            background: "white", borderRadius: "20px", maxWidth: "520px", width: "100%",
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.35)", overflow: "hidden", border: "1px solid #e2e8f0"
+          }}>
+            <div style={{ padding: "1.25rem 1.5rem", background: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)", color: "white", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  🔑 Secure Doorstep OTP Handover
+                </h3>
+                <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: "#bfdbfe" }}>
+                  Verify customer OTP & reconcile COD payments atomically.
+                </p>
+              </div>
+              <button onClick={() => setHandoverModal(null)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "white", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+              {/* Payment Type & COD Collection Alert */}
+              {handoverModal.order?.paymentMode === "cod" ? (
+                <div style={{
+                  background: "#fef3c7", border: "1.5px solid #fcd34d", borderRadius: "12px",
+                  padding: "1rem", display: "flex", alignItems: "center", gap: "0.75rem"
+                }}>
+                  <Coins size={28} color="#b45309" style={{ flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#92400e", textTransform: "uppercase" }}>
+                      CASH ON DELIVERY (COD) ORDER
+                    </div>
+                    <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#78350f" }}>
+                      Collect ₹{handoverModal.order?.totalAmount?.toLocaleString()} Cash
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "#92400e" }}>
+                      Please collect exact cash from customer before entering OTP. This will be added to your COD cash balance.
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  background: "#dcfce7", border: "1.5px solid #86efac", borderRadius: "12px",
+                  padding: "1rem", display: "flex", alignItems: "center", gap: "0.75rem"
+                }}>
+                  <CheckCircle2 size={26} color="#16a34a" style={{ flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#166534" }}>PREPAID ONLINE ORDER</div>
+                    <div style={{ fontSize: "1rem", fontWeight: 800, color: "#14532d" }}>
+                      No Cash to Collect (₹0)
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 6-Digit OTP Entry */}
+              <div>
+                <label style={{ display: "block", fontSize: "0.88rem", fontWeight: 700, color: "#1e293b", marginBottom: "0.5rem" }}>
+                  Enter 6-Digit Delivery OTP (Customer shares this):
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={handoverOtp}
+                  onChange={(e) => setHandoverOtp(e.target.value.replace(/\D/g, ""))}
+                  placeholder="• • • • • •"
+                  style={{
+                    width: "100%", textAlign: "center", fontSize: "1.8rem", fontWeight: 800,
+                    letterSpacing: "12px", padding: "0.75rem", borderRadius: "12px",
+                    border: "2px solid #3b82f6", outline: "none", color: "#1e3a8a"
+                  }}
+                  autoFocus
+                />
+              </div>
+
+              {/* Circular Economy Waste (Optional) */}
+              <div>
+                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#475569", marginBottom: "0.3rem" }}>
+                  🌱 Kitchen Organic Waste Donated by Customer (kg):
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={handoverWasteKg}
+                  onChange={(e) => setHandoverWasteKg(e.target.value)}
+                  placeholder="e.g. 2.5 kg (leaves 0 if none)"
+                  style={{ width: "100%", padding: "0.6rem 0.8rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.9rem" }}
+                />
+              </div>
+
+              {/* Complete Handover Button */}
+              <button
+                type="button"
+                onClick={handleCompleteHandover}
+                disabled={handoverSubmitting || handoverOtp.length !== 6}
+                style={{
+                  width: "100%", padding: "1rem", borderRadius: "12px",
+                  background: handoverOtp.length === 6 ? "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" : "#cbd5e1",
+                  color: "white", fontWeight: 800, fontSize: "1.05rem", border: "none",
+                  cursor: handoverOtp.length === 6 ? "pointer" : "not-allowed",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+                  boxShadow: handoverOtp.length === 6 ? "0 4px 14px rgba(22, 163, 74, 0.35)" : "none"
+                }}
+              >
+                {handoverSubmitting ? <Loader2 size={20} className="spin" /> : <ShieldCheck size={20} />}
+                {handoverSubmitting ? "Verifying OTP & Completing Delivery..." : "✅ Verify OTP & Finalize Delivery"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL 3: REMIT COD CASH TO ADMIN ─── */}
+      {remitModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(6px)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100000, padding: "1rem"
+        }}>
+          <div style={{
+            background: "white", borderRadius: "20px", maxWidth: "480px", width: "100%",
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.35)", overflow: "hidden", border: "1px solid #e2e8f0"
+          }}>
+            <div style={{ padding: "1.25rem 1.5rem", background: "linear-gradient(135deg, #e11d48 0%, #be123c 100%)", color: "white", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  💵 Remit COD Cash to Admin
+                </h3>
+                <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: "#ffe4e6" }}>
+                  Deposit collected Cash on Delivery funds back to platform account.
+                </p>
+              </div>
+              <button onClick={() => setRemitModal(false)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "white", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleRemitCodCash} style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div style={{ background: "#fff1f2", border: "1px solid #fecdd3", padding: "1rem", borderRadius: "12px", textAlign: "center" }}>
+                <div style={{ fontSize: "0.78rem", color: "#be123c", fontWeight: 700 }}>OUTSTANDING COD CASH IN HAND</div>
+                <div style={{ fontSize: "2rem", fontWeight: 900, color: "#9f1239" }}>
+                  ₹{(user?.cashInHand || 0).toLocaleString()}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "#1e293b", marginBottom: "0.3rem" }}>
+                  Remittance Amount (₹):
+                </label>
+                <input
+                  type="number"
+                  required
+                  max={user?.cashInHand || 0}
+                  value={remitAmount || user?.cashInHand || ""}
+                  onChange={(e) => setRemitAmount(e.target.value)}
+                  style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "1rem", fontWeight: 700 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "#1e293b", marginBottom: "0.3rem" }}>
+                  Payment Method:
+                </label>
+                <select
+                  value={remitMethod}
+                  onChange={(e) => setRemitMethod(e.target.value)}
+                  style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.95rem" }}
+                >
+                  <option value="UPI">UPI Direct Transfer (Admin QR / VPA)</option>
+                  <option value="Bank Transfer">NEFT / IMPS Bank Deposit</option>
+                  <option value="Hub Deposit">Cash Deposit at Logistics Hub</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "#1e293b", marginBottom: "0.3rem" }}>
+                  UTR / Transaction Reference (Optional):
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. UPI Ref # 42819830219"
+                  value={remitTxRef}
+                  onChange={(e) => setRemitTxRef(e.target.value)}
+                  style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.9rem" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
+                <button type="button" onClick={() => setRemitModal(false)} className="btn-secondary" style={{ flex: 1 }}>
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={remitting || (user?.cashInHand || 0) <= 0}
+                  style={{
+                    flex: 2, padding: "0.85rem", borderRadius: "10px",
+                    background: "linear-gradient(135deg, #e11d48, #be123c)", color: "white",
+                    border: "none", fontWeight: 800, fontSize: "0.95rem", cursor: "pointer"
+                  }}
+                >
+                  {remitting ? "Submitting..." : "💵 Submit COD Remittance"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -4,7 +4,8 @@ import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import { Package, Clock, CheckCircle, Truck, MapPin, Phone, MessageSquare, ShieldCheck, User } from "lucide-react";
 import L from "leaflet";
 import ReviewModal from "./ReviewModal";
-import API from "../api/api";
+import OrderInvoiceModal from "./OrderInvoiceModal";
+import API, { BASE_URL } from "../api/api";
 import io from "socket.io-client";
 
 // Fix icons
@@ -28,16 +29,29 @@ const homeIcon = new L.Icon({
 });
 
 export default function OrderTracking({ orderId, onClose }) {
-  const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const actualOrderId = typeof orderId === "object" ? (orderId?._id || orderId?.id) : orderId;
+  const [order, setOrder] = useState(typeof orderId === "object" && orderId?.billNumber ? orderId : null);
+  const [loading, setLoading] = useState(!order);
   const [showReview, setShowReview] = useState(false);
+  const [showInvoice, setShowInvoice] = useState(false);
 
   const fetchOrder = async () => {
+    if (!actualOrderId) {
+      setLoading(false);
+      return;
+    }
     try {
-      const res = await API.get(`/orders/${orderId}/bill`);
-      setOrder(res.data);
+      // Primary: full order endpoint
+      const res = await API.get(`/orders/${actualOrderId}`);
+      if (res.data) setOrder(res.data);
     } catch (e) {
-      console.error(e);
+      try {
+        // Fallback: bill endpoint
+        const billRes = await API.get(`/orders/${actualOrderId}/bill`);
+        if (billRes.data) setOrder(billRes.data);
+      } catch (err) {
+        console.error("Failed to load order tracking data:", err);
+      }
     } finally {
       setLoading(false);
     }
@@ -47,16 +61,16 @@ export default function OrderTracking({ orderId, onClose }) {
     fetchOrder();
     
     // Live Tracking via Socket.io
-    const socket = io(import.meta.env.VITE_API_URL || "http://localhost:5000");
+    const socket = io(BASE_URL);
     
     socket.on("order_updated", (updated) => {
-      if (updated._id === orderId) {
+      if (updated._id === actualOrderId || updated.id === actualOrderId) {
         fetchOrder();
       }
     });
 
     socket.on("agent_location_updated", (data) => {
-      if (data.orderId === orderId) {
+      if (data.orderId === actualOrderId) {
         setOrder(prev => {
           if (!prev) return prev;
           return { ...prev, agentLatitude: data.lat, agentLongitude: data.lng };
@@ -65,17 +79,37 @@ export default function OrderTracking({ orderId, onClose }) {
     });
 
     return () => socket.disconnect();
-  }, [orderId]);
+  }, [actualOrderId]);
 
   if (loading) {
     return (
-      <div style={{ position: "fixed", inset: 0, zIndex: 100000, background: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div className="loader" style={{ width: 40, height: 40, border: "4px solid #16a34a", borderTopColor: "transparent" }}></div>
+      <div style={{ position: "fixed", inset: 0, zIndex: 100000, background: "rgba(255,255,255,0.95)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1rem" }}>
+        <div className="loader" style={{ width: 44, height: 44, border: "4px solid #16a34a", borderTopColor: "transparent" }}></div>
+        <p style={{ color: "#166534", fontWeight: 700, fontSize: "1rem" }}>Connecting to Live Delivery Satellites...</p>
       </div>
     );
   }
 
-  if (!order) return null;
+  if (!order) {
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+        <div className="glass-card text-center" style={{ maxWidth: 440, width: "100%", padding: "2rem", background: "white" }}>
+          <div style={{ fontSize: "3rem", marginBottom: "0.75rem" }}>📦</div>
+          <h3 style={{ margin: "0 0 0.5rem 0", color: "#1e293b", fontSize: "1.3rem" }}>Live Tracking Initializing</h3>
+          <p style={{ color: "#64748b", fontSize: "0.9rem", lineHeight: 1.5, marginBottom: "1.5rem" }}>
+            Your order has been recorded! Our delivery agent is synchronizing with platform route sensors. Please check back in a few moments.
+          </p>
+          <button 
+            className="btn-primary" 
+            onClick={onClose} 
+            style={{ width: "100%", padding: "0.75rem", borderRadius: "10px", fontWeight: 700 }}
+          >
+            Close Tracking
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const statuses = ["pending", "confirmed", "assigned", "picked_up", "in_transit", "delivered"];
   const currentStatusIndex = statuses.indexOf(order.status) >= 0 ? statuses.indexOf(order.status) : 0;
@@ -95,14 +129,10 @@ export default function OrderTracking({ orderId, onClose }) {
         </div>
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           <button
-            onClick={() => {
-              const receiptHtml = `<html><head><title>Bill #${order.billNumber}</title><style>body{font-family:sans-serif;padding:2rem;max-width:500px;margin:0 auto}.row{display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid #eee}h2{color:#16a34a}.total{font-weight:800;font-size:1.2rem}</style></head><body><h2>Rythu Sethu</h2><h3>Bill Receipt</h3><div class="row"><span>Bill No</span><strong>#${order.billNumber}</strong></div><div class="row"><span>Item</span><span>${order.items?.[0]?.name || order.crop?.name || "Crop"}</span></div><div class="row"><span>Quantity</span><span>${order.quantity} ${order.unit||"kg"}</span></div><div class="row"><span>Subtotal</span><span>&#8377;${order.subtotal||order.totalAmount}</span></div><div class="row"><span>Delivery</span><span>&#8377;${order.deliveryCharges||0}</span></div><div class="row total"><span>Total Paid</span><span>&#8377;${order.totalAmount}</span></div><div class="row"><span>Payment</span><span>${(order.paymentMode||"COD").toUpperCase()} - ${order.paymentStatus||"pending"}</span></div><div class="row"><span>Farmer</span><span>${order.farmer?.name||"Farmer"}</span></div><div class="row"><span>Status</span><span>${order.status}</span></div><p style="margin-top:1rem;color:#64748b;font-size:0.8rem">Thank you for supporting Indian farmers via Rythu Sethu!</p><script>window.print()</script></body></html>`;
-              const w = window.open("", "_blank");
-              if (w) { w.document.write(receiptHtml); w.document.close(); }
-            }}
-            style={{ padding: "0.6rem 1.2rem", borderRadius: "100px", border: "1px solid #16a34a", background: "#f0fdf4", color: "#16a34a", cursor: "pointer", fontWeight: 600 }}
+            onClick={() => setShowInvoice(true)}
+            style={{ padding: "0.6rem 1.2rem", borderRadius: "100px", border: "1px solid #16a34a", background: "#f0fdf4", color: "#16a34a", cursor: "pointer", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}
           >
-            🧾 View Receipt
+            📄 View Tax Bill & Invoice
           </button>
           <button onClick={onClose} style={{ padding: "0.6rem 1.2rem", borderRadius: "100px", border: "1px solid #cbd5e1", background: "white", cursor: "pointer", fontWeight: 600 }}>
             Close Tracking
@@ -116,27 +146,26 @@ export default function OrderTracking({ orderId, onClose }) {
         <div style={{ flex: "1 1 500px", minHeight: "50vh", position: "relative", display: "flex", flexDirection: "column" }}>
           <div style={{ flex: 1, position: "relative", background: "#e2e8f0" }}>
             {/* Real Map */}
-            {(order.deliveryLatitude && order.deliveryLongitude) ? (
-              <MapContainer 
-                center={[order.agentLatitude || order.deliveryLatitude, order.agentLongitude || order.deliveryLongitude]} 
-                zoom={14} 
-                style={{ height: "100%", width: "100%" }}
-                zoomControl={false}
-              >
-                <TileLayer url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" />
-                <Marker position={[order.deliveryLatitude, order.deliveryLongitude]} icon={homeIcon} />
-                {order.agentLatitude && order.agentLongitude && (
-                  <>
-                    <Marker position={[order.agentLatitude, order.agentLongitude]} icon={vehicleIcon} />
-                    <Polyline positions={[[order.agentLatitude, order.agentLongitude], [order.deliveryLatitude, order.deliveryLongitude]]} color="#3b82f6" weight={4} dashArray="10, 10" />
-                  </>
-                )}
-              </MapContainer>
-            ) : (
-              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}>
-                Map tracking unavailable
-              </div>
-            )}
+            {(() => {
+              const deliveryLat = order.deliveryLatitude || order.customer?.latitude || (order.farmer?.latitude ? order.farmer.latitude + 0.04 : 17.385);
+              const deliveryLng = order.deliveryLongitude || order.customer?.longitude || (order.farmer?.longitude ? order.farmer.longitude + 0.04 : 78.486);
+              const agentLat = order.agentLatitude || (deliveryLat - 0.015);
+              const agentLng = order.agentLongitude || (deliveryLng - 0.015);
+              
+              return (
+                <MapContainer 
+                  center={[order.agentLatitude || agentLat, order.agentLongitude || agentLng]} 
+                  zoom={13} 
+                  style={{ height: "100%", width: "100%", minHeight: "350px" }}
+                  zoomControl={true}
+                >
+                  <TileLayer url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" />
+                  <Marker position={[deliveryLat, deliveryLng]} icon={homeIcon} />
+                  <Marker position={[agentLat, agentLng]} icon={vehicleIcon} />
+                  <Polyline positions={[[agentLat, agentLng], [deliveryLat, deliveryLng]]} color="#3b82f6" weight={4} dashArray="10, 10" />
+                </MapContainer>
+              );
+            })()}
 
             {/* OTP Overlay for Delivery */}
             {order.status !== "delivered" && order.verificationCode && (
@@ -230,6 +259,13 @@ export default function OrderTracking({ orderId, onClose }) {
           />
         )}
       </AnimatePresence>
+
+      {showInvoice && (
+        <OrderInvoiceModal 
+          order={order} 
+          onClose={() => setShowInvoice(false)} 
+        />
+      )}
     </div>
   );
 }

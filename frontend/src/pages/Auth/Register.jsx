@@ -186,10 +186,33 @@ export default function Register() {
 
   const totalSteps = (form.role === "farmer" || form.role === "agent") ? 3 : 2;
 
+  const handleNextStep1 = () => {
+    setError("");
+    if (!form.name.trim()) { setError("Please enter your full name."); return; }
+    if (!form.email.trim() || !form.email.includes("@")) { setError("Please enter a valid email address."); return; }
+    const phoneDigits = form.phone ? form.phone.replace(/\D/g, "") : "";
+    if (phoneDigits.length !== 10) { setError("Phone number must be exactly 10 digits."); return; }
+    if (!form.password || form.password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (form.password !== form.confirmPass) { setError("Passwords do not match. Please re-enter."); return; }
+    if (form.role === "admin" && !form.adminSecret) { setError("Admin access code is required."); return; }
+    setStep(2);
+  };
+
+  const handleNextStep2 = () => {
+    setError("");
+    if (!form.location && !form.address) { setError("Please provide your location or address."); return; }
+    if ((form.role === "farmer" || form.role === "agent") && !form.aadhaar) {
+      setError("Aadhaar number is required for identity verification.");
+      return;
+    }
+    setStep(3);
+  };
+
   const handleRegister = async () => {
     setError("");
     if (!form.name || !form.email || !form.password || !form.phone) { setError("Name, email, phone & password are required."); return; }
-    if (form.phone.length !== 10) { setError("Phone number must be exactly 10 digits."); return; }
+    const phoneDigits = form.phone.replace(/\D/g, "");
+    if (phoneDigits.length !== 10) { setError("Phone number must be exactly 10 digits."); return; }
     if (form.password !== form.confirmPass) { setError("Passwords do not match."); return; }
     if (form.password.length < 6) { setError("Password must be at least 6 characters."); return; }
     if (form.role === "admin" && !form.adminSecret) { setError("Admin access code is required."); return; }
@@ -474,7 +497,7 @@ export default function Register() {
                 </select>
               </div>
 
-              <button className="btn-primary" onClick={() => setStep(2)}>Next →</button>
+              <button className="btn-primary" onClick={handleNextStep1}>Next →</button>
             </>
           )}
 
@@ -565,7 +588,7 @@ export default function Register() {
                   ? <button className="btn-primary" onClick={handleRegister} disabled={loading}>
                       {loading ? t("loading") : `✅ ${t("register")}`}
                     </button>
-                  : <button className="btn-primary" onClick={() => setStep(3)}>Next →</button>
+                  : <button className="btn-primary" onClick={handleNextStep2}>Next →</button>
                 }
               </div>
             </>

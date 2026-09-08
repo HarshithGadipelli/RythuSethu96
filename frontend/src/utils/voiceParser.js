@@ -1,7 +1,7 @@
 // Multilingual Voice Parser for Rythu Sethu
 import { LANG_MAP } from "./useVoiceInput";
 
-const CROPS_MAP = {
+export const CROPS_MAP = {
   // English & Slangs
   tomato: "Tomato", tomatoes: "Tomato", tamatar: "Tomato", tamata: "Tomato", tamota: "Tomato", thakkali: "Tomato", takkali: "Tomato",
   potato: "Potato", potatoes: "Potato", aloo: "Potato", aalu: "Potato", aaloo: "Potato", batata: "Potato", alugadda: "Potato",
@@ -77,7 +77,7 @@ const CROPS_MAP = {
   கேரட்: "Carrot", கீரை: "Spinach", பருப்பு: "Pulses", கரும்பு: "Sugarcane", தேங்காய்: "Coconut", மாதுளை: "Pomegranate", பப்பாளி: "Papaya"
 };
 
-const CATEGORIES_MAP = {
+export const CATEGORIES_MAP = {
   Tomato: "vegetable", Potato: "vegetable", Onion: "vegetable", Cabbage: "vegetable", Cauliflower: "vegetable", Carrot: "vegetable", Brinjal: "vegetable", Spinach: "vegetable", Okra: "vegetable",
   Apple: "fruit", Mango: "fruit", Banana: "fruit", Pomegranate: "fruit", Papaya: "fruit", Coconut: "fruit",
   Rice: "grain", Wheat: "grain", Maize: "grain",
@@ -94,7 +94,7 @@ const ORGANIC_KEYWORDS = [
   "இயற்கை", "ஆர்கானிக்"
 ];
 
-const UNITS_MAP = {
+export const UNITS_MAP = {
   quintal: ["quintal", "quintals", "qntl", "క్వింటాల్", "క్వింటాళ్లు", "क्विंटल", "ಕ್ವಿಂಟಾಲ್", "குவிண்டால்"],
   bag: ["bag", "bags", "bori", "boriyan", "basta", "bastalu", "bastha", "basthalu", "బస్తా", "బస్తాలు", "బోరి", "बोरी", "ಮೂಟೆ", "மூட்டை"],
   crate: ["crate", "crates", "peti", "pette", "pettelu", "పెట్టె", "పెట్టెలు", "पेटी", "ಪೆಟ್ಟಿಗೆ"],

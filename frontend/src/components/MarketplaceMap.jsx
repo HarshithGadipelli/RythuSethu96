@@ -125,7 +125,7 @@ const TILE_LAYERS = {
 };
 
 // ─── Custom Icons ─────────────────────────────────────────────────────────────
-function createFarmerIcon(grade = "New", isOrganic = false, imgUrl = null) {
+function createFarmerIcon(grade = "New", isOrganic = false, imgUrl = null, cropCount = 1) {
   const colors = {
     Platinum: "#7c3aed",
     Gold: "#d97706",
@@ -142,6 +142,10 @@ function createFarmerIcon(grade = "New", isOrganic = false, imgUrl = null) {
     ? `<div style="width:38px;height:38px;border-radius:50%;background-image:url('${parsedImg}');background-size:cover;background-position:center;transform:rotate(45deg);"></div>`
     : `<span style="transform:rotate(45deg);font-size:1.3rem;line-height:1">${isOrganic ? "🌿" : "🌾"}</span>`;
 
+  const badgeHtml = cropCount > 1 
+    ? `<span style="position:absolute;top:-6px;right:-6px;background:#ef4444;color:white;font-size:10px;font-weight:800;border-radius:10px;padding:1px 5px;border:2px solid white;box-shadow:0 2px 5px rgba(0,0,0,0.3);transform:none;">${cropCount}</span>`
+    : (isOrganic ? `<span style="position:absolute;top:-6px;right:-6px;background:#16a34a;color:white;font-size:10px;border-radius:10px;padding:1px 4px;border:2px solid white;transform:none;">🌿</span>` : "");
+
   return L.divIcon({
     className: "",
     html: `<div style="
@@ -151,12 +155,12 @@ function createFarmerIcon(grade = "New", isOrganic = false, imgUrl = null) {
       border:3px solid white;
       border-radius:50% 50% 50% 0;
       transform:rotate(-45deg);
-      box-shadow:0 4px 15px rgba(0,0,0,0.35);
+      box-shadow:0 5px 18px rgba(0,0,0,0.35);
       display:flex;align-items:center;justify-content:center;
       cursor:pointer;
-      overflow:hidden;
     ">
       ${innerHtml}
+      ${badgeHtml}
     </div>`,
     iconSize: [44, 44],
     iconAnchor: [22, 44],
@@ -311,6 +315,8 @@ export default function MarketplaceMap({
   const [quickFilter, setQuickFilter] = useState("all");
   const [flyToCoords, setFlyToCoords] = useState(null);
   const [osrmRoute, setOsrmRoute] = useState(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [showDirectionsDrawer, setShowDirectionsDrawer] = useState(false);
   const tile = TILE_LAYERS[tileKey];
 
   // Determine centre: prefer selected crop, else customer loc, else Hyderabad
@@ -318,20 +324,58 @@ export default function MarketplaceMap({
   const focusLat = focusCrop?.latitude || focusCrop?.farmer?.latitude;
   const focusLng = focusCrop?.longitude || focusCrop?.farmer?.longitude;
 
-  // OSRM Route Fetching
+  // High-accuracy live GPS locator
+  const handleAcquireCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        setIsLocating(false);
+        let address = `${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`;
+        try {
+          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}`);
+          const d = await r.json();
+          address = d.display_name?.split(",").slice(0, 3).join(",") || address;
+        } catch {}
+        if (onCustomerLocationChange) {
+          onCustomerLocationChange({ lat: coords.latitude, lng: coords.longitude, address });
+        }
+        setFlyToCoords({ lat: coords.latitude, lng: coords.longitude, zoom: 14 });
+      },
+      (err) => {
+        setIsLocating(false);
+        console.warn("Geolocation warning:", err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  // OSRM Route & Step-by-Step Directions Fetching
   useEffect(() => {
     if (customerLat && customerLng && focusLat && focusLng) {
-      setOsrmRoute(null); // Clear previous route while loading new one
-      const url = `https://router.project-osrm.org/route/v1/driving/${customerLng},${customerLat};${focusLng},${focusLat}?overview=full&geometries=geojson`;
+      const url = `https://router.project-osrm.org/route/v1/driving/${customerLng},${customerLat};${focusLng},${focusLat}?overview=full&geometries=geojson&steps=true`;
       fetch(url)
         .then(res => res.json())
         .then(data => {
           if (data.routes && data.routes[0]) {
-            const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+            const route = data.routes[0];
+            const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+            const steps = route.legs?.[0]?.steps?.map((s, idx) => ({
+              id: idx,
+              instruction: s.maneuver?.type === "depart" ? "Depart towards farm" : s.name ? `Turn on ${s.name}` : `Continue on road (${Math.round(s.distance)}m)`,
+              distanceMeters: Math.round(s.distance),
+              durationSecs: Math.round(s.duration)
+            })) || [];
+
             setOsrmRoute({
               positions: coords,
-              duration: data.routes[0].duration,
-              distance: data.routes[0].distance
+              duration: route.duration,
+              distance: route.distance,
+              steps: steps,
+              targetFarm: focusCrop?.farmer?.farmLocation || focusCrop?.farmer?.name || "Direct Farm Parcel"
             });
           } else {
             setOsrmRoute(null);
@@ -506,21 +550,48 @@ export default function MarketplaceMap({
           🌧️ Radar
         </button>
         <button
-          onClick={() => setShowFarmBoundaries(!showFarmBoundaries)}
+          onClick={handleAcquireCurrentLocation}
+          disabled={isLocating}
           style={{
-            padding: "3px 10px",
+            padding: "3px 12px",
             borderRadius: 100,
             fontSize: "0.72rem",
-            fontWeight: 700,
+            fontWeight: 800,
             cursor: "pointer",
-            background: showFarmBoundaries ? "linear-gradient(135deg, #8b5cf6, #7c3aed)" : "transparent",
-            color: showFarmBoundaries ? "white" : "#8b5cf6",
-            border: showFarmBoundaries ? "none" : "1px solid #8b5cf6",
-            transition: "all 0.2s",
+            background: customerLat ? "linear-gradient(135deg, #10b981, #059669)" : "linear-gradient(135deg, #3b82f6, #2563eb)",
+            color: "white",
+            border: "none",
+            boxShadow: "0 2px 8px rgba(16,185,129,0.3)",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px"
           }}
+          title="Detect and center your live high-accuracy GPS position"
         >
-          🛑 Zones
+          📍 {isLocating ? "Locating..." : customerLat ? "Live GPS Locked" : "Find My GPS"}
         </button>
+
+        {osrmRoute && (
+          <button
+            onClick={() => setShowDirectionsDrawer(!showDirectionsDrawer)}
+            style={{
+              padding: "3px 12px",
+              borderRadius: 100,
+              fontSize: "0.72rem",
+              fontWeight: 800,
+              cursor: "pointer",
+              background: showDirectionsDrawer ? "#0f172a" : "linear-gradient(135deg, #2563eb, #1d4ed8)",
+              color: "white",
+              border: "none",
+              boxShadow: "0 2px 8px rgba(37,99,235,0.4)",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px"
+            }}
+          >
+            🛣️ {showDirectionsDrawer ? "Hide Directions" : "Turn-by-Turn Directions"}
+          </button>
+        )}
       </div>
 
       {/* Demand Heatmap Legend */}
@@ -542,25 +613,100 @@ export default function MarketplaceMap({
         </div>
       )}
 
-      {/* Distance Info Badge */}
+      {/* Distance Info Badge with 1-Click Directions Drawer */}
       {distKm !== null && (
+        <div 
+          onClick={() => setShowDirectionsDrawer(true)}
+          style={{
+            position: "absolute", bottom: 14, left: 14, zIndex: 1000,
+            background: "rgba(255,255,255,0.98)",
+            borderRadius: 14, padding: "10px 16px",
+            boxShadow: "0 6px 25px rgba(0,0,0,0.18)",
+            border: "1px solid #bbf7d0",
+            display: "flex", flexDirection: "column", gap: 2,
+            cursor: "pointer", transition: "transform 0.15s"
+          }}
+          className="hover-scale"
+          title="Click to view full turn-by-turn driving directions"
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+            <span style={{ fontSize: "0.72rem", color: "#166534", fontWeight: 800, textTransform: "uppercase" }}>
+              🛣️ Live Road Directions
+            </span>
+            <span style={{ fontSize: "0.7rem", background: "#dcfce7", color: "#15803d", padding: "1px 6px", borderRadius: "10px", fontWeight: 700 }}>
+              {osrmRoute ? `${Math.round(osrmRoute.distance / 1000)} km` : `${distKm.toFixed(1)} km`}
+            </span>
+          </div>
+          <span style={{ fontSize: "1.2rem", fontWeight: 900, color: "#16a34a" }}>
+            {osrmRoute ? `~${Math.round(osrmRoute.duration / 60)} Mins Drive` : `~${Math.round(distKm * 2 + 15)} Mins`}
+          </span>
+          <span style={{ fontSize: "0.72rem", color: "#2563eb", fontWeight: 700, display: "flex", alignItems: "center", gap: "4px" }}>
+            Click to open step-by-step route ➔
+          </span>
+        </div>
+      )}
+
+      {/* Step-by-Step Directions Side Drawer */}
+      {showDirectionsDrawer && osrmRoute && (
         <div style={{
-          position: "absolute", bottom: 14, left: 14, zIndex: 1000,
-          background: "rgba(255,255,255,0.97)",
-          borderRadius: 12, padding: "8px 14px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-          border: "1px solid #e2e8f0",
-          display: "flex", flexDirection: "column", gap: 2,
+          position: "absolute", top: 10, left: 10, bottom: 10, width: "320px", maxWidth: "90%",
+          background: "rgba(255, 255, 255, 0.98)", backdropFilter: "blur(8px)",
+          zIndex: 1001, borderRadius: "16px", boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+          border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", overflow: "hidden"
         }}>
-          <span style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600 }}>
-            📍 Distance to Farm
-          </span>
-          <span style={{ fontSize: "1.1rem", fontWeight: 800, color: "#16a34a" }}>
-            {distKm.toFixed(1)} km
-          </span>
-          <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>
-            {osrmRoute ? `~${Math.round(osrmRoute.duration / 60)} min ETA (Live Routing)` : `~${Math.round(distKm * 2 + 30)} min ETA`}
-          </span>
+          <div style={{ padding: "12px 16px", background: "#064e3b", color: "white", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <strong style={{ fontSize: "0.9rem", display: "block" }}>🛣️ Turn-by-Turn Navigation</strong>
+              <span style={{ fontSize: "0.72rem", opacity: 0.85 }}>Direct route to {osrmRoute.targetFarm}</span>
+            </div>
+            <button onClick={() => setShowDirectionsDrawer(false)} style={{ background: "none", border: "none", color: "white", fontSize: "1.2rem", cursor: "pointer" }}>✕</button>
+          </div>
+
+          <div style={{ padding: "10px 16px", background: "#f0fdf4", borderBottom: "1px solid #dcfce7", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontSize: "0.7rem", color: "#166534", fontWeight: 700 }}>TOTAL DISTANCE</div>
+              <div style={{ fontSize: "1.1rem", fontWeight: 900, color: "#15803d" }}>{(osrmRoute.distance / 1000).toFixed(1)} km</div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: "0.7rem", color: "#166534", fontWeight: 700 }}>ESTIMATED TIME</div>
+              <div style={{ fontSize: "1.1rem", fontWeight: 900, color: "#15803d" }}>{Math.round(osrmRoute.duration / 60)} Mins</div>
+            </div>
+          </div>
+
+          {/* Turn Steps List */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "8px" }}>
+            {osrmRoute.steps && osrmRoute.steps.length > 0 ? (
+              osrmRoute.steps.map((st, i) => (
+                <div key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start", padding: "6px 8px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                  <div style={{ background: "#2563eb", color: "white", borderRadius: "50%", width: "20px", height: "20px", fontSize: "0.7rem", fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: "2px" }}>
+                    {i + 1}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e293b", lineHeight: 1.25 }}>{st.instruction}</div>
+                    <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "2px" }}>{st.distanceMeters > 1000 ? `${(st.distanceMeters/1000).toFixed(1)} km` : `${st.distanceMeters} m`} • ~{Math.ceil(st.durationSecs/60)} min</div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ fontSize: "0.8rem", color: "#64748b", textAlign: "center", marginTop: "2rem" }}>Direct highway link loaded. Follow animated polyline on map.</div>
+            )}
+          </div>
+
+          {/* External Google Navigation link */}
+          <div style={{ padding: "10px 16px", background: "white", borderTop: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "6px" }}>
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${focusLat},${focusLng}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "white", padding: "8px 0",
+                borderRadius: "10px", textAlign: "center", textDecoration: "none", fontWeight: 700, fontSize: "0.8rem",
+                boxShadow: "0 2px 8px rgba(37,99,235,0.3)"
+              }}
+            >
+              🧭 Start Live GPS in Google Maps
+            </a>
+          </div>
         </div>
       )}
 
@@ -810,101 +956,186 @@ export default function MarketplaceMap({
           );
         })}
 
-        {/* Farmer / crop markers grouped by Farmer */}
-        <MarkerClusterGroup chunkedLoading={true} maxClusterRadius={40}>
+        {/* Farmer / crop markers grouped by Farmer & exact coordinates */}
+        <MarkerClusterGroup chunkedLoading={true} maxClusterRadius={35}>
           {Object.values(visibleCrops.reduce((acc, c) => {
-          const lat = c.latitude || c.farmer?.latitude;
-          const lng = c.longitude || c.farmer?.longitude;
-          if (!lat || !lng) return acc;
-          const fid = (c.farmer?._id || c.farmer)?.toString?.() || "unknown";
-          
-          // Group by both farmer and exact location coordinates so multiple locations render distinct markers
-          const groupKey = `${fid}_${lat}_${lng}`;
-          
-          if (!acc[groupKey]) {
-             acc[groupKey] = { 
-               id: fid, 
-               groupKey: groupKey,
-               name: c.farmer?.name || "Farmer", 
-               lat, 
-               lng, 
-               crops: [], 
-               isOrganic: false, 
-               image: c.farmer?.profilePic || c.image || null 
-             };
-          }
-          acc[groupKey].crops.push(c);
-          if (c.isOrganic) acc[groupKey].isOrganic = true;
-          return acc;
-        }, {})).map((f) => {
-          const trust = trustScores[f.id];
-          const grade = trust?.grade || "New";
-          const dist =
-            customerLat && customerLng
-              ? haversine(customerLat, customerLng, f.lat, f.lng)
-              : null;
+            const lat = c.latitude !== undefined && c.latitude !== null ? Number(c.latitude) : (c.farmer?.latitude ? Number(c.farmer.latitude) : null);
+            const lng = c.longitude !== undefined && c.longitude !== null ? Number(c.longitude) : (c.farmer?.longitude ? Number(c.farmer.longitude) : null);
+            if (!lat || !lng) return acc;
+            const fid = (c.farmer?._id || c.farmer)?.toString?.() || "unknown";
+            
+            // Group by both farmer and exact location coordinates so multiple locations render distinct markers
+            const groupKey = `${fid}_${lat.toFixed(5)}_${lng.toFixed(5)}`;
+            
+            if (!acc[groupKey]) {
+               acc[groupKey] = { 
+                 id: fid, 
+                 groupKey: groupKey,
+                 name: c.farmer?.name || "Farmer", 
+                 phone: c.farmer?.phone || "",
+                 farmLocation: c.farmLocation || c.location || c.farmer?.farmName || c.farmer?.location || "Registered Farm",
+                 lat, 
+                 lng, 
+                 crops: [], 
+                 isOrganic: false, 
+                 image: c.farmer?.avatar || c.farmer?.profilePic || c.image || null 
+               };
+            }
+            acc[groupKey].crops.push(c);
+            if (c.isOrganic) acc[groupKey].isOrganic = true;
+            return acc;
+          }, {})).map((f) => {
+            const trust = trustScores[f.id];
+            const grade = trust?.grade || "New";
+            const dist =
+              customerLat && customerLng
+                ? haversine(customerLat, customerLng, f.lat, f.lng)
+                : null;
 
-          return (
-            <Marker
-              key={f.groupKey}
-              position={[f.lat, f.lng]}
-              icon={createFarmerIcon(grade, f.isOrganic, f.image)}
-              eventHandlers={{
-                mouseover: () => setHoveredCrop(f.crops[0]),
-                mouseout: () => setHoveredCrop(null),
-              }}
-            >
-              <Popup maxWidth={220}>
-                <div style={{ fontFamily: "Poppins, sans-serif", minWidth: 180 }}>
-                  {f.image && (
-                    <img
-                      src={f.image}
-                      alt={f.name}
-                      style={{ width: "100%", height: 80, objectFit: "cover", borderRadius: 8, marginBottom: 8 }}
-                    />
-                  )}
-                  <strong style={{ fontSize: "1rem", display: "block", marginBottom: 2 }}>
-                    {f.name}
-                  </strong>
-                  <span style={{ color: "#64748b", fontSize: "0.78rem" }}>
-                    {f.crops.length} {f.crops.length === 1 ? "product" : "products"} available
-                  </span>
-                  {dist !== null && (
-                    <div style={{ marginTop: 4, background: "#eff6ff", borderRadius: 8, padding: "3px 8px", display: "inline-block" }}>
-                      <span style={{ fontSize: "0.75rem", color: "#2563eb", fontWeight: 700 }}>
-                        📍 {dist.toFixed(1)} km away
-                      </span>
+            return (
+              <Marker
+                key={f.groupKey}
+                position={[f.lat, f.lng]}
+                icon={createFarmerIcon(grade, f.isOrganic, f.image, f.crops.length)}
+                eventHandlers={{
+                  mouseover: () => setHoveredCrop(f.crops[0]),
+                  mouseout: () => setHoveredCrop(null),
+                }}
+              >
+                <Popup maxWidth={290} minWidth={260}>
+                  <div style={{ fontFamily: "'Inter', sans-serif", padding: "4px" }}>
+                    {/* Farmer Profile Header */}
+                    <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "8px" }}>
+                      <img
+                        src={f.image ? (f.image.startsWith("http") ? f.image : `${BASE_URL}${f.image}`) : "/default.png"}
+                        alt={f.name}
+                        style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", border: "2px solid #16a34a", flexShrink: 0 }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                          <strong style={{ fontSize: "0.95rem", color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {f.name}
+                          </strong>
+                          {trust && (
+                            <span title={`${trust.grade} (${trust.score}/100)`} style={{ fontSize: "0.85rem" }}>
+                              {trust.emoji}
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ color: "#64748b", fontSize: "0.75rem", display: "block" }}>
+                          🧑‍🌾 Verified Producer
+                        </span>
+                      </div>
                     </div>
-                  )}
-                  {f.isOrganic && (
-                    <div style={{ marginTop: 4 }}>
-                      <span style={{ background: "#dcfce7", color: "#16a34a", padding: "2px 8px", borderRadius: 10, fontSize: "0.7rem", fontWeight: 700 }}>
-                        🌿 Organic Farm
-                      </span>
+
+                    {/* Exact Location & GPS Coordinates Badge */}
+                    <div style={{
+                      background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px",
+                      padding: "6px 8px", marginBottom: "8px"
+                    }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: "5px", color: "#166534", fontSize: "0.78rem", fontWeight: 700 }}>
+                        <span style={{ fontSize: "0.9rem" }}>📍</span>
+                        <span style={{ lineHeight: 1.25 }}>{f.farmLocation}</span>
+                      </div>
+                      <div style={{ marginTop: "4px", fontSize: "0.7rem", color: "#15803d", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span>GPS: {f.lat.toFixed(4)}°, {f.lng.toFixed(4)}°</span>
+                        {dist !== null && <span style={{ fontWeight: 800, color: "#2563eb" }}>{dist.toFixed(1)} km away</span>}
+                      </div>
                     </div>
-                  )}
-                  {trust && (
-                    <div style={{ marginTop: 4, fontSize: "0.75rem" }}>
-                      {trust.emoji} {trust.grade} — {trust.score}/100
+
+                    {/* Available Produce List */}
+                    <div style={{ marginBottom: "8px" }}>
+                      <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#475569", textTransform: "uppercase", marginBottom: "4px", display: "flex", justifyContent: "space-between" }}>
+                        <span>Produce Available</span>
+                        <span>({f.crops.length} items)</span>
+                      </div>
+                      <div style={{ maxHeight: "135px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "4px" }}>
+                        {f.crops.map((crop) => (
+                          <div
+                            key={crop._id}
+                            onClick={() => onCropClick && onCropClick(crop)}
+                            style={{
+                              display: "flex", alignItems: "center", justifyContent: "space-between",
+                              padding: "5px 8px", background: "#f8fafc", borderRadius: "6px",
+                              border: "1px solid #e2e8f0", cursor: "pointer", transition: "all 0.15s"
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "#ecfdf5"}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "#f8fafc"}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
+                              <span style={{ fontSize: "1rem" }}>{crop.isOrganic ? "🌿" : "🌾"}</span>
+                              <div style={{ minWidth: 0 }}>
+                                <strong style={{ fontSize: "0.82rem", color: "#1e293b", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                  {crop.name}
+                                </strong>
+                                <span style={{ fontSize: "0.7rem", color: "#64748b" }}>
+                                  {crop.quantity} {crop.unit || "kg"} left
+                                </span>
+                              </div>
+                            </div>
+                            <div style={{ textAlign: "right", flexShrink: 0 }}>
+                              <strong style={{ fontSize: "0.85rem", color: "#16a34a" }}>
+                                ₹{crop.price}/{crop.unit || "kg"}
+                              </strong>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  )}
-                  <button
-                    onClick={() => {
-                       // Trigger a custom event to select this farmer
-                       window.dispatchEvent(new CustomEvent("select_farmer_map", { detail: { farmerId: f.id } }));
-                    }}
-                    style={{
-                      marginTop: 10, background: "#3b82f6", color: "white",
-                      border: "none", padding: "8px 0", borderRadius: 100,
-                      cursor: "pointer", width: "100%", fontWeight: 700, fontSize: "0.85rem",
-                    }}
-                  >
-                    🧑‍🌾 Select this Farm
-                  </button>
-                </div>
-              </Popup>
-            </Marker>
-          );
+
+                    {/* Action Buttons */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                      <button
+                        onClick={() => {
+                          setFlyToCoords({ lat: f.lat, lng: f.lng });
+                          if (f.crops[0] && onCropClick) onCropClick(f.crops[0]);
+                        }}
+                        style={{
+                          background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+                          color: "white", border: "none", padding: "7px 0",
+                          borderRadius: "100px", fontWeight: 700, fontSize: "0.8rem",
+                          cursor: "pointer", width: "100%", textAlign: "center",
+                          boxShadow: "0 2px 8px rgba(22, 163, 74, 0.3)"
+                        }}
+                      >
+                        🛒 View & Order Produce
+                      </button>
+
+                      <div style={{ display: "flex", gap: "5px" }}>
+                        <button
+                          onClick={() => {
+                            setHoveredCrop(f.crops[0]);
+                            setFlyToCoords({ lat: f.lat, lng: f.lng });
+                          }}
+                          style={{
+                            flex: 1, background: "#eff6ff", color: "#2563eb",
+                            border: "1px solid #bfdbfe", padding: "5px 0",
+                            borderRadius: "100px", fontWeight: 700, fontSize: "0.72rem",
+                            cursor: "pointer"
+                          }}
+                        >
+                          🛣️ Road Route
+                        </button>
+
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${f.lat},${f.lng}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            flex: 1, background: "#f8fafc", color: "#475569",
+                            border: "1px solid #cbd5e1", padding: "5px 0",
+                            borderRadius: "100px", fontWeight: 700, fontSize: "0.72rem",
+                            textAlign: "center", textDecoration: "none", display: "inline-block"
+                          }}
+                        >
+                          🧭 Google Maps
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            );
           })}
         </MarkerClusterGroup>
       </MapContainer>

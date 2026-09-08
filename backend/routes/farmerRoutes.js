@@ -1,6 +1,11 @@
 import express from "express";
+import mongoose from "mongoose";
 import Crop from "../models/Crop.js";
 import Farmer from "../models/Farmer.js";
+import Order from "../models/Order.js";
+import User from "../models/User.js";
+import Settlement from "../models/Settlement.js";
+import Notification from "../models/Notification.js";
 import { calculateTrustScore, getCachedTrustScore } from "../services/trustScoreService.js";
 import { getTrustLeaderboard } from "../controllers/farmerController.js";
 import { protect } from "../middleware/authMiddleware.js";
@@ -34,8 +39,52 @@ router.get("/my-crops", protect, async (req, res) => {
   }
 });
 
+// ─── Farmer 2-Week (14-Day) Bi-Weekly Settlement Ledger ───
+router.get("/settlements", protect, async (req, res) => {
+  try {
+    const farmerUser = await User.findById(req.user._id);
+    if (!farmerUser) return res.status(404).json({ error: "Farmer user not found." });
+
+    // Compute 14-day bi-weekly settlement cycle
+    const now = new Date();
+    const epoch = new Date(2026, 0, 1);
+    const diffDays = Math.floor((now - epoch) / (1000 * 60 * 60 * 24));
+    const cycleIndex = Math.floor(diffDays / 14);
+    const cycleStartDate = new Date(epoch.getTime() + cycleIndex * 14 * 24 * 60 * 60 * 1000);
+    const cycleEndDate = new Date(cycleStartDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const daysRemaining = Math.max(1, Math.ceil((cycleEndDate - now) / (1000 * 60 * 60 * 24)));
+
+    const pastSettlements = await Settlement.find({ recipient: req.user._id, recipientRole: "farmer" }).sort({ createdAt: -1 });
+
+    const deliveredOrders = await Order.find({ farmer: req.user._id, status: "delivered" })
+      .populate("crop", "name unit price image")
+      .populate("customer", "name")
+      .sort({ createdAt: -1 })
+      .limit(30);
+
+    res.json({
+      settlementCycleDays: 14,
+      cycleType: "Bi-Weekly (2-Week Settlement)",
+      currentCycleStart: cycleStartDate.toISOString(),
+      currentCycleEnd: cycleEndDate.toISOString(),
+      nextPayoutDate: cycleEndDate.toISOString(),
+      daysRemainingInCycle: daysRemaining,
+      pendingSettlementBalance: farmerUser.pendingSettlement || 0,
+      bankAccount: farmerUser.bankAccountNumber || "",
+      upiId: farmerUser.upiId || "",
+      pastSettlements,
+      deliveredOrders
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get farmer by user ID
-router.get("/:id", async (req, res) => {
+router.get("/:id", async (req, res, next) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return next();
+  }
   try {
     const farmer = await Farmer.findOne({ user: req.params.id });
     if (!farmer) return res.status(404).json({ error: "Farmer not found" });
@@ -83,7 +132,6 @@ router.post("/trust-scores-batch", async (req, res) => {
       return res.status(400).json({ error: "farmerIds array required" });
     }
 
-    // Use cached scores for performance
     const farmers = await Farmer.find({ user: { $in: farmerIds } });
     const scoreMap = {};
     
@@ -106,7 +154,6 @@ router.post("/trust-scores-batch", async (req, res) => {
       };
     }
 
-    // Fill in missing farmers with default
     for (const id of farmerIds) {
       if (!scoreMap[id]) {
         scoreMap[id] = { score: 0, grade: "New", emoji: "🌱", label: "Getting Started" };
@@ -123,9 +170,6 @@ router.post("/trust-scores-batch", async (req, res) => {
 router.post("/visit/:farmerId", async (req, res) => {
   try {
     const { customerId, customerName, requestedDate, notes, amount } = req.body;
-    
-    const Notification = (await import("../models/Notification.js")).default;
-    const User = (await import("../models/User.js")).default;
 
     const tourPrice = Number(amount) || 0;
     let farmerEscrow = 0;
@@ -148,17 +192,14 @@ router.post("/visit/:farmerId", async (req, res) => {
       const adminFee = Math.round(tourPrice * 0.15);
       farmerEscrow = tourPrice - adminFee;
 
-      // Deduct from customer
       customer.walletBalance -= tourPrice;
       await customer.save();
 
-      // Add to admin wallet
       if (admin) {
         admin.walletBalance = (admin.walletBalance || 0) + adminFee;
         await admin.save();
       }
 
-      // Add to farmer escrow
       farmerUser.escrowBalance = (farmerUser.escrowBalance || 0) + farmerEscrow;
       await farmerUser.save();
     }

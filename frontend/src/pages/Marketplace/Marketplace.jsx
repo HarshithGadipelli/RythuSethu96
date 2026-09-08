@@ -12,7 +12,7 @@ import AutoSuggestInput from "../../components/AutoSuggestInput";
 import { io } from "socket.io-client";
 import { parseSpokenNumber, playTTS, stopTTS, isTTSPlaying } from "../../utils/voiceParser";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Map as MapIcon, List, ShoppingBag, Truck, PackageCheck, Package, Users, Zap, Filter, X, MapPin, Leaf, Shield, ArrowUpDown, ChevronDown, ChevronUp, Star, Sparkles, LocateFixed, DollarSign, SlidersHorizontal, Navigation, Volume2, VolumeX, Scale } from "lucide-react";
+import { Search, Map as MapIcon, List, ShoppingBag, Truck, PackageCheck, Package, Users, Zap, Filter, X, MapPin, Leaf, Shield, ArrowUpDown, ChevronDown, ChevronUp, Star, Sparkles, LocateFixed, DollarSign, SlidersHorizontal, Navigation, Volume2, VolumeX, Scale, Tractor } from "lucide-react";
 import LiveMapModal from "../../components/LiveMapModal";
 import PaymentModal from "../../components/PaymentModal";
 import useMarketAudio from "../../hooks/useMarketAudio";
@@ -20,7 +20,15 @@ import MarketplaceMap from "../../components/MarketplaceMap";
 import LocationButton from "../../components/LocationButton";
 import VoiceMicButton from "../../components/VoiceMicButton";
 import LocationPickerModal from "../../components/LocationPickerModal";
-import OrderTracking from "../../components/OrderTracking";// Fix leaflet default icons
+import OrderTracking from "../../components/OrderTracking";
+import CustomerOrders from "./CustomerOrders";
+import CustomerGroups from "./CustomerGroups";
+import CustomerOfflineTours from "./CustomerOfflineTours";
+import RythuSethuAnimation from "../../components/RythuSethuAnimation";
+import FarmTourModal from "../../components/FarmTourModal";
+import SmartCuratedBasket from "../../components/SmartCuratedBasket";
+
+// Fix leaflet default icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
@@ -209,11 +217,66 @@ function DistanceBadge({ distance }) {
   );
 }
 
-import CustomerOrders from "./CustomerOrders";
-import CustomerGroups from "./CustomerGroups";
-import RythuSethuAnimation from "../../components/RythuSethuAnimation";
-import FarmTourModal from "../../components/FarmTourModal";
-import SmartCuratedBasket from "../../components/SmartCuratedBasket";
+// ─── Dynamic Delivery ETA Helper & Badge ───
+export const getDeliveryETA = (crop, customerLat, customerLng) => {
+  if (crop?.isAdminStock || (crop?.clearanceDiscount && crop?.clearanceDiscount > 0)) {
+    return {
+      min: 15,
+      max: 25,
+      label: "⚡ 15–25 Mins (Express Hub)",
+      isExpress: true
+    };
+  }
+  const cLat = crop?.latitude || crop?.farmer?.latitude;
+  const cLng = crop?.longitude || crop?.farmer?.longitude;
+  if (!customerLat || !customerLng || !cLat || !cLng) {
+    return {
+      min: 30,
+      max: 45,
+      label: "🚚 30–45 Mins",
+      isExpress: false
+    };
+  }
+  const dist = haversineDistance(customerLat, customerLng, cLat, cLng);
+  if (dist === null) {
+    return { min: 30, max: 45, label: "🚚 30–45 Mins", isExpress: false };
+  }
+  if (dist <= 3) {
+    return { min: 20, max: 30, label: "⚡ 20–30 Mins (Nearby)", isExpress: true };
+  } else if (dist <= 10) {
+    const minM = Math.round(15 + dist * 2);
+    const maxM = Math.round(25 + dist * 2.5);
+    return { min: minM, max: maxM, label: `🚚 ${minM}–${maxM} Mins`, isExpress: false };
+  } else if (dist <= 25) {
+    const minM = Math.round(25 + dist * 1.8);
+    const maxM = Math.round(35 + dist * 2.2);
+    return { min: minM, max: maxM, label: `🚚 ${minM}–${maxM} Mins`, isExpress: false };
+  } else {
+    const hours = Math.round((dist / 30) * 10) / 10;
+    return { min: Math.round(dist * 2), max: Math.round(dist * 3), label: `📦 ~${hours}h (${Math.round(dist)}km)`, isExpress: false };
+  }
+};
+
+function DeliveryETABadge({ crop, customerLat, customerLng }) {
+  const eta = getDeliveryETA(crop, customerLat, customerLng);
+  return (
+    <span style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "0.25rem",
+      background: eta.isExpress ? "rgba(245, 158, 11, 0.12)" : "rgba(34, 197, 94, 0.1)",
+      color: eta.isExpress ? "#d97706" : "#16a34a",
+      padding: "0.2rem 0.55rem",
+      borderRadius: "100px",
+      fontSize: "0.72rem",
+      fontWeight: 700,
+      border: eta.isExpress ? "1px solid rgba(245, 158, 11, 0.3)" : "1px solid rgba(34, 197, 94, 0.2)"
+    }} title={`Estimated Delivery Time: ${eta.label}`}>
+      {eta.label}
+    </span>
+  );
+}
+
 
 // Helper to get current active agricultural season in India based on month
 const getCurrentIndianSeason = () => {
@@ -243,10 +306,11 @@ export default function Marketplace() {
 
   const initialTab = searchParams.get("tab") || "shop";
   const [mainTab, setMainTab] = useState(initialTab);
+  const [preselectedCropForPool, setPreselectedCropForPool] = useState(null);
 
   useEffect(() => {
     const tabParam = searchParams.get("tab");
-    if (tabParam && ["shop", "orders", "groups"].includes(tabParam)) {
+    if (tabParam && ["shop", "orders", "groups", "tours"].includes(tabParam)) {
       setMainTab(tabParam);
     }
   }, [searchParams]);
@@ -296,6 +360,7 @@ export default function Marketplace() {
   const [showFilters, setShowFilters] = useState(false);
   const [filterOrganic, setFilterOrganic] = useState(false);
   const [filterPesticideFree, setFilterPesticideFree] = useState(false);
+  const [filterClearance, setFilterClearance] = useState(false);
   const [filterMinPrice, setFilterMinPrice] = useState("");
   const [filterMaxPrice, setFilterMaxPrice] = useState("");
   const [filterMaxDistance, setFilterMaxDistance] = useState("");
@@ -327,6 +392,55 @@ export default function Marketplace() {
   // ─── Real-Time Seasonal Prediction State ───
   const [seasonalPrediction, setSeasonalPrediction] = useState(null);
   const [seasonalLoading, setSeasonalLoading] = useState(false);
+
+  // Synchronize customer location with AuthContext or guest storage
+  useEffect(() => {
+    if (user?.latitude && user?.longitude) {
+      setCustomerLat(user.latitude);
+      setCustomerLng(user.longitude);
+      if (user.location) setLocationName(user.location.split(",")[0] || user.location);
+    } else {
+      try {
+        const guest = JSON.parse(localStorage.getItem("guest_location") || "{}");
+        if (guest.latitude && guest.longitude) {
+          setCustomerLat(guest.latitude);
+          setCustomerLng(guest.longitude);
+          if (guest.location) setLocationName(guest.location.split(",")[0] || guest.location);
+        }
+      } catch {}
+    }
+  }, [user]);
+
+  // Listen for external location updates from LocationUpdateModal
+  useEffect(() => {
+    const handleLocUpdate = (e) => {
+      if (e.detail) {
+        if (e.detail.latitude && e.detail.longitude) {
+          setCustomerLat(e.detail.latitude);
+          setCustomerLng(e.detail.longitude);
+        }
+        if (e.detail.location) {
+          setLocationName(e.detail.location.split(",")[0] || e.detail.location);
+        }
+      }
+    };
+    window.addEventListener("user_location_updated", handleLocUpdate);
+    return () => window.removeEventListener("user_location_updated", handleLocUpdate);
+  }, []);
+
+  // Listen for map farmer select events
+  useEffect(() => {
+    const handleSelectFarmer = (e) => {
+      if (e.detail?.farmerId) {
+        const matchingCrop = crops.find(c => (c.farmer?._id || c.farmer) === e.detail.farmerId);
+        if (matchingCrop) {
+          setSelected(matchingCrop);
+        }
+      }
+    };
+    window.addEventListener("select_farmer_map", handleSelectFarmer);
+    return () => window.removeEventListener("select_farmer_map", handleSelectFarmer);
+  }, [crops]);
 
   const toggleCompare = (crop, e) => {
     e.stopPropagation();
@@ -398,6 +512,8 @@ export default function Marketplace() {
   ];
 
   const SORT_OPTIONS = [
+    { label: "⚡ Fastest Delivery (ETA)", value: "eta_fastest" },
+    { label: "🏷️ End-of-Day / Clearance", value: "clearance" },
     { label: "⏰ Newest First", value: "newest" },
     { label: "💰 Price: Low → High", value: "price_asc" },
     { label: "💸 Price: High → Low", value: "price_desc" },
@@ -411,12 +527,13 @@ export default function Marketplace() {
     let count = 0;
     if (filterOrganic) count++;
     if (filterPesticideFree) count++;
+    if (filterClearance) count++;
     if (filterMinPrice) count++;
     if (filterMaxPrice) count++;
     if (filterMaxDistance) count++;
     if (sortBy !== "newest") count++;
     setActiveFilterCount(count);
-  }, [filterOrganic, filterPesticideFree, filterMinPrice, filterMaxPrice, filterMaxDistance, sortBy]);
+  }, [filterOrganic, filterPesticideFree, filterClearance, filterMinPrice, filterMaxPrice, filterMaxDistance, sortBy]);
 
   useEffect(() => { 
     fetchFestivalConfig();
@@ -485,6 +602,11 @@ export default function Marketplace() {
       f = f.filter(c => c.isPesticideFree || c.isOrganic);
     }
 
+    // End-of-Day Clearance / Flash Sale filter
+    if (filterClearance) {
+      f = f.filter(c => c.isAdminStock || (c.clearanceDiscount && c.clearanceDiscount > 0) || c.isFlashSale);
+    }
+
     // Price range filter
     if (filterMinPrice) {
       f = f.filter(c => c.price >= Number(filterMinPrice));
@@ -505,7 +627,19 @@ export default function Marketplace() {
     }
 
     // Sorting
-    if (sortBy === "price_asc") {
+    if (sortBy === "eta_fastest") {
+      f.sort((a, b) => {
+        const etaA = getDeliveryETA(a, customerLat, customerLng).min;
+        const etaB = getDeliveryETA(b, customerLat, customerLng).min;
+        return etaA - etaB;
+      });
+    } else if (sortBy === "clearance") {
+      f.sort((a, b) => {
+        const discA = a.clearanceDiscount || (a.isFlashSale ? 30 : 0) || (a.isAdminStock ? 40 : 0);
+        const discB = b.clearanceDiscount || (b.isFlashSale ? 30 : 0) || (b.isAdminStock ? 40 : 0);
+        return discB - discA;
+      });
+    } else if (sortBy === "price_asc") {
       f.sort((a, b) => (a.price || 0) - (b.price || 0));
     } else if (sortBy === "price_desc") {
       f.sort((a, b) => (b.price || 0) - (a.price || 0));
@@ -528,7 +662,7 @@ export default function Marketplace() {
     }
 
     setFiltered(f);
-  }, [crops, search, category, filterOrganic, filterPesticideFree, filterMinPrice, filterMaxPrice, filterMaxDistance, sortBy, customerLat, customerLng, trustScores]);
+  }, [crops, search, category, filterOrganic, filterPesticideFree, filterClearance, filterMinPrice, filterMaxPrice, filterMaxDistance, sortBy, customerLat, customerLng, trustScores]);
 
   const fetchCrops = async () => {
     setLoading(true);
@@ -618,11 +752,21 @@ export default function Marketplace() {
     }
   }, []);
 
-  // Debounced suggestion fetching
+  // Debounced suggestion fetching & live ML demand tracking
   const handleSearchChange = (val) => {
     setSearch(val);
     if (suggestionsTimeoutRef.current) clearTimeout(suggestionsTimeoutRef.current);
-    suggestionsTimeoutRef.current = setTimeout(() => fetchSuggestions(val), 250);
+    suggestionsTimeoutRef.current = setTimeout(() => {
+      fetchSuggestions(val);
+      if (val && val.trim().length >= 2) {
+        API.post("/ml/search", {
+          query: val.trim(),
+          category: category !== "all" ? category : "",
+          latitude: customerLat || undefined,
+          longitude: customerLng || undefined
+        }).catch(() => {});
+      }
+    }, 250);
   };
 
   const applySuggestion = (sug) => {
@@ -678,6 +822,7 @@ export default function Marketplace() {
   const resetFilters = () => {
     setFilterOrganic(false);
     setFilterPesticideFree(false);
+    setFilterClearance(false);
     setFilterMinPrice("");
     setFilterMaxPrice("");
     setFilterMaxDistance("");
@@ -831,6 +976,37 @@ export default function Marketplace() {
     <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.75rem" }}>
       <motion.button
         whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+        onClick={() => { setFilterClearance(!filterClearance); setShowFilters(true); }}
+        style={{
+          padding: "0.4rem 0.85rem", borderRadius: "100px", fontSize: "0.82rem", fontWeight: 700,
+          border: filterClearance ? "1.5px solid #dc2626" : "1px solid #fecaca",
+          background: filterClearance ? "#dc2626" : "#fef2f2",
+          color: filterClearance ? "white" : "#dc2626",
+          cursor: "pointer", display: "flex", alignItems: "center", gap: "0.35rem",
+          transition: "all 0.2s", boxShadow: filterClearance ? "0 4px 14px rgba(220, 38, 38, 0.25)" : "none"
+        }}>
+        <Zap size={13} fill={filterClearance ? "white" : "#dc2626"} /> ⚡ End-of-Day Clearance (20–40% OFF)
+      </motion.button>
+
+      <motion.button
+        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+        onClick={() => {
+          if (!customerLat) detectCustomerLocation();
+          setSortBy(sortBy === "eta_fastest" ? "newest" : "eta_fastest");
+        }}
+        style={{
+          padding: "0.4rem 0.85rem", borderRadius: "100px", fontSize: "0.82rem", fontWeight: 700,
+          border: sortBy === "eta_fastest" ? "1.5px solid #d97706" : "1px solid #fde68a",
+          background: sortBy === "eta_fastest" ? "#d97706" : "#fffbeb",
+          color: sortBy === "eta_fastest" ? "white" : "#b45309",
+          cursor: "pointer", display: "flex", alignItems: "center", gap: "0.35rem",
+          transition: "all 0.2s"
+        }}>
+        <Truck size={13} /> ⚡ Fastest Delivery (ETA)
+      </motion.button>
+
+      <motion.button
+        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
         onClick={() => { setFilterOrganic(!filterOrganic); setShowFilters(true); }}
         style={{
           padding: "0.4rem 0.85rem", borderRadius: "100px", fontSize: "0.82rem", fontWeight: 600,
@@ -942,12 +1118,28 @@ export default function Marketplace() {
           }}>
           <Users size={18} /> Bulk Buying Groups
         </button>
+        <button 
+          onClick={() => switchMainTab("tours")}
+          style={{
+            background: "none", border: "none", fontSize: "1.1rem", fontWeight: 700,
+            color: mainTab === "tours" ? "var(--green-mid)" : "var(--text-mid)", cursor: "pointer",
+            borderBottom: mainTab === "tours" ? "3px solid var(--green-mid)" : "3px solid transparent",
+            padding: "0.5rem 1rem", display: "flex", alignItems: "center", gap: "0.5rem"
+          }}>
+          <Tractor size={18} /> Farm Tour Booking
+        </button>
       </div>
 
       {mainTab === "orders" ? (
         <CustomerOrders orders={myOrders} fetchOrders={fetchMyOrders} />
       ) : mainTab === "groups" ? (
-        <CustomerGroups crops={crops} />
+        <CustomerGroups
+          crops={crops}
+          preselectedCrop={preselectedCropForPool}
+          onClearPreselected={() => setPreselectedCropForPool(null)}
+        />
+      ) : mainTab === "tours" ? (
+        <CustomerOfflineTours isEmbedded={true} />
       ) : (
         <>
           {/* Premium Hero Banner */}
@@ -1682,8 +1874,9 @@ export default function Marketplace() {
                           {c.isPesticideFree && !c.isOrganic && <span className="organic-tag" style={{ fontSize:"0.6rem", padding:"2px 6px", background: "#ecfdf5", color: "#059669" }}>🛡️ PF</span>}
                         </div>
                         <div style={{ color:"var(--green-mid)", fontWeight:700, fontSize:"1rem" }}>₹{c.price}/{c.unit||"kg"}</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginTop: "0.25rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginTop: "0.25rem", flexWrap: "wrap" }}>
                           <span style={{ color:"var(--text-muted)", fontSize:"0.75rem" }}>{c.quantity} {c.unit||"kg"} left</span>
+                          <DeliveryETABadge crop={c} customerLat={customerLat} customerLng={customerLng} />
                           {trust && <TrustBadge trust={trust} size="sm" />}
                           {dist !== null && <DistanceBadge distance={dist} />}
                         </div>
@@ -1836,8 +2029,9 @@ export default function Marketplace() {
                       </div>
                     </div>
                     
-                    {/* Trust Score + Distance Row */}
+                    {/* Delivery ETA + Trust Score Row */}
                     <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginTop: "0.5rem", flexWrap: "wrap" }}>
+                      <DeliveryETABadge crop={c} customerLat={customerLat} customerLng={customerLng} />
                       {trust && <TrustBadge trust={trust} size="sm" />}
                     </div>
                     
@@ -1853,6 +2047,32 @@ export default function Marketplace() {
                       </button>
                       <button className="btn-secondary" onClick={(e) => { e.stopPropagation(); addToCart(c, 1, c.isPrebooking || false); }} style={{ fontSize:"0.85rem", padding:"0.6rem", borderRadius:"100px", flex: 1 }}>
                         🛒 Add
+                      </button>
+                    </div>
+
+                    <div style={{ marginTop: "0.4rem" }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreselectedCropForPool(c);
+                          switchMainTab("groups");
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "0.45rem",
+                          borderRadius: "100px",
+                          border: "1px dashed #3b82f6",
+                          background: "#eff6ff",
+                          color: "#1d4ed8",
+                          fontSize: "0.78rem",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "0.35rem"
+                        }}>
+                        <Users size={13} /> Buy in Bulk (Start Pool)
                       </button>
                     </div>
                   </div>
@@ -2356,9 +2576,6 @@ export default function Marketplace() {
       {/* Close suggestions when clicking outside */}
       {showSuggestions && (
         <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setShowSuggestions(false)} />
-      )}
-      {trackingOrder && (
-        <LiveMapModal order={trackingOrder} onClose={() => setTrackingOrder(null)} />
       )}
       {/* Bill is rendered inside the order modal above */}
       

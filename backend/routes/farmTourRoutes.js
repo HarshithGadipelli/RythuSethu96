@@ -8,7 +8,7 @@ const router = express.Router();
 router.get("/available", async (req, res) => {
   try {
     const farmers = await Farmer.find({ farmTourEnabled: true, farmTourVerified: true })
-      .populate("user", "name phone");
+      .populate("user", "name phone location email avatar");
     res.json(farmers);
   } catch (error) {
     res.status(500).json({ error: error.message });

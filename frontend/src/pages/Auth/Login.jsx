@@ -20,10 +20,11 @@ export default function Login() {
   const [guidedStep, setGuidedStep] = useState(null); // null | 'email' | 'password' | 'done'
   const [guidedRunning, setGuidedRunning] = useState(false);
   const DEFAULT_PROFILES = [
-    { name: "Ram", email: "ram@gmail.com", role: "farmer", password: "test123" },
-    { name: "Raj", email: "raj@gmail.com", role: "admin", password: "test123" },
-    { name: "Anand Verma", email: "customer@test.com", role: "customer", password: "test123" },
-    { name: "Raju Delivery", email: "agent@test.com", role: "agent", password: "test123" }
+    { name: "Ram Sharma", email: "ram@test.com", role: "farmer", password: "password123" },
+    { name: "Srinivas Reddy", email: "farmer@test.com", role: "farmer", password: "password123" },
+    { name: "Anand Verma", email: "customer@test.com", role: "customer", password: "password123" },
+    { name: "Raju Delivery", email: "agent@test.com", role: "agent", password: "password123" },
+    { name: "Admin Raj", email: "admin@test.com", role: "admin", password: "password123" }
   ];
 
   const [savedAccounts, setSavedAccounts] = useState(() => {
@@ -34,17 +35,17 @@ export default function Login() {
       // Auto-sanitize existing profiles so legacy records never fail
       return list.map(acc => {
         let email = acc.email;
-        if (!email || email === "undefined") {
+        if (!email || email === "undefined" || email.includes("gmail.com")) {
           const lowerName = (acc.name || "").toLowerCase();
-          email = lowerName.includes("ram") ? "ram@gmail.com" : lowerName.includes("raj") ? "raj@gmail.com" : "farmer@test.com";
+          email = lowerName.includes("ram") ? "ram@test.com" : lowerName.includes("raj") ? "admin@test.com" : "farmer@test.com";
         }
         let role = acc.role || "customer";
-        if (email.includes("raj") || acc.name?.toLowerCase().includes("raj")) role = "admin";
+        if (email.includes("admin") || acc.name?.toLowerCase().includes("raj")) role = "admin";
         return {
-          name: acc.name || (email.includes("farmer") ? "Farmer" : email.includes("raj") ? "Raj" : "User"),
+          name: acc.name || (email.includes("farmer") || email.includes("ram") ? "Farmer" : email.includes("admin") ? "Admin" : "User"),
           email: email.trim(),
           role: role,
-          password: acc.password || "test123",
+          password: acc.password || "password123",
           avatar: acc.avatar || ""
         };
       });
@@ -337,7 +338,7 @@ export default function Login() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
             <button
               type="button"
-              onClick={() => quickDemoLogin("ram@gmail.com", "test123")}
+              onClick={() => quickDemoLogin("ram@test.com", "password123")}
               disabled={loading}
               style={{
                 padding: "0.6rem 0.5rem", borderRadius: "10px", border: "1px solid #d1fae5",
@@ -349,7 +350,7 @@ export default function Login() {
             </button>
             <button
               type="button"
-              onClick={() => quickDemoLogin("raj@gmail.com", "test123")}
+              onClick={() => quickDemoLogin("admin@test.com", "password123")}
               disabled={loading}
               style={{
                 padding: "0.6rem 0.5rem", borderRadius: "10px", border: "1px solid #fee2e2",
@@ -357,11 +358,11 @@ export default function Login() {
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3rem"
               }}
             >
-              👑 Raj (Admin)
+              👑 Admin Demo
             </button>
             <button
               type="button"
-              onClick={() => quickDemoLogin("farmer@test.com", "test123")}
+              onClick={() => quickDemoLogin("farmer@test.com", "password123")}
               disabled={loading}
               style={{
                 padding: "0.6rem 0.5rem", borderRadius: "10px", border: "1px solid #d1fae5",
@@ -373,7 +374,7 @@ export default function Login() {
             </button>
             <button
               type="button"
-              onClick={() => quickDemoLogin("customer@test.com", "test123")}
+              onClick={() => quickDemoLogin("customer@test.com", "password123")}
               disabled={loading}
               style={{
                 padding: "0.6rem 0.5rem", borderRadius: "10px", border: "1px solid #e0e7ff",
@@ -385,7 +386,7 @@ export default function Login() {
             </button>
             <button
               type="button"
-              onClick={() => quickDemoLogin("agent@test.com", "test123")}
+              onClick={() => quickDemoLogin("agent@test.com", "password123")}
               disabled={loading}
               style={{
                 padding: "0.6rem 0.5rem", borderRadius: "10px", border: "1px solid #fef3c7",
@@ -397,7 +398,7 @@ export default function Login() {
             </button>
             <button
               type="button"
-              onClick={() => quickDemoLogin("admin@test.com", "test123")}
+              onClick={() => quickDemoLogin("raj@test.com", "password123")}
               disabled={loading}
               style={{
                 padding: "0.6rem 0.5rem", borderRadius: "10px", border: "1px solid #fee2e2",
@@ -405,7 +406,7 @@ export default function Login() {
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3rem"
               }}
             >
-              👑 Admin Demo
+              🛡️ Raj Admin
             </button>
           </div>
 

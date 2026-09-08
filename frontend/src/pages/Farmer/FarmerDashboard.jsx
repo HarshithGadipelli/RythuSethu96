@@ -22,11 +22,13 @@ import FarmerLeaderboard from "./FarmerLeaderboard";
 import FarmerProfitCalculator from "./FarmerProfitCalculator";
 import FarmerFinancialLedger from "./FarmerFinancialLedger";
 import FarmerTours from "./FarmerTours";
+import FarmerSchemes from "./FarmerSchemes";
 import SoilTestingHub from "../../components/SoilTestingHub";
 import VermiCompostPanel from "../../components/VermiCompostPanel";
 import AssistantOverlay from "../../components/AssistantOverlay";
 import CropVisualPicker, { VISUAL_CROPS } from "../../components/CropVisualPicker";
-import { Navigation, Volume2, Mic, Sparkles, CheckCircle2, TrendingUp, RefreshCw, IndianRupee, HelpCircle, XCircle } from "lucide-react";
+import { Navigation, Volume2, Mic, Sparkles, CheckCircle2, TrendingUp, RefreshCw, IndianRupee, HelpCircle, XCircle, MapPin, LocateFixed, Compass } from "lucide-react";
+import LocationUpdateModal from "../../components/LocationUpdateModal";
 import SecurityPledgeModal from "../../components/SecurityPledgeModal";
 
 const CATEGORIES = ["vegetable", "fruit", "grain", "pulse", "spice", "dairy", "other"];
@@ -178,7 +180,7 @@ const YieldPredictor = () => {
 export default function FarmerDashboard() {
   const { t, lang, changeLang } = useLang();
   const { user } = useAuth();
-  const { listening, activeField, interim, startListening } = useVoiceInput(lang);
+  const { listening, activeField, interim, startListening, stopListening } = useVoiceInput(lang);
 
   const [tab, setTab] = useState("crops");
   const [crops, setCrops] = useState([]);
@@ -187,6 +189,8 @@ export default function FarmerDashboard() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [showPledge, setShowPledge] = useState(user?.acceptedTerms === false);
+  const [showLocModal, setShowLocModal] = useState(false);
+  const [farmerProfile, setFarmerProfile] = useState(null);
   
   // Stage Update Modal State
   const [stageModal, setStageModal] = useState({
@@ -204,6 +208,7 @@ export default function FarmerDashboard() {
   const [tipsResult, setTipsResult] = useState(null);
   const [trackingOrder, setTrackingOrder] = useState(null);
   const [viewOrder, setViewOrder] = useState(null);
+  const [tabCategory, setTabCategory] = useState("all");
 
   // Auction Modal State
   const [auctionModal, setAuctionModal] = useState({ isOpen: false, crop: null, quantity: "", startingBid: "", durationHours: "24" });
@@ -273,9 +278,9 @@ export default function FarmerDashboard() {
     if (!cropName) return;
     try {
       const payload = { crop: cropName };
-      if (user?.location?.coordinates) {
-        payload.longitude = user.location.coordinates[0];
-        payload.latitude = user.location.coordinates[1];
+      if (user?.latitude && user?.longitude) {
+        payload.latitude = user.latitude;
+        payload.longitude = user.longitude;
       }
       const res = await API.post("/ml/price-trends", payload);
       setPriceRecommendation(res.data);
@@ -576,6 +581,7 @@ export default function FarmerDashboard() {
     fetchCrops();
     fetchOrders();
     fetchAuctions();
+    API.get("/farmers/profile").then(res => setFarmerProfile(res.data)).catch(() => {});
     const socket = io(BASE_URL);
     socket.on("order_created", () => { 
       fetchCrops(); 
@@ -790,9 +796,9 @@ export default function FarmerDashboard() {
     if (!crop.isOrganic) {
       try {
         const payload = { crop: crop.name };
-        if (user?.location?.coordinates) {
-          payload.longitude = user.location.coordinates[0];
-          payload.latitude = user.location.coordinates[1];
+        if (user?.latitude && user?.longitude) {
+          payload.latitude = user.latitude;
+          payload.longitude = user.longitude;
         }
         const res = await API.post("/ml/price-trends", payload);
         if (res.data && res.data.localPrediction && res.data.localPrediction.suggested_price) {
@@ -953,29 +959,17 @@ export default function FarmerDashboard() {
           </h1>
           <p style={{ color:"var(--text-muted)", fontSize:"0.85rem" }}>Manage your crops & get AI-powered insights</p>
         </div>
-        <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
           <button 
              className="btn-secondary" 
-             style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(22, 163, 74, 0.1)", color: "var(--green-deep)", border: "1px solid var(--green-light)" }}
+             style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(22, 163, 74, 0.1)", color: "var(--green-deep)", border: "1px solid var(--green-light)", borderRadius: "8px", padding: "0.5rem 0.9rem" }}
              onClick={() => playTTS(`Welcome Farmer ${user?.name}. You are on the dashboard. Use the tabs below to manage your crops, orders, and tools.`, lang)}
           >
              🔊 Audio Guide
           </button>
-          <select 
-            className="rs-select" 
-            style={{ width: "auto", padding: "0.5rem", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white", color: "var(--text-dark)" }}
-            value={lang} 
-            onChange={(e) => changeLang(e.target.value)}
-          >
-            <option value="en" style={{ color: "var(--text-dark)" }}>English</option>
-            <option value="te" style={{ color: "var(--text-dark)" }}>తెలుగు</option>
-            <option value="hi" style={{ color: "var(--text-dark)" }}>हिंदी</option>
-            <option value="kn" style={{ color: "var(--text-dark)" }}>ಕನ್ನಡ</option>
-            <option value="ta" style={{ color: "var(--text-dark)" }}>தமிழ்</option>
-          </select>
           <button 
             className="btn-secondary" 
-            style={{ width:"auto", display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.5rem 1rem", background: (isTTSPlaying() || window.speechSynthesis?.speaking) ? "#ef4444" : "rgba(234,179,8,0.15)", border: "1px solid rgba(234,179,8,0.3)", color: (isTTSPlaying() || window.speechSynthesis?.speaking) ? "white" : "var(--yellow-wheat)" }}
+            style={{ width:"auto", display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.5rem 1rem", borderRadius: "8px", background: (isTTSPlaying() || window.speechSynthesis?.speaking) ? "#ef4444" : "rgba(234,179,8,0.12)", border: "1px solid rgba(234,179,8,0.3)", color: (isTTSPlaying() || window.speechSynthesis?.speaking) ? "white" : "var(--yellow-wheat)", fontWeight: 500 }}
             onClick={async () => {
               if (isTTSPlaying() || window.speechSynthesis?.speaking) {
                 stopTTS();
@@ -990,7 +984,6 @@ export default function FarmerDashboard() {
                 playTTS(summary, lang);
               } else {
                 try {
-                  // Fixed the AI payload to match our backend router exactly:
                   const res = await API.post("/ai/chat", { 
                     prompt: `Translate the following English text to the language with language code '${lang}'. Respond ONLY with the translated text, no other words: "${summary}"`,
                     role: user?.role,
@@ -999,17 +992,89 @@ export default function FarmerDashboard() {
                   });
                   playTTS(res.data.response || res.data.reply || summary, lang);
                 } catch (e) {
-                  playTTS(summary, lang); // fallback
+                  playTTS(summary, lang);
                 }
               }
             }}
           >
-            🔊 {isTTSPlaying() || window.speechSynthesis?.speaking ? "Stop Reading" : "Toggle Read All Data"}
+            🔊 {isTTSPlaying() || window.speechSynthesis?.speaking ? "Stop" : "Read Summary"}
           </button>
-          <button className="btn-primary" style={{ width:"auto", opacity: isVerified ? 1 : 0.5 }} onClick={() => isVerified ? setTab("add") : setMsg({ type:"error", text:"Your account must be verified before listing crops." })} disabled={!isVerified}>
-            + {t("addCrop")}
+          <button 
+            className="btn-primary" 
+            style={{ 
+              width:"auto", 
+              padding: "0.55rem 1.35rem", 
+              borderRadius: "8px",
+              background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+              boxShadow: "0 4px 12px rgba(22, 163, 74, 0.3)",
+              fontWeight: 600,
+              opacity: isVerified ? 1 : 0.5 
+            }} 
+            onClick={() => isVerified ? setTab("add") : setMsg({ type:"error", text:"Your account must be verified before listing crops." })} 
+            disabled={!isVerified}
+          >
+            ➕ {t("addCrop")}
           </button>
         </div>
+      </div>
+
+      {/* ── Farm Location & GPS Status Banner ── */}
+      <div style={{
+        background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+        border: "1.5px solid #86efac",
+        borderRadius: "14px",
+        padding: "0.9rem 1.25rem",
+        marginBottom: "1.5rem",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: "0.75rem",
+        boxShadow: "0 2px 8px rgba(34, 197, 94, 0.1)"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div style={{
+            background: "#16a34a", color: "white", width: 40, height: 40,
+            borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 4px 10px rgba(22, 163, 74, 0.25)", flexShrink: 0
+          }}>
+            <MapPin size={22} />
+          </div>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+              <strong style={{ fontSize: "0.95rem", color: "#166534" }}>
+                Farm Location: {user?.farmName ? `${user.farmName} — ` : ""}{user?.location || "No address set"}
+              </strong>
+              {user?.latitude && user?.longitude && (
+                <span style={{
+                  background: "#166534", color: "white", padding: "2px 8px", borderRadius: "100px",
+                  fontSize: "0.72rem", fontWeight: 700
+                }}>
+                  GPS Active
+                </span>
+              )}
+            </div>
+            <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: "#4b5563" }}>
+              {user?.latitude && user?.longitude 
+                ? `📍 Coordinates: ${Number(user.latitude).toFixed(4)}° N, ${Number(user.longitude).toFixed(4)}° E • Visible to buyers on Marketplace Map Mode` 
+                : "⚠️ No GPS coordinates detected. Set your farm location so buyers can locate your harvest on the map."}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowLocModal(true)}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: "0.4rem",
+            padding: "0.55rem 1.1rem", borderRadius: "100px",
+            background: "#16a34a", color: "white", border: "none",
+            fontSize: "0.85rem", fontWeight: 700, cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(22, 163, 74, 0.25)"
+          }}
+        >
+          <LocateFixed size={16} /> Update Farm Location
+        </button>
       </div>
 
       {/* Stats row */}
@@ -1032,29 +1097,77 @@ export default function FarmerDashboard() {
 
       {msg.text && <div className={`alert alert-${msg.type} mb-2`}>{msg.text}</div>}
 
+      {/* Category Filter Bar */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.5rem",
+        overflowX: "auto",
+        padding: "0.2rem 0 0.6rem 0",
+        marginBottom: "0.4rem"
+      }}>
+        {[
+          { id: "all", label: "✨ All Tools (20)", tabs: [] },
+          { id: "market", label: "🛒 Marketplace & Sales (6)", tabs: ["crops", "orders", "auctions", "groups", "broadcast", "add"] },
+          { id: "ai", label: "🤖 AI & Precision (6)", tabs: ["ml", "aiChat", "tips", "soil", "pest", "vermi"] },
+          { id: "finance", label: "💰 Finance & Storage (4)", tabs: ["ledger", "profit", "warehouse", "leaderboard"] },
+          { id: "community", label: "🏛️ Community & Govt (4)", tabs: ["tours", "schemes", "policies", "support"] }
+        ].map(cat => (
+          <button
+            key={cat.id}
+            type="button"
+            onClick={() => {
+              setTabCategory(cat.id);
+              if (cat.id !== "all" && !cat.tabs.includes(tab)) {
+                setTab(cat.tabs[0]);
+              }
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.35rem",
+              padding: "0.4rem 0.85rem",
+              borderRadius: "20px",
+              fontSize: "0.82rem",
+              fontWeight: tabCategory === cat.id ? 700 : 500,
+              background: tabCategory === cat.id ? "var(--green-deep)" : "white",
+              color: tabCategory === cat.id ? "white" : "var(--text-mid)",
+              border: tabCategory === cat.id ? "1.5px solid var(--green-deep)" : "1px solid #cbd5e1",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              boxShadow: tabCategory === cat.id ? "0 2px 8px rgba(22, 101, 52, 0.25)" : "0 1px 3px rgba(0,0,0,0.05)",
+              transition: "all 0.2s ease"
+            }}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
       {/* Tabs */}
       <div className="tab-bar">
         {[
-          { k:"crops", l:"🌿 My Crops" },
-          { k:"orders", l:`📦 Orders (${orders.length})` },
-          { k:"auctions", l:`🔨 Auctions` },
-          { k:"groups", l:"🤝 Group Selling" },
-          { k:"broadcast", l:"📢 Broadcast" },
-          { k:"leaderboard", l:"🏆 Leaderboard" },
-          { k:"add",   l:`➕ ${t("addCrop")}` },
-          { k:"tours", l:"🚜 Farm Tours" },
-          { k:"ml",    l:"🤖 AI Suggestions" },
-          { k:"aiChat",l:"💬 Farm AI Assistant" },
-          { k:"tips",  l:"💡 Smart Advisor" },
-          { k:"ledger", l:"📒 Financial Ledger" },
-          { k:"profit", l:"💰 Profit Calculator" },
-          { k:"soil",   l:"🧪 Soil Testing & Lab" },
-          { k:"vermi",  l:"🌱 Vermi Compost" },
-          { k:"pest",  l:"🐛 Pest Detection" },
-          { k:"warehouse", l:"🏭 Warehouse Planning" },
-          { k:"policies", l:"📜 Policies" },
-          { k:"support", l:"🛠️ Contact Admin" }
-        ].map(tb => (
+          { k:"crops", l:"🌿 My Crops", cat: "market" },
+          { k:"orders", l:`📦 Orders (${orders.length})`, cat: "market" },
+          { k:"auctions", l:`🔨 Auctions`, cat: "market" },
+          { k:"groups", l:"🤝 Group Selling", cat: "market" },
+          { k:"broadcast", l:"📢 Broadcast", cat: "market" },
+          { k:"leaderboard", l:"🏆 Leaderboard", cat: "finance" },
+          { k:"add",   l:`➕ ${t("addCrop")}`, cat: "market" },
+          { k:"tours", l:"🚜 Farm Tours", cat: "community" },
+          { k:"schemes", l:"🏛️ Govt Schemes", cat: "community" },
+          { k:"ml",    l:"🤖 AI Suggestions", cat: "ai" },
+          { k:"aiChat",l:"💬 Farm AI Assistant", cat: "ai" },
+          { k:"tips",  l:"💡 Smart Advisor", cat: "ai" },
+          { k:"ledger", l:"📒 Financial Ledger", cat: "finance" },
+          { k:"profit", l:"💰 Profit Calculator", cat: "finance" },
+          { k:"soil",   l:"🧪 Soil Testing & Lab", cat: "ai" },
+          { k:"vermi",  l:"🌱 Vermi Compost", cat: "ai" },
+          { k:"pest",  l:"🐛 Pest Detection", cat: "ai" },
+          { k:"warehouse", l:"🏭 Warehouse Planning", cat: "finance" },
+          { k:"policies", l:"📜 Policies", cat: "community" },
+          { k:"support", l:"🛠️ Contact Admin", cat: "community" }
+        ].filter(tb => tabCategory === "all" || tb.cat === tabCategory).map(tb => (
           <button key={tb.k} className={`tab-btn ${tab===tb.k?"active":""}`} onClick={() => {
             if (tb.k === "add" && !isVerified) { setMsg({ type:"error", text:"Account not verified yet." }); return; }
             setTab(tb.k);
@@ -1108,8 +1221,8 @@ export default function FarmerDashboard() {
                             <td style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                               <button className="btn-primary" style={{ padding:"0.35rem 0.5rem", fontSize:"0.78rem", background: "var(--green-mid)" }} onClick={async () => {
                                 if (confirm(`Transfer remaining ${c.quantity} ${c.unit} of ${c.name} to Live Sale?`)) {
-                                  try { await API.put(`/crops/${c._id}/transfer-to-sale`); flash("success", "Crop transferred to Live Sale!"); loadAll(); }
-                                  catch { flash("error", "Failed to transfer crop."); }
+                                  try { await API.put(`/crops/${c._id}/transfer-to-sale`); setMsg({ type: "success", text: "Crop transferred to Live Sale!" }); fetchCrops(); }
+                                  catch { setMsg({ type: "error", text: "Failed to transfer crop." }); }
                                 }
                               }}>➡️ Transfer to Sale</button>
                               <button className="btn-secondary" style={{ padding:"0.35rem 0.5rem", fontSize:"0.78rem" }} onClick={() => { setTipsForm(f => ({...f, crop: c.name, stage: c.lifecycleStage || "sowing"})); setTab("tips"); }}>💡 Advice</button>
@@ -2373,6 +2486,11 @@ export default function FarmerDashboard() {
         <FarmerLeaderboard />
       )}
 
+      {/* ── GOVT SCHEMES TAB ── */}
+      {tab === "schemes" && (
+        <FarmerSchemes />
+      )}
+
       {trackingOrder && (
         <LiveMapModal order={trackingOrder} onClose={() => setTrackingOrder(null)} />
       )}
@@ -2562,6 +2680,13 @@ export default function FarmerDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {showLocModal && (
+        <LocationUpdateModal
+          isOpen={showLocModal}
+          onClose={() => setShowLocModal(false)}
+        />
       )}
 
     </div>

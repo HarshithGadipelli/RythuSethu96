@@ -129,3 +129,5 @@ if __name__ == "__main__":
             "suggestions": FALLBACK_SUGGESTIONS,
             "error": str(e)
         }))
+
+get_market_basket = analyze_market_basket

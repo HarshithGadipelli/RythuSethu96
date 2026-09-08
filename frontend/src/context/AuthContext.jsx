@@ -35,8 +35,16 @@ export function AuthProvider({ children }) {
     delete API.defaults.headers.common["Authorization"];
   };
 
+  const updateUser = (updatedData) => {
+    setUser(prev => {
+      const next = typeof updatedData === 'function' ? updatedData(prev) : { ...prev, ...updatedData };
+      localStorage.setItem("user", JSON.stringify(next));
+      return next;
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading, isLoggedIn: !!user }}>
+    <AuthContext.Provider value={{ user, token, login, logout, updateUser, loading, isLoggedIn: !!user }}>
       {children}
     </AuthContext.Provider>
   );

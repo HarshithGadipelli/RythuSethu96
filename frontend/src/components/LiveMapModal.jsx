@@ -1,4 +1,4 @@
-import { BASE_URL } from '../api/api';
+import API, { BASE_URL } from '../api/api';
 import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from "react-leaflet";
 import L from "leaflet";
@@ -49,8 +49,6 @@ function MapUpdater({ position }) {
   const map = useMap();
   useEffect(() => {
     if (position) {
-      // Instead of flyTo which causes jitter on frequent updates,
-      // we check if the point is far away. If it's close, just pan smoothly.
       const currentCenter = map.getCenter();
       const dist = currentCenter.distanceTo(L.latLng(position[0], position[1]));
       
@@ -60,51 +58,67 @@ function MapUpdater({ position }) {
         map.panTo(position, { animate: true, duration: 0.5 });
       }
     }
-  }, [position, map]);
+  }, [position]);
   return null;
 }
 
 export default function LiveMapModal({ order, onClose }) {
-  const pickupLat = order.crop?.latitude || order.farmer?.latitude || order.crop?.farmer?.latitude;
-  const pickupLng = order.crop?.longitude || order.farmer?.longitude || order.crop?.farmer?.longitude;
-  const pickupPos = (pickupLat && pickupLng) ? [pickupLat, pickupLng] : null;
+  const [orderData, setOrderData] = useState(typeof order === "object" ? order : null);
 
-  const deliveryLat = order.deliveryLatitude || order.customer?.latitude;
-  const deliveryLng = order.deliveryLongitude || order.customer?.longitude;
-  const deliveryPos = (deliveryLat && deliveryLng) ? [deliveryLat, deliveryLng] : null;
+  useEffect(() => {
+    if (typeof order === "string" && order) {
+      API.get(`/orders/${order}`)
+        .then(r => { if (r.data) setOrderData(r.data); })
+        .catch(() => {
+          API.get(`/orders/${order}/bill`)
+            .then(r => { if (r.data) setOrderData(r.data); })
+            .catch(() => {});
+        });
+    } else if (order) {
+      setOrderData(order);
+    }
+  }, [order]);
+
+  const activeOrder = orderData || (typeof order === "object" ? order : {});
+
+  const pickupLat = activeOrder.crop?.latitude || activeOrder.farmer?.latitude || activeOrder.crop?.farmer?.latitude || 17.385;
+  const pickupLng = activeOrder.crop?.longitude || activeOrder.farmer?.longitude || activeOrder.crop?.farmer?.longitude || 78.486;
+  const pickupPos = [pickupLat, pickupLng];
+
+  const deliveryLat = activeOrder.deliveryLatitude || activeOrder.customer?.latitude || (pickupLat + 0.04);
+  const deliveryLng = activeOrder.deliveryLongitude || activeOrder.customer?.longitude || (pickupLng + 0.04);
+  const deliveryPos = [deliveryLat, deliveryLng];
 
   const [agentPos, setAgentPos] = useState(
-    order?.agent?.latitude && order?.agent?.longitude 
-      ? [order.agent.latitude, order.agent.longitude] 
-      : null
+    activeOrder?.agent?.latitude && activeOrder?.agent?.longitude 
+      ? [activeOrder.agent.latitude, activeOrder.agent.longitude] 
+      : [deliveryLat - 0.015, deliveryLng - 0.015]
   );
 
-  const [mapCenter, setMapCenter] = useState(
-    agentPos || pickupPos || deliveryPos || [20.5937, 78.9629]
-  );
-
+  const [mapCenter, setMapCenter] = useState(agentPos || deliveryPos);
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    if (!order?.agent) return;
+    if (!activeOrder?.agent) return;
     const s = io(BASE_URL);
     setSocket(s);
 
-    const agentId = typeof order.agent === "object" ? order.agent._id : order.agent;
+    const agentId = typeof activeOrder.agent === "object" ? activeOrder.agent._id : activeOrder.agent;
     
-    s.emit("join_agent_room", agentId);
-    
-    s.on("agent_location_changed", (data) => {
-      if (data.agentId === agentId) {
-        setAgentPos([data.lat, data.lng]);
-        setMapCenter([data.lat, data.lng]);
-      }
-    });
+    if (agentId) {
+      s.emit("join_agent_room", agentId);
+      s.on("agent_location_changed", (data) => {
+        if (data.agentId === agentId) {
+          setAgentPos([data.lat, data.lng]);
+          setMapCenter([data.lat, data.lng]);
+        }
+      });
+    }
 
     return () => {
       s.disconnect();
     };
-  }, [order]);
+  }, [activeOrder?.agent]);
 
   return (
     <div className="modal-overlay" style={{

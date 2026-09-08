@@ -36,9 +36,10 @@ export default function RythuSethuAnimation({ onComplete }) {
       } else {
         clearInterval(interval);
         setTimeout(() => setTruckCross(true), 400);
-        setTimeout(() => {
-          if (onComplete) onComplete();
-        }, 11000); // Wait 11 seconds to let admin and 3 agents fully cross
+        // Let the order proceed quickly instead of waiting 11 seconds
+        if (onComplete) {
+           setTimeout(() => onComplete(), 1500); 
+        }
       }
     }, 80);
     return () => clearInterval(interval);

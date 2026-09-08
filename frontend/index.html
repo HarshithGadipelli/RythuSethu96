@@ -14,11 +14,45 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Poppins:wght@300;400;500;600;700;800&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet" />
   
   <style>
-    /* Hide the default Google Translate top banner and iframe */
-    body { top: 0 !important; }
-    .skiptranslate iframe, .VIpgJd-ZVi9od-ORHb-OEVmcd { display: none !important; }
-    .goog-te-gadget { color: transparent !important; }
-    .goog-te-gadget .goog-te-combo { margin: 0; padding: 4px; border-radius: 4px; }
+    /* Completely hide all Google Translate logos, tooltips, popups, and banners */
+    body { top: 0 !important; position: static !important; }
+    .skiptranslate, .skiptranslate iframe, iframe.skiptranslate, .goog-te-banner-frame, iframe.goog-te-banner-frame {
+      display: none !important;
+      visibility: hidden !important;
+      height: 0 !important;
+      width: 0 !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+    .goog-logo-link, .goog-te-gadget-icon, img.goog-te-gadget-icon {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+    }
+    .goog-te-gadget {
+      color: transparent !important;
+      font-size: 0 !important;
+    }
+    .goog-te-gadget span, .goog-te-gadget a {
+      display: none !important;
+    }
+    .goog-te-gadget .goog-te-combo {
+      margin: 0 !important;
+      padding: 4px !important;
+      border-radius: 4px !important;
+      font-size: 14px !important;
+      color: #000 !important;
+    }
+    #goog-gt-tt, .goog-te-balloon-frame, .goog-tooltip, .goog-tooltip:hover, .goog-text-highlight {
+      display: none !important;
+      box-shadow: none !important;
+      border: none !important;
+      background: transparent !important;
+    }
+    .VIpgJd-ZVi9od-aOH6Bb-sdDASd, .VIpgJd-ZVi9od-ORHb-OEVmcd, .VIpgJd-ZVi9od-vH1Gmf, .VIpgJd-y6EKle {
+      display: none !important;
+      visibility: hidden !important;
+    }
   </style>
 
   <script>

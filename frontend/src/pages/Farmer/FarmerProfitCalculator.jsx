@@ -1,6 +1,14 @@
 import React, { useState } from "react";
-import { Calculator, DollarSign, Sprout, Truck, Briefcase } from "lucide-react";
+import { Calculator, DollarSign, Sprout, Truck, Briefcase, Sparkles, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
+
+const CROP_PRESETS = [
+  { name: "Tomato", yieldKg: 2500, price: 35, seeds: 1800, fertilizer: 2200, labor: 4000, transport: 1500, emoji: "🍅" },
+  { name: "Paddy (Rice)", yieldKg: 2800, price: 45, seeds: 2500, fertilizer: 3200, labor: 6000, transport: 2000, emoji: "🌾" },
+  { name: "Red Chilli", yieldKg: 800, price: 180, seeds: 3000, fertilizer: 4500, labor: 8000, transport: 2000, emoji: "🌶️" },
+  { name: "Onion", yieldKg: 2000, price: 30, seeds: 2000, fertilizer: 2800, labor: 4500, transport: 1800, emoji: "🧅" },
+  { name: "Wheat", yieldKg: 1800, price: 40, seeds: 2200, fertilizer: 2500, labor: 3500, transport: 1500, emoji: "🌿" },
+];
 
 export default function FarmerProfitCalculator() {
   const [inputs, setInputs] = useState({
@@ -14,6 +22,18 @@ export default function FarmerProfitCalculator() {
   });
   
   const platformFeePercent = 2; // 2% platform fee
+
+  const applyPreset = (preset) => {
+    setInputs({
+      cropName: preset.name,
+      expectedYield: preset.yieldKg.toString(),
+      expectedPrice: preset.price.toString(),
+      seedCost: preset.seeds.toString(),
+      fertilizerCost: preset.fertilizer.toString(),
+      laborCost: preset.labor.toString(),
+      transportCost: preset.transport.toString(),
+    });
+  };
 
   const handleChange = (e) => {
     setInputs({ ...inputs, [e.target.name]: e.target.value });
@@ -52,6 +72,38 @@ export default function FarmerProfitCalculator() {
       <p style={{ color: "var(--text-muted)", marginBottom: "2rem" }}>
         Estimate your exact Net Profit Margin before listing your crop. Include all operational costs to see your true take-home earnings.
       </p>
+
+      {/* AI Quick Presets */}
+      <div style={{ marginBottom: "1.5rem", background: "rgba(22,163,74,0.06)", padding: "1rem", borderRadius: "12px", border: "1px solid rgba(22,163,74,0.2)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.6rem", fontSize: "0.88rem", fontWeight: 700, color: "var(--green-deep)" }}>
+          <Sparkles size={16} /> ⚡ 1-Click AI Crop Presets (Auto-fills baseline costs & yields):
+        </div>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          {CROP_PRESETS.map((preset) => (
+            <button
+              key={preset.name}
+              type="button"
+              onClick={() => applyPreset(preset)}
+              style={{
+                padding: "0.35rem 0.8rem",
+                borderRadius: "100px",
+                border: inputs.cropName === preset.name ? "1.5px solid var(--green-mid)" : "1px solid #cbd5e1",
+                background: inputs.cropName === preset.name ? "var(--green-mid)" : "white",
+                color: inputs.cropName === preset.name ? "white" : "var(--text-dark)",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.3rem",
+                transition: "all 0.2s"
+              }}
+            >
+              <span>{preset.emoji}</span> {preset.name}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="grid-2" style={{ gap: "2rem", alignItems: "start" }}>
         {/* INPUTS SECTION */}

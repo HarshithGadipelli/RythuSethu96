@@ -7,6 +7,7 @@ import Farmer from "../models/Farmer.js";
 import Agent from "../models/Agent.js";
 import Notification from "../models/Notification.js";
 import GlobalConfig from "../models/GlobalConfig.js";
+import Settlement from "../models/Settlement.js";
 import { 
   getLiveStockAnalysis, getClearanceStock, updateClearancePrice, broadcastPromotion,
   getWasteManagement, approveWasteRequest, sellBiogas
@@ -444,10 +445,34 @@ router.post("/settle/farmer/:id", async (req, res) => {
     const farmer = await User.findById(req.params.id);
     if (!farmer) return res.status(404).json({ error: "Farmer not found" });
     
+    const amount = farmer.pendingSettlement || 0;
+    if (amount <= 0) return res.status(400).json({ error: "No pending balance to settle for this farmer." });
+
+    const now = new Date();
+    const epoch = new Date(2026, 0, 1);
+    const diffDays = Math.floor((now - epoch) / (1000 * 60 * 60 * 24));
+    const cycleIndex = Math.floor(diffDays / 14);
+    const cycleStartDate = new Date(epoch.getTime() + cycleIndex * 14 * 24 * 60 * 60 * 1000);
+    const cycleEndDate = new Date(cycleStartDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+    const settlement = await Settlement.create({
+      recipient: farmer._id,
+      recipientRole: "farmer",
+      amount,
+      cycleStartDate,
+      cycleEndDate,
+      payoutDate: now,
+      status: "completed",
+      upiId: farmer.upiId || "",
+      bankAccount: farmer.bankAccountNumber || "",
+      notes: "Bi-Weekly (14-Day) Farmer Harvest Payout Disbursed"
+    });
+
     // Clear farmer balance
     farmer.pendingSettlement = 0;
     await farmer.save();
-    res.json({ message: "Farmer settled successfully", farmer });
+
+    res.json({ message: "Farmer settled successfully (Bi-Weekly Cycle)", farmer, settlement });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -456,10 +481,11 @@ router.post("/settle/agent-collect/:id", async (req, res) => {
     const agent = await User.findById(req.params.id);
     if (!agent) return res.status(404).json({ error: "Agent not found" });
     
+    const amount = agent.cashInHand || 0;
     // Admin collected COD cash from agent
     agent.cashInHand = 0;
     await agent.save();
-    res.json({ message: "Cash collected from agent", agent });
+    res.json({ message: `Collected ₹${amount} COD cash from agent`, agent });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -468,11 +494,101 @@ router.post("/settle/agent-pay/:id", async (req, res) => {
     const agent = await User.findById(req.params.id);
     if (!agent) return res.status(404).json({ error: "Agent not found" });
     
-    // Admin paid the agent their weekly delivery fees
+    const amount = agent.walletBalance || 0;
+    if (amount <= 0) return res.status(400).json({ error: "No wallet earnings to settle for this agent." });
+
+    const now = new Date();
+    const epoch = new Date(2026, 0, 1);
+    const diffDays = Math.floor((now - epoch) / (1000 * 60 * 60 * 24));
+    const cycleIndex = Math.floor(diffDays / 14);
+    const cycleStartDate = new Date(epoch.getTime() + cycleIndex * 14 * 24 * 60 * 60 * 1000);
+    const cycleEndDate = new Date(cycleStartDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+    const settlement = await Settlement.create({
+      recipient: agent._id,
+      recipientRole: "agent",
+      amount,
+      cycleStartDate,
+      cycleEndDate,
+      payoutDate: now,
+      status: "completed",
+      upiId: agent.upiId || "",
+      bankAccount: agent.bankAccountNumber || "",
+      notes: "Bi-Weekly (14-Day) Agent Logistics Payout Disbursed"
+    });
+
+    // Admin paid the agent their bi-weekly delivery fees
     agent.walletBalance = 0;
     await agent.save();
-    res.json({ message: "Agent weekly pay settled", agent });
+    res.json({ message: "Agent bi-weekly pay settled", agent, settlement });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Batch Disburse Bi-Weekly Settlements for ALL Farmers & Agents
+router.post("/settle/biweekly-batch", async (req, res) => {
+  try {
+    const now = new Date();
+    const epoch = new Date(2026, 0, 1);
+    const diffDays = Math.floor((now - epoch) / (1000 * 60 * 60 * 24));
+    const cycleIndex = Math.floor(diffDays / 14);
+    const cycleStartDate = new Date(epoch.getTime() + cycleIndex * 14 * 24 * 60 * 60 * 1000);
+    const cycleEndDate = new Date(cycleStartDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+    const farmers = await User.find({ role: "farmer", pendingSettlement: { $gt: 0 } });
+    const agents = await User.find({ role: "agent", walletBalance: { $gt: 0 } });
+
+    let farmerTotal = 0;
+    let agentTotal = 0;
+    const settlementsCreated = [];
+
+    for (const f of farmers) {
+      farmerTotal += f.pendingSettlement;
+      const s = await Settlement.create({
+        recipient: f._id,
+        recipientRole: "farmer",
+        amount: f.pendingSettlement,
+        cycleStartDate,
+        cycleEndDate,
+        payoutDate: now,
+        status: "completed",
+        upiId: f.upiId || "",
+        bankAccount: f.bankAccountNumber || "",
+        notes: "Bi-Weekly (14-Day) Farmer Harvest Payout Disbursed"
+      });
+      f.pendingSettlement = 0;
+      await f.save();
+      settlementsCreated.push(s);
+    }
+
+    for (const a of agents) {
+      agentTotal += a.walletBalance;
+      const s = await Settlement.create({
+        recipient: a._id,
+        recipientRole: "agent",
+        amount: a.walletBalance,
+        cycleStartDate,
+        cycleEndDate,
+        payoutDate: now,
+        status: "completed",
+        upiId: a.upiId || "",
+        bankAccount: a.bankAccountNumber || "",
+        notes: "Bi-Weekly (14-Day) Agent Logistics Payout Disbursed"
+      });
+      a.walletBalance = 0;
+      await a.save();
+      settlementsCreated.push(s);
+    }
+
+    res.json({
+      success: true,
+      message: `Bi-Weekly Batch Settlement Disbursed! Total Settled: ₹${farmerTotal + agentTotal} (Farmers: ₹${farmerTotal}, Agents: ₹${agentTotal})`,
+      farmerTotal,
+      agentTotal,
+      settlementsCount: settlementsCreated.length
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─── FESTIVAL MODE ───
@@ -552,6 +668,30 @@ router.post("/users/:id/fine", async (req, res) => {
 
     res.json({ message: "Fine applied successfully", user });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── ADMIN ROUTE DISPATCH & BROADCAST TO AGENT ───
+router.post("/dispatch-route", async (req, res) => {
+  try {
+    const { agentId, routeData, message } = req.body;
+    if (!agentId || !routeData) return res.status(400).json({ error: "agentId and routeData are required." });
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("admin_route_dispatched", {
+        agentId,
+        routeData,
+        message: message || "Admin has optimized and dispatched your live delivery route!",
+        timestamp: Date.now()
+      });
+      // Also emit targeted notification
+      io.emit("agent_route_updated", { agentId, routeData });
+    }
+
+    res.json({ success: true, message: "Route dispatched to agent successfully.", agentId, stopsCount: routeData.stopsCount || routeData.optimized?.length || 0 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─── WASTE MANAGEMENT ───
