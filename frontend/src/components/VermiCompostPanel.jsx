@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Leaf, Plus, Info, Clock, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { BASE_URL } from "../api/api";
 
 const VermiCompostPanel = () => {
   const { user } = useAuth();
@@ -19,7 +20,7 @@ const VermiCompostPanel = () => {
 
   const fetchRequests = async () => {
     try {
-      const { data } = await axios.get("http://localhost:5000/api/farmer/vermi-compost/requests");
+      const { data } = await axios.get(`${BASE_URL}/api/farmer/vermi-compost/requests`);
       setRequests(data);
     } catch (err) {
       console.error("Failed to fetch requests", err);
@@ -40,7 +41,7 @@ const VermiCompostPanel = () => {
 
     try {
       const totalCost = Number(requestedKg) * PRICE_PER_KG;
-      await axios.post("http://localhost:5000/api/farmer/vermi-compost/request", {
+      await axios.post(`${BASE_URL}/api/farmer/vermi-compost/request`, {
         requestedKg: Number(requestedKg),
         totalCost
       });

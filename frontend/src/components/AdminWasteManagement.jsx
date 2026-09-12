@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Leaf, DollarSign, CheckCircle, Clock } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { BASE_URL } from "../api/api";
 
 const AdminWasteManagement = () => {
   const { user } = useAuth();
@@ -14,7 +15,7 @@ const AdminWasteManagement = () => {
 
   const fetchWasteData = async () => {
     try {
-      const { data } = await axios.get("http://localhost:5000/api/admin/waste/management", {
+      const { data } = await axios.get(`${BASE_URL}/api/admin/waste/management`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       setWasteData(data);
@@ -31,7 +32,7 @@ const AdminWasteManagement = () => {
 
   const handleApprove = async (id) => {
     try {
-      await axios.post(`http://localhost:5000/api/admin/waste/approve-request/${id}`, {}, {
+      await axios.post(`${BASE_URL}/api/admin/waste/approve-request/${id}`, {}, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       setMsg({ type: "success", text: "Request approved successfully!" });
@@ -46,7 +47,7 @@ const AdminWasteManagement = () => {
     e.preventDefault();
     setSellLoading(true);
     try {
-      await axios.post("http://localhost:5000/api/admin/waste/sell-biogas", sellForm, {
+      await axios.post(`${BASE_URL}/api/admin/waste/sell-biogas`, sellForm, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       setMsg({ type: "success", text: `Sold ${sellForm.quantityKg} kg to Biogas Plant.` });

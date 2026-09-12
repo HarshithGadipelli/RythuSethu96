@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import API from "../../api/api";
+import API, { BASE_URL } from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { Play, ArrowLeft, ShieldCheck, MapPin } from "lucide-react";
 
@@ -69,10 +69,10 @@ export default function CustomerFarmTours() {
                   />
                 ) : (
                   <video 
-                    src={`http://localhost:5000${c.farmTourVideo}`} 
+                    src={c.farmTourVideo?.startsWith("http") ? c.farmTourVideo : `${BASE_URL}${c.farmTourVideo}`} 
                     controls 
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    poster={c.image ? `http://localhost:5000${c.image}` : null}
+                    poster={c.image ? (c.image.startsWith("http") ? c.image : `${BASE_URL}${c.image}`) : null}
                   />
                 )}
                 {c.isOrganic && (
