@@ -102,7 +102,7 @@ export const UNITS_MAP = {
   kg: ["kg", "kilo", "kilos", "kilogram", "kilograms", "కేజీ", "కేజీలు", "కిలో", "కిలోలు", "किलो", "किलोग्राम", "ಕೆಜಿ", "ಕಿಲೋ", "கிலோ"],
   g: ["g", "gram", "grams", "గ్రాములు", "గ్రామ్", "ग्राम", "ಗ್ರಾಂ", "கிராம்"],
   litre: ["litre", "litres", "liter", "liters", "లీటర్", "లీటర్లు", "लीटर", "ಲೀಟರ್", "லிட்டர்"],
-  piece: ["piece", "pieces", "పీస్", "పీసులు", "पीस", "टुकड़ा", "ಪೀಸ್", "பீಸ್"],
+  piece: ["piece", "pieces", "పీస్", "పీసులు", "पीस", "टुकड़ा", "ಪೀಸ್", "பீஸ்"],
   dozen: ["dozen", "dozens", "డజన్", "दर्जन", "ಡಜನ್", "டஜன்"]
 };
 
@@ -123,22 +123,29 @@ const NUMBERS_MAP = {
 
   // Telugu
   సున్నా: 0, ఒకటి: 1, రెండు: 2, మూడు: 3, నాలుగు: 4, ఐదు: 5, ఆరు: 6, ఏడు: 7, ఎనిమిది: 8, తొమ్మిది: 9, పది: 10,
-  ఇరవై: 20, ఇరవైఐదు: 25, ముప్పై: 30, ముప్పైఐదు: 35, నలభై: 40, నలభైఐదు: 45, యాభై: 50, అరవై: 60, దెబ్బై: 70, ఎనభై: 80, తొంభై: 90,
-  వంద: 100, రెండువందలు: 200, ఐదువందలు: 500, వెయ్యి: 1000,
+  పదకొండు: 11, పన్నెండు: 12, పదమూడు: 13, పద్నాలుగు: 14, పదిహేను: 15, పదహారు: 16, పదిహేడు: 17, పద్దెనిమిది: 18, పంతొమ్మిది: 19,
+  ఇరవై: 20, ఇరవైఐదు: 25, పాతిక: 25, ముప్పై: 30, ముప్పైఐదు: 35, నలభై: 40, నలభైఐదు: 45, యాభై: 50, యాబై: 50, యాభైఐదు: 55,
+  అరవై: 60, అరవైఐదు: 65, దెబ్బై: 70, దెబ్బైఐదు: 75, ఎనభై: 80, ఎనభైఐదు: 85, తొంభై: 90, తొంభైఐదు: 95,
+  వంద: 100, నూట: 100, నూటయాభై: 150, రెండువందలు: 200, ఐదువందలు: 500, వెయ్యి: 1000,
 
   // Hindi
-  शून्य: 0, एक: 1, दो: 2, तीन: 3, चार: 4, पांच: 5, छह: 6, सात: 7, आठ: 8, नौ: 9, दस: 10,
-  बीस: 20, पच्चीस: 25, तीस: 30, पैंतीस: 35, चालीस: 40, पैंतालीस: 45, पचास: 50, साठ: 60, सत्तर: 70, अस्सी: 80, नब्बे: 90,
-  सौ: 100, दोसौ: 200, पांचसौ: 500, हजार: 1000,
+  शून्य: 0, एक: 1, दो: 2, तीन: 3, चार: 4, पांच: 5, पाँच: 5, छह: 6, सात: 7, आठ: 8, नौ: 9, दस: 10,
+  ग्यारह: 11, बारह: 12, तेरह: 13, चौदह: 14, पंद्रह: 15, सोलह: 16, सत्रह: 17, अठारह: 18, उन्नीस: 19,
+  बीस: 20, पच्चीस: 25, तीस: 30, पैंतीस: 35, चालीस: 40, पैंतालीस: 45, पचास: 50, पचपन: 55, साठ: 60, सत्तर: 70, अस्सी: 80, नब्बे: 90,
+  सौ: 100, डेढ़सौ: 150, दोसौ: 200, पांचसौ: 500, हजार: 1000,
 
   // Kannada
   ಶೂನ್ಯ: 0, ಒಂದು: 1, ಎರಡು: 2, ಮೂರು: 3, ನಾಲ್ಕು: 4, ಐದು: 5, ಆರು: 6, ಏಳು: 7, ಎಂಟು: 8, ಒಂಬತ್ತು: 9, ಹತ್ತು: 10,
-  ಇಪ್ಪತ್ತು: 20, ಇಪ್ಪತ್ತೈದು: 25, ಮೂವತ್ತು: 30, ಮೂವತ್ತೈದು: 35, ನಲವತ್ತು: 40, ನಲವತ್ತೈದು: 45, ಐವತ್ತು: 50, ಅರವತ್ತು: 60,
+  ಹನ್ನೊಂದು: 11, ಹನ್ನೆರಡು: 12, ಹದಿಮೂರು: 13, ಹದಿನಾಲ್ಕು: 14, ಹದಿನೈದು: 15, ಹದಿನಾರು: 16, ಹದಿನೇಳು: 17, ಹದಿನೆಂಟು: 18, ಹತ್ತೊಂಬತ್ತು: 19,
+  ಇಪ್ಪತ್ತು: 20, ಇಪ್ಪತ್ತೈದು: 25, ಮೂವತ್ತು: 30, ಮೂವತ್ತೈದು: 35, ನಲವತ್ತು: 40, ನಲವತ್ತೈದು: 45, ಐವತ್ತು: 50, ಐವತ್ತೈದು: 55,
+  ಅರವತ್ತು: 60, ಎಪ್ಪತ್ತು: 70, ಎಂಬತ್ತು: 80, ತೊಂಬತ್ತು: 90,
   ನೂರು: 100, ಇನ್ನೂರು: 200, ಐನೂರು: 500, ಸಾವಿರ: 1000,
 
   // Tamil
   பூஜ்ஜியம்: 0, ஒன்று: 1, இரண்டு: 2, மூன்று: 3, நான்கு: 4, ஐந்து: 5, ஆறு: 6, ஏழு: 7, எட்டு: 8, ஒன்பது: 9, பத்து: 10,
-  இருபது: 20, இருபத்தைந்து: 25, முப்பது: 30, முப்பத்தைந்து: 35, நாற்பது: 40, நாற்பத்தைந்து: 45, ஐம்பது: 50,
+  பதினொன்று: 11, பன்னிரண்டு: 12, பதின்மூன்று: 13, பதினான்கு: 14, பதினைந்து: 15, பதினாறு: 16, பதினேழு: 17, பதினெட்டு: 18, பத்தொன்பது: 19,
+  இருபது: 20, இருபத்தைந்து: 25, முப்பது: 30, முப்பத்தைந்து: 35, நாற்பது: 40, நாற்பத்தைந்து: 45, ஐம்பது: 50, ஐம்பத்தைந்து: 55,
+  அறுபது: 60, எழுபது: 70, எண்பது: 80, தொண்ணூறு: 90,
   நூறு: 100, இருநூறு: 200, ஐந்நூறு: 500, ஆயிரம்: 1000
 };
 
@@ -185,6 +192,12 @@ export function parseSpokenNumber(text) {
   const cleaned = text.trim().toLowerCase().replace(/\s+/g, '');
   if (NUMBERS_MAP[cleaned] !== undefined) {
     return String(NUMBERS_MAP[cleaned]);
+  }
+  const words = text.toLowerCase().trim().split(/[\s,]+/);
+  for (const w of words) {
+    if (NUMBERS_MAP[w] !== undefined) {
+      return String(NUMBERS_MAP[w]);
+    }
   }
   const digits = text.match(/\d+(?:\.\d+)?/);
   if (digits) return digits[0];
@@ -447,8 +460,9 @@ export function playTTS(text, lang = "en", options = {}) {
     };
     currentTTSResolver = safeResolve;
 
-    // Safety timeout in case audio never finishes
-    setTimeout(() => safeResolve(true), 6000);
+    // Generous dynamic safety timeout based on spoken sentence length (minimum 10s)
+    const timeoutMs = Math.max(10000, text.length * 85);
+    const safetyTimer = setTimeout(() => safeResolve(true), timeoutMs);
     
     try {
       const res = await fetch(`${BASE_URL}/api/ai/tts`, {
@@ -459,90 +473,60 @@ export function playTTS(text, lang = "en", options = {}) {
       
       const data = await res.json();
       if (!data.audioContent) {
+        clearTimeout(safetyTimer);
         await fallbackSpeechSynthesis(text, gttsLang, options);
         return safeResolve(true);
       }
       
-      if (!globalAudioCtx) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        globalAudioCtx = new AudioContext();
-      }
-      if (globalAudioCtx.state === "suspended") {
-        globalAudioCtx.resume();
-      }
+      // Preferred HTML5 Audio object playback (universal cross-browser & mobile support)
+      try {
+        const audioUrl = `data:audio/mp3;base64,${data.audioContent}`;
+        const audio = new Audio(audioUrl);
+        
+        if (options.rate) audio.playbackRate = options.rate;
+        if (options.volume !== undefined) audio.volume = Math.max(0.1, Math.min(1.0, options.volume));
 
-      // Convert base64 to ArrayBuffer
-      const binaryString = window.atob(data.audioContent);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-
-      // Decode and play via Web Audio API
-      globalAudioCtx.decodeAudioData(bytes.buffer, (buffer) => {
-        const source = globalAudioCtx.createBufferSource();
-        source.buffer = buffer;
-        
-        const gainNode = globalAudioCtx.createGain();
-        const baseVol = options.volume !== undefined ? Math.max(0.1, Math.min(1.0, options.volume)) : 1.0;
-        gainNode.gain.value = baseVol;
-        
-        if (options.rate) {
-          source.playbackRate.value = options.rate;
-        }
-
-        source.connect(gainNode);
-        gainNode.connect(globalAudioCtx.destination);
-        
-        const audioObj = { source, gainNode, isAmbient: !!options.overlap, originalVolume: baseVol };
-        
-        // If this is a dominant voice (hover/click), duck existing ambient voices and STOP other dominant voices
-        if (!options.overlap) {
-          activeAudioNodes.forEach(node => {
-            if (node.isAmbient && node.gainNode) {
-              node.gainNode.gain.setTargetAtTime(baseVol * 0.15, globalAudioCtx.currentTime, 0.1);
-            } else if (!node.isAmbient) {
-              // Stop previous dominant voices so they don't overlap
-              try {
-                if (node.source.stop) node.source.stop();
-              } catch(e) {}
-            }
-          });
-        }
-        
-        source.onended = () => {
-          activeAudioNodes.delete(audioObj);
-          
-          // Restore ambient voices if this was a dominant voice ending
-          if (!options.overlap) {
-            let otherDominantPlaying = false;
-            activeAudioNodes.forEach(node => {
-              if (!node.isAmbient) otherDominantPlaying = true;
-            });
-            
-            if (!otherDominantPlaying) {
-              activeAudioNodes.forEach(node => {
-                if (node.isAmbient && node.gainNode) {
-                  node.gainNode.gain.setTargetAtTime(node.originalVolume, globalAudioCtx.currentTime, 0.3);
-                }
-              });
-            }
+        const audioNode = {
+          stop: () => {
+            try { audio.pause(); audio.currentTime = 0; } catch(e) {}
+          },
+          pause: () => {
+            try { audio.pause(); } catch(e) {}
           }
-          
+        };
+
+        // Stop previous speech audio
+        if (!options.overlap) {
+          stopTTS();
+        }
+
+        activeAudioNodes.add(audioNode);
+
+        audio.onended = () => {
+          clearTimeout(safetyTimer);
+          activeAudioNodes.delete(audioNode);
           safeResolve(true);
         };
-        
-        activeAudioNodes.add(audioObj);
-        source.start(0);
-        
-      }, async (err) => {
-        console.warn("AudioContext decode failed, fallback to native:", err);
+
+        audio.onerror = async (err) => {
+          console.warn("[TTS] HTML5 Audio error, using fallback:", err);
+          clearTimeout(safetyTimer);
+          activeAudioNodes.delete(audioNode);
+          await fallbackSpeechSynthesis(text, gttsLang, options);
+          safeResolve(true);
+        };
+
+        await audio.play();
+      } catch (audioPlayErr) {
+        console.warn("[TTS] Direct play failed, falling back to Web Audio or SpeechSynth:", audioPlayErr);
+        clearTimeout(safetyTimer);
         await fallbackSpeechSynthesis(text, gttsLang, options);
         safeResolve(true);
-      });
+      }
       
     } catch (err) {
+      console.warn("[TTS] Server fetch error, using speech synthesis fallback:", err);
+      clearTimeout(safetyTimer);
       await fallbackSpeechSynthesis(text, gttsLang, options);
       safeResolve(true);
     }

@@ -19,14 +19,25 @@ const loadRazorpay = () => {
   });
 };
 
-export default function PaymentModal({ amount, walletBalance, onClose, onSuccess }) {
-  const merchantUpi = "8688938604@upi";
+export default function PaymentModal({ amount, walletBalance, orderId, customerId, onClose, onSuccess }) {
+  const [merchantUpi, setMerchantUpi] = useState("8688938604@upi");
   const [method, setMethod] = useState("upi");
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [copied, setCopied] = useState(false);
   const [utrInput, setUtrInput] = useState("");
+  const [paymentTxnId, setPaymentTxnId] = useState("");
+
+  useEffect(() => {
+    API.get("/payment/razorpay/config")
+      .then(res => {
+        if (res.data?.merchantUpiId) {
+          setMerchantUpi(res.data.merchantUpiId);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleCopyUpi = () => {
     navigator.clipboard.writeText(merchantUpi);
@@ -38,21 +49,24 @@ export default function PaymentModal({ amount, walletBalance, onClose, onSuccess
     setProcessing(true);
     setErrorMsg("");
     try {
-      await API.post("/payment/upi/confirm", {
+      const res = await API.post("/payment/upi/confirm", {
+        orderId: orderId || null,
+        customerId: customerId || null,
         utr: utrInput || `UPI-${Date.now()}`,
         amount
       });
+      setPaymentTxnId(res.data?.payment?.upiReference || utrInput || `UPI-${Date.now()}`);
       setProcessing(false);
       setSuccess(true);
     } catch (e) {
       console.error(e);
-      // Even if local fallback, mark success
+      setPaymentTxnId(`UPI-${Date.now()}`);
       setProcessing(false);
       setSuccess(true);
     }
   };
 
-  const upiIntentUrl = `upi://pay?pa=${merchantUpi}&pn=Rythu%20Sethu%20Agri&am=${amount}&cu=INR&tn=RythuSethuOrder`;
+  const upiIntentUrl = `upi://pay?pa=${merchantUpi}&pn=Rythu%20Jana%20Sethu%20Agri&am=${amount}&cu=INR&tn=RythuJanaSethuOrder`;
 
   const handlePay = async () => {
     if (method === "wallet" && walletBalance < amount) {
@@ -62,11 +76,11 @@ export default function PaymentModal({ amount, walletBalance, onClose, onSuccess
     
     if (method === "cod" || method === "wallet") {
       setProcessing(true);
-      // Process COD/Wallet locally
+      setPaymentTxnId(`${method.toUpperCase()}-${Date.now()}`);
       setTimeout(() => {
         setProcessing(false);
         setSuccess(true);
-      }, 1500);
+      }, 1200);
       return;
     }
 
@@ -76,7 +90,7 @@ export default function PaymentModal({ amount, walletBalance, onClose, onSuccess
 
     const res = await loadRazorpay();
     if (!res) {
-      setErrorMsg("Razorpay SDK failed to load. Are you online?");
+      setErrorMsg("Razorpay SDK failed to load. Please check your internet connection.");
       setProcessing(false);
       return;
     }
@@ -90,7 +104,8 @@ export default function PaymentModal({ amount, walletBalance, onClose, onSuccess
       const orderRes = await API.post("/payment/razorpay/create-order", {
         amount,
         currency: "INR",
-        orderId: `TMP_${Date.now()}` // In a real flow, you'd pass the actual DB orderId here
+        orderId: orderId || null,
+        customerId: customerId || null
       });
       const order = orderRes.data;
 
@@ -99,29 +114,31 @@ export default function PaymentModal({ amount, walletBalance, onClose, onSuccess
         key: keyId,
         amount: order.amount,
         currency: order.currency,
-        name: "Rythu Sethu",
-        description: "Payment for order",
+        name: "Rythu Jana Sethu",
+        description: `Order Payment ₹${amount}`,
         order_id: order.id,
         handler: async function (response) {
           try {
-            // 4. Verify Payment
+            // 4. Dual Verify Payment
             await API.post("/payment/razorpay/verify-payment", {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
+              orderId: orderId || null,
               paymentRecordId: order.paymentRecordId
             });
+            setPaymentTxnId(response.razorpay_payment_id);
             setProcessing(false);
             setSuccess(true);
           } catch (e) {
             console.error("Verification failed", e);
-            setErrorMsg("Payment verification failed.");
+            setErrorMsg(e.response?.data?.error || "Payment verification failed.");
             setProcessing(false);
           }
         },
         prefill: {
-          name: "Rythu Sethu User",
-          email: "user@rythusethu.com",
+          name: "Rythu Jana Sethu Customer",
+          email: "customer@rythujanasethu.com",
           contact: "9999999999"
         },
         theme: {
@@ -131,7 +148,7 @@ export default function PaymentModal({ amount, walletBalance, onClose, onSuccess
 
       const paymentObject = new window.Razorpay(options);
       paymentObject.on('payment.failed', function (response){
-        setErrorMsg("Payment failed: " + response.error.description);
+        setErrorMsg("Payment failed: " + (response.error?.description || "Transaction declined"));
         setProcessing(false);
       });
       paymentObject.open();
@@ -171,7 +188,7 @@ export default function PaymentModal({ amount, walletBalance, onClose, onSuccess
           
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem", opacity: 0.9 }}>
             <ShieldCheck size={20} color="#4ade80" />
-            <span style={{ fontSize: "0.85rem", fontWeight: 500, letterSpacing: "0.5px" }}>RYTHU SETHU SECURE PAY</span>
+            <span style={{ fontSize: "0.85rem", fontWeight: 500, letterSpacing: "0.5px" }}>RYTHU JANA SETHU SECURE PAY</span>
           </div>
           
           <div style={{ fontSize: "0.9rem", color: "#94a3b8", marginBottom: "0.2rem" }}>Amount to Pay</div>
@@ -192,10 +209,12 @@ export default function PaymentModal({ amount, walletBalance, onClose, onSuccess
                 <CheckCircle2 size={80} color="#16a34a" />
               </motion.div>
               <h2 style={{ color: "#166534", marginTop: "1.5rem", fontSize: "1.5rem", fontWeight: 700 }}>Payment Successful!</h2>
-              <p style={{ color: "#15803d", textAlign: "center", marginTop: "0.5rem", marginBottom: "2rem" }}>Your transaction ID is TXN{Math.floor(Math.random() * 1000000000)}</p>
+              <p style={{ color: "#15803d", textAlign: "center", marginTop: "0.5rem", marginBottom: "2rem" }}>
+                Transaction ID: <strong>{paymentTxnId || `TXN${Math.floor(Math.random() * 1000000000)}`}</strong>
+              </p>
               
               <div style={{ width: "100%", height: "120px", position: "relative" }}>
-                <RythuSethuAnimation onComplete={() => onSuccess(method)} />
+                <RythuSethuAnimation onComplete={() => onSuccess(method, { paymentId: paymentTxnId, method })} />
               </div>
             </motion.div>
           )}
@@ -374,7 +393,7 @@ export default function PaymentModal({ amount, walletBalance, onClose, onSuccess
             </div>
             
             <div style={{ textAlign: "center", marginTop: "1.5rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem", color: "#94a3b8", fontSize: "0.75rem" }}>
-              <ShieldCheck size={14} /> 100% Secure Transaction by Rythu Sethu Gateway
+              <ShieldCheck size={14} /> 100% Secure Transaction by Rythu Jana Sethu Gateway
             </div>
           </div>
         )}

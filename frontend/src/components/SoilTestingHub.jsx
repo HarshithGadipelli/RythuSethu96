@@ -649,7 +649,7 @@ export default function SoilTestingHub({ user, farmerProfile }) {
                 CERTIFIED DIGITAL SOIL HEALTH CARD
               </h2>
               <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
-                Rythu Sethu Agricultural Chemistry Laboratory • Govt. Accredited Standards
+                Rythu Jana Sethu Agricultural Chemistry Laboratory • Govt. Accredited Standards
               </div>
             </div>
 

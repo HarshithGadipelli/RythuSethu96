@@ -196,7 +196,7 @@ export default function Navbar() {
   return (
     <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
       <Link to="/" className="navbar-brand">
-        <motion.img whileHover={{ scale: 1.05 }} src="/logo.png?v=2" alt="Rythu Sethu Logo" style={{ height: "42px", width: "auto", borderRadius: "12px" }} />
+        <motion.img whileHover={{ scale: 1.05 }} src="/logo.png?v=2" alt="Rythu Jana Sethu Logo" style={{ height: "42px", width: "auto", borderRadius: "12px" }} />
         <div>
           <span className="navbar-title" translate="no">{t("appName")}</span>
           <span className="navbar-subtitle">{t("tagline")}</span>

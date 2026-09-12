@@ -200,7 +200,7 @@ export default function Login() {
         {/* Logo */}
         <div className="text-center mb-4">
           <span style={{ fontSize: "3.8rem", display: "block", animation: "floatUp 3s ease infinite" }}>🌾</span>
-          <h1 className="page-title" style={{ fontSize: "2rem" }}>{t("appName") || "Rythu Sethu"}</h1>
+          <h1 className="page-title" style={{ fontSize: "2rem" }}>{t("appName") || "Rythu Jana Sethu"}</h1>
           <p style={{ color: "var(--text-mid)", fontSize: "0.9rem", marginTop: "0.3rem" }}>{t("tagline") || "Empowering Farmers & Buyers Directly"}</p>
         </div>
 
@@ -411,7 +411,7 @@ export default function Login() {
           </div>
 
           <p className="text-center mt-4" style={{ fontSize: "0.88rem", color: "var(--text-muted)", marginBottom: 0 }}>
-            New to Rythu Sethu?{" "}
+            New to Rythu Jana Sethu?{" "}
             <Link to="/register" style={{ color: "var(--green-deep)", fontWeight: 600, textDecoration: "none" }}>
               {t("register") || "Register"} →
             </Link>

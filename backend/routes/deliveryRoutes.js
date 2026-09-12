@@ -782,7 +782,7 @@ router.post("/:id/verify-produce", upload.single("producePhoto"), async (req, re
     let summary = `Inspected on field: High quality fresh ${cropName}, verified against marketplace specifications.`;
 
     if (base64Data) {
-      const prompt = `You are an expert AI agricultural produce inspector for Rythu Sethu farmer marketplace.
+      const prompt = `You are an expert AI agricultural produce inspector for Rythu Jana Sethu farmer marketplace.
 Order Details:
 - Listed Crop: "${cropName}"
 - Category: "${category}"

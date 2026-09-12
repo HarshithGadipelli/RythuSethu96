@@ -1365,7 +1365,7 @@ export default function LandingPage() {
                 🛒 {t("shopNow")}
               </button>
             </Link>
-            <a href="mailto:support@rythusethu.in">
+            <a href="mailto:support@rythujanasethu.in">
               <button className="btn-secondary" style={{ width: "auto", padding: "1rem 2.5rem", fontSize: "1.05rem", background: "white", color: "var(--text-dark)" }}>
                 ✉️ Contact Us
               </button>
@@ -1630,11 +1630,11 @@ export default function LandingPage() {
         textAlign: "center", color: "white", fontSize: "0.9rem"
       }}>
         <div style={{ display: "flex", justifyContent: "center", gap: "2rem", marginBottom: "1.5rem" }}>
-          <a href="mailto:support@rythusethu.in" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Contact Us</a>
+          <a href="mailto:support@rythujanasethu.in" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Contact Us</a>
           <a href="#" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Privacy Policy</a>
           <a href="#" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Terms of Service</a>
         </div>
-        <p>🌾 Rythu Sethu — Connecting Farmers & Customers Across India</p>
+        <p>🌾 Rythu Jana Sethu — Connecting Farmers & Customers Across India</p>
         <p style={{ marginTop: "0.5rem", opacity: 0.8 }}>Made with ❤️ for Indian Agriculture</p>
       </footer>
     </div>

@@ -2105,7 +2105,7 @@ export default function Marketplace() {
               <div>
                 <div className="bill-receipt">
                   <div className="bill-header">
-                    <h3>🌾 Rythu Sethu — Order Bill</h3>
+                    <h3>🌾 Rythu Jana Sethu — Order Bill</h3>
                     <p>Bill #{showBill.billNumber}</p>
                     <p>{showBill.date}</p>
                   </div>
@@ -2582,6 +2582,7 @@ export default function Marketplace() {
       {showPaymentModal && (
         <PaymentModal 
           amount={totalAmount} 
+          customerId={user?._id}
           onClose={() => { setShowPaymentModal(false); setOrdering(false); }} 
           onSuccess={handlePaymentSuccess} 
         />

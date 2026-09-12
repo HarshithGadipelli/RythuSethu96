@@ -88,7 +88,7 @@ export default function EcoAdvisor({ cropName }) {
       
       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
         <Sparkles size={20} color="#15803d" />
-        <h3 style={{ color: "#15803d", fontSize: "1.1rem", margin: 0 }}>Rythu Sethu Eco-Advisor</h3>
+        <h3 style={{ color: "#15803d", fontSize: "1.1rem", margin: 0 }}>Rythu Jana Sethu Eco-Advisor</h3>
       </div>
 
       <div style={{ minHeight: "120px", display: "flex", alignItems: "flex-start", gap: "1rem" }}>

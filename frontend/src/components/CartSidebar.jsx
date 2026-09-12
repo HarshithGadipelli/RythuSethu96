@@ -314,6 +314,7 @@ export default function CartSidebar() {
         <PaymentModal
           amount={getCartTotal()}
           walletBalance={user?.walletBalance || 0}
+          customerId={user?._id}
           onClose={() => setShowOnlinePaymentModal(false)}
           onSuccess={(payMethod) => {
             setShowOnlinePaymentModal(false);

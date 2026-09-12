@@ -138,7 +138,7 @@ export default function OrderInvoiceModal({ order, onClose }) {
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <span style={{ fontSize: "1.6rem" }}>🌱</span>
-                  <h1 style={{ margin: 0, fontSize: "1.6rem", color: "#166534", fontWeight: 900, letterSpacing: "-0.5px" }}>Rythu Sethu</h1>
+                  <h1 style={{ margin: 0, fontSize: "1.6rem", color: "#166534", fontWeight: 900, letterSpacing: "-0.5px" }}>Rythu Jana Sethu</h1>
                 </div>
                 <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "0.85rem", fontWeight: 500 }}>Direct Farm-to-Fork Agricultural Bridge Platform</p>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "#dcfce7", color: "#166534", padding: "2px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: 700, marginTop: "6px" }}>
@@ -291,8 +291,8 @@ export default function OrderInvoiceModal({ order, onClose }) {
 
             {/* Footer */}
             <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.75rem", color: "#94a3b8", flexWrap: "wrap", gap: "0.5rem" }}>
-              <div>Generated electronically by Rythu Sethu Platform • No physical signature required.</div>
-              <div>Support: support@rythusethu.com | +91 8688938604</div>
+              <div>Generated electronically by Rythu Jana Sethu Platform • No physical signature required.</div>
+              <div>Support: support@rythujanasethu.com | +91 8688938604</div>
             </div>
 
           </div>

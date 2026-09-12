@@ -122,7 +122,7 @@ router.post("/chat", async (req, res) => {
       } else if (lower.includes("pesticide") || lower.includes("disease") || lower.includes("pest") || lower.includes("white")) {
         reply = "For common pests like whiteflies or aphids, I highly recommend organic Neem oil spray (10ml per liter of water) applied early morning. Always use organic methods to keep your 'Organic' badge!";
       } else if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) {
-        reply = "Namaskaram! 🙏 I am your Rythu Sethu Assistant. I am running in local offline mode, but I can still answer basic questions about crops, prices, pests, and the marketplace!";
+        reply = "Namaskaram! 🙏 I am your Rythu Jana Sethu Assistant. I am running in local offline mode, but I can still answer basic questions about crops, prices, pests, and the marketplace!";
       } else if (lower.includes("weather") || lower.includes("rain")) {
         reply = "Based on local agricultural patterns, expect mild showers this week. Ensure your harvested crops are covered!";
       } else {
@@ -137,7 +137,7 @@ router.post("/chat", async (req, res) => {
 
     if (apiKey && apiKey.trim().length > 10) {
       const finalPrompt = `
-      You are the Rythu Sethu 4.0 Advanced AI Assistant. You are deeply integrated into the system and know real-time data.
+      You are the Rythu Jana Sethu 4.0 Advanced AI Assistant. You are deeply integrated into the system and know real-time data.
       You help farmers optimize crop yields, customers find the best prices, and agents optimize deliveries.
       
       User Role: ${role || "User"}
@@ -596,42 +596,57 @@ router.post("/analyze-quality", async (req, res) => {
 // Multer config for in-memory audio storage
 const upload = multer({ storage: multer.memoryStorage() });
 
-// 1. Text-To-Speech (TTS) using google-tts-api (Bypasses browser limits/cors issues)
+// 1. Text-To-Speech (TTS) using google-tts-api (Unlimited length, cross-browser, multilingual)
 router.post("/tts", async (req, res) => {
   try {
     const { text, lang = "en" } = req.body;
-    if (!text) return res.status(400).json({ error: "No text provided" });
+    if (!text || !text.trim()) return res.status(400).json({ error: "No text provided" });
 
-    // google-tts-api only accepts base language codes (e.g. "en", "te", "hi")
-    // NOT locale codes like "en-IN", "te-IN" etc.
-    const safeLang = lang.split("-")[0] || "en";
+    // Supported language mapping: 'te' (Telugu), 'hi' (Hindi), 'kn' (Kannada), 'ta' (Tamil), 'en' (English), etc.
+    const rawLang = (lang || "en").toLowerCase().trim();
+    const safeLang = rawLang.split("-")[0] || "en";
 
-    // Use google-tts-api to fetch base64 chunks
-    // This allows limitless speech length and extreme cross-browser compatibility
-    const base64Audio = await googleTTS.getAudioBase64(text, {
-      lang: safeLang,
-      slow: false,
-      host: "https://translate.google.com",
-      timeout: 10000,
-    });
-
-    res.json({ audioContent: base64Audio });
-  } catch (err) {
-    console.error("TTS Error:", err);
-
-    // Fallback: try with just "en" if the original language failed
+    // Use googleTTS.getAllAudioBase64 to handle any length safely without 200-char limit
     try {
-      const base64Audio = await googleTTS.getAudioBase64(req.body.text, {
+      const audioChunks = await googleTTS.getAllAudioBase64(text.trim(), {
+        lang: safeLang,
+        slow: false,
+        host: "https://translate.google.com",
+        timeout: 10000,
+      });
+
+      if (audioChunks && audioChunks.length > 0) {
+        // Concatenate all base64 MP3 chunks seamlessly into a single buffer
+        const combinedBuffer = Buffer.concat(
+          audioChunks.map(chunk => Buffer.from(chunk.base64, "base64"))
+        );
+        return res.json({ audioContent: combinedBuffer.toString("base64"), lang: safeLang });
+      }
+    } catch (chunkErr) {
+      console.warn(`[TTS] getAllAudioBase64 failed for ${safeLang}:`, chunkErr.message);
+    }
+
+    // Fallback: try English if primary language failed
+    try {
+      const fallbackChunks = await googleTTS.getAllAudioBase64(text.trim(), {
         lang: "en",
         slow: false,
         host: "https://translate.google.com",
         timeout: 10000,
       });
-      return res.json({ audioContent: base64Audio });
-    } catch (fallbackErr) {
-      console.error("TTS Fallback also failed:", fallbackErr);
+      if (fallbackChunks && fallbackChunks.length > 0) {
+        const combinedBuffer = Buffer.concat(
+          fallbackChunks.map(chunk => Buffer.from(chunk.base64, "base64"))
+        );
+        return res.json({ audioContent: combinedBuffer.toString("base64"), lang: "en" });
+      }
+    } catch (fbErr) {
+      console.error("[TTS] Fallback to English also failed:", fbErr.message);
     }
 
+    res.status(500).json({ error: "Failed to generate TTS audio" });
+  } catch (err) {
+    console.error("TTS Critical Error:", err);
     res.status(500).json({ error: "Failed to generate TTS" });
   }
 });
@@ -746,20 +761,14 @@ router.post("/parse-wizard-step", async (req, res) => {
       return res.status(400).json({ error: "Invalid step" });
     }
 
-    // Call with 5-second timeout
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI Timeout")), 5000));
-    const aiCall = (async () => {
-      const result = await ai.models.generateContent({
-        model: "gemini-3.5-flash-lite",
-        contents: [prompt]
-      });
-      return result.text;
-    })();
-
-    const rawText = await Promise.race([aiCall, timeoutPromise]);
-    const cleanJson = (rawText || "").trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
-    const parsedData = JSON.parse(cleanJson);
-    res.json(parsedData);
+    // Call Gemini with model fallbacks (gemini-3.6-flash / gemini-flash-latest)
+    const rawText = await callGeminiWithFallback([prompt]);
+    if (rawText) {
+      const cleanJson = (rawText || "").trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
+      const parsedData = JSON.parse(cleanJson);
+      return res.json(parsedData);
+    }
+    throw new Error("No response from AI models");
   } catch (err) {
     console.warn("Parse Wizard Step Fallback for", req.body.step, err.message);
     const { step, transcript } = req.body;

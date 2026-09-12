@@ -50,7 +50,7 @@ export default function AuthenticityCertificate({ order, onClose }) {
             <h2 style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--green-pale)", textTransform: "uppercase", letterSpacing: "1px" }}>
               Certificate of Authenticity
             </h2>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: "0.2rem" }}>Verified by Rythu Sethu AI Vision</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: "0.2rem" }}>Verified by Rythu Jana Sethu AI Vision</p>
           </div>
 
           <div style={{ background: "rgba(0,0,0,0.3)", borderRadius: "12px", padding: "1.25rem", marginBottom: "1.5rem", border: "1px solid rgba(255,255,255,0.05)" }}>
@@ -110,7 +110,7 @@ export default function AuthenticityCertificate({ order, onClose }) {
 
           <div style={{ background: "rgba(0,0,0,0.5)", borderRadius: "12px", padding: "1.25rem", display: "flex", alignItems: "center", gap: "1.5rem" }}>
             <div style={{ background: "white", padding: "0.5rem", borderRadius: "8px" }}>
-              <QRCode value={`https://rythusethu.vercel.app/traceability/${order._id}`} size={80} />
+              <QRCode value={`${window.location.origin}/traceability/${order._id}`} size={80} />
             </div>
             <div>
               <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.3rem", textTransform: "uppercase" }}>Blockchain Ledger ID</p>

@@ -1,7 +1,8 @@
 {
-  "short_name": "Rythu Sethu",
-  "name": "Rythu Sethu - Farm Fresh, Direct to You",
-  "description": "AI-powered marketplace bridging farmers and customers for fresh farm produce.",
+  "id": "/?source=pwa",
+  "short_name": "Rythu Jana Sethu",
+  "name": "Rythu Jana Sethu - Farm Fresh Directly to You",
+  "description": "AI-powered marketplace bridging farmers and consumers for fresh produce, fair pricing, and live farm tours.",
   "icons": [
     {
       "src": "/logo.png",
@@ -16,13 +17,29 @@
       "purpose": "any maskable"
     }
   ],
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
   "theme_color": "#1a4a2e",
-  "background_color": "#f8fafc",
+  "background_color": "#ffffff",
   "categories": ["food", "shopping", "business"],
   "lang": "en",
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Marketplace",
+      "short_name": "Market",
+      "description": "Browse farm-fresh crops and vegetables",
+      "url": "/marketplace",
+      "icons": [{ "src": "/logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Sign In",
+      "short_name": "Login",
+      "description": "Access your farmer, customer, or agent account",
+      "url": "/login",
+      "icons": [{ "src": "/logo.png", "sizes": "192x192" }]
+    }
+  ]
 }

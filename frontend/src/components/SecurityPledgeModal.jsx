@@ -31,7 +31,7 @@ export default function SecurityPledgeModal({ user, onAccepted }) {
       ];
     }
     return [
-      { icon: "🛡️", text: "I pledge to use the platform fairly and honestly, maintaining the trust of the Rythu Sethu community." }
+      { icon: "🛡️", text: "I pledge to use the platform fairly and honestly, maintaining the trust of the Rythu Jana Sethu community." }
     ];
   };
 

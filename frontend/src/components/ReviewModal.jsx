@@ -102,7 +102,7 @@ export default function ReviewModal({ orderId, onClose, onSubmitted }) {
 
             <StarRating label="🛵 Rate the Delivery Agent" value={agentRating} onChange={setAgentRating} />
             <StarRating label="🌾 Rate the Farmer's Crop Quality" value={farmerRating} onChange={setFarmerRating} />
-            <StarRating label="🌟 Rate Rythu Sethu Platform" value={platformRating} onChange={setPlatformRating} />
+            <StarRating label="🌟 Rate Rythu Jana Sethu Platform" value={platformRating} onChange={setPlatformRating} />
 
             <div style={{ marginTop: "1.5rem", marginBottom: "1.5rem" }}>
               <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#64748b", marginBottom: "0.4rem" }}>Additional Comments (Optional)</div>

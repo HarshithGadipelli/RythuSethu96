@@ -18,10 +18,9 @@ export const callGeminiWithFallback = async (promptOrParts) => {
   const ai = getGenAI();
   if (!ai) return null;
   const models = [
-    "gemini-3.5-flash-lite",
-    "gemini-flash-lite-latest",
+    "gemini-3.6-flash",
     "gemini-flash-latest",
-    "gemini-3.6-flash"
+    "gemini-2.5-flash-lite"
   ];
   for (const m of models) {
     try {

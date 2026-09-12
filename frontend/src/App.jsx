@@ -23,6 +23,7 @@ import CuratedBoxes from "./pages/Marketplace/CuratedBoxes";
 import Support from "./pages/Support/Support";
 import AIAssistant from "./components/AIAssistant";
 import AmbientAtmosphere from "./components/AmbientAtmosphere";
+import PWAInstallPrompt from "./components/PWAInstallPrompt";
 // Ensure Google Translate re-translates when React Router changes pages
 function RouteChangeListener() {
   const location = useLocation();
@@ -62,7 +63,7 @@ function Protected({ children, roles }) {
   if (loading) return (
     <div className="loader-wrapper" style={{ minHeight: "100vh" }}>
       <div className="loader"></div>
-      <p className="loader-text">Loading Rythu Sethu...</p>
+      <p className="loader-text">Loading Rythu Jana Sethu...</p>
     </div>
   );
   if (!user) return <Navigate to="/login" replace />;
@@ -180,6 +181,7 @@ function AppRoutes() {
         <MessageSquareText size={24} />
       </Link>
 
+      <PWAInstallPrompt />
       <BottomNav />
     </>
   );

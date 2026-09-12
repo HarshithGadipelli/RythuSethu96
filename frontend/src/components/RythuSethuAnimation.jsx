@@ -233,7 +233,7 @@ export default function RythuSethuAnimation({ onComplete }) {
           letterSpacing: "1px", textTransform: "uppercase"
         }}
       >
-        🌉 Rythu Sethu — Connecting Farmers to Customers
+        🌉 Rythu Jana Sethu — Connecting Farmers to Customers
       </motion.div>
     </div>
   );

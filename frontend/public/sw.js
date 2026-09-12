@@ -1,4 +1,4 @@
-const CACHE_NAME = "rythu-sethu-v2";
+const CACHE_NAME = "rythu-sethu-v4";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
