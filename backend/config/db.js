@@ -3,6 +3,14 @@ import { exec } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import dns from "dns";
+
+// Fix Node.js EBADRESP error on SRV record lookup with local ISP DNS
+try {
+  dns.setServers(["8.8.8.8", "8.8.4.4"]);
+} catch (e) {
+  // Ignore in environments where setServers is restricted
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -97,7 +105,7 @@ const connectDB = async (retries = 5, delay = 2000) => {
   const mongoUri =
     process.env.MONGO_URI ||
     process.env.MONGODB_URI ||
-    "mongodb://127.0.0.1:27017/rythu_sethu";
+    "mongodb+srv://harshithgadipelli_db_user:rythumongojanadbsethu@cluster.mongodb.net/";
 
   const isLocal =
     mongoUri.includes("localhost") ||

@@ -57,7 +57,7 @@ app.set("io", io);
 
 io.on("connection", (socket) => {
   console.log("🟢 Realtime client connected:", socket.id);
-  
+
   socket.on("join_agent_room", (agentId) => {
     socket.join(`agent_${agentId}`);
   });
@@ -71,9 +71,9 @@ io.on("connection", (socket) => {
       if (data.agentId && data.lat && data.lng) {
         await Delivery.updateMany(
           { agent: data.agentId, status: "in_transit" },
-          { 
-            $set: { 
-              agentLatitude: data.lat, 
+          {
+            $set: {
+              agentLatitude: data.lat,
               agentLongitude: data.lng,
               lastLocationUpdate: new Date()
             }
@@ -152,10 +152,12 @@ app.use("/api/translate", translationRoutes);
 app.use("/api/soil-test", soilTestRoutes);
 
 app.get("/", (req, res) => {
-  res.send("🌾 Rythu Sethu 4.0 Backend Running");
+  res.send("Rythu Jana Sethu Backend Running");
 });
 
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
+//const cors = require('cors');
+//app.use(cors()); // Allows requests from any origin

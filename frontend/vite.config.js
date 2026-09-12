@@ -6,9 +6,7 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
-    allowedHosts: [
-      'trash-irregular-critter.ngrok-free.dev'
-    ]
+
     // Expose on local network
   },
   build: {
