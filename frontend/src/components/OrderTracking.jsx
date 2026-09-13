@@ -177,22 +177,54 @@ export default function OrderTracking({ orderId, onClose }) {
             )}
           </div>
 
-          {/* Agent Info Box */}
-          {order.agent && order.status !== "delivered" && (
-            <div style={{ background: "white", padding: "1.5rem", borderTop: "1px solid #e2e8f0", zIndex: 10 }}>
+          {/* Agent Info Box (Dabbawala Hyperlocal Abstraction) */}
+          {order.status !== "delivered" && (
+            <div style={{ background: "white", padding: "1.2rem 1.5rem", borderTop: "1px solid #e2e8f0", zIndex: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
+                <span style={{ 
+                  background: "rgba(34, 197, 94, 0.12)", 
+                  color: "#166534", 
+                  border: "1px solid rgba(34, 197, 94, 0.3)", 
+                  padding: "3px 10px", 
+                  borderRadius: "100px", 
+                  fontSize: "0.78rem", 
+                  fontWeight: 700,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "5px"
+                }}>
+                  🚲 Hyperlocal Dabbawala Doorstep Delivery
+                </span>
+                <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 600 }}>
+                  Cold Storage Hub ➔ Doorstep
+                </span>
+              </div>
               <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                <div style={{ width: 50, height: 50, borderRadius: "50%", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <User size={24} color="#64748b" />
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#ecfdf5", border: "2px solid #86efac", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem" }}>
+                  🚲
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#1e293b" }}>{order.agent.name || "Delivery Partner"}</div>
-                  <div style={{ fontSize: "0.85rem", color: "#64748b", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                    <ShieldCheck size={14} color="#16a34a" /> Verified Agent • ⭐ 4.8
+                  <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "#1e293b" }}>
+                    {order.agent?.name || "Ramesh Kumar (Dabbawala Rider #402)"}
+                  </div>
+                  <div style={{ fontSize: "0.8rem", color: "#64748b", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    <ShieldCheck size={14} color="#16a34a" /> 2km Radial Cluster Specialist • ⭐ 4.9
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <button style={{ width: 44, height: 44, borderRadius: "50%", border: "none", background: "#dcfce7", color: "#16a34a", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><MessageSquare size={20} /></button>
-                  <button style={{ width: 44, height: 44, borderRadius: "50%", border: "none", background: "#3b82f6", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => window.location.href = `tel:${order.agent.phone || ''}`}><Phone size={20} /></button>
+                  <button 
+                    style={{ width: 40, height: 40, borderRadius: "50%", border: "none", background: "#dcfce7", color: "#16a34a", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    title="Chat with Dabbawala Rider"
+                  >
+                    <MessageSquare size={18} />
+                  </button>
+                  <button 
+                    style={{ width: 40, height: 40, borderRadius: "50%", border: "none", background: "#3b82f6", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} 
+                    onClick={() => window.location.href = `tel:${order.agent?.phone || '9876543210'}`}
+                    title="Call Dabbawala Rider"
+                  >
+                    <Phone size={18} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -201,16 +233,21 @@ export default function OrderTracking({ orderId, onClose }) {
 
         {/* Right Column - Status Timeline & Details */}
         <div style={{ flex: "1 1 400px", background: "white", padding: "2rem", borderLeft: "1px solid #e2e8f0" }}>
-          <h3 style={{ fontSize: "1.2rem", fontWeight: 800, marginBottom: "2rem", color: "#1e293b" }}>Order Timeline</h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 800, margin: 0, color: "#1e293b" }}>Order Timeline</h3>
+            <span style={{ fontSize: "0.78rem", background: "#eff6ff", color: "#1e40af", padding: "3px 9px", borderRadius: "12px", fontWeight: 700 }}>
+              Live Satellite GPS
+            </span>
+          </div>
           
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
             {[
-              { id: "pending", label: "Order Placed", icon: Package, desc: "Waiting for confirmation" },
-              { id: "confirmed", label: "Confirmed", icon: CheckCircle, desc: "Farmer is preparing your items" },
-              { id: "assigned", label: "Agent Assigned", icon: User, desc: "A delivery partner is heading to the farm" },
-              { id: "picked_up", label: "Picked Up", icon: Package, desc: "Your items are securely collected" },
-              { id: "in_transit", label: "On the Way", icon: Truck, desc: "Agent is heading to your location" },
-              { id: "delivered", label: "Delivered", icon: MapPin, desc: "Successfully delivered" },
+              { id: "pending", label: "Order Placed", icon: Package, desc: "Order safely received & verified" },
+              { id: "confirmed", label: "Farm Gate Aggregated", icon: CheckCircle, desc: "Fresh produce received from farmer" },
+              { id: "assigned", label: "Arrived at Cold Storage Hub", icon: ShieldCheck, desc: "Chilled & staged at nearest city hub" },
+              { id: "picked_up", label: "Dabbawala Assigned", icon: User, desc: "Assigned to last-mile 2-wheeler courier" },
+              { id: "in_transit", label: "Out for Doorstep Delivery", icon: Truck, desc: "Dabbawala rider is en route to your address" },
+              { id: "delivered", label: "Delivered Fresh", icon: MapPin, desc: "Delivered directly to your hands" },
             ].map((step, idx) => {
               const isActive = currentStatusIndex >= idx;
               const isCurrent = currentStatusIndex === idx;

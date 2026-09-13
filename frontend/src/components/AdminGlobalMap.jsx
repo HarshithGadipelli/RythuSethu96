@@ -30,7 +30,10 @@ const createCustomIcon = (emoji, color) => {
 
 const ICONS = {
   agent: createCustomIcon("🚚", "#2563eb"),
-  pickup: createCustomIcon("🌾", "#16a34a"),
+  heavyTruck: createCustomIcon("🚛", "#0369a1"),
+  dabbawala: createCustomIcon("🚲", "#16a34a"),
+  hub: createCustomIcon("🏢", "#0284c7"),
+  pickup: createCustomIcon("🌾", "#15803d"),
   delivery: createCustomIcon("🏠", "#ea580c"),
 };
 
@@ -48,7 +51,7 @@ const MapBounds = ({ points }) => {
   return null;
 };
 
-export default function AdminGlobalMap({ activeDeliveries = [] }) {
+export default function AdminGlobalMap({ activeDeliveries = [], tierFilter = "all", hubs = [], onReassignClick = null }) {
   const [liveAgents, setLiveAgents] = useState({});
   const [dispatchingAgentId, setDispatchingAgentId] = useState(null);
   const [dispatchMsg, setDispatchMsg] = useState("");
@@ -113,9 +116,30 @@ export default function AdminGlobalMap({ activeDeliveries = [] }) {
   const polylines = [];
   const agentGroups = {};
 
-  activeDeliveries.forEach(d => {
-    if (d.status === "delivered" || d.status === "cancelled") return;
+  // Add Cold Storage Hubs
+  if (hubs && hubs.length > 0) {
+    hubs.forEach(h => {
+      markers.push({
+        id: `hub-${h.id || h.name}`,
+        lat: h.latitude,
+        lng: h.longitude,
+        type: "hub",
+        label: `🏢 ${h.name} (${h.type || "Central Hub"})`,
+        hub: h
+      });
+    });
+  }
 
+  // Filter deliveries according to tierFilter
+  const filteredList = activeDeliveries.filter(d => {
+    if (d.status === "delivered" || d.status === "cancelled") return false;
+    if (tierFilter === "heavy_truck") return d.vehicleType === "heavy_truck" || d.tier === "heavy_truck";
+    if (tierFilter === "dabbawala") return d.vehicleType !== "heavy_truck" && d.tier !== "heavy_truck";
+    return true;
+  });
+
+  filteredList.forEach(d => {
+    const isTruck = d.vehicleType === "heavy_truck" || d.tier === "heavy_truck";
     const pickupLat = d.pickupLatitude || d.order?.crop?.latitude || d.order?.farmer?.latitude || d.order?.crop?.farmer?.latitude;
     const pickupLng = d.pickupLongitude || d.order?.crop?.longitude || d.order?.farmer?.longitude || d.order?.crop?.farmer?.longitude;
     const deliveryLat = d.deliveryLatitude || d.order?.customer?.latitude;
@@ -126,9 +150,10 @@ export default function AdminGlobalMap({ activeDeliveries = [] }) {
       if (!agentGroups[agentId]) {
         agentGroups[agentId] = {
           agentId,
-          name: d.agent?.name || "Delivery Agent",
+          name: d.agent?.name || (isTruck ? "Heavy Freight Driver" : "Dabbawala Courier"),
           phone: d.agent?.phone || "",
-          deliveries: []
+          deliveries: [],
+          isTruck
         };
       }
       agentGroups[agentId].deliveries.push(d);
@@ -137,22 +162,51 @@ export default function AdminGlobalMap({ activeDeliveries = [] }) {
     const currentAgentPos = liveAgents[agentId] || (d.agentLatitude && d.agentLongitude ? { lat: d.agentLatitude, lng: d.agentLongitude } : null);
 
     if (pickupLat && pickupLng) {
-      markers.push({ id: `pickup-${d._id}`, lat: pickupLat, lng: pickupLng, type: "pickup", label: `🌾 Farm Pickup: ${d.order?.crop?.name || "Order"} (${d.trackingCode})`, delivery: d });
+      markers.push({
+        id: `pickup-${d._id}`,
+        lat: pickupLat,
+        lng: pickupLng,
+        type: "pickup",
+        label: isTruck ? `🌾 Farm Origin: ${d.order?.crop?.name || "Bulk Cargo"}` : `🌾 Pickup: ${d.order?.crop?.name || "Produce"}`,
+        delivery: d
+      });
     }
 
     if (deliveryLat && deliveryLng) {
-      markers.push({ id: `delivery-${d._id}`, lat: deliveryLat, lng: deliveryLng, type: "delivery", label: `🏠 Drop-off: ${d.deliveryLocation}`, delivery: d });
+      markers.push({
+        id: `delivery-${d._id}`,
+        lat: deliveryLat,
+        lng: deliveryLng,
+        type: "delivery",
+        label: isTruck ? `🏢 Cold Storage Drop: ${d.deliveryLocation}` : `🏠 Doorstep: ${d.deliveryLocation}`,
+        delivery: d
+      });
     }
 
     if (currentAgentPos) {
-      markers.push({ id: `agent-${agentId}`, lat: currentAgentPos.lat, lng: currentAgentPos.lng, type: "agent", label: `🚚 Agent: ${d.agent?.name || "Driver"} (${d.trackingCode})`, agentId, delivery: d });
-      
+      markers.push({
+        id: `agent-${agentId}-${d._id}`,
+        lat: currentAgentPos.lat,
+        lng: currentAgentPos.lng,
+        type: isTruck ? "heavyTruck" : "dabbawala",
+        label: isTruck
+          ? `🚛 Freight Truck: ${d.vehiclePlate || "TS-07-TR-8812"} (${d.agent?.name || "Driver"}) • Temp: ${d.coldChainTemp || "3.8°C"}`
+          : `🚲 Dabbawala: ${d.agent?.name || "Rider"} • 2km Radial Cluster`,
+        agentId,
+        delivery: d,
+        isTruck
+      });
+
       if (pickupLat && deliveryLat) {
-        polylines.push([
-          [pickupLat, pickupLng],
-          [currentAgentPos.lat, currentAgentPos.lng],
-          [deliveryLat, deliveryLng]
-        ]);
+        polylines.push({
+          coords: [
+            [pickupLat, pickupLng],
+            [currentAgentPos.lat, currentAgentPos.lng],
+            [deliveryLat, deliveryLng]
+          ],
+          color: isTruck ? "#0284c7" : "#16a34a",
+          dashArray: isTruck ? "12, 6" : "6, 6"
+        });
       }
     }
   });
@@ -177,25 +231,41 @@ export default function AdminGlobalMap({ activeDeliveries = [] }) {
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                <strong style={{ fontSize: "0.9rem", color: "#0f172a" }}>🚚 {ag.name}</strong>
-                <span style={{ background: "#eff6ff", color: "#2563eb", padding: "1px 6px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 800 }}>
-                  {ag.deliveries.length} Active Orders
+                <strong style={{ fontSize: "0.9rem", color: "#0f172a" }}>
+                  {ag.isTruck ? "🚛" : "🚲"} {ag.name}
+                </strong>
+                <span style={{ background: ag.isTruck ? "#e0f2fe" : "#eff6ff", color: ag.isTruck ? "#0369a1" : "#2563eb", padding: "1px 6px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 800 }}>
+                  {ag.deliveries.length} {ag.isTruck ? "Bulk Loads" : "Drops"}
                 </span>
               </div>
               <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "8px" }}>
-                Status: {liveAgents[ag.agentId] ? "🟢 Live GPS Online" : "🟡 In Transit"}
+                Status: {liveAgents[ag.agentId] ? "🟢 Live GPS Online" : "🟡 In Transit"} • {ag.isTruck ? "Highway TSP Router" : "Radial Cluster"}
               </div>
-              <button
-                onClick={() => handleAdminDispatchRoute(ag.agentId, ag.deliveries)}
-                disabled={dispatchingAgentId === ag.agentId}
-                style={{
-                  width: "100%", background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "white",
-                  border: "none", padding: "6px 0", borderRadius: "8px", fontSize: "0.75rem", fontWeight: 800,
-                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
-                }}
-              >
-                <Zap size={14} /> {dispatchingAgentId === ag.agentId ? "Dispatching..." : "⚡ Push AI Route to Agent"}
-              </button>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  onClick={() => handleAdminDispatchRoute(ag.agentId, ag.deliveries)}
+                  disabled={dispatchingAgentId === ag.agentId}
+                  style={{
+                    flex: 1, background: ag.isTruck ? "linear-gradient(135deg, #0284c7, #0369a1)" : "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "white",
+                    border: "none", padding: "6px 0", borderRadius: "8px", fontSize: "0.75rem", fontWeight: 800,
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
+                  }}
+                >
+                  <Zap size={14} /> {dispatchingAgentId === ag.agentId ? "Dispatching..." : "⚡ Push Route"}
+                </button>
+                {onReassignClick && (
+                  <button
+                    onClick={() => onReassignClick(ag.deliveries[0])}
+                    style={{
+                      background: "#f1f5f9", color: "#475569", border: "1px solid #cbd5e1", padding: "6px 10px",
+                      borderRadius: "8px", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer"
+                    }}
+                    title="Reassign or change vehicle tier"
+                  >
+                    ⚙️
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -224,30 +294,55 @@ export default function AdminGlobalMap({ activeDeliveries = [] }) {
           />
           
           {polylines.map((path, i) => (
-             <Polyline key={i} positions={path} color="#2563eb" weight={3} opacity={0.8} dashArray="8, 8" className="admin-flow-path" />
+             <Polyline key={i} positions={path.coords} color={path.color || "#2563eb"} weight={3.5} opacity={0.85} dashArray={path.dashArray || "8, 8"} className="admin-flow-path" />
           ))}
 
           {markers.map((m) => (
-            <Marker key={m.id} position={[m.lat, m.lng]} icon={ICONS[m.type]}>
-              <Popup maxWidth={260}>
+            <Marker key={m.id} position={[m.lat, m.lng]} icon={ICONS[m.type] || ICONS.agent}>
+              <Popup maxWidth={280}>
                 <div style={{ padding: "4px" }}>
                   <strong style={{ fontSize: "0.88rem", display: "block", color: "#0f172a" }}>{m.label}</strong>
+                  {m.hub && (
+                    <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>
+                      ❄️ Temp: <strong>{m.hub.temp || "3.2°C"}</strong><br />
+                      📦 Capacity: <strong>{m.hub.capacity || "50,000 kg"}</strong><br />
+                      🚛 Active Heavy Trucks: <strong>{m.hub.activeTrucks || 4}</strong><br />
+                      🚲 Dabbawala Couriers: <strong>{m.hub.activeDabbawalas || 12}</strong>
+                    </div>
+                  )}
                   {m.delivery && (
                     <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>
                       Tracking: <code>{m.delivery.trackingCode}</code><br />
-                      Status: <strong style={{ textTransform: "capitalize", color: "#16a34a" }}>{m.delivery.status}</strong>
+                      Status: <strong style={{ textTransform: "capitalize", color: "#16a34a" }}>{m.delivery.status}</strong><br />
+                      Tier: <strong>{m.delivery.vehicleType === "heavy_truck" ? "🚛 Heavy Freight Truck (Farm ➔ Hub)" : "🚲 Hyperlocal Dabbawala (Hub ➔ Doorstep)"}</strong>
+                      {m.delivery.coldChainTemp && (
+                        <div>❄️ Cold Chain: <strong style={{ color: "#0284c7" }}>{m.delivery.coldChainTemp}</strong></div>
+                      )}
                     </div>
                   )}
                   {m.agentId && agentGroups[m.agentId] && (
-                    <button
-                      onClick={() => handleAdminDispatchRoute(m.agentId, agentGroups[m.agentId].deliveries)}
-                      style={{
-                        marginTop: "8px", width: "100%", background: "#16a34a", color: "white",
-                        border: "none", padding: "4px 8px", borderRadius: "6px", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer"
-                      }}
-                    >
-                      🚀 Dispatch AI Route
-                    </button>
+                    <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <button
+                        onClick={() => handleAdminDispatchRoute(m.agentId, agentGroups[m.agentId].deliveries)}
+                        style={{
+                          width: "100%", background: "#16a34a", color: "white",
+                          border: "none", padding: "5px 8px", borderRadius: "6px", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer"
+                        }}
+                      >
+                        🚀 Dispatch Optimized Route
+                      </button>
+                      {onReassignClick && m.delivery && (
+                        <button
+                          onClick={() => onReassignClick(m.delivery)}
+                          style={{
+                            width: "100%", background: "#f1f5f9", color: "#1e293b",
+                            border: "1px solid #cbd5e1", padding: "4px 8px", borderRadius: "6px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer"
+                          }}
+                        >
+                          🔄 Reassign Agent / Vehicle Tier
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </Popup>

@@ -40,53 +40,477 @@ const SOILS      = [
 
 // Voice parsing is now handled by voiceParser.js
 
-const DemandPanel = () => {
-  const [demand, setDemand] = useState(null);
-  const [loading, setLoading] = useState(true);
+const DemandPanel = ({ onSelectCropForListing }) => {
+  const [subTab, setSubTab] = useState("broadcasts"); // "broadcasts" | "govt_mandi" | "pricing_calculator"
+  
+  // 1. Broadcasts state
+  const [broadcasts, setBroadcasts] = useState([]);
+  const [loadingBroadcasts, setLoadingBroadcasts] = useState(false);
+
+  // 2. Govt Mandi Historical state
+  const [mandiCrop, setMandiCrop] = useState("Tomato");
+  const [mandiHistory, setMandiHistory] = useState(null);
+  const [loadingMandi, setLoadingMandi] = useState(false);
+
+  // 3. Dynamic Pricing Calculator state
+  const [calcForm, setCalcForm] = useState({ cropName: "Tomato", quantityKg: 200, region: "Hyderabad" });
+  const [calcResult, setCalcResult] = useState(null);
+  const [calculating, setCalculating] = useState(false);
 
   useEffect(() => {
-    API.get("/ml/market-demand").then(res => {
-      setDemand(res.data.demand);
-      setLoading(false);
-    }).catch(err => setLoading(false));
-  }, []);
+    if (subTab === "broadcasts") {
+      setLoadingBroadcasts(true);
+      API.get("/ml/demand/broadcasts")
+        .then(res => setBroadcasts(res.data))
+        .catch(console.error)
+        .finally(() => setLoadingBroadcasts(false));
+    }
+  }, [subTab]);
 
-  if (loading) return <p style={{ color: "var(--text-muted)" }}>Loading demand data from database...</p>;
-  if (!demand || demand.length === 0) return <p>No demand data available.</p>;
+  useEffect(() => {
+    if (subTab === "govt_mandi") {
+      setLoadingMandi(true);
+      API.get(`/ml/govt-mandi-history?crop=${mandiCrop}`)
+        .then(res => setMandiHistory(res.data))
+        .catch(console.error)
+        .finally(() => setLoadingMandi(false));
+    }
+  }, [subTab, mandiCrop]);
+
+  const handleCalculatePrice = async (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    setCalculating(true);
+    try {
+      const res = await API.post("/ml/calculate-demand-price", calcForm);
+      setCalcResult(res.data);
+    } catch (err) {
+      console.error("Failed to calculate demand price", err);
+    } finally {
+      setCalculating(false);
+    }
+  };
 
   return (
     <div className="glass-card mt-3">
-      <h3 className="section-title">📈 Market Trends & Demand</h3>
-      <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "1rem" }}>See what crops are in high demand across the platform based on current market inventory and customer orders.</p>
-      
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-        {demand.slice(0, 10).map((crop, i) => (
-          <div key={i} style={{ 
-            padding: "0.75rem", 
-            background: crop.status === "High Demand" ? "rgba(239, 68, 68, 0.05)" : (crop.status === "Low Demand" ? "rgba(59, 130, 246, 0.05)" : "var(--green-pale)"), 
-            border: crop.status === "High Demand" ? "1px solid rgba(239, 68, 68, 0.2)" : (crop.status === "Low Demand" ? "1px solid rgba(59, 130, 246, 0.2)" : "1px solid rgba(22, 163, 74, 0.2)"), 
-            borderRadius: "8px", 
-            display: "flex", 
-            justifyContent: "space-between", 
-            alignItems: "center" 
-          }}>
-            <div>
-              <strong style={{ fontSize: "1.1rem", color: crop.status === "High Demand" ? "#dc2626" : (crop.status === "Low Demand" ? "#2563eb" : "var(--green-deep)") }}>#{i+1} {crop.crop}</strong>
-              <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Demand: {crop.totalDemandKg} kg | Supply: {crop.totalSupplyKg} kg</div>
-            </div>
-            <span style={{ 
-              fontSize: "0.85rem", 
-              background: crop.status === "High Demand" ? "#ef4444" : (crop.status === "Low Demand" ? "#3b82f6" : "var(--green-mid)"), 
-              color: "white", 
-              padding: "4px 10px", 
-              borderRadius: "10px",
-              fontWeight: 600
-            }}>
-              {crop.status === "High Demand" ? "🔥 High Demand" : (crop.status === "Low Demand" ? "❄️ Oversupplied" : "⚖️ Stable")}
-            </span>
-          </div>
-        ))}
+      {/* Tri-Part Subtab Navigation */}
+      <div style={{
+        display: "flex",
+        gap: "0.5rem",
+        borderBottom: "1px solid rgba(255,255,255,0.1)",
+        paddingBottom: "0.75rem",
+        marginBottom: "1.2rem",
+        flexWrap: "wrap"
+      }}>
+        <button
+          type="button"
+          onClick={() => setSubTab("broadcasts")}
+          style={{
+            padding: "0.5rem 1rem",
+            borderRadius: "100px",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "0.82rem",
+            fontWeight: 700,
+            background: subTab === "broadcasts" ? "var(--green-deep)" : "rgba(255,255,255,0.05)",
+            color: subTab === "broadcasts" ? "white" : "var(--text-muted)",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px"
+          }}
+        >
+          📢 Admin Demand Broadcasts ({broadcasts.length || 3})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSubTab("govt_mandi")}
+          style={{
+            padding: "0.5rem 1rem",
+            borderRadius: "100px",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "0.82rem",
+            fontWeight: 700,
+            background: subTab === "govt_mandi" ? "var(--green-deep)" : "rgba(255,255,255,0.05)",
+            color: subTab === "govt_mandi" ? "white" : "var(--text-muted)",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px"
+          }}
+        >
+          🏛️ Govt APMC Historical Mandi Data
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setSubTab("pricing_calculator");
+            if (!calcResult) handleCalculatePrice();
+          }}
+          style={{
+            padding: "0.5rem 1rem",
+            borderRadius: "100px",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "0.82rem",
+            fontWeight: 700,
+            background: subTab === "pricing_calculator" ? "var(--green-deep)" : "rgba(255,255,255,0.05)",
+            color: subTab === "pricing_calculator" ? "white" : "var(--text-muted)",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px"
+          }}
+        >
+          ⚡ Dynamic Demand-Price Advisor
+        </button>
       </div>
+
+      {/* SUBTAB 1: Admin Consumer Demand Broadcasts */}
+      {subTab === "broadcasts" && (
+        <div>
+          <div style={{ marginBottom: "1rem" }}>
+            <h4 style={{ margin: "0 0 4px 0", color: "var(--text-dark)", fontSize: "1.05rem" }}>
+              📢 Consumer Search Demand Alerts (Broadcasted by Admin)
+            </h4>
+            <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-muted)" }}>
+              High-priority alerts sent directly by platform administrators based on real-time customer search spikes in urban centers.
+            </p>
+          </div>
+
+          {loadingBroadcasts ? (
+            <p style={{ color: "var(--text-muted)" }}>Loading active broadcasts...</p>
+          ) : broadcasts.length === 0 ? (
+            <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>
+              <p>No active broadcasts right now. Check back soon for high-demand crop alerts!</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {broadcasts.map((b, idx) => (
+                <div
+                  key={b._id || idx}
+                  style={{
+                    padding: "1.2rem",
+                    borderRadius: "12px",
+                    background: b.priority === "urgent" ? "rgba(239, 68, 68, 0.05)" : "rgba(22, 163, 74, 0.06)",
+                    border: b.priority === "urgent" ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid rgba(22, 163, 74, 0.25)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: "1rem"
+                  }}
+                >
+                  <div style={{ flex: "1 1 300px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                      <strong style={{ fontSize: "1.15rem", color: "var(--text-dark)", textTransform: "capitalize" }}>
+                        🌱 {b.cropName}
+                      </strong>
+                      <span style={{
+                        background: b.priority === "urgent" ? "#ef4444" : "#16a34a",
+                        color: "white", padding: "2px 8px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 800
+                      }}>
+                        {b.priority?.toUpperCase()} DEMAND
+                      </span>
+                      {b.searchSurgePercentage && (
+                        <span style={{ background: "rgba(234, 179, 8, 0.15)", color: "#b45309", border: "1px solid rgba(234, 179, 8, 0.3)", padding: "2px 8px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 700 }}>
+                          +{b.searchSurgePercentage}% Search Surge 🚀
+                        </span>
+                      )}
+                    </div>
+
+                    <p style={{ margin: "4px 0 8px 0", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                      {b.message || "Admin broadcast: Urban buyers are searching for this produce in high volumes."}
+                    </p>
+
+                    <div style={{ display: "flex", gap: "1.2rem", fontSize: "0.8rem", color: "var(--text-muted)", flexWrap: "wrap" }}>
+                      <span>Target Volume Needed: <strong style={{ color: "var(--text-dark)" }}>{b.targetQuantityKg} kg</strong></span>
+                      <span>Suggested Selling Price: <strong style={{ color: "var(--green-light)" }}>₹{b.suggestedPrice} / kg</strong></span>
+                      <span>Target Region: <strong style={{ color: "var(--text-dark)" }}>{b.targetRegion || "All"}</strong></span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    style={{ width: "auto", padding: "0.6rem 1.2rem", fontSize: "0.85rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}
+                    onClick={() => {
+                      if (onSelectCropForListing) {
+                        onSelectCropForListing({ name: b.cropName, price: b.suggestedPrice, quantity: b.targetQuantityKg });
+                      }
+                    }}
+                  >
+                    🌱 List This Crop Now
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SUBTAB 2: Govt APMC Historical Mandi Explorer */}
+      {subTab === "govt_mandi" && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1.2rem" }}>
+            <div>
+              <h4 style={{ margin: "0 0 4px 0", color: "var(--text-dark)", fontSize: "1.05rem" }}>
+                🏛️ Government Mandi (APMC) Historical Price & Demand Trends
+              </h4>
+              <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                Official AGMARKNET / State Mandi historical data to help farmers decide what crops to cultivate based on structural demand.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-muted)" }}>Select Crop:</label>
+              <select
+                className="rs-select"
+                value={mandiCrop}
+                onChange={(e) => setMandiCrop(e.target.value)}
+                style={{ width: "auto", padding: "0.4rem 0.8rem" }}
+              >
+                {["Tomato", "Onion", "Potato", "Cotton", "Chilli", "Paddy", "Turmeric", "Maize", "Groundnut", "Soybean"].map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {loadingMandi ? (
+            <p style={{ color: "var(--text-muted)" }}>Loading official Mandi historical records...</p>
+          ) : mandiHistory ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
+              {/* Summary Cards */}
+              <div className="grid-4">
+                <div className="stat-card">
+                  <span className="stat-icon">💰</span>
+                  <div className="stat-value" style={{ color: "var(--green-light)" }}>₹{mandiHistory.currentModalPrice}</div>
+                  <div className="stat-label">Current Mandi Price / {mandiHistory.unit || "Quintal"}</div>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-icon">🏛️</span>
+                  <div className="stat-value">₹{mandiHistory.mspBenchmark}</div>
+                  <div className="stat-label">Govt MSP Benchmark</div>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-icon">📈</span>
+                  <div className="stat-value" style={{ color: mandiHistory.seasonalTrend?.includes("Rising") ? "#16a34a" : "#f59e0b" }}>
+                    {mandiHistory.seasonalTrend || "Moderate"}
+                  </div>
+                  <div className="stat-label">Seasonal Price Trend</div>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-icon">🎯</span>
+                  <div className="stat-value" style={{ fontSize: "1rem", color: "#2563eb" }}>
+                    {mandiHistory.topMandiDestination || "Bowenpally, HYD"}
+                  </div>
+                  <div className="stat-label">Highest Return Mandi</div>
+                </div>
+              </div>
+
+              {/* Cultivation Recommendation Banner */}
+              <div style={{
+                background: mandiHistory.cultivationAdvice?.includes("Recommended") ? "rgba(22, 163, 74, 0.08)" : "rgba(234, 179, 8, 0.08)",
+                border: mandiHistory.cultivationAdvice?.includes("Recommended") ? "1px solid #86efac" : "1px solid #fde68a",
+                borderRadius: "10px",
+                padding: "1rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px"
+              }}>
+                <span style={{ fontSize: "1.8rem" }}>🌾</span>
+                <div>
+                  <strong style={{ fontSize: "0.95rem", color: mandiHistory.cultivationAdvice?.includes("Recommended") ? "#166534" : "#92400e" }}>
+                    Government Agricultural Advisory: {mandiHistory.cultivationAdvice}
+                  </strong>
+                  <p style={{ margin: "2px 0 0 0", fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                    Arrival volumes: <strong>{mandiHistory.historicalData?.[mandiHistory.historicalData.length - 1]?.arrivalsQuintals || 1200} Quintals</strong> arriving weekly. Optimal sowing season: <strong>{mandiHistory.optimalSowingSeason || "Kharif (June - July)"}</strong>.
+                  </p>
+                </div>
+              </div>
+
+              {/* 6-Month Historical Price & Arrivals Table */}
+              <div style={{ overflowX: "auto" }}>
+                <h5 style={{ margin: "0 0 0.5rem 0", color: "var(--text-dark)", fontSize: "0.9rem" }}>
+                  📅 6-Month Historical Mandi Price Trend ({mandiHistory.crop})
+                </h5>
+                <table className="rs-table">
+                  <thead>
+                    <tr>
+                      <th>Month</th>
+                      <th>Min Price (₹)</th>
+                      <th>Modal Price (₹)</th>
+                      <th>Max Price (₹)</th>
+                      <th>Arrivals (Quintals)</th>
+                      <th>Demand State</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(mandiHistory.historicalData || []).map((row, i) => (
+                      <tr key={i}>
+                        <td style={{ fontWeight: 600, color: "var(--text-dark)" }}>{row.month}</td>
+                        <td style={{ color: "var(--text-muted)" }}>₹{row.minPrice}</td>
+                        <td style={{ fontWeight: 700, color: "var(--green-light)" }}>₹{row.modalPrice}</td>
+                        <td style={{ color: "var(--text-muted)" }}>₹{row.maxPrice}</td>
+                        <td>{row.arrivalsQuintals?.toLocaleString()} Qtl</td>
+                        <td>
+                          <span className={`badge ${row.demandState === "High Demand" ? "badge-red" : row.demandState === "Normal" ? "badge-green" : "badge-yellow"}`}>
+                            {row.demandState || "Normal"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <p style={{ color: "var(--text-muted)" }}>No mandi data available for {mandiCrop}.</p>
+          )}
+        </div>
+      )}
+
+      {/* SUBTAB 3: Dynamic Demand-Price Advisor */}
+      {subTab === "pricing_calculator" && (
+        <div>
+          <div style={{ marginBottom: "1.2rem" }}>
+            <h4 style={{ margin: "0 0 4px 0", color: "var(--text-dark)", fontSize: "1.05rem" }}>
+              ⚡ Farmer Demand-Based Dynamic Pricing Advisor
+            </h4>
+            <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-muted)" }}>
+              Calculate the optimal selling price for your harvest by evaluating real-time consumer search spikes, APMC Mandi rates, and local platform supply deficits.
+            </p>
+          </div>
+
+          <form onSubmit={handleCalculatePrice} style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "flex-end", marginBottom: "1.5rem" }}>
+            <div style={{ flex: "1 1 180px" }}>
+              <label className="field-label" style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Crop Name</label>
+              <select
+                className="rs-select"
+                value={calcForm.cropName}
+                onChange={(e) => setCalcForm(f => ({ ...f, cropName: e.target.value }))}
+              >
+                {["Tomato", "Onion", "Potato", "Cotton", "Chilli", "Paddy", "Turmeric", "Maize", "Groundnut", "Soybean", "Brinjal", "Carrot"].map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ flex: "1 1 150px" }}>
+              <label className="field-label" style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Available Harvest (kg)</label>
+              <input
+                className="rs-input"
+                type="number"
+                value={calcForm.quantityKg}
+                onChange={(e) => setCalcForm(f => ({ ...f, quantityKg: Number(e.target.value) }))}
+                placeholder="e.g. 200"
+                min="1"
+              />
+            </div>
+
+            <div style={{ flex: "1 1 180px" }}>
+              <label className="field-label" style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Farming Region</label>
+              <select
+                className="rs-select"
+                value={calcForm.region}
+                onChange={(e) => setCalcForm(f => ({ ...f, region: e.target.value }))}
+              >
+                <option value="Hyderabad">Hyderabad & Rangareddy</option>
+                <option value="Warangal">Warangal Agri Cluster</option>
+                <option value="Karimnagar">Karimnagar Zone</option>
+                <option value="Nalgonda">Nalgonda Cluster</option>
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={calculating}
+              style={{ padding: "0.65rem 1.4rem", fontWeight: 700, width: "auto" }}
+            >
+              {calculating ? "Calculating..." : "⚡ Calculate Optimal Price"}
+            </button>
+          </form>
+
+          {calcResult && (
+            <div style={{
+              background: "rgba(22, 163, 74, 0.06)",
+              border: "1px solid rgba(22, 163, 74, 0.3)",
+              borderRadius: "14px",
+              padding: "1.5rem",
+              display: "flex",
+              flexDirection: "column",
+              gap: "1rem"
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                <div>
+                  <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>
+                    Recommended Selling Price
+                  </div>
+                  <div style={{ fontSize: "2.5rem", fontWeight: 900, color: "var(--green-light)" }}>
+                    ₹{calcResult.recommendedPrice} <span style={{ fontSize: "1rem", fontWeight: 500, color: "var(--text-muted)" }}>/ kg</span>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                  <span style={{
+                    background: calcResult.priceChangePercent >= 0 ? "rgba(22, 163, 74, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                    color: calcResult.priceChangePercent >= 0 ? "#16a34a" : "#dc2626",
+                    border: calcResult.priceChangePercent >= 0 ? "1px solid rgba(22, 163, 74, 0.3)" : "1px solid rgba(239, 68, 68, 0.3)",
+                    padding: "6px 12px", borderRadius: "100px", fontSize: "0.85rem", fontWeight: 700
+                  }}>
+                    {calcResult.priceChangePercent >= 0 ? `+${calcResult.priceChangePercent}% Surge Capture 🚀` : `${calcResult.priceChangePercent}% Discount`}
+                  </span>
+
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    style={{ width: "auto", padding: "0.6rem 1.2rem", fontWeight: 700 }}
+                    onClick={() => {
+                      if (onSelectCropForListing) {
+                        onSelectCropForListing({
+                          name: calcForm.cropName,
+                          price: calcResult.recommendedPrice,
+                          quantity: calcForm.quantityKg
+                        });
+                      }
+                    }}
+                  >
+                    📋 Apply to My Listing
+                  </button>
+                </div>
+              </div>
+
+              {/* Price Breakdown Grid */}
+              <div className="grid-4" style={{ marginTop: "0.5rem" }}>
+                <div style={{ background: "rgba(255,255,255,0.03)", padding: "0.75rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>🏛️ APMC Mandi Benchmark</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text-dark)" }}>₹{calcResult.mandiBenchmark} / kg</div>
+                </div>
+
+                <div style={{ background: "rgba(255,255,255,0.03)", padding: "0.75rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>🔍 Consumer Search Volume</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#2563eb" }}>{calcResult.consumerSearchCount} searches</div>
+                </div>
+
+                <div style={{ background: "rgba(255,255,255,0.03)", padding: "0.75rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>📈 Demand Multiplier</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#f59e0b" }}>{calcResult.demandMultiplier}x</div>
+                </div>
+
+                <div style={{ background: "rgba(255,255,255,0.03)", padding: "0.75rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>🎯 Recommended Strategy</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--green-light)" }}>{calcResult.pricingStrategy || "Surge Harvesting"}</div>
+                </div>
+              </div>
+
+              <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: 1.5, background: "rgba(255,255,255,0.02)", padding: "0.75rem", borderRadius: "8px" }}>
+                💡 <strong>Pricing Intelligence Rationale:</strong> {calcResult.explanation}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -238,6 +662,29 @@ export default function FarmerDashboard() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [priceRecommendation, setPriceRecommendation] = useState(null);
+  const [demandPricingResult, setDemandPricingResult] = useState(null);
+  const [calculatingDemandPrice, setCalculatingDemandPrice] = useState(false);
+
+  const handleCalculateDemandPrice = async () => {
+    if (!form.name) {
+      setMsg({ type: "error", text: "Please select or type crop name first in Step 1." });
+      return;
+    }
+    setCalculatingDemandPrice(true);
+    try {
+      const res = await API.post("/ml/calculate-demand-price", {
+        cropName: form.name,
+        quantityKg: Number(form.quantity) || 100,
+        region: user?.location || "Hyderabad"
+      });
+      setDemandPricingResult(res.data);
+    } catch (err) {
+      console.error("Failed to calculate demand price", err);
+      setMsg({ type: "error", text: "Failed to calculate dynamic demand price." });
+    } finally {
+      setCalculatingDemandPrice(false);
+    }
+  };
   
   // Broadcast State
   const [broadcastMsg, setBroadcastMsg] = useState("");
@@ -1160,6 +1607,7 @@ export default function FarmerDashboard() {
       <div className="tab-bar">
         {[
           { k:"crops", l:"🌿 My Crops", cat: "market" },
+          { k:"demand", l:"📊 Demand & Pricing", cat: "market" },
           { k:"orders", l:`📦 Orders (${orders.length})`, cat: "market" },
           { k:"auctions", l:`🔨 Auctions`, cat: "market" },
           { k:"groups", l:"🤝 Group Selling", cat: "market" },
@@ -1188,6 +1636,21 @@ export default function FarmerDashboard() {
           </button>
         ))}
       </div>
+
+      {/* ── DEMAND & PRICING INTELLIGENCE TAB ── */}
+      {tab === "demand" && (
+        <div className="ml-card">
+          <h3 className="section-title">📊 Demand & Pricing Intelligence Center</h3>
+          <p style={{ color: "var(--text-muted)", fontSize:"0.82rem", marginBottom:"1rem" }}>
+            Real-time consumer search trends, government mandi historical records, and dynamic pricing calculations.
+          </p>
+          <DemandPanel onSelectCropForListing={(cropData) => {
+            setForm(f => ({ ...f, name: cropData.name, price: cropData.price || f.price, quantity: cropData.quantity || f.quantity }));
+            setTab("add");
+            setWizardStep(2);
+          }} />
+        </div>
+      )}
 
       {/* ── MY CROPS TAB ── */}
       {tab === "crops" && (
@@ -1473,7 +1936,7 @@ export default function FarmerDashboard() {
                 </div>
 
                 {wizardBenchmark && (
-                  <div style={{ marginTop: "0.5rem", marginBottom: "1rem", fontSize: "0.85rem", color: "var(--green-deep)", background: "rgba(34, 197, 94, 0.08)", padding: "0.6rem 0.9rem", borderRadius: "8px", border: "1px dashed var(--green-mid)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ marginTop: "0.5rem", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--green-deep)", background: "rgba(34, 197, 94, 0.08)", padding: "0.6rem 0.9rem", borderRadius: "8px", border: "1px dashed var(--green-mid)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span>
                       <strong>💡 APMC Benchmark:</strong> Mandi Avg: ₹{wizardBenchmark.avg}/{wizardBenchmark.unit} (Range: ₹{wizardBenchmark.min} - ₹{wizardBenchmark.max})
                     </span>
@@ -1482,6 +1945,77 @@ export default function FarmerDashboard() {
                     </button>
                   </div>
                 )}
+
+                {/* Dynamic Demand-Based Pricing Advisor Tool */}
+                <div style={{ marginTop: "0.5rem", marginBottom: "1rem" }}>
+                  <button
+                    type="button"
+                    onClick={handleCalculateDemandPrice}
+                    disabled={calculatingDemandPrice}
+                    style={{
+                      background: "linear-gradient(135deg, #16a34a, #047857)",
+                      color: "white",
+                      border: "none",
+                      padding: "0.55rem 1.1rem",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      fontSize: "0.82rem",
+                      fontWeight: 700,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      boxShadow: "0 2px 6px rgba(22, 163, 74, 0.25)"
+                    }}
+                  >
+                    <Sparkles size={16} /> {calculatingDemandPrice ? "Analyzing Real-time Consumer Search Demand..." : "🤖 Auto-Calculate Optimal Demand Price"}
+                  </button>
+
+                  {demandPricingResult && (
+                    <div style={{
+                      marginTop: "0.6rem",
+                      background: "rgba(22, 163, 74, 0.08)",
+                      border: "1px solid #86efac",
+                      borderRadius: "10px",
+                      padding: "0.9rem 1rem",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.5rem"
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                        <div>
+                          <span style={{ fontSize: "0.95rem", fontWeight: 800, color: "#166534" }}>
+                            💡 Recommended Demand Price: ₹{demandPricingResult.recommendedPrice} / {form.unit || "kg"}
+                          </span>
+                          <span style={{ marginLeft: "8px", fontSize: "0.75rem", background: "#dcfce7", color: "#15803d", padding: "2px 8px", borderRadius: "100px", fontWeight: 700 }}>
+                            {demandPricingResult.priceChangePercent >= 0 ? `+${demandPricingResult.priceChangePercent}% Surge Capture 🚀` : `${demandPricingResult.priceChangePercent}% Discount`}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, price: demandPricingResult.recommendedPrice }))}
+                          style={{
+                            background: "#16a34a",
+                            color: "white",
+                            border: "none",
+                            padding: "4px 12px",
+                            borderRadius: "6px",
+                            fontSize: "0.78rem",
+                            fontWeight: 700,
+                            cursor: "pointer"
+                          }}
+                        >
+                          ✅ Apply ₹{demandPricingResult.recommendedPrice}
+                        </button>
+                      </div>
+                      <div style={{ fontSize: "0.78rem", color: "#374151" }}>
+                        🔍 Consumer Searches: <strong>{demandPricingResult.consumerSearchCount}</strong> • Mandi Benchmark: <strong>₹{demandPricingResult.mandiBenchmark}</strong> • Demand Multiplier: <strong>{demandPricingResult.demandMultiplier}x</strong>
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: "#6b7280", fontStyle: "italic" }}>
+                        {demandPricingResult.explanation}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <div className="grid-2 mt-2">
                   <div className="toggle-row" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -2101,7 +2635,11 @@ export default function FarmerDashboard() {
           <div className="ml-card">
             <h3 className="section-title">📊 {t("demandForecast")}</h3>
             <p style={{ color: "var(--text-muted)", fontSize:"0.82rem", marginBottom:"1rem" }}>Discover which crops are in highest demand.</p>
-            <DemandPanel />
+            <DemandPanel onSelectCropForListing={(cropData) => {
+              setForm(f => ({ ...f, name: cropData.name, price: cropData.price || f.price, quantity: cropData.quantity || f.quantity }));
+              setTab("add");
+              setWizardStep(2);
+            }} />
           </div>
 
           <YieldPredictor />
