@@ -56,4 +56,20 @@ router.get("/agents", async (req, res) => {
   }
 });
 
+// ── SYSTEM TERMS & GLOBAL COMPLIANCE RULES ──
+router.get("/system-terms", async (req, res) => {
+  try {
+    let config = await GlobalConfig.findOne();
+    if (!config) config = await GlobalConfig.create({});
+    res.json({
+      systemTermsVersion: config.systemTermsVersion || 1,
+      systemTermsTitle: config.systemTermsTitle || "RythuJanaSethu Mandatory System Rules & Operating Terms",
+      systemTermsContent: config.systemTermsContent || "By accessing and continuing to use RythuJanaSethu, all users (Farmers, Agents, Customers, and Administrators) agree to comply with platform quality standards, zero-abandonment rules, verified doorstep delivery protocols, and fair trade practices.",
+      systemTermsUpdatedAt: config.systemTermsUpdatedAt || new Date()
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

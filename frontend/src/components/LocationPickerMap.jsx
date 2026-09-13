@@ -13,6 +13,30 @@ L.Icon.Default.mergeOptions({
 });
 
 const LocationMarker = ({ position, setPosition, setAddress }) => {
+  const markerRef = React.useRef(null);
+
+  const eventHandlers = React.useMemo(
+    () => ({
+      async dragend() {
+        const marker = markerRef.current;
+        if (marker != null) {
+          const latLng = marker.getLatLng();
+          const lat = latLng.lat;
+          const lng = latLng.lng;
+          setPosition([lat, lng]);
+          try {
+            const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const d = await r.json();
+            setAddress(d.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+          } catch (err) {
+            setAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+          }
+        }
+      },
+    }),
+    [setPosition, setAddress]
+  );
+
   useMapEvents({
     click: async (e) => {
       const { lat, lng } = e.latlng;
@@ -21,24 +45,31 @@ const LocationMarker = ({ position, setPosition, setAddress }) => {
       try {
         const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
         const d = await r.json();
-        setAddress(d.display_name || `${lat}, ${lng}`);
+        setAddress(d.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
       } catch (err) {
-        setAddress(`${lat}, ${lng}`);
+        setAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
       }
     },
   });
 
   return position === null ? null : (
-    <Marker position={position}></Marker>
+    <Marker
+      draggable={true}
+      eventHandlers={eventHandlers}
+      position={position}
+      ref={markerRef}
+    />
   );
 };
 
 // Component to programmatically fly to a location
 const FlyToLocation = ({ position }) => {
   const map = useMap();
-  if (position) {
-    map.flyTo(position, 15, { animate: true });
-  }
+  React.useEffect(() => {
+    if (position) {
+      map.flyTo(position, 15, { animate: true });
+    }
+  }, [map, position]);
   return null;
 };
 
@@ -83,20 +114,24 @@ export default function LocationPickerMap({ onSelect, initialLat = 20.5937, init
   };
 
   return (
-    <div style={{ height: "400px", width: "100%", borderRadius: "8px", overflow: "hidden", display: "flex", flexDirection: "column", border: "1px solid #e2e8f0", position: "relative" }}>
-      <button
-        onClick={locateMe}
-        disabled={loadingLoc}
-        style={{
-          position: "absolute", top: "10px", right: "10px", zIndex: 1000,
-          background: "white", border: "1px solid #ccc", padding: "8px",
-          borderRadius: "50%", cursor: loadingLoc ? "not-allowed" : "pointer",
-          boxShadow: "0 2px 5px rgba(0,0,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center"
-        }}
-        title="Find My Location"
-      >
-        {loadingLoc ? <Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: "#3b82f6" }} /> : <LocateFixed size={20} color="#3b82f6" />}
-      </button>
+    <div style={{ height: "420px", width: "100%", borderRadius: "12px", overflow: "hidden", display: "flex", flexDirection: "column", border: "1px solid #cbd5e1", position: "relative" }}>
+      {/* Top Controls Bar */}
+      <div style={{ padding: "8px 12px", background: "linear-gradient(135deg, #0f172a, #1e293b)", color: "white", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem" }}>
+        <span>📍 <strong>Click map or drag pin</strong> to adjust position accurately</span>
+        <button
+          type="button"
+          onClick={locateMe}
+          disabled={loadingLoc}
+          style={{
+            background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "white",
+            border: "none", padding: "4px 10px", borderRadius: "6px", cursor: loadingLoc ? "not-allowed" : "pointer",
+            fontWeight: 700, display: "flex", alignItems: "center", gap: "4px", fontSize: "0.78rem"
+          }}
+        >
+          {loadingLoc ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <LocateFixed size={14} />}
+          <span>🎯 Use Current GPS</span>
+        </button>
+      </div>
 
       <div style={{ flex: 1, position: "relative", zIndex: 0 }}>
         <MapContainer center={[initialLat, initialLng]} zoom={5} style={{ height: "100%", width: "100%" }}>

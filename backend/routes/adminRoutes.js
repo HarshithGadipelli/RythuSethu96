@@ -694,6 +694,43 @@ router.post("/dispatch-route", async (req, res) => {
   }
 });
 
+// ─── ADMIN SYSTEM TERMS & COMPLIANCE MANDATE UPDATE ───
+router.post("/update-system-terms", async (req, res) => {
+  try {
+    const { systemTermsTitle, systemTermsContent } = req.body;
+    if (!systemTermsContent) return res.status(400).json({ error: "System terms content is required." });
+
+    let config = await GlobalConfig.findOne();
+    if (!config) config = new GlobalConfig();
+
+    config.systemTermsVersion = (config.systemTermsVersion || 1) + 1;
+    if (systemTermsTitle) config.systemTermsTitle = systemTermsTitle;
+    config.systemTermsContent = systemTermsContent;
+    config.systemTermsUpdatedAt = new Date();
+
+    await config.save();
+
+    // Broadcast to all connected clients so everyone's UI instantly prompts agreement
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("system_terms_updated", {
+        systemTermsVersion: config.systemTermsVersion,
+        systemTermsTitle: config.systemTermsTitle,
+        systemTermsContent: config.systemTermsContent,
+        systemTermsUpdatedAt: config.systemTermsUpdatedAt
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `System Terms & Rules updated to Version ${config.systemTermsVersion}. All active and new users will be mandated to agree before proceeding.`,
+      config
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── WASTE MANAGEMENT ───
 router.get("/waste/management", getWasteManagement);
 router.post("/waste/approve-request/:id", approveWasteRequest);

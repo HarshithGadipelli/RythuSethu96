@@ -24,6 +24,7 @@ import Support from "./pages/Support/Support";
 import AIAssistant from "./components/AIAssistant";
 import AmbientAtmosphere from "./components/AmbientAtmosphere";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
+import GlobalSystemTermsModal from "./components/GlobalSystemTermsModal";
 // Ensure Google Translate re-translates when React Router changes pages
 function RouteChangeListener() {
   const location = useLocation();
@@ -182,6 +183,7 @@ function AppRoutes() {
       </Link>
 
       <PWAInstallPrompt />
+      <GlobalSystemTermsModal />
       <BottomNav />
     </>
   );

@@ -851,17 +851,28 @@ export default function Register() {
                 Please upload the following documents. These will be reviewed by our Admin team before you can start delivering orders.
               </p>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div className="form-group mb-3">
+                <label className="field-label">Vehicle Registration Number (e.g. TS-09-AB-1234)</label>
+                <input
+                  className="rs-input"
+                  placeholder="e.g. TS-09-AB-1234"
+                  value={form.vehicleNumber || ""}
+                  onChange={set("vehicleNumber")}
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
                 {[
-                  { key: "avatar", label: "Your Photo (Selfie)", icon: "📸" },
-                  { key: "aadhaarPhoto", label: "Aadhaar Card (Front)", icon: "🪪" }
+                  { key: "avatar", label: "Your Selfie Photo", icon: "📸" },
+                  { key: "aadhaarPhoto", label: "Aadhaar Card", icon: "🪪" },
+                  { key: "vehiclePhoto", label: "Vehicle Photo", icon: "🚚" }
                 ].map((item) => (
                   <div key={item.key} style={{ textAlign: "center" }}>
                     <label
                       htmlFor={`upload-${item.key}`}
                       style={{
                         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                        width: "100%", aspectRatio: "1.2", borderRadius: "var(--radius-md)",
+                        width: "100%", aspectRatio: "1.1", borderRadius: "var(--radius-md)",
                         border: form[item.key] ? "2px solid var(--blue-light)" : "2px dashed rgba(59, 130, 246, 0.3)",
                         background: form[item.key] ? "rgba(59, 130, 246, 0.05)" : "rgba(255,255,255,0.5)",
                         cursor: "pointer", transition: "all 0.3s", overflow: "hidden", position: "relative"
@@ -871,8 +882,8 @@ export default function Register() {
                         <img src={form[`${item.key}Preview`]} alt={item.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       ) : (
                         <>
-                          <span style={{ fontSize: "2rem" }}>{item.icon}</span>
-                          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.5rem", padding: "0 0.5rem" }}>{item.label}</span>
+                          <span style={{ fontSize: "1.8rem" }}>{item.icon}</span>
+                          <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "0.3rem", padding: "0 0.2rem" }}>{item.label}</span>
                         </>
                       )}
                     </label>
@@ -892,7 +903,7 @@ export default function Register() {
                         }
                       }}
                     />
-                    {form[item.key] && <span style={{ fontSize: "0.75rem", color: "var(--blue-light)", fontWeight: 600, marginTop: "0.4rem", display: "block" }}>✅ Uploaded</span>}
+                    {form[item.key] && <span style={{ fontSize: "0.7rem", color: "var(--blue-light)", fontWeight: 600, marginTop: "0.3rem", display: "block" }}>✅ Uploaded</span>}
                   </div>
                 ))}
               </div>

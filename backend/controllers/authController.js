@@ -441,7 +441,16 @@ export const updateLocation = async (req, res) => {
 
 export const acceptTerms = async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.user._id, { acceptedTerms: true }, { new: true });
+    const { termsVersion = 1 } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        acceptedTerms: true,
+        acceptedTermsVersion: termsVersion,
+        acceptedTermsAt: new Date()
+      },
+      { new: true }
+    );
     res.json(user ? formatUserPayload(user) : null);
   } catch (error) {
     res.status(500).json({ error: error.message });

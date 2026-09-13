@@ -32,6 +32,8 @@ const userSchema = new mongoose.Schema({
   rewardPoints: { type: Number, default: 0 },
   experiencePoints: { type: Number, default: 0 },
   acceptedTerms: { type: Boolean, default: false },
+  acceptedTermsVersion: { type: Number, default: 0 },
+  acceptedTermsAt: { type: Date },
   
   // ─── Trust & Strikes ───
   trustScore: { type: Number, default: 85 }, // Default high trust for new farmers

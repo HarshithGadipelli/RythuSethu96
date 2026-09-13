@@ -130,6 +130,48 @@ export default function AdminDashboard() {
     message: ""
   });
 
+  // Admin System Rules Mandate State
+  const [sysTermsTitle, setSysTermsTitle] = useState("RythuJanaSethu Mandatory System Rules & Operating Terms");
+  const [sysTermsContent, setSysTermsContent] = useState("");
+  const [sysTermsVersion, setSysTermsVersion] = useState(1);
+  const [sysTermsUpdatedAt, setSysTermsUpdatedAt] = useState("");
+  const [savingSysTerms, setSavingSysTerms] = useState(false);
+
+  useEffect(() => {
+    API.get("/public/system-terms").then(res => {
+      if (res.data) {
+        setSysTermsTitle(res.data.systemTermsTitle || "RythuJanaSethu Mandatory System Rules & Operating Terms");
+        setSysTermsContent(res.data.systemTermsContent || "");
+        setSysTermsVersion(res.data.systemTermsVersion || 1);
+        setSysTermsUpdatedAt(res.data.systemTermsUpdatedAt || "");
+      }
+    }).catch(console.error);
+  }, []);
+
+  const handleSaveSysTerms = async (e) => {
+    e.preventDefault();
+    if (!sysTermsContent.trim()) {
+      setMsg({ type: "error", text: "System terms content cannot be empty." });
+      return;
+    }
+    try {
+      setSavingSysTerms(true);
+      const res = await API.post("/admin/update-system-terms", {
+        systemTermsTitle: sysTermsTitle,
+        systemTermsContent: sysTermsContent
+      });
+      if (res.data.success) {
+        setSysTermsVersion(res.data.config.systemTermsVersion);
+        setSysTermsUpdatedAt(res.data.config.systemTermsUpdatedAt);
+        setMsg({ type: "success", text: `📜 System Terms & Rules updated to Version ${res.data.config.systemTermsVersion}! All active and new users will be mandated to review and agree before proceeding.` });
+      }
+    } catch (err) {
+      setMsg({ type: "error", text: err.response?.data?.error || "Failed to update system terms." });
+    } finally {
+      setSavingSysTerms(false);
+    }
+  };
+
   const loadFleetData = async () => {
     try {
       const res = await API.get("/deliveries/admin-fleet");
@@ -451,6 +493,7 @@ export default function AdminDashboard() {
           { k:"demand", l:"📊 Demand Prediction" },
           { k:"broadcast", l:"📢 Broadcast" },
           { k:"waste", l:"🌱 Waste Management" },
+          { k:"system_terms", l:"📜 System Rules Mandate" },
           { k:"mlops", l:"🤖 ML Ops" }
         ].map(tb => (
           <button key={tb.k} className={`tab-btn ${tab===tb.k?"active":""}`} onClick={() => setTab(tb.k)}>
@@ -2146,6 +2189,81 @@ export default function AdminDashboard() {
                   <p className="val">₹29,400</p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {tab === "system_terms" && (
+            <div className="glass-card mt-3" style={{ padding: "1.75rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
+                <div>
+                  <h3 className="section-title" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <span>📜 Admin System Rules & Mandatory Terms Management</span>
+                    <span style={{ background: "#2563eb", color: "white", padding: "2px 10px", borderRadius: "100px", fontSize: "0.78rem", fontWeight: 800 }}>
+                      Version {sysTermsVersion}
+                    </span>
+                  </h3>
+                  <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: "0.25rem" }}>
+                    Any rule changes saved here will immediately mandate ALL active and new users (Farmers, Agents, Customers, Admins) to review and accept before continuing.
+                  </p>
+                </div>
+                {sysTermsUpdatedAt && (
+                  <div style={{ fontSize: "0.78rem", color: "#64748b", background: "#f1f5f9", padding: "6px 12px", borderRadius: "8px", border: "1px solid #cbd5e1" }}>
+                    Last Updated: <strong>{new Date(sysTermsUpdatedAt).toLocaleString()}</strong>
+                  </div>
+                )}
+              </div>
+
+              <form onSubmit={handleSaveSysTerms} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "#1e293b", marginBottom: "0.4rem" }}>
+                    System Policy Document Title:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    className="rs-input"
+                    value={sysTermsTitle}
+                    onChange={(e) => setSysTermsTitle(e.target.value)}
+                    placeholder="e.g. RythuJanaSethu Mandatory System Rules & Quality Compliance"
+                    style={{ width: "100%", padding: "0.75rem", fontSize: "0.95rem", fontWeight: 700 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "#1e293b", marginBottom: "0.4rem" }}>
+                    System Operating Rules & Terms Content (Broadcasting to All Users):
+                  </label>
+                  <textarea
+                    rows={10}
+                    required
+                    className="rs-input"
+                    value={sysTermsContent}
+                    onChange={(e) => setSysTermsContent(e.target.value)}
+                    placeholder="Write operating guidelines, zero-abandonment rules, quality compliance standards, etc..."
+                    style={{ width: "100%", padding: "0.85rem", fontSize: "0.9rem", lineHeight: 1.6, fontFamily: "inherit" }}
+                  />
+                </div>
+
+                <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "12px", padding: "1rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  <span style={{ fontSize: "1.4rem" }}>🔔</span>
+                  <div style={{ fontSize: "0.82rem", color: "#1e40af" }}>
+                    <strong>Global Mandate Rule:</strong> Once saved, an instant web-socket broadcast is triggered. Every user session will present a full-screen un-dismissable modal requiring explicit digital agreement to Version {sysTermsVersion + 1} before proceeding.
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={savingSysTerms}
+                  style={{
+                    alignSelf: "flex-start", padding: "0.85rem 1.75rem", borderRadius: "12px",
+                    background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "white",
+                    border: "none", fontWeight: 800, fontSize: "0.95rem", cursor: "pointer",
+                    boxShadow: "0 4px 14px rgba(37,99,235,0.35)"
+                  }}
+                >
+                  {savingSysTerms ? "Broadcasting Rules..." : `📢 Publish v${sysTermsVersion + 1} & Mandate All Users`}
+                </button>
+              </form>
             </div>
           )}
 
