@@ -1931,4 +1931,169 @@ h3, h4, h5 { font-family: 'Outfit', sans-serif; font-weight: 600; }
 
 /* ── Crop card: soft glow when hovered in audio mode ───────────────────────── */
 .crop-card:hover {
+  box-shadow: 0 16px 32px -8px rgba(22, 163, 74, 0.18), 0 4px 12px rgba(0, 0, 0, 0.04);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* PRODUCTION-GRADE APMC MANDI TICKER MARQUEE                                 */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+.mandi-ticker-bar {
+  display: flex;
+  align-items: center;
+  background: linear-gradient(90deg, #052e16 0%, #14532d 50%, #052e16 100%);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  color: #f0fdf4;
+  height: 42px;
+}
+
+.mandi-ticker-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1rem;
+  background: rgba(0, 0, 0, 0.25);
+  border-right: 1px solid rgba(74, 222, 128, 0.2);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  color: #86efac;
+  height: 100%;
+  flex-shrink: 0;
+  z-index: 2;
+}
+
+.live-pulsing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: pulse 1.2s infinite;
+}
+
+.mandi-ticker-scroll-wrapper {
+  overflow: hidden;
+  flex: 1;
+  position: relative;
+  white-space: nowrap;
+}
+
+.mandi-ticker-content {
+  display: inline-flex;
+  gap: 2rem;
+  animation: mandiTickerScroll 42s linear infinite;
+}
+
+.mandi-ticker-bar:hover .mandi-ticker-content {
+  animation-play-state: paused;
+}
+
+@keyframes mandiTickerScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.mandi-ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+}
+
+.ticker-crop {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.ticker-mandi {
+  font-size: 0.72rem;
+  color: #86efac;
+  opacity: 0.85;
+}
+
+.ticker-price {
+  font-weight: 800;
+  color: #fef08a;
+}
+
+.ticker-change {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.ticker-change.up {
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.ticker-change.down {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.ticker-change.neutral {
+  color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* LIVE SPEAKING EQUALIZER WAVE INDICATOR                                      */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+.speaking-audio-pill {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  color: #86efac;
+  padding: 4px 10px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.equalizer-bar {
+  display: inline-block;
+  width: 3px;
+  background: #4ade80;
+  border-radius: 2px;
+}
+
+.bar-1 {
+  height: 10px;
+  animation: equalizerWave 0.6s ease-in-out infinite alternate;
+}
+
+.bar-2 {
+  height: 14px;
+  animation: equalizerWave 0.5s ease-in-out 0.2s infinite alternate;
+}
+
+.bar-3 {
+  height: 8px;
+  animation: equalizerWave 0.7s ease-in-out 0.1s infinite alternate;
+}
+
+@keyframes equalizerWave {
+  0%   { height: 4px; }
+  100% { height: 15px; }
+}
+
+/* Crop card speaking highlight */
+.crop-card-speaking {
+  border-color: #22c55e !important;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.35) !important;
+}
+

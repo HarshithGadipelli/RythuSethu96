@@ -380,22 +380,39 @@ import { BASE_URL } from "../api/api";
 
 let activeAudioNodes = new Set();
 let currentTTSResolver = null;
+let currentTTSAbortController = null;
+let ttsRequestId = 0;
 
 export function stopTTS() {
+  // 1. Abort any in-flight network request immediately
+  if (currentTTSAbortController) {
+    try {
+      currentTTSAbortController.abort();
+    } catch(e) {}
+    currentTTSAbortController = null;
+  }
+  ttsRequestId++;
+
+  // 2. Pause and disconnect all active audio nodes
   activeAudioNodes.forEach(node => {
     try {
       if (node.stop) node.stop();
       if (node.pause) {
         node.pause();
-        node.currentTime = 0;
       }
     } catch(e) {}
   });
   activeAudioNodes.clear();
 
-  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  // 3. Cancel browser speech synthesis
+  if (typeof window !== "undefined" && window.speechSynthesis) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch(e) {}
+  }
+
   if (currentTTSResolver) {
-    currentTTSResolver();
+    currentTTSResolver(false);
     currentTTSResolver = null;
   }
 }
@@ -416,7 +433,6 @@ const fallbackSpeechSynthesis = (text, langCode, options = {}) => {
       const targetLang = localeMap[langCode] || "en-IN";
       utterance.lang = targetLang;
       
-      // Advanced voice selection to prioritize high-quality native/Google voices
       const voices = window.speechSynthesis.getVoices();
       if (voices.length > 0) {
         let bestVoice = voices.find(v => (v.lang === targetLang || v.lang.startsWith(targetLang.split('-')[0])) && v.name.toLowerCase().includes('google'));
@@ -434,7 +450,6 @@ const fallbackSpeechSynthesis = (text, langCode, options = {}) => {
       utterance.onerror = () => resolve(false);
       window.speechSynthesis.speak(utterance);
       
-      // Dynamic safety timeout
       setTimeout(() => resolve(true), Math.max(4000, text.length * 80));
     } catch(err) {
       resolve(false);
@@ -446,6 +461,15 @@ export function playTTS(text, lang = "en", options = {}) {
   return new Promise(async (resolve) => {
     if (!text) return resolve(false);
 
+    // Stop previous speech if overlap is not explicitly requested
+    if (!options.overlap) {
+      stopTTS();
+    }
+
+    const thisRequestId = ++ttsRequestId;
+    const abortCtrl = new AbortController();
+    currentTTSAbortController = abortCtrl;
+
     const gttsLang = lang && lang.length > 0 ? lang.split("-")[0] : "en";
     
     let resolved = false;
@@ -455,30 +479,44 @@ export function playTTS(text, lang = "en", options = {}) {
         if (currentTTSResolver) {
           currentTTSResolver = null;
         }
+        if (currentTTSAbortController === abortCtrl) {
+          currentTTSAbortController = null;
+        }
         resolve(val);
       }
     };
     currentTTSResolver = safeResolve;
 
-    // Generous dynamic safety timeout based on spoken sentence length (minimum 10s)
-    const timeoutMs = Math.max(10000, text.length * 85);
+    const timeoutMs = Math.max(8000, text.length * 85);
     const safetyTimer = setTimeout(() => safeResolve(true), timeoutMs);
     
     try {
       const res = await fetch(`${BASE_URL}/api/ai/tts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, lang: gttsLang })
+        body: JSON.stringify({ text, lang: gttsLang }),
+        signal: abortCtrl.signal
       });
+
+      // If a newer request was dispatched while fetching, discard this one
+      if (thisRequestId !== ttsRequestId || abortCtrl.signal.aborted) {
+        clearTimeout(safetyTimer);
+        return safeResolve(false);
+      }
       
       const data = await res.json();
+      if (thisRequestId !== ttsRequestId || abortCtrl.signal.aborted) {
+        clearTimeout(safetyTimer);
+        return safeResolve(false);
+      }
+
       if (!data.audioContent) {
         clearTimeout(safetyTimer);
         await fallbackSpeechSynthesis(text, gttsLang, options);
         return safeResolve(true);
       }
       
-      // Preferred HTML5 Audio object playback (universal cross-browser & mobile support)
+      // Preferred HTML5 Audio object playback
       try {
         const audioUrl = `data:audio/mp3;base64,${data.audioContent}`;
         const audio = new Audio(audioUrl);
@@ -488,16 +526,20 @@ export function playTTS(text, lang = "en", options = {}) {
 
         const audioNode = {
           stop: () => {
-            try { audio.pause(); audio.currentTime = 0; } catch(e) {}
+            try { 
+              audio.pause(); 
+              audio.currentTime = 0; 
+              audio.src = "";
+            } catch(e) {}
           },
           pause: () => {
             try { audio.pause(); } catch(e) {}
           }
         };
 
-        // Stop previous speech audio
-        if (!options.overlap) {
-          stopTTS();
+        if (thisRequestId !== ttsRequestId || abortCtrl.signal.aborted) {
+          clearTimeout(safetyTimer);
+          return safeResolve(false);
         }
 
         activeAudioNodes.add(audioNode);
@@ -509,24 +551,39 @@ export function playTTS(text, lang = "en", options = {}) {
         };
 
         audio.onerror = async (err) => {
-          console.warn("[TTS] HTML5 Audio error, using fallback:", err);
           clearTimeout(safetyTimer);
           activeAudioNodes.delete(audioNode);
-          await fallbackSpeechSynthesis(text, gttsLang, options);
+          if (thisRequestId === ttsRequestId) {
+            await fallbackSpeechSynthesis(text, gttsLang, options);
+          }
           safeResolve(true);
         };
 
-        await audio.play();
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            clearTimeout(safetyTimer);
+            activeAudioNodes.delete(audioNode);
+            if (err.name !== "AbortError" && thisRequestId === ttsRequestId) {
+              fallbackSpeechSynthesis(text, gttsLang, options).then(() => safeResolve(true));
+            } else {
+              safeResolve(false);
+            }
+          });
+        }
       } catch (audioPlayErr) {
-        console.warn("[TTS] Direct play failed, falling back to Web Audio or SpeechSynth:", audioPlayErr);
         clearTimeout(safetyTimer);
-        await fallbackSpeechSynthesis(text, gttsLang, options);
+        if (thisRequestId === ttsRequestId) {
+          await fallbackSpeechSynthesis(text, gttsLang, options);
+        }
         safeResolve(true);
       }
       
     } catch (err) {
-      console.warn("[TTS] Server fetch error, using speech synthesis fallback:", err);
       clearTimeout(safetyTimer);
+      if (err.name === "AbortError" || thisRequestId !== ttsRequestId) {
+        return safeResolve(false);
+      }
       await fallbackSpeechSynthesis(text, gttsLang, options);
       safeResolve(true);
     }

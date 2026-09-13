@@ -1,4 +1,4 @@
-﻿/**
+/**
  * useMarketAudio v2.0 — Immersive Indian Mandi Audio Engine
  *
  * - All vendor voices play simultaneously on ambient mode (scroll top)
@@ -218,8 +218,42 @@ export default function useMarketAudio(crops, lang) {
   const cardVolumeMap = useRef({}); // cropId -> volume level (1.0 = full, 0.3 = ducked)
   const ambientQueueRef = useRef([]); // Queue of ambient utterances in progress
 
+  const [speakingCropId, setSpeakingCropId] = useState(null);
+  const hoverDebounceTimer = useRef(null);
+  const announceTimer = useRef(null);
+
   useEffect(() => { cropsRef.current = crops; }, [crops]);
   useEffect(() => { langRef.current = lang; }, [lang]);
+
+  // Multilingual crop detail speech generator
+  function buildCropDetailsSpeech(crop) {
+    const l = langRef.current || "en";
+    const name = getCropName(crop.name, l);
+    const unit = UNIT_TRANSLATIONS[l] || crop.unit || "kg";
+    const price = crop.price || 0;
+    const qty = crop.quantity || 1;
+    
+    let tag = "";
+    if (crop.isOrganic) {
+      tag = l === "te" ? "పూర్తిగా ఆర్గానిక్ పంట." : l === "hi" ? "शुद्ध जैविक फसल।" : l === "kn" ? "ಸಾವಯವ ಬೆಳೆ." : l === "ta" ? "இயற்கை விளைச்சல்." : "100% Certified Organic.";
+    } else if (crop.isPesticideFree) {
+      tag = l === "te" ? "రసాయనాలు లేని పంట." : l === "hi" ? "कीटनाशक मुक्त।" : l === "kn" ? "ಕೀಟನಾಶಕ ರಹಿತ." : l === "ta" ? "பூச்சிக்கொல்லி அற்றது." : "Pesticide-free.";
+    }
+
+    if (l === "te") {
+      return `తాజా ${name}. కేజీ ధర ${price} రూపాయలు. ${qty} ${unit} అందుబాటులో ఉంది. ${tag}`;
+    }
+    if (l === "hi") {
+      return `ताज़ा ${name}. भाव ${price} रुपये प्रति ${unit}. ${qty} ${unit} उपलब्ध है। ${tag}`;
+    }
+    if (l === "kn") {
+      return `ತಾಜಾ ${name}. ಬೆಲೆ ಪ್ರತಿ ${unit}ಗೆ ${price} ರೂಪಾಯಿ. ${qty} ${unit} ಲಭ್ಯವಿದೆ. ${tag}`;
+    }
+    if (l === "ta") {
+      return `புதிய ${name}. விலை ஒரு ${unit}க்கு ${price} ரூபாய். ${qty} ${unit} உள்ளது. ${tag}`;
+    }
+    return `Fresh ${name}. ${price} rupees per ${unit}. ${qty} ${unit} available. ${tag}`;
+  }
 
   function buildText(crop, personaIdx = 0) {
     const l = langRef.current || "en";
@@ -249,7 +283,6 @@ export default function useMarketAudio(crops, lang) {
       const crop = shuffled[i];
       const persona = VENDOR_PERSONAS[i % VENDOR_PERSONAS.length];
       const text = buildText(crop, Math.floor(Math.random() * 20));
-      // All voices at ambient volume (0.6-0.75), overlapping, background chatter
       speak(text, langRef.current, { rate: persona.rate, pitch: persona.pitch, volume: 0.6 + Math.random() * 0.15 });
       if (modeRef.current === "ambient") {
         await new Promise(r => setTimeout(r, 350 + Math.random() * 700));
@@ -257,19 +290,19 @@ export default function useMarketAudio(crops, lang) {
     }
   }
 
-  // Focused: one vendor DOMINATES at full volume, others are completely stopped
+  // Focused: announces specific crop details clearly in active language
   function announceFocused(crop) {
     if (!crop) return;
-    chime(659, 0.1);
-    setTimeout(() => {
+    clearTimeout(announceTimer.current);
+    chime(659, 0.08);
+    announceTimer.current = setTimeout(() => {
       if (modeRef.current !== "focused") return;
-      const persona = VENDOR_PERSONAS[Math.floor(Math.random() * VENDOR_PERSONAS.length)];
-      // Use first 4 templates (the most energetic ones) for focused mode
-      const templateIdx = Math.floor(Math.random() * 4);
-      const text = buildText(crop, templateIdx);
-      // Full volume, dominant
-      speak(text, langRef.current, { rate: persona.rate * 1.05, pitch: persona.pitch, volume: 1.0 });
-    }, 300);
+      const text = buildCropDetailsSpeech(crop);
+      setSpeakingCropId(crop._id || crop.id);
+      speak(text, langRef.current, { rate: 1.0, pitch: 1.05, volume: 1.0 }).then(() => {
+        // finished
+      });
+    }, 180);
   }
 
   function startAmbientLoop() {
@@ -284,17 +317,14 @@ export default function useMarketAudio(crops, lang) {
   const attachScrollObserver = useCallback((containerEl) => {
     if (!containerEl || observerRef.current) return;
     
-    // Disconnect existing
     if (observerRef.current) {
       observerRef.current.disconnect();
       observerRef.current = null;
     }
 
-    // threshold: 0.7 means 70% of card is visible before it dominates
     const observer = new IntersectionObserver((entries) => {
       if (!isActive) return;
       
-      // Find the most visible entry
       let maxRatio = 0;
       let dominantEntry = null;
       entries.forEach(entry => {
@@ -308,14 +338,12 @@ export default function useMarketAudio(crops, lang) {
         const cropId = dominantEntry.target.dataset.cropId;
         const crop = cropsRef.current?.find(c => c._id === cropId || c.id === cropId);
         if (crop && focusedCropRef.current?._id !== crop._id) {
-          // New dominant crop — duck all others, boost this one
           modeRef.current = "focused";
           focusedCropRef.current = crop;
-          clearInterval(timerRef.current); // stop ambient loop
+          clearInterval(timerRef.current);
           clearTimeout(focusTimer.current);
-          stopNativeTTS(); // kill all ambient chatter
+          stopNativeTTS();
           announceFocused(crop);
-          // Repeat focused announcement
           focusTimer.current = setInterval(() => {
             if (modeRef.current === "focused" && focusedCropRef.current) {
               announceFocused(focusedCropRef.current);
@@ -323,9 +351,9 @@ export default function useMarketAudio(crops, lang) {
           }, 9000);
         }
       } else if (maxRatio < 0.2 && modeRef.current === "focused") {
-        // Scrolled away — return to ambient
         clearInterval(focusTimer.current);
         focusedCropRef.current = null;
+        setSpeakingCropId(null);
         modeRef.current = "ambient";
         stopNativeTTS();
         setTimeout(() => {
@@ -339,12 +367,10 @@ export default function useMarketAudio(crops, lang) {
 
     observerRef.current = observer;
 
-    // Observe all product cards
     const cards = containerEl.querySelectorAll("[data-crop-id]");
     cards.forEach(card => observer.observe(card));
   }, [isActive]);
 
-  // Re-observe when crops change
   const refreshObserver = useCallback((containerEl) => {
     if (!containerEl || !observerRef.current) return;
     const cards = containerEl.querySelectorAll("[data-crop-id]");
@@ -361,39 +387,52 @@ export default function useMarketAudio(crops, lang) {
       } else {
         clearInterval(timerRef.current);
         clearTimeout(focusTimer.current);
+        clearTimeout(hoverDebounceTimer.current);
+        clearTimeout(announceTimer.current);
         if (observerRef.current) { observerRef.current.disconnect(); observerRef.current = null; }
         stopNativeTTS();
         focusedCropRef.current = null;
+        setSpeakingCropId(null);
       }
       return next;
     });
   }, []);
 
-  // Hover-based focus (for desktop mouse users) - keeps working alongside scroll focus
+  // Hover-based focus with 200ms debounce to prevent collision on fast mouse sweeps
   const focusCrop = useCallback((crop) => {
-    if (!isActive) return;
+    if (!isActive || !crop) return;
+    clearTimeout(hoverDebounceTimer.current);
     clearTimeout(focusTimer.current);
-    modeRef.current = "focused";
-    focusedCropRef.current = crop;
-    stopNativeTTS();
-    announceFocused(crop);
-    focusTimer.current = setInterval(() => {
-      if (modeRef.current === "focused" && focusedCropRef.current) {
-        announceFocused(focusedCropRef.current);
-      }
-    }, 9000);
+
+    hoverDebounceTimer.current = setTimeout(() => {
+      modeRef.current = "focused";
+      focusedCropRef.current = crop;
+      stopNativeTTS();
+      announceFocused(crop);
+      focusTimer.current = setInterval(() => {
+        if (modeRef.current === "focused" && focusedCropRef.current?._id === crop._id) {
+          announceFocused(crop);
+        }
+      }, 9000);
+    }, 200);
   }, [isActive]);
 
   const blurCrop = useCallback(() => {
-    if (!isActive) return;
+    clearTimeout(hoverDebounceTimer.current);
+    clearTimeout(announceTimer.current);
     clearInterval(focusTimer.current);
+    setSpeakingCropId(null);
+
+    if (!isActive) return;
+    stopNativeTTS();
     focusedCropRef.current = null;
+
     setTimeout(() => {
-      if (modeRef.current !== "focused") return;
-      modeRef.current = "ambient";
-      stopNativeTTS();
-      startAmbientLoop();
-    }, 1200);
+      if (modeRef.current === "focused" && !focusedCropRef.current) {
+        modeRef.current = "ambient";
+        startAmbientLoop();
+      }
+    }, 900);
   }, [isActive]);
 
   useEffect(() => {
@@ -425,5 +464,5 @@ export default function useMarketAudio(crops, lang) {
     };
   }, []);
 
-  return { isActive, toggle, focusCrop, blurCrop, attachScrollObserver, refreshObserver };
+  return { isActive, toggle, focusCrop, blurCrop, attachScrollObserver, refreshObserver, speakingCropId };
 }

@@ -10,7 +10,7 @@ import { Home, ShoppingBag, Leaf, Truck, Shield, LogOut, User, Bell, Headphones,
 import API from "../api/api";
 import { io } from "socket.io-client";
 import { createPortal } from "react-dom";
-import { toggleFarmAmbience, toggleKrishnaFlute } from "../utils/ambientSoundEngine";
+import { toggleNatureSound, toggleKrishnaFlute, getNatureSoundStatus, stopAllNatureAudio } from "../utils/ambientSoundEngine";
 
 import CartSidebar from "./CartSidebar";
 import LocationUpdateModal from "./LocationUpdateModal";
@@ -27,17 +27,22 @@ export default function Navbar() {
   const [isAnnouncerActive, setIsAnnouncerActive] = useState(false);
   const [birdsPlaying, setBirdsPlaying] = useState(false);
   
-  const [fluteBgm, setFluteBgm] = useState(localStorage.getItem("rs_flute_bgm") !== "false");
-  // 0: off, 1: day (birds), 2: night (crickets)
-  const [natureBgmState, setNatureBgmState] = useState(parseInt(localStorage.getItem("rs_nature_bgm_state")) || 0);
+  const [fluteBgm, setFluteBgm] = useState(localStorage.getItem("rs_flute_bgm") === "true");
+  const [natureAudioInfo, setNatureAudioInfo] = useState(() => getNatureSoundStatus());
 
   useEffect(() => {
     localStorage.setItem("rs_flute_bgm", fluteBgm);
   }, [fluteBgm]);
 
   useEffect(() => {
-    localStorage.setItem("rs_nature_bgm_state", natureBgmState);
-  }, [natureBgmState]);
+    const handleStateChange = (e) => {
+      if (e.detail) {
+        setNatureAudioInfo(e.detail);
+      }
+    };
+    window.addEventListener("nature_audio_state_change", handleStateChange);
+    return () => window.removeEventListener("nature_audio_state_change", handleStateChange);
+  }, []);
   
   // Settings States
   const [showSettings, setShowSettings] = useState(false);
@@ -75,20 +80,19 @@ export default function Navbar() {
   const notifRef = useRef(null);
 
   useEffect(() => {
-    // Initial sync
-    if (natureBgmState === 1) toggleFarmAmbience(true, "day");
-    else if (natureBgmState === 2) toggleFarmAmbience(true, "night");
-    else toggleFarmAmbience(false);
-    
+    const savedActive = localStorage.getItem("rs_nature_bgm_active") === "true";
+    if (savedActive) {
+      toggleNatureSound(true);
+    }
     toggleKrishnaFlute(fluteBgm);
   }, []);
 
   const handleNatureToggle = () => {
-    const next = (natureBgmState + 1) % 3;
-    setNatureBgmState(next);
-    if (next === 0) toggleFarmAmbience(false);
-    else if (next === 1) toggleFarmAmbience(true, "day");
-    else toggleFarmAmbience(true, "night");
+    if (natureAudioInfo.isPlaying) {
+      stopAllNatureAudio();
+    } else {
+      toggleNatureSound(true);
+    }
   };
 
   const handleFluteToggle = () => {
@@ -261,10 +265,28 @@ export default function Navbar() {
           </button>
         </li>
         <li>
-          <button className="icon-btn" onClick={handleNatureToggle} title="Nature Sound">
-            {natureBgmState === 1 ? <span style={{fontSize:"1.1rem"}}>🕊️</span> : 
-             natureBgmState === 2 ? <span style={{fontSize:"1.1rem"}}>🦗</span> : 
-             <span style={{fontSize:"1.1rem", filter:"grayscale(1) opacity(0.5)"}}>🕊️</span>}
+          <button 
+            className={`icon-btn ${natureAudioInfo.isPlaying ? "nature-sound-active" : ""}`} 
+            onClick={handleNatureToggle} 
+            title={`Nature Sound: ${natureAudioInfo.label} (Click to ${natureAudioInfo.isPlaying ? "Mute" : "Play"})`}
+            style={{ position: "relative" }}
+          >
+            <span style={{ fontSize: "1.1rem", filter: natureAudioInfo.isPlaying ? "none" : "grayscale(1) opacity(0.5)" }}>
+              {natureAudioInfo.isPlaying ? natureAudioInfo.icon : "🔇"}
+            </span>
+            {natureAudioInfo.isPlaying && (
+              <span style={{
+                position: "absolute",
+                top: "4px",
+                right: "4px",
+                width: "7px",
+                height: "7px",
+                borderRadius: "50%",
+                background: "#22c55e",
+                boxShadow: "0 0 8px #22c55e",
+                animation: "pulse 1.5s infinite"
+              }} />
+            )}
           </button>
         </li>
         <li>
