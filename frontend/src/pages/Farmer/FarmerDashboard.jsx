@@ -30,6 +30,10 @@ import CropVisualPicker, { VISUAL_CROPS } from "../../components/CropVisualPicke
 import { Navigation, Volume2, Mic, Sparkles, CheckCircle2, TrendingUp, RefreshCw, IndianRupee, HelpCircle, XCircle, MapPin, LocateFixed, Compass } from "lucide-react";
 import LocationUpdateModal from "../../components/LocationUpdateModal";
 import SecurityPledgeModal from "../../components/SecurityPledgeModal";
+import APMCMandiExplorer from "../../components/APMCMandiExplorer";
+import WeedControlAdvisor from "../../components/WeedControlAdvisor";
+import SelectiveBreedingAdvisor from "../../components/SelectiveBreedingAdvisor";
+import FarmerCropHistory from "./FarmerCropHistory";
 
 const CATEGORIES = ["vegetable", "fruit", "grain", "pulse", "spice", "dairy", "other"];
 const SEASONS    = ["kharif","rabi","zaid","perennial"];
@@ -1566,10 +1570,10 @@ export default function FarmerDashboard() {
         marginBottom: "0.4rem"
       }}>
         {[
-          { id: "all", label: "✨ All Tools (20)", tabs: [] },
-          { id: "market", label: "🛒 Marketplace & Sales (6)", tabs: ["crops", "orders", "auctions", "groups", "broadcast", "add"] },
-          { id: "ai", label: "🤖 AI & Precision (6)", tabs: ["ml", "aiChat", "tips", "soil", "pest", "vermi"] },
-          { id: "finance", label: "💰 Finance & Storage (4)", tabs: ["ledger", "profit", "warehouse", "leaderboard"] },
+          { id: "all", label: "✨ All Tools (24)", tabs: [] },
+          { id: "market", label: "🛒 Marketplace & APMC (7)", tabs: ["crops", "apmc", "demand", "orders", "auctions", "groups", "broadcast", "add"] },
+          { id: "ai", label: "🤖 AI & Precision (8)", tabs: ["ml", "weedControl", "selectiveBreeding", "aiChat", "tips", "soil", "pest", "vermi"] },
+          { id: "finance", label: "💰 Finance & History (5)", tabs: ["cropHistory", "ledger", "profit", "warehouse", "leaderboard"] },
           { id: "community", label: "🏛️ Community & Govt (4)", tabs: ["tours", "schemes", "policies", "support"] }
         ].map(cat => (
           <button
@@ -1607,6 +1611,10 @@ export default function FarmerDashboard() {
       <div className="tab-bar">
         {[
           { k:"crops", l:"🌿 My Crops", cat: "market" },
+          { k:"apmc", l:"🏛️ All India APMC Mandis", cat: "market" },
+          { k:"cropHistory", l:"📜 Crop History & Revenue", cat: "finance" },
+          { k:"weedControl", l:"🌿 Weed Control", cat: "ai" },
+          { k:"selectiveBreeding", l:"🧬 Selective Breeding", cat: "ai" },
           { k:"demand", l:"📊 Demand & Pricing", cat: "market" },
           { k:"orders", l:`📦 Orders (${orders.length})`, cat: "market" },
           { k:"auctions", l:`🔨 Auctions`, cat: "market" },
@@ -1636,6 +1644,18 @@ export default function FarmerDashboard() {
           </button>
         ))}
       </div>
+
+      {/* ── APMC MANDI EXPLORER TAB ── */}
+      {tab === "apmc" && <APMCMandiExplorer />}
+
+      {/* ── CROP HISTORY & REVENUE LEDGER TAB ── */}
+      {tab === "cropHistory" && <FarmerCropHistory />}
+
+      {/* ── WEED CONTROL ADVISOR TAB ── */}
+      {tab === "weedControl" && <WeedControlAdvisor />}
+
+      {/* ── SELECTIVE BREEDING ADVISOR TAB ── */}
+      {tab === "selectiveBreeding" && <SelectiveBreedingAdvisor />}
 
       {/* ── DEMAND & PRICING INTELLIGENCE TAB ── */}
       {tab === "demand" && (

@@ -27,6 +27,7 @@ import CustomerOfflineTours from "./CustomerOfflineTours";
 import RythuSethuAnimation from "../../components/RythuSethuAnimation";
 import FarmTourModal from "../../components/FarmTourModal";
 import SmartCuratedBasket from "../../components/SmartCuratedBasket";
+import APMCMandiExplorer from "../../components/APMCMandiExplorer";
 
 // Fix leaflet default icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -1349,6 +1350,9 @@ export default function Marketplace() {
             <motion.button whileTap={{ scale: 0.95 }} className={`tab-btn ${viewTab==="map"?"active":""}`} onClick={() => setViewTab("map")} style={viewTab==="map"?{background:"var(--green-mid)", color:"white"}:{color:"var(--text-mid)"}}>
               <MapIcon size={16} style={{marginRight:4}} /> Map
             </motion.button>
+            <motion.button whileTap={{ scale: 0.95 }} className={`tab-btn ${viewTab==="apmc"?"active":""}`} onClick={() => setViewTab("apmc")} style={viewTab==="apmc"?{background:"var(--green-mid)", color:"white"}:{color:"var(--text-mid)"}}>
+              🏛️ APMC Rates
+            </motion.button>
           </div>
         </div>
       </div>
@@ -1973,6 +1977,10 @@ export default function Marketplace() {
               />
             </div>
           </div>
+        </motion.div>
+      ) : viewTab === "apmc" ? (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <APMCMandiExplorer />
         </motion.div>
       ) : (
         /* ── GRID LIST VIEW ── */
