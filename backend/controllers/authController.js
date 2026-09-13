@@ -81,6 +81,9 @@ export const register = async (req, res) => {
     const aadhaarImagePath = req.files?.aadhaarPhoto?.[0]?.filename ? `/uploads/${req.files.aadhaarPhoto[0].filename}` : (req.body.aadhaarImage || "");
     const avatarPath = req.files?.avatar?.[0]?.filename ? `/uploads/${req.files.avatar[0].filename}` : (req.files?.farmerPhoto?.[0]?.filename ? `/uploads/${req.files.farmerPhoto[0].filename}` : (req.body.avatar || ""));
 
+    const latNum = (latitude !== undefined && latitude !== null && latitude !== "" && !isNaN(Number(latitude))) ? Number(latitude) : 17.385;
+    const lngNum = (longitude !== undefined && longitude !== null && longitude !== "" && !isNaN(Number(longitude))) ? Number(longitude) : 78.486;
+
     const user = await User.create({
       name,
       email: cleanEmail,
@@ -88,14 +91,19 @@ export const register = async (req, res) => {
       phone: phone || "",
       role: role || "customer",
       location, 
-      latitude: latitude ? Number(latitude) : 17.385, 
-      longitude: longitude ? Number(longitude) : 78.486,
+      latitude: latNum, 
+      longitude: lngNum,
+      geoPosition: {
+        type: "Point",
+        coordinates: [lngNum, latNum]
+      },
       language: language || "en",
       avatar: avatarPath,
       aadhaar: aadhaar || "",
       aadhaarImage: aadhaarImagePath,
       customerType: customerType || "individual",
       requiresDailyDelivery: requiresDailyDelivery === true || requiresDailyDelivery === "true",
+      agentType: req.body.agentType || "bike",
       isVerified: (role === "customer" || role === "admin"),
       verificationStatus: (role === "customer" || role === "admin") ? "verified" : "pending",
       acceptedTerms: true
@@ -116,8 +124,8 @@ export const register = async (req, res) => {
         user: user._id,
         farmName: farmName || "",
         farmLocation: farmLocation || location || "",
-        latitude: latitude ? Number(latitude) : undefined, 
-        longitude: longitude ? Number(longitude) : undefined,
+        latitude: latNum, 
+        longitude: lngNum,
         farmSize: farmSize || 0,
         soilType: soilType || "loamy",
         experience: experience || 0,
@@ -133,18 +141,12 @@ export const register = async (req, res) => {
         pincode: pincode || "",
         city: city || "",
         state: state || "",
-        latitude: latitude ? Number(latitude) : undefined, 
-        longitude: longitude ? Number(longitude) : undefined
+        latitude: latNum, 
+        longitude: lngNum
       });
     } else if (user.role === "agent") {
-      const agentPhotoPath = req.files?.agentPhoto?.[0]?.filename ? `/uploads/${req.files.agentPhoto[0].filename}` : "";
-      const vehiclePhotoPath = req.files?.vehiclePhoto?.[0]?.filename ? `/uploads/${req.files.vehiclePhoto[0].filename}` : "";
-      
-      // Blocking: agents MUST upload photos to register
-      if (!agentPhotoPath || !vehiclePhotoPath) {
-        await User.findByIdAndDelete(user._id);
-        return res.status(400).json({ error: "Agent photo and vehicle photo are required for registration. Please upload both photos." });
-      }
+      const agentPhotoPath = req.files?.agentPhoto?.[0]?.filename ? `/uploads/${req.files.agentPhoto[0].filename}` : (avatarPath || "");
+      const vehiclePhotoPath = req.files?.vehiclePhoto?.[0]?.filename ? `/uploads/${req.files.vehiclePhoto[0].filename}` : (aadhaarImagePath || avatarPath || "");
       
       // Save photos to user document
       user.agentPhoto = agentPhotoPath;

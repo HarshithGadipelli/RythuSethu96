@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
   latitude: { type: Number },
   longitude: { type: Number },
   geoPosition: {
-    type: { type: String, enum: ['Point'], default: 'Point' },
+    type: { type: String, enum: ['Point'] },
     coordinates: { type: [Number], required: false } // [longitude, latitude]
   },
   
@@ -82,6 +82,18 @@ const userSchema = new mongoose.Schema({
 
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
+
+userSchema.pre("save", function(next) {
+  if (this.latitude !== undefined && this.longitude !== undefined && this.latitude !== null && this.longitude !== null && !isNaN(this.latitude) && !isNaN(this.longitude)) {
+    this.geoPosition = {
+      type: "Point",
+      coordinates: [Number(this.longitude), Number(this.latitude)]
+    };
+  } else if (this.geoPosition && (!this.geoPosition.coordinates || !Array.isArray(this.geoPosition.coordinates) || this.geoPosition.coordinates.length < 2)) {
+    this.geoPosition = undefined;
+  }
+  next();
+});
 
 userSchema.index({ geoPosition: "2dsphere" });
 
