@@ -942,6 +942,129 @@ export default function AddCrop() {
               </div>
             )}
 
+            {/* ─── 1-CLICK QUICK CHOICE CHIPS FOR FARMERS ─── */}
+            {wizardStep === 'NAME' && !isSpeaking && (
+              <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px dashed #cbd5e1" }}>
+                <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.78rem", fontWeight: 700, color: "#475569" }}>
+                  💡 Or Tap 1-Click Popular Produce Chips:
+                </p>
+                <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                  {[
+                    { name: "Tomato", label: "🍅 Tomato (టమోటా)", cat: "vegetable" },
+                    { name: "Rice", label: "🌾 Paddy / Rice (వరి)", cat: "grain" },
+                    { name: "Onion", label: "🧅 Onion (ఉల్లిపాయ)", cat: "vegetable" },
+                    { name: "Potato", label: "🥔 Potato (బంగాళదుంప)", cat: "vegetable" },
+                    { name: "Chili", label: "🌶️ Chilli (మిర్చి)", cat: "spice" },
+                    { name: "Mango", label: "🥭 Mango (మామిడి)", cat: "fruit" },
+                    { name: "Maize", label: "🌽 Maize (మొక్కజొన్న)", cat: "grain" },
+                    { name: "Groundnut", label: "🥜 Groundnut (పల్లీలు)", cat: "pulse" },
+                    { name: "Banana", label: "🍌 Banana (అరటి)", cat: "fruit" },
+                    { name: "Bio Waste", label: "🌿 Organic Waste (వ్యర్థాలు)", cat: "other" }
+                  ].map((item) => (
+                    <button
+                      key={item.name}
+                      type="button"
+                      onClick={() => {
+                        playChime('success');
+                        setFormData(prev => ({ ...prev, name: item.name, category: item.cat }));
+                        formDataRef.current.name = item.name;
+                        formDataRef.current.category = item.cat;
+                        setFilledFields(prev => ({ ...prev, name: true, category: true }));
+                        const ackMsg = getSuccessAck('NAME', item.name);
+                        askStep('QUANTITY', ackMsg);
+                      }}
+                      style={{
+                        background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d",
+                        padding: "5px 10px", borderRadius: "100px", fontSize: "0.8rem", fontWeight: 700,
+                        cursor: "pointer", boxShadow: "0 2px 5px rgba(0,0,0,0.03)"
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {wizardStep === 'QUANTITY' && !isSpeaking && (
+              <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px dashed #cbd5e1" }}>
+                <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.78rem", fontWeight: 700, color: "#475569" }}>
+                  ⚖️ Tap Quick Quantity Chip:
+                </p>
+                <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                  {[
+                    { qty: 10, unit: "kg", label: "10 kg" },
+                    { qty: 50, unit: "kg", label: "50 kg" },
+                    { qty: 1, unit: "quintal", label: "1 Quintal (100kg)" },
+                    { qty: 5, unit: "quintal", label: "5 Quintals" },
+                    { qty: 10, unit: "quintal", label: "10 Quintals" },
+                    { qty: 1, unit: "tonne", label: "1 Tonne" },
+                    { qty: 5, unit: "bag", label: "5 Bags" }
+                  ].map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => {
+                        playChime('success');
+                        setFormData(prev => ({ ...prev, quantity: item.qty, unit: item.unit }));
+                        formDataRef.current.quantity = item.qty;
+                        formDataRef.current.unit = item.unit;
+                        setFilledFields(prev => ({ ...prev, quantity: true, unit: true }));
+                        const ackMsg = getSuccessAck('QUANTITY', item.qty, item.unit);
+                        askStep('PRICE', ackMsg);
+                      }}
+                      style={{
+                        background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8",
+                        padding: "5px 10px", borderRadius: "100px", fontSize: "0.8rem", fontWeight: 700,
+                        cursor: "pointer", boxShadow: "0 2px 5px rgba(0,0,0,0.03)"
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {wizardStep === 'PRICE' && !isSpeaking && (
+              <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px dashed #cbd5e1" }}>
+                <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.78rem", fontWeight: 700, color: "#475569" }}>
+                  💰 Tap Quick Price Chip:
+                </p>
+                <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                  {[
+                    { price: 20, label: "₹20 / unit" },
+                    { price: 30, label: "₹30 / unit" },
+                    { price: 40, label: "₹40 / unit" },
+                    { price: 50, label: "₹50 / unit" },
+                    { price: 80, label: "₹80 / unit" },
+                    { price: 100, label: "₹100 / unit" },
+                    { price: 2500, label: "₹2,500 / quintal" }
+                  ].map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => {
+                        playChime('success');
+                        setFormData(prev => ({ ...prev, price: item.price }));
+                        formDataRef.current.price = item.price;
+                        setFilledFields(prev => ({ ...prev, price: true }));
+                        const ackMsg = getSuccessAck('PRICE', item.price, formDataRef.current.unit || 'kg');
+                        askStep('COMPLETED', ackMsg);
+                      }}
+                      style={{
+                        background: "#fef3c7", border: "1px solid #fde68a", color: "#b45309",
+                        padding: "5px 10px", borderRadius: "100px", fontSize: "0.8rem", fontWeight: 700,
+                        cursor: "pointer", boxShadow: "0 2px 5px rgba(0,0,0,0.03)"
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {lastHeard && (
               <p style={{ margin: "0.2rem 0 0 0", fontSize: "0.8rem", color: "#6b7280", fontStyle: "italic" }}>
                 Last captured: "{lastHeard}"

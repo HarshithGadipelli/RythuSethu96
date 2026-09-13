@@ -719,59 +719,84 @@ router.post("/parse-wizard-step", async (req, res) => {
 
     const lower = transcript.toLowerCase().trim();
 
+    // Multilingual number word parser
+    const wordNumbers = {
+      one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10,
+      fifteen:15, twenty:20, twentyfive:25, thirty:30, forty:40, fifty:50, hundred:100, thousand:1000,
+      okati:1, rendu:2, moodu:3, nalugu:4, aidu:5, aaru:6, yedu:7, enimidi:8, tommidi:9, padi:10,
+      padihenu:15, iravai:20, iravaiyaindu:25, muppai:30, nalabhai:40, yabai:50, yabhei:50, vanda:100, veyi:1000,
+      ek:1, do:2, teen:3, char:4, paanch:5, chah:6, saat:7, aath:8, nau:9, das:10,
+      pandrah:15, bees:20, pachis:25, tees:30, chalis:40, pachas:50, sau:100, hazar:1000
+    };
+
+    let extractedNum = null;
+    const numMatch = transcript.match(/\d+(?:\.\d+)?/);
+    if (numMatch) {
+      extractedNum = parseFloat(numMatch[0]);
+    } else {
+      const words = lower.split(/[\s,]+/);
+      for (const w of words) {
+        if (wordNumbers[w] !== undefined) {
+          extractedNum = wordNumbers[w];
+          break;
+        }
+      }
+    }
+
     // Fast heuristic extraction
     if (step === "QUANTITY") {
-      const numMatch = transcript.match(/\d+(?:\.\d+)?/);
       let foundUnit = "kg";
-      if (/(quintal|క్వింటాల్|क्विंटल|qntl)/i.test(lower)) foundUnit = "quintal";
-      else if (/(bag|bori|బస్తా|बोरी|మూటే)/i.test(lower)) foundUnit = "bag";
-      else if (/(ton|tonne|టన్|टन)/i.test(lower)) foundUnit = "tonne";
+      if (/(quintal|క్వింటాల్|క్వింటాళ్లు|क्विंटल|qntl|kintal|kintallu)/i.test(lower)) foundUnit = "quintal";
+      else if (/(bag|bori|బస్తా|బస్తాలు|బోరీ|మూటే|basta|bastalu|boriyan)/i.test(lower)) foundUnit = "bag";
+      else if (/(ton|tonne|టన్|టన్నులు|टन|tannulu)/i.test(lower)) foundUnit = "tonne";
       else if (/(litre|liter|లీటర్|लीटर)/i.test(lower)) foundUnit = "litre";
       else if (/(bale|బేల్)/i.test(lower)) foundUnit = "bale";
-      else if (/(piece|పీస్|पीस)/i.test(lower)) foundUnit = "piece";
+      else if (/(piece|పీస్|पीस|nos)/i.test(lower)) foundUnit = "piece";
       else if (/(dozen|డజన్|दर्जन)/i.test(lower)) foundUnit = "dozen";
 
-      if (numMatch) {
-        return res.json({ quantity: parseFloat(numMatch[0]), unit: foundUnit });
+      if (extractedNum !== null) {
+        return res.json({ quantity: extractedNum, unit: foundUnit });
       }
     } else if (step === "PRICE") {
-      const numMatch = transcript.match(/\d+(?:\.\d+)?/);
-      if (numMatch) {
-        return res.json({ price: parseFloat(numMatch[0]) });
+      if (extractedNum !== null) {
+        return res.json({ price: extractedNum });
       }
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey.trim().length < 10) {
       if (step === "NAME") return res.json({ name: transcript.trim() });
-      if (step === "QUANTITY") return res.json({ quantity: 10, unit: "kg" });
-      if (step === "PRICE") return res.json({ price: 30 });
+      if (step === "QUANTITY") return res.json({ quantity: extractedNum || 10, unit: "kg" });
+      if (step === "PRICE") return res.json({ price: extractedNum || 30 });
     }
-
-    const ai = getGenAI() || new GoogleGenAI({ apiKey: apiKey.trim() });
 
     let prompt = "";
     if (step === "NAME") {
-      prompt = `You are an agricultural parser. The farmer was asked "What crop do you want to list?". They said: "${transcript}". Extract the primary crop/product name (in English, e.g. Tomato, Potato, Rice, Wheat, Cotton, Hay, Slurry). Reply strictly in JSON: { "name": "extracted_name" } without markdown.`;
+      prompt = `You are an Indian agricultural produce parser. The farmer said: "${transcript}" in language "${lang || "en"}". Extract the standard crop/produce name in English (e.g. Tomato, Potato, Onion, Rice, Wheat, Cotton, Chilli, Garlic, Ginger, Turmeric, Groundnut, Maize, Mango, Banana, Apple, Okra, Brinjal, Cabbage, Sugarcane, Watermelon, Bio Waste). Reply strictly in JSON: { "name": "StandardCropName" } without markdown formatting.`;
     } else if (step === "QUANTITY") {
-      prompt = `You are an agricultural parser. The farmer was asked "How much quantity do you have?". They said: "${transcript}". Extract the number and standard unit (e.g. kg, tonne, litre, piece, bag, quintal). Default to kg if unclear. Reply strictly in JSON: { "quantity": number, "unit": "extracted_unit" } without markdown.`;
+      prompt = `You are an Indian agricultural parser. The farmer said: "${transcript}". Extract the numerical quantity and standard unit (kg, quintal, bag, tonne, litre, piece, dozen). Reply strictly in JSON: { "quantity": number, "unit": "unit_string" } without markdown.`;
     } else if (step === "PRICE") {
-      prompt = `You are an agricultural parser. The farmer was asked "What is the price per unit?". They said: "${transcript}". Extract the price as a single number. Reply strictly in JSON: { "price": number } without markdown.`;
+      prompt = `You are an Indian agricultural parser. The farmer said: "${transcript}". Extract the price amount as a single number in Rupees. Reply strictly in JSON: { "price": number } without markdown.`;
     } else {
       return res.status(400).json({ error: "Invalid step" });
     }
 
-    // Call Gemini with model fallbacks (gemini-3.6-flash / gemini-flash-latest)
     const rawText = await callGeminiWithFallback([prompt]);
     if (rawText) {
       const cleanJson = (rawText || "").trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
-      const parsedData = JSON.parse(cleanJson);
-      return res.json(parsedData);
+      const jsonMatch = cleanJson.match(/\{.*\}/s);
+      if (jsonMatch) {
+        const parsedData = JSON.parse(jsonMatch[0]);
+        return res.json(parsedData);
+      }
     }
-    throw new Error("No response from AI models");
+
+    if (step === "NAME") return res.json({ name: transcript.trim() });
+    if (step === "QUANTITY") return res.json({ quantity: extractedNum || 10, unit: "kg" });
+    if (step === "PRICE") return res.json({ price: extractedNum || 30 });
   } catch (err) {
-    console.warn("Parse Wizard Step Fallback for", req.body.step, err.message);
-    const { step, transcript } = req.body;
+    console.warn("Parse Wizard Step Fallback for", req.body?.step, err.message);
+    const { step, transcript } = req.body || {};
     if (step === "NAME") {
       res.json({ name: transcript ? transcript.trim() : "Farm Produce" });
     } else if (step === "QUANTITY") {
