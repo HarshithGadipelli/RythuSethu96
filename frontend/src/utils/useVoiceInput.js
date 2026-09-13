@@ -95,10 +95,8 @@ export function useVoiceInput(lang = "en") {
       silenceTimerRef.current = setTimeout(() => {
         if (!isListeningRef.current) return;
         const captured = latestTextRef.current.trim() || finalTranscriptRef.current.trim();
-        if (captured) {
-          stopListening();
-          dispatchResult(captured);
-        }
+        stopListening();
+        dispatchResult(captured); // Dispatch even if empty, to trigger retry logic
       }, silenceDelay);
     };
 
@@ -165,6 +163,7 @@ export function useVoiceInput(lang = "en") {
 
     try {
       recognition.start();
+      triggerSilenceTimeout(); // Trigger initial silence timer
     } catch (err) {
       if (err.name !== 'InvalidStateError') {
         console.warn("Could not start microphone:", err.message);

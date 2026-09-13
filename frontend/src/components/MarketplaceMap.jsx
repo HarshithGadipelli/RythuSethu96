@@ -317,7 +317,27 @@ export default function MarketplaceMap({
   const [osrmRoute, setOsrmRoute] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
   const [showDirectionsDrawer, setShowDirectionsDrawer] = useState(false);
+  const [weatherRadarTime, setWeatherRadarTime] = useState(null);
   const tile = TILE_LAYERS[tileKey];
+
+  useEffect(() => {
+    if (showWeatherRadar && !weatherRadarTime) {
+      fetch("https://api.rainviewer.com/public/weather-maps.json")
+        .then(res => res.json())
+        .then(data => {
+          if (data.radar && data.radar.past && data.radar.past.length > 0) {
+            setWeatherRadarTime(data.radar.past[data.radar.past.length - 1].time);
+          }
+        }).catch(err => console.error("Weather radar fetch error", err));
+    }
+  }, [showWeatherRadar, weatherRadarTime]);
+
+  // Auto-fly to customer location when detected
+  useEffect(() => {
+    if (customerLat && customerLng && !hoveredCrop && !selected) {
+      setFlyToCoords({ lat: customerLat, lng: customerLng, zoom: 12 });
+    }
+  }, [customerLat, customerLng, hoveredCrop, selected]);
 
   // Determine centre: prefer selected crop, else customer loc, else Hyderabad
   const focusCrop = hoveredCrop || selected;
@@ -842,9 +862,9 @@ export default function MarketplaceMap({
         <LiveTrucksLayer />
 
         {/* Weather Radar Layer */}
-        {showWeatherRadar && (
+        {showWeatherRadar && weatherRadarTime && (
           <TileLayer
-            url="https://tilecache.rainviewer.com/v2/radar/1690000000/256/{z}/{x}/{y}/2/1_1.png"
+            url={`https://tilecache.rainviewer.com/v2/radar/${weatherRadarTime}/256/{z}/{x}/{y}/2/1_1.png`}
             opacity={0.65}
             zIndex={10}
           />
@@ -874,8 +894,8 @@ export default function MarketplaceMap({
           const lat = c.latitude || c.farmer?.latitude;
           const lng = c.longitude || c.farmer?.longitude;
           if (!lat || !lng) return null;
-          // Calculate a "demand score" to visualize
-          const orders = c.totalOrders || Math.floor(Math.random() * 50);
+          // Calculate a "demand score" to visualize deterministically
+          const orders = c.totalOrders || c.soldCount || c.views || (c.quantity > 500 ? 55 : (c.quantity > 100 ? 30 : 10));
           if (orders < 5) return null;
           
           const radius = Math.min(25000, orders * 200 + 2000); // Larger radius for visibility

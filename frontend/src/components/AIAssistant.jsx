@@ -22,6 +22,7 @@ export default function AIAssistant() {
   const silenceTimerRef = useRef(null);
   const isListeningRef = useRef(false);
   const [voicePersona, setVoicePersona] = useState({ pitch: 1, rate: 0.9, lang: "en-IN" });
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     isListeningRef.current = isListening;
@@ -35,12 +36,12 @@ export default function AIAssistant() {
     });
   }, []);
 
-  const speak = (text, autoListenAfter = false) => {
+  const speak = (text, autoListenAfter = false, isRetry = false) => {
     try {
       playTTS(text.replace(/[#*`_]/g, ''), lang, { pitch: voicePersona.pitch, rate: voicePersona.rate }).then(() => {
         if (autoListenAfter || text.includes("?")) {
           setTimeout(() => {
-            if (!isListeningRef.current) toggleListen();
+            if (!isListeningRef.current) toggleListen(isRetry);
           }, 500);
         }
       });
@@ -184,8 +185,10 @@ export default function AIAssistant() {
 
   if (!user) return null; // Only show if logged in
 
-  const toggleListen = () => {
-    if (isListeningRef.current) {
+  const toggleListen = (isRetry = false) => {
+    if (!isRetry) setRetryCount(0); // Reset retry count on manual toggle
+
+    if (isListeningRef.current && !isRetry) {
       stopListening();
     } else {
       setTranscript("");
@@ -202,14 +205,24 @@ export default function AIAssistant() {
                 kn: "ನನಗೆ ಅರ್ಥವಾಗಲಿಲ್ಲ. ",
                 ta: "எனக்கு புரியவில்லை. "
               }[lang] || "I didn't catch that. ";
-              speak(repeatPrefix + lastMsg.text, true);
+              
+              setRetryCount(prevCount => {
+                const nextCount = prevCount + 1;
+                if (nextCount <= 3) {
+                  speak(repeatPrefix + lastMsg.text, true, true); // autoListenAfter=true, isRetry=true
+                } else {
+                  speak("I am still not hearing anything. Please type your message.");
+                }
+                return nextCount;
+              });
             }
             return prev;
           });
         } else {
+          setRetryCount(0); // Success, reset count
           handleProcessText(finalTranscript.trim());
         }
-      }, { fieldId: "ai_assistant" });
+      }, { fieldId: "ai_assistant", silenceDelay: 3000 });
     }
   };
 

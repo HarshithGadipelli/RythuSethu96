@@ -841,9 +841,8 @@ export default function Marketplace() {
     fetchSeasonalPrediction();
   }, [fetchSeasonalPrediction]);
 
-  // ─── Detect customer location ───
-  const detectCustomerLocation = () => {
-    if (!navigator.geolocation) { alert("Geolocation not supported"); return; }
+  const detectCustomerLocation = useCallback(() => {
+    if (!navigator.geolocation) { console.warn("Geolocation not supported"); return; }
     setLocationLoading(true);
     navigator.geolocation.getCurrentPosition(async ({ coords }) => {
       setCustomerLat(coords.latitude);
@@ -857,8 +856,15 @@ export default function Marketplace() {
         setLocationName(`${coords.latitude.toFixed(3)}, ${coords.longitude.toFixed(3)}`);
       }
       setLocationLoading(false);
-    }, () => { alert("Could not get location"); setLocationLoading(false); });
-  };
+    }, () => { console.warn("Could not get location"); setLocationLoading(false); });
+  }, [fetchSeasonalPrediction]);
+
+  // Auto-detect GPS on mount
+  useEffect(() => {
+    if (!customerLat) {
+      detectCustomerLocation();
+    }
+  }, []); // Run once on mount
 
   // ─── Reset all filters ───
   const resetFilters = () => {

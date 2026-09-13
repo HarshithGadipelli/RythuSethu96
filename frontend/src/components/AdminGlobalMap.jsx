@@ -38,6 +38,47 @@ const ICONS = {
   delivery: createCustomIcon("🏠", "#ea580c"),
 };
 
+const adminIcon = L.divIcon({
+  className: "",
+  html: `<div style="
+    width:20px;height:20px;
+    background:white;
+    border:3px solid #ef4444;
+    border-radius:50%;
+    box-shadow:0 0 0 6px rgba(239,68,68,0.25);
+  "></div>`,
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+});
+
+const TILE_LAYERS = {
+  satellite: {
+    label: "🛰️ Satellite",
+    url: "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+    attribution: "© Google Maps",
+  },
+  street: {
+    label: "🗺️ Street",
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: "© OpenStreetMap contributors",
+  },
+  terrain: {
+    label: "🏔️ Terrain",
+    url: "https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=free",
+    attribution: "© Thunderforest, © OpenStreetMap",
+  },
+  carto: {
+    label: "🌍 Carto",
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    attribution: "© CARTO",
+  },
+  dark: {
+    label: "🌙 Dark",
+    url: "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png",
+    attribution: "© Stadia Maps, © OpenMapTiles, © OpenStreetMap",
+  },
+};
+
 const MapBounds = ({ points }) => {
   const map = useMap();
   const init = React.useRef(false);
@@ -56,6 +97,31 @@ export default function AdminGlobalMap({ activeDeliveries = [], tierFilter = "al
   const [liveAgents, setLiveAgents] = useState({});
   const [dispatchingAgentId, setDispatchingAgentId] = useState(null);
   const [dispatchMsg, setDispatchMsg] = useState("");
+  const [tileKey, setTileKey] = useState("carto");
+  const [adminLat, setAdminLat] = useState(null);
+  const [adminLng, setAdminLng] = useState(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const tile = TILE_LAYERS[tileKey];
+
+  const handleAcquireCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setIsLocating(false);
+        setAdminLat(coords.latitude);
+        setAdminLng(coords.longitude);
+      },
+      (err) => {
+        setIsLocating(false);
+        console.warn("Geolocation warning:", err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   useEffect(() => {
     const socket = io(BASE_URL);
@@ -274,6 +340,57 @@ export default function AdminGlobalMap({ activeDeliveries = [], tierFilter = "al
 
       {/* Main Map */}
       <div style={{ height: "550px", width: "100%", borderRadius: "14px", overflow: "hidden", border: "1px solid #cbd5e1", position: "relative", boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
+        {/* Tile Layer Switcher */}
+        <div style={{
+          position: "absolute", top: 10, right: 10, zIndex: 1000,
+          display: "flex", gap: "0.3rem", flexWrap: "wrap",
+          background: "rgba(255,255,255,0.95)", borderRadius: 12,
+          padding: "6px 10px", boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+          border: "1px solid #e2e8f0",
+        }}>
+          {Object.entries(TILE_LAYERS).map(([key, layer]) => (
+            <button
+              key={key}
+              onClick={() => setTileKey(key)}
+              style={{
+                padding: "3px 10px",
+                borderRadius: 100,
+                border: "none",
+                fontSize: "0.72rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                background: tileKey === key ? "var(--green-mid, #16a34a)" : "transparent",
+                color: tileKey === key ? "white" : "#64748b",
+                transition: "all 0.2s",
+              }}
+            >
+              {layer.label}
+            </button>
+          ))}
+          <div style={{ width: "1px", height: "20px", background: "#cbd5e1", margin: "0 4px" }} />
+          <button
+            onClick={handleAcquireCurrentLocation}
+            disabled={isLocating}
+            style={{
+              padding: "3px 12px",
+              borderRadius: 100,
+              fontSize: "0.72rem",
+              fontWeight: 800,
+              cursor: "pointer",
+              background: adminLat ? "linear-gradient(135deg, #10b981, #059669)" : "linear-gradient(135deg, #3b82f6, #2563eb)",
+              color: "white",
+              border: "none",
+              boxShadow: "0 2px 8px rgba(16,185,129,0.3)",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px"
+            }}
+            title="Detect and center your live high-accuracy GPS position"
+          >
+            📍 {isLocating ? "Locating..." : adminLat ? "Admin Location Locked" : "Find My GPS"}
+          </button>
+        </div>
+
         <style>{`
           @keyframes flowDash {
             to { stroke-dashoffset: -20; }
@@ -288,11 +405,24 @@ export default function AdminGlobalMap({ activeDeliveries = [], tierFilter = "al
             transform: scale(1.2);
           }
         `}</style>
-        <MapContainer center={[17.385, 78.4867]} zoom={8} style={{ height: "100%", width: "100%" }}>
+        <MapContainer center={adminLat ? [adminLat, adminLng] : [17.385, 78.4867]} zoom={adminLat ? 12 : 8} style={{ height: "100%", width: "100%" }}>
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+            url={tile.url}
+            attribution={tile.attribution}
+            maxZoom={20}
           />
+          
+          {adminLat && adminLng && (
+            <Marker position={[adminLat, adminLng]} icon={adminIcon} zIndexOffset={1000}>
+              <Popup>
+                <strong>📍 Admin Location</strong>
+                <br />
+                <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                  You are here
+                </span>
+              </Popup>
+            </Marker>
+          )}
           
           {polylines.map((path, i) => (
              <Polyline key={i} positions={path.coords} color={path.color || "#2563eb"} weight={3.5} opacity={0.85} dashArray={path.dashArray || "8, 8"} className="admin-flow-path" />
