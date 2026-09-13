@@ -35,7 +35,7 @@ export default function Login() {
       // Auto-sanitize existing profiles so legacy records never fail
       return list.map(acc => {
         let email = acc.email;
-        if (!email || email === "undefined" || email.includes("gmail.com")) {
+        if (!email || email === "undefined") {
           const lowerName = (acc.name || "").toLowerCase();
           email = lowerName.includes("ram") ? "ram@test.com" : lowerName.includes("raj") ? "admin@test.com" : "farmer@test.com";
         }
@@ -113,8 +113,12 @@ export default function Login() {
   const fastLogin = async (acc) => {
     setError("");
     setInfoMsg("");
-    const targetEmail = (acc.email || acc.username || acc.name || "ram@gmail.com").trim();
+    const targetEmail = (acc.email || acc.username || acc.name || "").trim();
     const passToTry = acc.password || "test123";
+    if (!targetEmail) {
+        setError("Invalid saved profile. No email found.");
+        return;
+    }
     await performLogin(targetEmail, passToTry);
   };
 
