@@ -41,11 +41,17 @@ const userSchema = new mongoose.Schema({
   accountStatus: { type: String, enum: ["active", "suspended", "banned"], default: "active" },
 
   // ─── Agent Specific Info ───
-  agentType: { type: String, enum: ["bike", "auto", "truck", "ridealong", "vermicompost", "biogas"], default: "bike" },
+  agentType: { type: String, enum: ["bike", "auto", "truck", "ridealong", "vermicompost", "biogas", "cold_storage"], default: "bike" },
   agentPhoto: { type: String, default: "" },
   vehiclePhoto: { type: String, default: "" },
   vehicleNumber: { type: String, default: "" },
   agentVerificationStatus: { type: String, enum: ["pending", "verified", "rejected"], default: "pending" },
+
+  // ─── Cold Storage Agent Info ───
+  coldStorageName: { type: String, default: "" },
+  coldStorageCapacityTons: { type: Number, default: 500 },
+  coldStorageTempCelsius: { type: Number, default: 3.5 },
+  coldStorageHumidityPct: { type: Number, default: 85 },
   
   // ─── Ride-Along Agent Route ───
   ridealongRoute: {

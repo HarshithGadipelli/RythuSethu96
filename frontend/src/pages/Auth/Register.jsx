@@ -575,6 +575,19 @@ export default function Register() {
                 <AutoSuggestInput value={form.aadhaar} onChange={set("aadhaar")} onSpeak={() => speak("aadhaar")} listening={listening && activeField === "aadhaar"} interim={interim} label={`${t("aadhaar")} (Required for Verification)`} placeholder="XXXX-XXXX-XXXX" />
               )}
 
+              {form.role === "agent" && (
+                <div className="form-group mb-2">
+                  <label className="field-label">Agent Specialty & Service Type</label>
+                  <select className="rs-select" value={form.agentType} onChange={set("agentType")}>
+                    <option value="bike">🛵 Two-Wheeler Bike Agent (Local Express Delivery)</option>
+                    <option value="auto">🛺 Auto / Mini-Van Agent (Mid-Volume Logistics)</option>
+                    <option value="truck">🚚 Heavy Truck Transport Agent (Long Distance & Bulk Load)</option>
+                    <option value="ridealong">🎒 Ride-Along Commuter Agent (Route Share Delivery)</option>
+                    <option value="cold_storage">❄️ Cold Storage Warehouse Agent (Temperature Controlled Vault & Storage)</option>
+                  </select>
+                </div>
+              )}
+
               {form.role !== "farmer" && (
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
                   <input type="checkbox" id="terms" checked={form.acceptedTerms} onChange={(e) => setForm(f => ({ ...f, acceptedTerms: e.target.checked }))} style={{ width:18, height:18, cursor:"pointer" }} />

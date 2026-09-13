@@ -11,6 +11,7 @@ import AgentFinancialLedger from "./AgentFinancialLedger";
 import SecurityPledgeModal from "../../components/SecurityPledgeModal";
 import { Volume2, MapPin, LocateFixed, Compass, Radio, Camera, CheckCircle2, ShieldCheck, KeyRound, Coins, Sparkles, UploadCloud, Loader2, Check, X, ArrowUpRight, ShieldAlert, Star } from "lucide-react";
 import LocationUpdateModal from "../../components/LocationUpdateModal";
+import ColdStorageAgentPanel from "../../components/ColdStorageAgentPanel";
 import { playTTS } from "../../utils/voiceParser";
 const STATUS_STEPS = ["assigned","picked_up","in_transit","delivered"];
 const STATUS_ICONS = { assigned:"📋", picked_up:"📦", in_transit:"🚚", delivered:"✅", failed:"❌" };
@@ -982,6 +983,7 @@ export default function AgentDashboard() {
         {[
           { k:"my", l:"📦 My Deliveries" },
           { k:"available", l:"🚚 Available Orders" },
+          { k:"coldstorage", l:"❄️ Cold Storage Vault" },
           { k:"ridealong", l:"🎒 Ride-Along Route" },
           { k:"earnings", l:"💰 Earnings" },
           { k:"tips", l:"💡 Smart Tips" }
@@ -991,6 +993,12 @@ export default function AgentDashboard() {
           </button>
         ))}
       </div>
+
+      {tab === "coldstorage" && (
+        <div className="mb-3">
+          <ColdStorageAgentPanel user={user} />
+        </div>
+      )}
 
       {tab === "my" && (
         <div className="glass-card mb-3" style={{ background: "linear-gradient(135deg, #0f172a, #1e293b)", color: "white", padding: "1.25rem", borderRadius: "16px", border: "1px solid #334155" }}>

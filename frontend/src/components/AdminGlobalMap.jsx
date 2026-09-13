@@ -32,6 +32,7 @@ const ICONS = {
   agent: createCustomIcon("🚚", "#2563eb"),
   heavyTruck: createCustomIcon("🚛", "#0369a1"),
   dabbawala: createCustomIcon("🚲", "#16a34a"),
+  coldStorage: createCustomIcon("❄️", "#0284c7"),
   hub: createCustomIcon("🏢", "#0284c7"),
   pickup: createCustomIcon("🌾", "#15803d"),
   delivery: createCustomIcon("🏠", "#ea580c"),
