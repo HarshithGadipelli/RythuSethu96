@@ -683,8 +683,8 @@ export default function FarmerDashboard() {
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [showPledge, setShowPledge] = useState(user?.acceptedTerms === false);
   const [showLocModal, setShowLocModal] = useState(false);
-  const [showToolsDrawer, setShowToolsDrawer] = useState(false);
   const [toolsSearch, setToolsSearch] = useState("");
+  const [qaStep, setQaStep] = useState(1);
   const [farmerProfile, setFarmerProfile] = useState(null);
   
   // Stage Update Modal State
@@ -1710,7 +1710,7 @@ export default function FarmerDashboard() {
 
           <button
             type="button"
-            onClick={() => setShowToolsDrawer(true)}
+            onClick={() => setTab("tools_hub")}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -1719,24 +1719,24 @@ export default function FarmerDashboard() {
               borderRadius: "100px",
               fontSize: "0.85rem",
               fontWeight: 700,
-              background: SPECIALIZED_TOOL_KEYS.includes(tab) ? "linear-gradient(135deg, #0284c7, #0369a1)" : "white",
-              color: SPECIALIZED_TOOL_KEYS.includes(tab) ? "white" : "#0284c7",
-              border: SPECIALIZED_TOOL_KEYS.includes(tab) ? "none" : "1.5px solid #0284c7",
+              background: (tab === "tools_hub" || SPECIALIZED_TOOL_KEYS.includes(tab)) ? "linear-gradient(135deg, #0284c7, #0369a1)" : "white",
+              color: (tab === "tools_hub" || SPECIALIZED_TOOL_KEYS.includes(tab)) ? "white" : "#0284c7",
+              border: (tab === "tools_hub" || SPECIALIZED_TOOL_KEYS.includes(tab)) ? "none" : "1.5px solid #0284c7",
               boxShadow: "0 2px 8px rgba(2, 132, 199, 0.15)",
               cursor: "pointer"
             }}
           >
             <Sliders size={15} />
-            <span>Seasonal &amp; Agri-Tools (19+)</span>
+            <span>Seasonal &amp; Agri-Tools Suite (19+)</span>
             <span style={{
-              background: SPECIALIZED_TOOL_KEYS.includes(tab) ? "rgba(255,255,255,0.25)" : "#e0f2fe",
-              color: SPECIALIZED_TOOL_KEYS.includes(tab) ? "white" : "#0369a1",
+              background: (tab === "tools_hub" || SPECIALIZED_TOOL_KEYS.includes(tab)) ? "rgba(255,255,255,0.25)" : "#e0f2fe",
+              color: (tab === "tools_hub" || SPECIALIZED_TOOL_KEYS.includes(tab)) ? "white" : "#0369a1",
               fontSize: "0.7rem",
               fontWeight: 800,
               padding: "1px 6px",
               borderRadius: "8px"
             }}>
-              Drawer
+              Full Hub
             </span>
           </button>
         </div>
@@ -1760,6 +1760,26 @@ export default function FarmerDashboard() {
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
             <button
               type="button"
+              onClick={() => setTab("tools_hub")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "0.45rem 0.95rem",
+                borderRadius: "100px",
+                background: "#0284c7",
+                color: "white",
+                border: "none",
+                fontSize: "0.82rem",
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(2, 132, 199, 0.3)"
+              }}
+            >
+              <ArrowLeft size={15} /> Back to Agri-Tools Suite
+            </button>
+            <button
+              type="button"
               onClick={() => setTab("crops")}
               style={{
                 display: "inline-flex",
@@ -1776,7 +1796,7 @@ export default function FarmerDashboard() {
                 boxShadow: "0 2px 8px rgba(22, 101, 52, 0.3)"
               }}
             >
-              <ArrowLeft size={15} /> Back to Daily Dashboard (My Crops)
+              🌿 My Crops
             </button>
             
             <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem", color: "#374151" }}>
@@ -1803,7 +1823,7 @@ export default function FarmerDashboard() {
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button
               type="button"
-              onClick={() => setShowToolsDrawer(true)}
+              onClick={() => setTab("tools_hub")}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -1828,6 +1848,7 @@ export default function FarmerDashboard() {
           {[
             { k: "crops", l: `🌿 My Crops (${crops.length})` },
             { k: "add", l: `➕ ${t("addCrop")}` },
+            { k: "tools_hub", l: "🌾 Agri-Tools Suite (19+)" },
             { k: "orders", l: `📦 Daily Orders (${orders.length})` },
             { k: "apmc", l: "🏛️ All India APMC Mandis" },
             { k: "demand", l: "📊 Demand & Dynamic Pricing" },
@@ -2107,8 +2128,292 @@ export default function FarmerDashboard() {
               </button>
             </div>
           </div>
+          {/* ── FAST INTERACTIVE 4-STEP CONVERSATIONAL ASSISTANT BANNER ── */}
+          <div style={{
+            background: "linear-gradient(135deg, #0f172a, #1e293b)",
+            borderRadius: "18px",
+            padding: "1.25rem 1.5rem",
+            marginBottom: "1.5rem",
+            border: "1.5px solid #22c55e",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+            color: "white"
+          }}>
+            {/* Assistant Officer Bar */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
+                <div style={{ position: "relative" }}>
+                  <img 
+                    src="/rythu_officer.jpg" 
+                    alt="Rythu Officer" 
+                    style={{ width: "54px", height: "54px", borderRadius: "50%", objectFit: "cover", border: "2.5px solid #22c55e", boxShadow: "0 0 12px rgba(34, 197, 94, 0.5)" }} 
+                  />
+                  <span style={{ position: "absolute", bottom: 0, right: 0, width: "14px", height: "14px", borderRadius: "50%", background: "#22c55e", border: "2px solid #0f172a" }} />
+                </div>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                    <h4 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#86efac" }}>
+                      శ్రీనివాస్ రావు — వ్యవసాయ విస్తరణ అధికారి (Extension Officer)
+                    </h4>
+                    <span style={{ background: "rgba(34, 197, 94, 0.2)", color: "#86efac", fontSize: "0.72rem", padding: "2px 8px", borderRadius: "100px", fontWeight: 700 }}>
+                      Live Voice &amp; Tap
+                    </span>
+                  </div>
+                  <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "#cbd5e1" }}>
+                    రైతుల సులభ సహాయకుడు: కేవలం 3 ప్రశ్నలకు సమాధానం చెప్పి 15 సెకన్లలో పంటను అమ్మకానికి పెట్టండి.
+                  </p>
+                </div>
+              </div>
+
+              {/* Voice Mode Toggle Button */}
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  type="button"
+                  onClick={startGuidedWizard}
+                  style={{
+                    background: wizardActive ? "#ef4444" : "#16a34a",
+                    color: "white",
+                    border: "none",
+                    padding: "0.5rem 1rem",
+                    borderRadius: "100px",
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    boxShadow: "0 4px 12px rgba(22, 163, 74, 0.35)"
+                  }}
+                >
+                  <Mic size={16} /> {wizardActive ? "🎙️ Listening... Stop" : "🎙️ Talk to Officer"}
+                </button>
+              </div>
+            </div>
+
+            {/* 4 Interactive Progress Tabs */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "0.5rem", marginBottom: "1rem" }}>
+              {[
+                { step: 1, label: "1. పంట (Crop)", value: form.name || "ఎంచుకోండి" },
+                { step: 2, label: "2. పరిమాణం (Quantity)", value: form.quantity ? `${form.quantity} ${form.unit}` : "చెప్పండి" },
+                { step: 3, label: "3. ధర (Price)", value: form.price ? `₹${form.price}/${form.unit}` : "నిర్ణయించండి" },
+                { step: 4, label: "4. ధృవీకరణ (Submit)", value: form.name && form.quantity && form.price ? "సిద్ధంగా ఉంది" : "సమీక్షించండి" }
+              ].map(s => (
+                <div 
+                  key={s.step} 
+                  onClick={() => setQaStep(s.step)}
+                  style={{
+                    background: qaStep === s.step ? "rgba(34, 197, 94, 0.25)" : "rgba(255,255,255,0.05)",
+                    border: qaStep === s.step ? "1.5px solid #22c55e" : "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: "10px",
+                    padding: "0.5rem 0.65rem",
+                    cursor: "pointer",
+                    textAlign: "center"
+                  }}
+                >
+                  <div style={{ fontSize: "0.72rem", color: qaStep === s.step ? "#86efac" : "#94a3b8", fontWeight: 700 }}>
+                    {s.label}
+                  </div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "white", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {s.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Active Question Panel */}
+            <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: "14px", padding: "1rem", border: "1px solid rgba(255,255,255,0.1)" }}>
+              {qaStep === 1 && (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                    <strong style={{ fontSize: "0.95rem", color: "#86efac" }}>
+                      🌾 ప్రశ్న 1: మీరు ఏ పంటను అమ్మాలనుకుంటున్నారు? (Select Harvested Crop)
+                    </strong>
+                    <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>కింది ఫోటోను తాకండి లేదా మాట్లాడండి</span>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                    {[
+                      { id: "Tomato", label: "🍅 టమాటో (Tomato)", cat: "vegetable" },
+                      { id: "Onion", label: "🧅 ఉల్లిపాయ (Onion)", cat: "vegetable" },
+                      { id: "Chili", label: "🌶️ ఎర్ర మిర్చి (Chilli)", cat: "spice" },
+                      { id: "Rice", label: "🌾 వరి/బియ్యం (Rice/Paddy)", cat: "grain" },
+                      { id: "Cotton", label: "☁️ పత్తి (Cotton)", cat: "other" },
+                      { id: "Mango", label: "🥭 మామిడి (Mango)", cat: "fruit" },
+                      { id: "Potato", label: "🥔 బంగాళాదుంప (Potato)", cat: "vegetable" },
+                      { id: "Brinjal", label: "🍆 వంకాయ (Brinjal)", cat: "vegetable" }
+                    ].map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setForm(f => ({ ...f, name: c.id, category: c.cat }));
+                          fetchPriceRecommendation(c.id);
+                          setQaStep(2);
+                          const reply = `${c.id} ఎంచుకోబడింది. మీ వద్ద ఎన్ని కిలోలు లేదా బస్తాలు ఉన్నాయి?`;
+                          setAiMessage(reply);
+                          playTTS(reply, lang);
+                        }}
+                        style={{
+                          background: form.name === c.id ? "#16a34a" : "rgba(255,255,255,0.08)",
+                          color: "white",
+                          border: form.name === c.id ? "1.5px solid #4ade80" : "1px solid rgba(255,255,255,0.15)",
+                          padding: "8px 14px",
+                          borderRadius: "100px",
+                          fontSize: "0.85rem",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          transition: "all 0.15s ease"
+                        }}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {qaStep === 2 && (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                    <strong style={{ fontSize: "0.95rem", color: "#86efac" }}>
+                      ⚖️ ప్రశ్న 2: మీ వద్ద ఎంత పంట అందుబాటులో ఉంది? (Available Quantity)
+                    </strong>
+                    <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>బటన్ తాకండి లేదా మాట్లాడండి</span>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                    {[
+                      { qty: 25, unit: "kg", label: "25 కేజీలు (చిన్న సంచి)" },
+                      { qty: 50, unit: "kg", label: "50 కేజీలు (1 బస్తా / Sack)" },
+                      { qty: 100, unit: "kg", label: "100 కేజీలు (1 క్వింటాల్)" },
+                      { qty: 250, unit: "kg", label: "250 కేజీలు" },
+                      { qty: 500, unit: "kg", label: "500 కేజీలు (అర టన్ను)" },
+                      { qty: 1000, unit: "kg", label: "1000 కేజీలు (1 టన్ను / Truckload)" }
+                    ].map(q => (
+                      <button
+                        key={q.label}
+                        type="button"
+                        onClick={() => {
+                          setForm(f => ({ ...f, quantity: q.qty, unit: q.unit }));
+                          setQaStep(3);
+                          const reply = `${q.qty} ${q.unit} నమోదైంది. కేజీ లేదా బస్తాకి మీ ఆశించే ధర ఎంత?`;
+                          setAiMessage(reply);
+                          playTTS(reply, lang);
+                        }}
+                        style={{
+                          background: Number(form.quantity) === q.qty ? "#16a34a" : "rgba(255,255,255,0.08)",
+                          color: "white",
+                          border: Number(form.quantity) === q.qty ? "1.5px solid #4ade80" : "1px solid rgba(255,255,255,0.15)",
+                          padding: "8px 14px",
+                          borderRadius: "100px",
+                          fontSize: "0.85rem",
+                          fontWeight: 700,
+                          cursor: "pointer"
+                        }}
+                      >
+                        {q.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {qaStep === 3 && (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                    <strong style={{ fontSize: "0.95rem", color: "#86efac" }}>
+                      💰 ప్రశ్న 3: మీరు ఆశించే ధర ఎంత? (Expected Price per Unit)
+                    </strong>
+                    <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>ధర తాకండి లేదా మార్కెట్ ధరను వర్తింపజేయండి</span>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
+                    {[20, 30, 35, 40, 50, 70, 100, 120].map(pr => (
+                      <button
+                        key={pr}
+                        type="button"
+                        onClick={() => {
+                          setForm(f => ({ ...f, price: pr }));
+                          setQaStep(4);
+                          const reply = `ధర ₹${pr} నిర్ణయించబడింది. సమర్పించు బటన్ నొక్కండి.`;
+                          setAiMessage(reply);
+                          playTTS(reply, lang);
+                        }}
+                        style={{
+                          background: Number(form.price) === pr ? "#16a34a" : "rgba(255,255,255,0.08)",
+                          color: "white",
+                          border: Number(form.price) === pr ? "1.5px solid #4ade80" : "1px solid rgba(255,255,255,0.15)",
+                          padding: "8px 16px",
+                          borderRadius: "100px",
+                          fontSize: "0.9rem",
+                          fontWeight: 800,
+                          cursor: "pointer"
+                        }}
+                      >
+                        ₹{pr}
+                      </button>
+                    ))}
+
+                    {/* Stepper diffs */}
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, price: Math.max(1, (Number(f.price) || 30) - 5) }))}
+                      style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "white", padding: "6px 12px", borderRadius: "8px", cursor: "pointer", fontWeight: 700 }}
+                    >
+                      -₹5
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, price: (Number(f.price) || 30) + 5 }))}
+                      style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "white", padding: "6px 12px", borderRadius: "8px", cursor: "pointer", fontWeight: 700 }}
+                    >
+                      +₹5
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {qaStep === 4 && (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                    <strong style={{ fontSize: "1rem", color: "#86efac" }}>
+                      ✅ ప్రశ్న 4: ధృవీకరణ మరియు సమర్పణ (Review &amp; Instant Publish)
+                    </strong>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.35)", borderRadius: "12px", padding: "1rem", marginBottom: "0.5rem", flexWrap: "wrap", gap: "1rem" }}>
+                    <div>
+                      <div style={{ fontSize: "1.15rem", fontWeight: 900, color: "white" }}>
+                        🌾 {form.name || "పంట"} • {form.quantity} {form.unit || "kg"} • ₹{form.price}/{form.unit || "kg"}
+                      </div>
+                      <div style={{ fontSize: "0.85rem", color: "#86efac", marginTop: "4px" }}>
+                        💵 మొత్తం అంచనా ఆదాయం (Estimated Revenue): <strong>₹{((Number(form.quantity) || 0) * (Number(form.price) || 0)).toLocaleString("en-IN")}</strong>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddCrop}
+                      disabled={!form.name || !form.price || !form.quantity || loading}
+                      style={{
+                        background: "linear-gradient(135deg, #16a34a, #15803d)",
+                        color: "white",
+                        border: "none",
+                        padding: "0.85rem 1.75rem",
+                        borderRadius: "100px",
+                        fontSize: "1rem",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        boxShadow: "0 6px 20px rgba(22, 163, 74, 0.5)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem"
+                      }}
+                    >
+                      <Sparkles size={18} /> {loading ? "సమర్పిస్తోంది..." : "🚀 ఇప్పుడే మార్కెట్లో ప్రకటించండి (Publish Now)"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           <p style={{ color:"var(--text-muted)", fontSize:"0.85rem", marginBottom:"1rem" }}>
-            Step {wizardStep} of 3 • {wizardStep === 1 ? "Basic Details" : wizardStep === 2 ? "Logistics & Pricing" : "Quality & Upload"}
+            Detailed Form Customization (వివరణాత్మక ఫారం): Step {wizardStep} of 3 • {wizardStep === 1 ? "Basic Details" : wizardStep === 2 ? "Logistics & Pricing" : "Quality & Upload"}
           </p>
 
           <AnimatePresence mode="wait">
@@ -3613,254 +3918,160 @@ export default function FarmerDashboard() {
         />
       )}
 
-      {/* ── SPECIALIZED & SEASONAL AGRI-TOOLS SLIDING DRAWER / SIDEBAR ── */}
-      <AnimatePresence>
-        {showToolsDrawer && (
-          <div 
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.6)",
-              backdropFilter: "blur(4px)",
-              zIndex: 999999,
-              display: "flex",
-              justifyContent: "flex-end"
-            }}
-            onClick={() => setShowToolsDrawer(false)}
-          >
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 280 }}
+      {/* ── SPECIALIZED & SEASONAL AGRI-TOOLS FULL PAGE HUB VIEW (NO FLOATING WINDOW) ── */}
+      {tab === "tools_hub" && (
+        <div style={{ marginBottom: "2rem" }}>
+          <div style={{
+            background: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
+            border: "1.5px solid #86efac",
+            borderRadius: "16px",
+            padding: "1.5rem",
+            marginBottom: "1.5rem",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "1rem"
+          }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <span style={{ fontSize: "1.75rem" }}>🌾</span>
+                <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 900, color: "#166534" }}>
+                  Seasonal &amp; Specialized Agri-Suite
+                </h2>
+                <span style={{ background: "#16a34a", color: "white", padding: "2px 10px", borderRadius: "100px", fontSize: "0.75rem", fontWeight: 800 }}>
+                  19 Integrated Tools
+                </span>
+              </div>
+              <p style={{ margin: "6px 0 0 0", color: "#374151", fontSize: "0.88rem", maxWidth: "700px" }}>
+                Pre-sowing soil diagnostics, AI crop yield intelligence, khata ledger, cold storage booking, and community FPO selling pools—all accessible directly in your dashboard.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => setTab("crops")}
+                className="btn-secondary"
+                style={{ background: "white" }}
+              >
+                🌿 Return to My Crops
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("add")}
+                className="btn-primary"
+                style={{ background: "#16a34a", borderColor: "#16a34a" }}
+              >
+                ➕ Add Fresh Crop
+              </button>
+            </div>
+          </div>
+
+          {/* Search Input Filter */}
+          <div style={{ marginBottom: "1.5rem", position: "relative" }}>
+            <Search size={18} color="#94a3b8" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />
+            <input
+              type="text"
+              placeholder="Search any tool (e.g. soil testing, pest diagnostics, weed control, ledger, profit calculator, PM-Kisan)..."
+              value={toolsSearch}
+              onChange={(e) => setToolsSearch(e.target.value)}
               style={{
-                width: "min(560px, 95vw)",
-                height: "100vh",
-                background: "#ffffff",
-                boxShadow: "-10px 0 40px rgba(0, 0, 0, 0.25)",
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden"
+                width: "100%",
+                padding: "0.75rem 1rem 0.75rem 2.5rem",
+                borderRadius: "12px",
+                border: "1.5px solid #cbd5e1",
+                fontSize: "0.95rem",
+                background: "white",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.03)"
               }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Drawer Header */}
-              <div style={{
-                padding: "1.25rem 1.5rem",
-                borderBottom: "1px solid #e2e8f0",
-                background: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start"
-              }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <span style={{ fontSize: "1.4rem" }}>🌾</span>
-                    <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800, color: "#166534" }}>
-                      Seasonal &amp; Specialized Agri-Suite
-                    </h3>
+            />
+            {toolsSearch && (
+              <button
+                onClick={() => setToolsSearch("")}
+                style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
+          {/* Categorized Tool Cards Grid */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            {SPECIALIZED_TOOL_GROUPS.map(group => {
+              const filteredTools = group.tools.filter(t =>
+                !toolsSearch ||
+                t.l.toLowerCase().includes(toolsSearch.toLowerCase()) ||
+                t.desc.toLowerCase().includes(toolsSearch.toLowerCase())
+              );
+              if (filteredTools.length === 0) return null;
+
+              return (
+                <div key={group.id} style={{ background: "white", borderRadius: "16px", border: "1px solid #e2e8f0", padding: "1.5rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800, color: "#0f172a" }}>
+                        {group.category}
+                      </h3>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+                        {group.subtitle}
+                      </p>
+                    </div>
+                    <span style={{ fontSize: "0.75rem", fontWeight: 700, background: group.badgeBg, color: group.badgeColor, padding: "3px 10px", borderRadius: "100px" }}>
+                      {group.badge}
+                    </span>
                   </div>
-                  <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.4 }}>
-                    Analytical, pre-sowing soil, pest diagnostic &amp; government planning tools. Select any feature to open its workspace.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowToolsDrawer(false)}
-                  style={{
-                    background: "white",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "50%",
-                    width: 32,
-                    height: 32,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    color: "#64748b"
-                  }}
-                >
-                  <X size={18} />
-                </button>
-              </div>
 
-              {/* Search in Drawer */}
-              <div style={{ padding: "0.85rem 1.5rem", borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
-                <div style={{ position: "relative" }}>
-                  <Search size={16} color="#94a3b8" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
-                  <input
-                    type="text"
-                    placeholder="Search tools (e.g. soil, pest, weed, scheme, ledger, profit)..."
-                    value={toolsSearch}
-                    onChange={(e) => setToolsSearch(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "0.55rem 0.75rem 0.55rem 2rem",
-                      borderRadius: "8px",
-                      border: "1px solid #cbd5e1",
-                      fontSize: "0.85rem",
-                      background: "white"
-                    }}
-                  />
-                  {toolsSearch && (
-                    <button
-                      onClick={() => setToolsSearch("")}
-                      style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Tool Groups Content */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem 1.5rem" }}>
-                {SPECIALIZED_TOOL_GROUPS.map(group => {
-                  const filteredTools = group.tools.filter(t => 
-                    !toolsSearch || 
-                    t.l.toLowerCase().includes(toolsSearch.toLowerCase()) || 
-                    t.desc.toLowerCase().includes(toolsSearch.toLowerCase())
-                  );
-
-                  if (filteredTools.length === 0) return null;
-
-                  return (
-                    <div key={group.id} style={{ marginBottom: "1.75rem" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.65rem" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
+                    {filteredTools.map(tool => (
+                      <div
+                        key={tool.k}
+                        onClick={() => setTab(tool.k)}
+                        style={{
+                          padding: "1.25rem",
+                          borderRadius: "12px",
+                          border: "1.5px solid #e2e8f0",
+                          background: "#f8fafc",
+                          cursor: "pointer",
+                          transition: "all 0.2s ease",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between"
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.borderColor = "#16a34a";
+                          e.currentTarget.style.transform = "translateY(-2px)";
+                          e.currentTarget.style.boxShadow = "0 8px 16px rgba(22, 163, 74, 0.1)";
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.borderColor = "#e2e8f0";
+                          e.currentTarget.style.transform = "none";
+                          e.currentTarget.style.boxShadow = "none";
+                        }}
+                      >
                         <div>
-                          <h4 style={{ margin: 0, fontSize: "0.92rem", fontWeight: 700, color: "#1e293b" }}>
-                            {group.category}
-                          </h4>
-                          <p style={{ margin: "2px 0 0 0", fontSize: "0.75rem", color: "#64748b" }}>
-                            {group.subtitle}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
+                            <strong style={{ fontSize: "1rem", color: "#0f172a" }}>{tool.l}</strong>
+                            <span style={{ fontSize: "0.7rem", color: "#64748b", background: "#ffffff", padding: "2px 6px", borderRadius: "6px", border: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>
+                              {tool.freq}
+                            </span>
+                          </div>
+                          <p style={{ margin: "0 0 1rem", fontSize: "0.82rem", color: "#64748b", lineHeight: 1.4 }}>
+                            {tool.desc}
                           </p>
                         </div>
-                        <span style={{
-                          fontSize: "0.7rem",
-                          fontWeight: 700,
-                          background: group.badgeBg,
-                          color: group.badgeColor,
-                          padding: "2px 8px",
-                          borderRadius: "100px",
-                          whiteSpace: "nowrap"
-                        }}>
-                          {group.badge}
-                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", color: "#16a34a", fontSize: "0.85rem", fontWeight: 700 }}>
+                          Open Tool Workspace <ChevronRight size={16} />
+                        </div>
                       </div>
-
-                      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                        {filteredTools.map(tool => {
-                          const isSelected = tab === tool.k;
-                          return (
-                            <button
-                              key={tool.k}
-                              type="button"
-                              onClick={() => {
-                                setTab(tool.k);
-                                setShowToolsDrawer(false);
-                              }}
-                              style={{
-                                display: "flex",
-                                alignItems: "flex-start",
-                                justifyContent: "space-between",
-                                padding: "0.85rem 1rem",
-                                borderRadius: "12px",
-                                background: isSelected ? "rgba(22, 163, 74, 0.08)" : "#ffffff",
-                                border: isSelected ? "2px solid #16a34a" : "1px solid #e2e8f0",
-                                cursor: "pointer",
-                                textAlign: "left",
-                                transition: "all 0.15s ease",
-                                boxShadow: isSelected ? "0 4px 12px rgba(22, 163, 74, 0.12)" : "0 1px 3px rgba(0, 0, 0, 0.03)"
-                              }}
-                            >
-                              <div style={{ flex: 1, paddingRight: "0.75rem" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "3px" }}>
-                                  <strong style={{ fontSize: "0.9rem", color: isSelected ? "#15803d" : "#0f172a" }}>
-                                    {tool.l}
-                                  </strong>
-                                  {isSelected && (
-                                    <span style={{ fontSize: "0.72rem", background: "#16a34a", color: "white", padding: "1px 6px", borderRadius: "6px", fontWeight: 700 }}>
-                                      Active
-                                    </span>
-                                  )}
-                                </div>
-                                <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b", lineHeight: 1.35 }}>
-                                  {tool.desc}
-                                </p>
-                              </div>
-
-                              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.4rem" }}>
-                                <span style={{ fontSize: "0.7rem", color: "#64748b", background: "#f1f5f9", padding: "2px 6px", borderRadius: "6px", whiteSpace: "nowrap" }}>
-                                  {tool.freq}
-                                </span>
-                                <ChevronRight size={16} color={isSelected ? "#16a34a" : "#94a3b8"} />
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Drawer Footer */}
-              <div style={{
-                padding: "1rem 1.5rem",
-                borderTop: "1px solid #e2e8f0",
-                background: "#f8fafc",
-                display: "flex",
-                gap: "0.75rem"
-              }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTab("crops");
-                    setShowToolsDrawer(false);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "0.7rem",
-                    borderRadius: "10px",
-                    background: "white",
-                    border: "1.5px solid #cbd5e1",
-                    color: "#334155",
-                    fontWeight: 700,
-                    fontSize: "0.85rem",
-                    cursor: "pointer"
-                  }}
-                >
-                  🌿 Back to My Crops
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTab("add");
-                    setShowToolsDrawer(false);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "0.7rem",
-                    borderRadius: "10px",
-                    background: "#16a34a",
-                    border: "none",
-                    color: "white",
-                    fontWeight: 700,
-                    fontSize: "0.85rem",
-                    cursor: "pointer",
-                    boxShadow: "0 2px 8px rgba(22, 163, 74, 0.3)"
-                  }}
-                >
-                  ➕ Add Fresh Crop
-                </button>
-              </div>
-            </motion.div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
 
     </div>
   );

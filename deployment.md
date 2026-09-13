@@ -128,26 +128,32 @@ Go to **Settings** > **Environment Variables** and add:
 
 ## 4. 🔄 How the CI/CD Pipeline Works in Real-Time
 
-Once configured, your daily workflow requires **zero manual platform logins**:
+RythuJanaSethu utilizes a dual-layer Continuous Integration and Continuous Deployment pipeline:
 
-```bash
-# 1. Make your code changes locally
-# 2. Stage all changed files
-git add .
+1. **GitHub Actions Automated CI Pipeline (`.github/workflows/ci-cd.yml`):**
+   - Automatically triggered on every `push` and `pull_request` to `main`.
+   - **Backend CI:** Sets up Node.js 20, installs dependencies, and runs Jest tests (`npm test`).
+   - **Frontend CI:** Sets up Node.js 20, installs dependencies, and executes `npm run build` to verify zero production compilation or bundle errors.
+   - **Monorepo Compatibility:** Root `package.json` coordinates scripts across backend and frontend.
 
-# 3. Commit with a clear message
-git commit -m "Add new feature or bugfix"
+2. **Automated Cloud Deployments (Zero Manual Logins):**
+   ```bash
+   # 1. Stage all changed files
+   git add .
 
-# 4. Push to GitHub
-git push origin main
-```
+   # 2. Commit with a descriptive message
+   git commit -m "feat: in-page workflows, natural voice engine, and specialized agent portals"
 
-### What happens automatically:
-1. **GitHub** receives the commit on `main`.
-2. **Vercel** instantly catches the webhook:
-   * Builds the frontend with the latest components and assets.
+   # 3. Push to GitHub
+   git push origin main
+   ```
+
+### What happens automatically on push:
+1. **GitHub** receives the commit on `main` and immediately launches the **GitHub Actions CI/CD Workflow** to test and build both tiers.
+2. **Vercel** instantly catches the push via webhook:
+   * Builds the frontend with the latest components, assets, and routes.
    * Purges edge caches and serves the updated site globally in ~30-60 seconds.
-3. **Render** instantly catches the webhook:
+3. **Render** instantly catches the push via webhook:
    * Pulls the backend directory.
    * Runs `npm install` and restarts `server.js` with zero-downtime rolling restart.
 4. **MongoDB Atlas** remains continuously available and stores live user updates without any service interruptions.

@@ -25,6 +25,9 @@ import AIAssistant from "./components/AIAssistant";
 import AmbientAtmosphere from "./components/AmbientAtmosphere";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import GlobalSystemTermsModal from "./components/GlobalSystemTermsModal";
+import ColdStoragePortal from "./pages/Agent/ColdStoragePortal";
+import BiogasAgentPortal from "./pages/Agent/BiogasAgentPortal";
+import SoilTestAgentPortal from "./pages/Agent/SoilTestAgentPortal";
 // Ensure Google Translate re-translates when React Router changes pages
 function RouteChangeListener() {
   const location = useLocation();
@@ -147,6 +150,24 @@ function AppRoutes() {
         <Route path="/agent" element={
           <Protected roles={["agent", "admin"]}>
             <AgentDashboard />
+          </Protected>
+        } />
+
+        <Route path="/agent/cold-storage" element={
+          <Protected roles={["agent", "admin"]}>
+            <ColdStoragePortal />
+          </Protected>
+        } />
+
+        <Route path="/agent/biogas" element={
+          <Protected roles={["agent", "admin"]}>
+            <BiogasAgentPortal />
+          </Protected>
+        } />
+
+        <Route path="/agent/soil-test" element={
+          <Protected roles={["agent", "admin"]}>
+            <SoilTestAgentPortal />
           </Protected>
         } />
 

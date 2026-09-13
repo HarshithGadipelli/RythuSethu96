@@ -395,19 +395,29 @@ export default function AIAssistant() {
     <>
       {/* Floating Action Button */}
       <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.92 }}
         onClick={() => setIsOpen(true)}
         style={{
           position: "fixed", bottom: "30px", right: "30px", zIndex: 9999,
-          width: "60px", height: "60px", borderRadius: "50%",
-          background: "linear-gradient(135deg, var(--green-mid), var(--green-deep))",
-          color: "white", border: "none", boxShadow: "0 10px 25px rgba(22, 163, 74, 0.4)",
+          width: "64px", height: "64px", borderRadius: "50%",
+          background: "linear-gradient(135deg, #16a34a, #15803d)",
+          border: "2px solid #ffffff", boxShadow: "0 10px 25px rgba(22, 163, 74, 0.4)",
           display: isOpen ? "none" : "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer"
+          cursor: "pointer", padding: 0, overflow: "hidden"
         }}
+        title="🌾 Rythu Jana Sethu Assistant"
       >
-        <Sparkles size={28} />
+        <img 
+          src="/rythu_officer.jpg" 
+          alt="Rythu Jana Sethu Assistant" 
+          style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+        />
+        <span style={{ 
+          position: "absolute", bottom: "4px", right: "4px", 
+          width: "14px", height: "14px", borderRadius: "50%", 
+          background: "#22c55e", border: "2px solid #ffffff" 
+        }} />
       </motion.button>
 
       {/* Chat Window */}
@@ -419,20 +429,29 @@ export default function AIAssistant() {
             exit={{ opacity: 0, y: 50, scale: 0.9 }}
             style={{
               position: "fixed", bottom: "30px", right: "30px", zIndex: 10000,
-              width: "350px", height: "500px", background: "white",
+              width: "360px", height: "520px", background: "white",
               borderRadius: "24px", boxShadow: "0 15px 40px rgba(0,0,0,0.15)",
               display: "flex", flexDirection: "column", overflow: "hidden",
-              border: "1px solid rgba(22, 163, 74, 0.1)"
+              border: "1px solid rgba(22, 163, 74, 0.2)"
             }}
           >
             {/* Header */}
-            <div style={{ background: "linear-gradient(135deg, var(--green-mid), var(--green-deep))", padding: "1rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", color: "white" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <Sparkles size={20} />
-                <span style={{ fontWeight: 700, fontFamily: "Outfit, sans-serif", fontSize: "1.02rem" }}>Rythu Jana Sethu Assistant</span>
+            <div style={{ background: "linear-gradient(135deg, #16a34a, #15803d)", padding: "0.85rem 1.15rem", display: "flex", justifyContent: "space-between", alignItems: "center", color: "white" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <img 
+                  src="/rythu_officer.jpg" 
+                  alt="Rythu Jana Sethu Officer" 
+                  style={{ width: "36px", height: "36px", borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(255,255,255,0.8)" }} 
+                />
+                <div>
+                  <div style={{ fontWeight: 800, fontFamily: "Outfit, sans-serif", fontSize: "0.98rem", lineHeight: 1.2 }}>Rythu Jana Sethu Assistant</div>
+                  <div style={{ fontSize: "0.72rem", color: "#dcfce7", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#4ade80" }}></span> Online Krishi Officer
+                  </div>
+                </div>
               </div>
-              <button onClick={() => { window.speechSynthesis.cancel(); setIsOpen(false); }} style={{ background: "transparent", border: "none", color: "white", cursor: "pointer", display: "flex" }}>
-                <X size={20} />
+              <button onClick={() => { window.speechSynthesis.cancel(); setIsOpen(false); }} style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "white", cursor: "pointer", display: "flex", borderRadius: "50%", padding: "4px" }}>
+                <X size={18} />
               </button>
             </div>
 

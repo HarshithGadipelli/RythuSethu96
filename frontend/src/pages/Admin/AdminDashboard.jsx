@@ -1,5 +1,6 @@
 import { BASE_URL } from '../../api/api';
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useLang } from "../../context/LangContext";
 import { useVoiceInput } from "../../utils/useVoiceInput";
@@ -53,6 +54,7 @@ const AdminTips = ({ stats }) => {
 };
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { t, lang } = useLang();
 
@@ -129,7 +131,8 @@ export default function AdminDashboard() {
     targetRegion: "All Regions",
     message: ""
   });
-  const [showSpecializedAdminDrawer, setShowSpecializedAdminDrawer] = useState(false);
+  const [adminSuiteSearch, setAdminSuiteSearch] = useState("");
+  const [adminSuiteCategory, setAdminSuiteCategory] = useState("all");
 
   // Admin System Rules Mandate State
   const [sysTermsTitle, setSysTermsTitle] = useState("RythuJanaSethu Mandatory System Rules & Operating Terms");
@@ -510,23 +513,42 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setTab("overview")}
-            style={{
-              background: "#2563eb",
-              color: "white",
-              border: "none",
-              padding: "0.5rem 1rem",
-              borderRadius: "100px",
-              fontWeight: 700,
-              fontSize: "0.82rem",
-              cursor: "pointer",
-              boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)"
-            }}
-          >
-            ← Back to Daily Operations Hub
-          </button>
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={() => setTab("specialized_hub")}
+              style={{
+                background: "#ffffff",
+                color: "#1d4ed8",
+                border: "1.5px solid #bfdbfe",
+                padding: "0.5rem 1rem",
+                borderRadius: "100px",
+                fontWeight: 700,
+                fontSize: "0.82rem",
+                cursor: "pointer",
+                boxShadow: "0 2px 6px rgba(37, 99, 235, 0.1)"
+              }}
+            >
+              ← Back to Enterprise Suite Hub
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("overview")}
+              style={{
+                background: "#2563eb",
+                color: "white",
+                border: "none",
+                padding: "0.5rem 1rem",
+                borderRadius: "100px",
+                fontWeight: 700,
+                fontSize: "0.82rem",
+                cursor: "pointer",
+                boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)"
+              }}
+            >
+              📊 Daily Hub
+            </button>
+          </div>
         </div>
       )}
 
@@ -539,7 +561,8 @@ export default function AdminDashboard() {
             { k:"verification", l:`🌾 Verify Farmers (${pendingFarmers.length})` },
             { k:"orders",  l:`📦 Orders (${orders.length})` },
             { k:"deliveries", l:`🚚 Fleet (${needsDelivery.length})` },
-            { k:"users",   l:`👥 Users (${users.length})` }
+            { k:"users",   l:`👥 Users (${users.length})` },
+            { k:"specialized_hub", l: "⚡ Enterprise Suite (12 Modules)" }
           ].map(tb => (
             <button key={tb.k} className={`tab-btn ${tab===tb.k?"active":""}`} onClick={() => setTab(tb.k)}>
               {tb.l}
@@ -549,11 +572,11 @@ export default function AdminDashboard() {
 
         <button
           type="button"
-          onClick={() => setShowSpecializedAdminDrawer(true)}
+          onClick={() => setTab("specialized_hub")}
           style={{
-            background: ["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "linear-gradient(135deg, #1d4ed8, #2563eb)" : "linear-gradient(135deg, #f8fafc, #f1f5f9)",
-            color: ["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "white" : "#1e293b",
-            border: ["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "1.5px solid #3b82f6" : "1.5px solid #cbd5e1",
+            background: ["specialized_hub", "crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "linear-gradient(135deg, #1d4ed8, #2563eb)" : "linear-gradient(135deg, #f8fafc, #f1f5f9)",
+            color: ["specialized_hub", "crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "white" : "#1e293b",
+            border: ["specialized_hub", "crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "1.5px solid #3b82f6" : "1.5px solid #cbd5e1",
             padding: "0.6rem 1.15rem",
             borderRadius: "12px",
             fontWeight: 800,
@@ -566,117 +589,427 @@ export default function AdminDashboard() {
             transition: "all 0.2s ease"
           }}
         >
-          <span>⚡ Specialized Admin Suite</span>
+          <span>⚡ Specialized Enterprise Suite</span>
           <span style={{
-            background: ["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "white" : "#2563eb",
-            color: ["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "#1d4ed8" : "white",
+            background: ["specialized_hub", "crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "white" : "#2563eb",
+            color: ["specialized_hub", "crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "#1d4ed8" : "white",
             padding: "1px 7px",
             borderRadius: "100px",
             fontSize: "0.72rem",
             fontWeight: 800
           }}>
-            {["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "Active" : "12 Tools"}
+            {tab === "specialized_hub" ? "Open" : ["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "Active" : "12 Modules"}
           </span>
         </button>
       </div>
-
-      {/* ── SPECIALIZED ADMIN SUITE DRAWER ── */}
-      {showSpecializedAdminDrawer && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
-          background: "rgba(15, 23, 42, 0.75)", backdropFilter: "blur(8px)",
-          display: "flex", justifyContent: "flex-end", zIndex: 9999
-        }}>
-          <div style={{
-            width: "100%", maxWidth: "480px", height: "100%", background: "#ffffff",
-            boxShadow: "-8px 0 35px rgba(0,0,0,0.3)", padding: "1.75rem", overflowY: "auto",
-            display: "flex", flexDirection: "column"
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem" }}>
-              <div>
-                <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.25rem", fontWeight: 800, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  ⚡ Specialized Admin Suite
-                </h3>
-                <p style={{ margin: "3px 0 0 0", color: "#64748b", fontSize: "0.82rem" }}>
-                  12 enterprise modules for lab tests, finance, MLOps, and governance
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSpecializedAdminDrawer(false)}
-                style={{ background: "#f1f5f9", border: "none", width: 34, height: 34, borderRadius: "50%", cursor: "pointer", fontSize: "1rem", color: "#475569", display: "flex", alignItems: "center", justifyContent: "center" }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "0.75rem", flex: 1 }}>
-              {[
-                { k: "crops", icon: "🌾", title: `Crop Catalog (${crops.length})`, desc: "Manage live harvest listings, Mandi benchmark pricing, and inventory." },
-                { k: "soil", icon: "🧪", title: `Soil Testing Labs (${soilRequests.filter(s => s.status === 'pending_assignment').length} pending)`, desc: "Assign field soil test requests to designated agricultural testing facilities." },
-                { k: "financials", icon: "💵", title: "Financial Ledger & Settlements", desc: "Supervise bi-weekly agent disbursements, farmer escrow, and COD remittances." },
-                { k: "demand", icon: "📊", title: "Consumer Search Demand Spikes", desc: "Real-time query metrics, urban demand hotspots, and search volume surges." },
-                { k: "broadcast", icon: "📢", title: "Urgent Supply Broadcast", desc: "Transmit real-time alerts to farmers to cultivate high-demand commodities." },
-                { k: "waste", icon: "🌱", title: "Circular Organic Waste", desc: "Monitor doorstep compost collection and conversion to bio-fertilizers." },
-                { k: "mlops", icon: "🤖", title: "MLOps & Model Performance", desc: "Track computer vision quality inspection, price prediction, and ETA engines." },
-                { k: "security", icon: "🛡️", title: "Security & Fraud Audits", desc: "Review agent tamper pledges, OTP verifications, and suspicious deliveries." },
-                { k: "system_terms", icon: "📜", title: "System Rules Mandate", desc: "Edit and publish binding operating policies and zero-abandonment terms." },
-                { k: "tours", icon: "🚜", title: `Verify Farm Tours (${pendingTours.length})`, desc: "Review agritourism walkthrough proposals and safety amenities." },
-                { k: "support", icon: "🎧", title: "Support & Grievances", desc: "Farmer and consumer ticket desk, dispute escalations, and resolutions." },
-                { k: "tips", icon: "💡", title: "Smart Agronomy Tips", desc: "Configure seasonal agronomy advice and operational guidelines." }
-              ].map(item => (
-                <div
-                  key={item.k}
-                  onClick={() => { setTab(item.k); setShowSpecializedAdminDrawer(false); }}
-                  style={{
-                    background: tab === item.k ? "#eff6ff" : "#f8fafc",
-                    border: tab === item.k ? "2px solid #2563eb" : "1px solid #e2e8f0",
-                    borderRadius: "12px",
-                    padding: "0.85rem 1rem",
-                    cursor: "pointer",
-                    transition: "all 0.15s ease",
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: "0.75rem"
-                  }}
-                >
-                  <span style={{ fontSize: "1.4rem", marginTop: "2px" }}>{item.icon}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <h4 style={{ margin: 0, fontSize: "0.92rem", fontWeight: 800, color: tab === item.k ? "#1e40af" : "#1e293b" }}>
-                        {item.title}
-                      </h4>
-                      {tab === item.k && (
-                        <span style={{ fontSize: "0.7rem", background: "#2563eb", color: "white", padding: "1px 6px", borderRadius: "100px", fontWeight: 700 }}>
-                          Current
-                        </span>
-                      )}
-                    </div>
-                    <p style={{ margin: "2px 0 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.35 }}>
-                      {item.desc}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ paddingTop: "1rem", borderTop: "1px solid #e2e8f0", marginTop: "1rem" }}>
-              <button
-                type="button"
-                onClick={() => setShowSpecializedAdminDrawer(false)}
-                style={{ width: "100%", padding: "0.75rem", background: "#f1f5f9", border: "none", borderRadius: "10px", fontWeight: 700, color: "#334155", cursor: "pointer" }}
-              >
-                Close Drawer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {loading ? (
         <div className="loader-wrapper"><div className="loader"></div><p className="loader-text">{t("loading")}</p></div>
       ) : (
         <>
+          {/* ── IN-PAGE SPECIALIZED ENTERPRISE SUITE HUB ── */}
+          {tab === "specialized_hub" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", marginBottom: "2rem" }}>
+              {/* Enterprise Hero Banner */}
+              <div style={{
+                background: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)",
+                borderRadius: "20px",
+                padding: "2rem 2.2rem",
+                color: "white",
+                boxShadow: "0 10px 30px rgba(30, 58, 138, 0.25)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "1.2rem"
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}>
+                  <div>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.18)", padding: "0.3rem 0.85rem", borderRadius: "100px", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "0.6rem" }}>
+                      <span>⚡ Centralized Operations Suite</span>
+                      <span>•</span>
+                      <span>12 Production Workflows</span>
+                    </div>
+                    <h2 style={{ margin: 0, fontSize: "1.65rem", fontWeight: 800, letterSpacing: "-0.02em" }}>
+                      Enterprise Agricultural Administration & Governance
+                    </h2>
+                    <p style={{ margin: "0.4rem 0 0 0", color: "#bfdbfe", fontSize: "0.92rem", maxWidth: "780px", lineHeight: 1.5 }}>
+                      Full in-page command suite for supervising Mandi listings, allocating government soil testing vans, managing bi-weekly escrow settlements, monitoring MLOps neural models, and auditing delivery pledges.
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.6rem" }}>
+                    <button
+                      type="button"
+                      onClick={() => setTab("overview")}
+                      style={{
+                        background: "rgba(255,255,255,0.15)",
+                        color: "white",
+                        border: "1px solid rgba(255,255,255,0.3)",
+                        padding: "0.6rem 1.1rem",
+                        borderRadius: "12px",
+                        fontWeight: 700,
+                        fontSize: "0.85rem",
+                        cursor: "pointer",
+                        backdropFilter: "blur(6px)"
+                      }}
+                    >
+                      ← Back to Daily Operations
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filter & Search Bar */}
+                <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center", paddingTop: "0.5rem", borderTop: "1px solid rgba(255,255,255,0.15)" }}>
+                  <div style={{ position: "relative", flex: 1, minWidth: "260px" }}>
+                    <input
+                      type="text"
+                      value={adminSuiteSearch}
+                      onChange={(e) => setAdminSuiteSearch(e.target.value)}
+                      placeholder="🔍 Search across 12 enterprise modules..."
+                      style={{
+                        width: "100%",
+                        padding: "0.65rem 1rem",
+                        background: "rgba(255, 255, 255, 0.95)",
+                        border: "none",
+                        borderRadius: "10px",
+                        fontSize: "0.88rem",
+                        color: "#0f172a",
+                        fontWeight: 500,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+                      }}
+                    />
+                    {adminSuiteSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setAdminSuiteSearch("")}
+                        style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#64748b", fontWeight: 700 }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                    {[
+                      { k: "all", l: "All Modules (12)" },
+                      { k: "agri", l: "🌾 Agriculture (4)" },
+                      { k: "labs", l: "🧪 Labs & Waste (2)" },
+                      { k: "finance", l: "💵 Finance & MLOps (3)" },
+                      { k: "gov", l: "🛡️ Governance (3)" }
+                    ].map(c => (
+                      <button
+                        key={c.k}
+                        type="button"
+                        onClick={() => setAdminSuiteCategory(c.k)}
+                        style={{
+                          background: adminSuiteCategory === c.k ? "#ffffff" : "rgba(255,255,255,0.12)",
+                          color: adminSuiteCategory === c.k ? "#1e40af" : "#ffffff",
+                          border: adminSuiteCategory === c.k ? "none" : "1px solid rgba(255,255,255,0.25)",
+                          padding: "0.5rem 0.9rem",
+                          borderRadius: "100px",
+                          fontWeight: 700,
+                          fontSize: "0.78rem",
+                          cursor: "pointer"
+                        }}
+                      >
+                        {c.l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 12 Enterprise Modules Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(330px, 1fr))", gap: "1.1rem" }}>
+                {[
+                  {
+                    k: "crops",
+                    cat: "agri",
+                    icon: "🌾",
+                    title: `Crop Catalog & Listings`,
+                    badge: `${crops.length} Active`,
+                    badgeColor: "#10b981",
+                    desc: "Supervise active harvest postings, establish fair Mandi benchmark rates, verify organic certifications, and manage clearance stocks.",
+                    metric: `${crops.length} Live Crops`
+                  },
+                  {
+                    k: "soil",
+                    cat: "labs",
+                    icon: "🧪",
+                    title: `Soil Testing Facilities`,
+                    badge: `${soilRequests.filter(s => s.status === 'pending_assignment').length} Pending`,
+                    badgeColor: "#f59e0b",
+                    desc: "Assign mobile testing vans and agronomy laboratory staff to pending farmer soil samples with digital N-P-K spectrometry reports.",
+                    metric: `${soilRequests.length} Total Soil Tests`
+                  },
+                  {
+                    k: "financials",
+                    cat: "finance",
+                    icon: "💵",
+                    title: "Financial Ledger & Escrow",
+                    badge: "Audited",
+                    badgeColor: "#3b82f6",
+                    desc: "Real-time ledger of delivery agent payouts, direct farmer escrow transfers, platform fee revenue, and Cash-on-Delivery reconciliation.",
+                    metric: `₹${(stats?.platformProfit || 0).toLocaleString()} Profit`
+                  },
+                  {
+                    k: "demand",
+                    cat: "finance",
+                    icon: "📊",
+                    title: "Consumer Demand Spikes",
+                    badge: "Live Telemetry",
+                    badgeColor: "#8b5cf6",
+                    desc: "Aggregated query metrics by city and district. Detect emerging shortages before prices spike and issue pre-emptive supply broadcasts.",
+                    metric: `${searchInsights.totalSearches || 0} Queries Logged`
+                  },
+                  {
+                    k: "broadcast",
+                    cat: "agri",
+                    icon: "📢",
+                    title: "Urgent Farmer Broadcast Center",
+                    badge: `${searchInsights.activeBroadcasts?.length || 0} Alerts`,
+                    badgeColor: "#ec4899",
+                    desc: "Transmit targeted voice and push notifications to regional farmers to cultivate high-demand produce with assured floor prices.",
+                    metric: "Instant Regional SMS"
+                  },
+                  {
+                    k: "waste",
+                    cat: "labs",
+                    icon: "🌱",
+                    title: "Circular Waste & Composting",
+                    badge: "Circular Hub",
+                    badgeColor: "#059669",
+                    desc: "Monitor urban doorstep organic waste pickup, transfer to regional composting units, and convert into low-cost bio-fertilizers.",
+                    metric: "Zero Farm Waste"
+                  },
+                  {
+                    k: "mlops",
+                    cat: "finance",
+                    icon: "🤖",
+                    title: "AI & MLOps Pipeline Supervised Diagnostics",
+                    badge: "99.2% Uptime",
+                    badgeColor: "#6366f1",
+                    desc: "Supervise deep learning models for crop freshness grading, market dynamic pricing regressors, and dual-tier fleet TSP routing.",
+                    metric: "Real-time AI Inference"
+                  },
+                  {
+                    k: "security",
+                    cat: "gov",
+                    icon: "🛡️",
+                    title: "Security & Tamper Audits",
+                    badge: "Active Pledge",
+                    badgeColor: "#ef4444",
+                    desc: "Audit digital delivery signatures, OTP confirmation timestamps, anti-adulteration seals, and suspicious driver route anomalies.",
+                    metric: "Zero Fraud Tolerance"
+                  },
+                  {
+                    k: "system_terms",
+                    cat: "gov",
+                    icon: "📜",
+                    title: "System Rules & Mandates",
+                    badge: `v${sysTermsVersion} Active`,
+                    badgeColor: "#0284c7",
+                    desc: "Edit and broadcast binding platform charters: farmer minimum income protection, agent safety guarantees, and dispute timelines.",
+                    metric: "Binding Platform Legal"
+                  },
+                  {
+                    k: "tours",
+                    cat: "agri",
+                    icon: "🚜",
+                    title: `Farm Tours & Agritourism`,
+                    badge: `${pendingTours.length} Pending`,
+                    badgeColor: "#d97706",
+                    desc: "Screen and approve rural farmer tourism listings, verify guest safety standards, and inspect authentic organic experiences.",
+                    metric: `${pendingTours.length} Waiting Review`
+                  },
+                  {
+                    k: "support",
+                    cat: "gov",
+                    icon: "🎧",
+                    title: "Support Desk & Redressal",
+                    badge: `${tickets.filter(t => t.status === "open").length || 0} Open`,
+                    badgeColor: "#0891b2",
+                    desc: "Ticket resolution console for dispute settlement between buyers, farmers, and delivery agents with strict 24-hour turnaround SLAs.",
+                    metric: "Multi-Language Desk"
+                  },
+                  {
+                    k: "tips",
+                    cat: "agri",
+                    icon: "💡",
+                    title: "Agronomy Advisory & Tips",
+                    badge: "Curated",
+                    badgeColor: "#16a34a",
+                    desc: "Author localized advisory bulletins, seasonal pest warnings, and modern zero-budget natural farming guidelines for growers.",
+                    metric: "Published in 4 Langs"
+                  }
+                ]
+                  .filter(item => {
+                    const matchesCategory = adminSuiteCategory === "all" || item.cat === adminSuiteCategory;
+                    const matchesSearch = !adminSuiteSearch.trim() ||
+                      item.title.toLowerCase().includes(adminSuiteSearch.toLowerCase()) ||
+                      item.desc.toLowerCase().includes(adminSuiteSearch.toLowerCase());
+                    return matchesCategory && matchesSearch;
+                  })
+                  .map(item => (
+                    <div
+                      key={item.k}
+                      style={{
+                        background: "#ffffff",
+                        borderRadius: "16px",
+                        border: "1.5px solid #e2e8f0",
+                        padding: "1.35rem",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        gap: "1rem",
+                        transition: "transform 0.15s ease, box-shadow 0.15s ease"
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+                          <div style={{
+                            width: "48px",
+                            height: "48px",
+                            borderRadius: "12px",
+                            background: "#f1f5f9",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "1.6rem"
+                          }}>
+                            {item.icon}
+                          </div>
+                          <span style={{
+                            fontSize: "0.72rem",
+                            fontWeight: 700,
+                            padding: "3px 9px",
+                            borderRadius: "100px",
+                            background: `${item.badgeColor}15`,
+                            color: item.badgeColor,
+                            border: `1px solid ${item.badgeColor}35`
+                          }}>
+                            {item.badge}
+                          </span>
+                        </div>
+                        <h4 style={{ margin: "0 0 0.4rem 0", fontSize: "1.05rem", fontWeight: 800, color: "#0f172a" }}>
+                          {item.title}
+                        </h4>
+                        <p style={{ margin: 0, fontSize: "0.82rem", color: "#64748b", lineHeight: 1.5 }}>
+                          {item.desc}
+                        </p>
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "0.85rem", borderTop: "1px solid #f1f5f9" }}>
+                        <span style={{ fontSize: "0.76rem", color: "#475569", fontWeight: 700 }}>
+                          {item.metric}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setTab(item.k)}
+                          style={{
+                            background: "#2563eb",
+                            color: "white",
+                            border: "none",
+                            padding: "0.5rem 1rem",
+                            borderRadius: "10px",
+                            fontWeight: 700,
+                            fontSize: "0.82rem",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.35rem",
+                            boxShadow: "0 2px 6px rgba(37, 99, 235, 0.2)"
+                          }}
+                        >
+                          Launch Module ➔
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              {/* Specialized Field Agent Portals Section */}
+              <div style={{
+                background: "#f8fafc",
+                borderRadius: "16px",
+                border: "1.5px solid #cbd5e1",
+                padding: "1.5rem 1.75rem",
+                display: "flex",
+                flexDirection: "column",
+                gap: "1rem"
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "#1e293b", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <span>🚀 Dedicated Field Agent Portals</span>
+                      <span style={{ fontSize: "0.72rem", background: "#e2e8f0", color: "#475569", padding: "2px 8px", borderRadius: "100px", fontWeight: 700 }}>3 Specialized Consoles</span>
+                    </h3>
+                    <p style={{ margin: "2px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+                      Admins can directly inspect or access the 3 specialized field agent operations consoles:
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
+                  <div style={{ background: "white", padding: "1.1rem", borderRadius: "12px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "0.8rem" }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
+                        <span style={{ fontSize: "1.4rem" }}>❄️</span>
+                        <strong style={{ fontSize: "0.92rem", color: "#0f172a" }}>Cold Storage Agent Portal</strong>
+                      </div>
+                      <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b", lineHeight: 1.4 }}>
+                        Warehouse batch check-in, IoT temperature (-2°C to 10°C) telematics, humidity tracking, and pallet space allocation.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/agent/cold-storage")}
+                      style={{ background: "#0284c7", color: "white", border: "none", padding: "0.45rem 0.85rem", borderRadius: "8px", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}
+                    >
+                      Open Cold Storage Portal ➔
+                    </button>
+                  </div>
+
+                  <div style={{ background: "white", padding: "1.1rem", borderRadius: "12px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "0.8rem" }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
+                        <span style={{ fontSize: "1.4rem" }}>♻️</span>
+                        <strong style={{ fontSize: "0.92rem", color: "#0f172a" }}>Bio-Gas & Organic Waste Portal</strong>
+                      </div>
+                      <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b", lineHeight: 1.4 }}>
+                        Digester methane production, organic waste dispatch routes, slurry bottling, and bio-fertilizer sales dispatch.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/agent/biogas")}
+                      style={{ background: "#059669", color: "white", border: "none", padding: "0.45rem 0.85rem", borderRadius: "8px", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}
+                    >
+                      Open Bio-Gas Portal ➔
+                    </button>
+                  </div>
+
+                  <div style={{ background: "white", padding: "1.1rem", borderRadius: "12px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "0.8rem" }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
+                        <span style={{ fontSize: "1.4rem" }}>🔬</span>
+                        <strong style={{ fontSize: "0.92rem", color: "#0f172a" }}>Soil Test & Field Lab Portal</strong>
+                      </div>
+                      <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b", lineHeight: 1.4 }}>
+                        Mobile testing van sample GPS collection, digital spectrometer N-P-K & pH analysis, and advisory certificate generation.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/agent/soil-test")}
+                      style={{ background: "#d97706", color: "white", border: "none", padding: "0.45rem 0.85rem", borderRadius: "8px", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}
+                    >
+                      Open Soil Test Portal ➔
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── SEARCH DEMAND & BROADCAST CENTER ── */}
           {tab === "demand" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>

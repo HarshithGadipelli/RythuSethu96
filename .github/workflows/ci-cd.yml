@@ -1,0 +1,81 @@
+name: RythuJanaSethu CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  backend-ci:
+    name: Backend Tests & Validation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Backend Tests
+        run: npm test
+        env:
+          NODE_ENV: test
+          JWT_SECRET: test_jwt_secret
+          ADMIN_SECRET: test_admin_secret
+
+  frontend-ci:
+    name: Frontend Build & Asset Verification
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Production Vite Build
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://rythu-backend.onrender.com' }}
+
+      - name: Verify Build Artifacts
+        run: |
+          test -d dist || { echo "dist directory not found"; exit 1; }
+          test -f dist/index.html || { echo "index.html not found"; exit 1; }
+          echo "Frontend build successfully verified!"
+
+  deployment-notice:
+    name: Deployment Dispatch Verification
+    needs: [backend-ci, frontend-ci]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Report CI/CD Status
+        run: |
+          echo "All CI quality checks passed on branch main."
+          echo "Render Webhook: Auto-deploying backend service to https://rythu-backend.onrender.com"
+          echo "Vercel Webhook: Auto-deploying frontend client to Vercel edge network."

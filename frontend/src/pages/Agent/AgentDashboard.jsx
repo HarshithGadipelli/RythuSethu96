@@ -8,10 +8,11 @@ import API from "../../api/api";
 import { io } from "socket.io-client";
 import AgentLiveMap from "../../components/AgentLiveMap";
 import AgentFinancialLedger from "./AgentFinancialLedger";
-import SecurityPledgeModal from "../../components/SecurityPledgeModal";
-import { Volume2, MapPin, LocateFixed, Compass, Radio, Camera, CheckCircle2, ShieldCheck, KeyRound, Coins, Sparkles, UploadCloud, Loader2, Check, X, ArrowUpRight, ShieldAlert, Star } from "lucide-react";
+import { Volume2, MapPin, LocateFixed, Compass, Radio, Camera, CheckCircle2, ShieldCheck, KeyRound, Coins, Sparkles, UploadCloud, Loader2, Check, X, ArrowUpRight, ShieldAlert, Star, Car, Sliders, ChevronRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import LocationUpdateModal from "../../components/LocationUpdateModal";
 import ColdStorageAgentPanel from "../../components/ColdStorageAgentPanel";
+import AgentDrivingAssistant from "../../components/AgentDrivingAssistant";
 import { playTTS } from "../../utils/voiceParser";
 const STATUS_STEPS = ["assigned","picked_up","in_transit","delivered"];
 const STATUS_ICONS = { assigned:"📋", picked_up:"📦", in_transit:"🚚", delivered:"✅", failed:"❌" };
@@ -208,7 +209,7 @@ export default function AgentDashboard() {
   const [agentPos, setAgentPos] = useState(null);
   const [showLocModal, setShowLocModal] = useState(false);
   const [radiusFilter, setRadiusFilter] = useState("");
-  const [showSpecializedDrawer, setShowSpecializedDrawer] = useState(false);
+  const [showDrivingMode, setShowDrivingMode] = useState(false);
 
   useEffect(() => {
     if (user?.latitude && user?.longitude && !agentPos) {
@@ -1123,7 +1124,8 @@ export default function AgentDashboard() {
           {[
             { k:"my", l:`📦 My Deliveries (${deliveries.filter(d => d.status !== 'delivered').length})` },
             { k:"available", l:`🚚 Available Orders (${filteredAvailable.length})` },
-            { k:"earnings", l:"💰 Earnings & Ledger" }
+            { k:"earnings", l:"💰 Earnings & Ledger" },
+            { k:"specialized_hub", l:"⚡ Specialized Logistics & Portals (5+)" }
           ].map(tb => (
             <button key={tb.k} className={`tab-btn ${tab===tb.k?"active":""}`} onClick={() => setTab(tb.k)}>
               {tb.l}
@@ -1131,139 +1133,316 @@ export default function AgentDashboard() {
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowSpecializedDrawer(true)}
-          style={{
-            background: ["coldstorage", "ridealong", "tips"].includes(tab) ? "linear-gradient(135deg, #1d4ed8, #2563eb)" : "linear-gradient(135deg, #f8fafc, #f1f5f9)",
-            color: ["coldstorage", "ridealong", "tips"].includes(tab) ? "white" : "#1e293b",
-            border: ["coldstorage", "ridealong", "tips"].includes(tab) ? "1.5px solid #3b82f6" : "1.5px solid #cbd5e1",
-            padding: "0.6rem 1.1rem",
-            borderRadius: "12px",
-            fontWeight: 800,
-            fontSize: "0.85rem",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
-            transition: "all 0.2s ease"
-          }}
-        >
-          <span>⚡ Specialized Logistics Suite</span>
-          <span style={{
-            background: ["coldstorage", "ridealong", "tips"].includes(tab) ? "white" : "#2563eb",
-            color: ["coldstorage", "ridealong", "tips"].includes(tab) ? "#1d4ed8" : "white",
-            padding: "1px 7px",
-            borderRadius: "100px",
-            fontSize: "0.72rem",
-            fontWeight: 800
-          }}>
-            {["coldstorage", "ridealong", "tips"].includes(tab) ? "Active" : "3 Tools"}
-          </span>
-        </button>
+        <div style={{ display: "flex", gap: "0.6rem" }}>
+          <button
+            type="button"
+            onClick={() => setShowDrivingMode(true)}
+            style={{
+              background: "linear-gradient(135deg, #ea580c, #c2410c)",
+              color: "white",
+              border: "none",
+              padding: "0.65rem 1.25rem",
+              borderRadius: "100px",
+              fontWeight: 800,
+              fontSize: "0.88rem",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              boxShadow: "0 4px 14px rgba(234, 88, 12, 0.35)",
+              transition: "all 0.2s ease"
+            }}
+          >
+            <Car size={18} />
+            <span>🚗 Hands-Free Driving Assistant</span>
+          </button>
+        </div>
       </div>
 
-      {/* ── SPECIALIZED LOGISTICS DRAWER MODAL ── */}
-      {showSpecializedDrawer && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
-          background: "rgba(15, 23, 42, 0.75)", backdropFilter: "blur(8px)",
-          display: "flex", justifyContent: "flex-end", zIndex: 9999
-        }}>
+      {/* ── DRIVING ASSISTANT HUD MODAL ── */}
+      {showDrivingMode && (
+        <AgentDrivingAssistant 
+          deliveries={deliveries} 
+          onClose={() => setShowDrivingMode(false)}
+          onUpdateStatus={updateStatus}
+        />
+      )}
+
+      {/* ── IN-PAGE SPECIALIZED LOGISTICS & PORTALS HUB ── */}
+      {tab === "specialized_hub" && (
+        <div style={{ marginBottom: "2rem" }}>
           <div style={{
-            width: "100%", maxWidth: "440px", height: "100%", background: "#ffffff",
-            boxShadow: "-8px 0 30px rgba(0,0,0,0.25)", padding: "1.75rem", overflowY: "auto",
-            display: "flex", flexDirection: "column"
+            background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
+            border: "1.5px solid #93c5fd",
+            borderRadius: "16px",
+            padding: "1.5rem",
+            marginBottom: "1.5rem",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "1rem"
           }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <span style={{ fontSize: "1.75rem" }}>⚡</span>
+                <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 900, color: "#1e3a8a" }}>
+                  Specialized Logistics &amp; Dedicated Agent Portals
+                </h2>
+                <span style={{ background: "#2563eb", color: "white", padding: "2px 10px", borderRadius: "100px", fontSize: "0.75rem", fontWeight: 800 }}>
+                  6 Integrated Portals &amp; Workspaces
+                </span>
+              </div>
+              <p style={{ margin: "6px 0 0 0", color: "#334155", fontSize: "0.88rem", maxWidth: "720px" }}>
+                Dedicated facility agent portals for cold storage preservation, renewable bio-gas &amp; organic waste management, field soil sampling diagnostics, commuter dispatch, and hands-free driving assistance.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <button
+                type="button"
+                onClick={() => setTab("my")}
+                className="btn-secondary"
+                style={{ background: "white" }}
+              >
+                ← Return to Daily Deliveries
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "1.25rem" }}>
+            {/* Card 1: Cold Storage */}
+            <div style={{ background: "white", borderRadius: "16px", border: "1.5px solid #e2e8f0", padding: "1.5rem", display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
               <div>
-                <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.2rem", fontWeight: 800, display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                  ⚡ Specialized Logistics Suite
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+                  <span style={{ fontSize: "2rem" }}>❄️</span>
+                  <span style={{ background: "#dbeafe", color: "#1e40af", padding: "3px 9px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 800 }}>
+                    Facility Portal
+                  </span>
+                </div>
+                <h3 style={{ margin: "0 0 0.4rem", fontSize: "1.15rem", fontWeight: 800, color: "#0f172a" }}>
+                  Cold Storage Facility Agent Portal
                 </h3>
-                <p style={{ margin: "2px 0 0 0", color: "#64748b", fontSize: "0.8rem" }}>
-                  Advanced tools for cold chain, commuting, and guidelines
+                <p style={{ margin: 0, fontSize: "0.84rem", color: "#64748b", lineHeight: 1.45 }}>
+                  Manage regional perishable vaults, temperature chambers (-2°C to 12°C), humidity telemetry, intake requests, and warehouse shelf rack occupancy.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowSpecializedDrawer(false)}
-                style={{ background: "#f1f5f9", border: "none", width: 34, height: 34, borderRadius: "50%", cursor: "pointer", fontSize: "1rem", color: "#475569", display: "flex", alignItems: "center", justifyContent: "center" }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem", flex: 1 }}>
-              <div 
-                onClick={() => { setTab("coldstorage"); setShowSpecializedDrawer(false); }}
-                style={{
-                  background: tab === "coldstorage" ? "#eff6ff" : "#f8fafc",
-                  border: tab === "coldstorage" ? "2px solid #2563eb" : "1.5px solid #e2e8f0",
-                  borderRadius: "14px", padding: "1rem", cursor: "pointer", transition: "all 0.2s ease"
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.3rem" }}>
-                  <span style={{ fontSize: "1.6rem" }}>❄️</span>
-                  <div>
-                    <h4 style={{ margin: 0, color: "#1e3a8a", fontSize: "0.98rem", fontWeight: 800 }}>Cold Storage Vault</h4>
-                    <span style={{ fontSize: "0.75rem", color: "#2563eb", fontWeight: 600 }}>Perishable Preservations & Hub Holding</span>
-                  </div>
-                </div>
-                <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b", lineHeight: 1.4 }}>
-                  Monitor temperature zones, shelf capacity, and coordinate refrigerated drop-offs.
-                </p>
-              </div>
-
-              <div 
-                onClick={() => { setTab("ridealong"); setShowSpecializedDrawer(false); }}
-                style={{
-                  background: tab === "ridealong" ? "#eff6ff" : "#f8fafc",
-                  border: tab === "ridealong" ? "2px solid #2563eb" : "1.5px solid #e2e8f0",
-                  borderRadius: "14px", padding: "1rem", cursor: "pointer", transition: "all 0.2s ease"
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.3rem" }}>
-                  <span style={{ fontSize: "1.6rem" }}>🎒</span>
-                  <div>
-                    <h4 style={{ margin: 0, color: "#1e3a8a", fontSize: "0.98rem", fontWeight: 800 }}>Ride-Along Commuter Dispatch</h4>
-                    <span style={{ fontSize: "0.75rem", color: "#16a34a", fontWeight: 600 }}>50% Route Payout Split</span>
-                  </div>
-                </div>
-                <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b", lineHeight: 1.4 }}>
-                  Configure your regular commute origin and destination to pool deliveries during daily travel.
-                </p>
-              </div>
-
-              <div 
-                onClick={() => { setTab("tips"); setShowSpecializedDrawer(false); }}
-                style={{
-                  background: tab === "tips" ? "#eff6ff" : "#f8fafc",
-                  border: tab === "tips" ? "2px solid #2563eb" : "1.5px solid #e2e8f0",
-                  borderRadius: "14px", padding: "1rem", cursor: "pointer", transition: "all 0.2s ease"
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.3rem" }}>
-                  <span style={{ fontSize: "1.6rem" }}>💡</span>
-                  <div>
-                    <h4 style={{ margin: 0, color: "#1e3a8a", fontSize: "0.98rem", fontWeight: 800 }}>Logistics Performance & SOP</h4>
-                    <span style={{ fontSize: "0.75rem", color: "#d97706", fontWeight: 600 }}>Speed Bonuses & SLA Standards</span>
-                  </div>
-                </div>
-                <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b", lineHeight: 1.4 }}>
-                  Review best practices, vehicle weight limits, AI camera photo guidelines, and speed bonus criteria.
-                </p>
+              <div style={{ marginTop: "1.25rem" }}>
+                <Link
+                  to="/agent/cold-storage"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    padding: "0.65rem 1.25rem",
+                    borderRadius: "10px",
+                    background: "#2563eb",
+                    color: "white",
+                    textDecoration: "none",
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    boxShadow: "0 2px 6px rgba(37, 99, 235, 0.3)"
+                  }}
+                >
+                  Open Cold Storage Portal <ChevronRight size={16} />
+                </Link>
               </div>
             </div>
 
-            <div style={{ paddingTop: "1rem", borderTop: "1px solid #e2e8f0", marginTop: "auto" }}>
-              <button
-                type="button"
-                onClick={() => setShowSpecializedDrawer(false)}
-                style={{ width: "100%", padding: "0.75rem", background: "#f1f5f9", border: "none", borderRadius: "10px", fontWeight: 700, color: "#334155", cursor: "pointer" }}
-              >
-                Close Drawer
-              </button>
+            {/* Card 2: Bio-Gas */}
+            <div style={{ background: "white", borderRadius: "16px", border: "1.5px solid #e2e8f0", padding: "1.5rem", display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+                  <span style={{ fontSize: "2rem" }}>🔥</span>
+                  <span style={{ background: "#ffedd5", color: "#9a3412", padding: "3px 9px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 800 }}>
+                    Clean Energy
+                  </span>
+                </div>
+                <h3 style={{ margin: "0 0 0.4rem", fontSize: "1.15rem", fontWeight: 800, color: "#0f172a" }}>
+                  Bio-Gas &amp; Organic Waste Portal
+                </h3>
+                <p style={{ margin: 0, fontSize: "0.84rem", color: "#64748b", lineHeight: 1.45 }}>
+                  Log farm biomass and stubble intake, monitor digester pressure and methane purity (CH₄), calculate carbon offsets, and manage bio-slurry fertilizer dispatch.
+                </p>
+              </div>
+              <div style={{ marginTop: "1.25rem" }}>
+                <Link
+                  to="/agent/biogas"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    padding: "0.65rem 1.25rem",
+                    borderRadius: "10px",
+                    background: "#ea580c",
+                    color: "white",
+                    textDecoration: "none",
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    boxShadow: "0 2px 6px rgba(234, 88, 12, 0.3)"
+                  }}
+                >
+                  Open Bio-Gas Portal <ChevronRight size={16} />
+                </Link>
+              </div>
+            </div>
+
+            {/* Card 3: Soil Test */}
+            <div style={{ background: "white", borderRadius: "16px", border: "1.5px solid #e2e8f0", padding: "1.5rem", display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+                  <span style={{ fontSize: "2rem" }}>🧪</span>
+                  <span style={{ background: "#cffafe", color: "#155e75", padding: "3px 9px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 800 }}>
+                    Lab Diagnostic
+                  </span>
+                </div>
+                <h3 style={{ margin: "0 0 0.4rem", fontSize: "1.15rem", fontWeight: 800, color: "#0f172a" }}>
+                  Soil Health Card &amp; Field Lab Portal
+                </h3>
+                <p style={{ margin: 0, fontSize: "0.84rem", color: "#64748b", lineHeight: 1.45 }}>
+                  Manage GPS farm soil core sampling queues, record photometer test parameters (NPK, pH, EC, Organic Carbon), and issue instant digital Soil Health Cards.
+                </p>
+              </div>
+              <div style={{ marginTop: "1.25rem" }}>
+                <Link
+                  to="/agent/soil-test"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    padding: "0.65rem 1.25rem",
+                    borderRadius: "10px",
+                    background: "#0891b2",
+                    color: "white",
+                    textDecoration: "none",
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    boxShadow: "0 2px 6px rgba(8, 145, 178, 0.3)"
+                  }}
+                >
+                  Open Soil Testing Portal <ChevronRight size={16} />
+                </Link>
+              </div>
+            </div>
+
+            {/* Card 4: Driving Assistant */}
+            <div style={{ background: "white", borderRadius: "16px", border: "1.5px solid #e2e8f0", padding: "1.5rem", display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+                  <span style={{ fontSize: "2rem" }}>🚗</span>
+                  <span style={{ background: "#fee2e2", color: "#991b1b", padding: "3px 9px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 800 }}>
+                    Safety HUD
+                  </span>
+                </div>
+                <h3 style={{ margin: "0 0 0.4rem", fontSize: "1.15rem", fontWeight: 800, color: "#0f172a" }}>
+                  Hands-Free Driving Voice Assistant
+                </h3>
+                <p style={{ margin: 0, fontSize: "0.84rem", color: "#64748b", lineHeight: 1.45 }}>
+                  Continuous speech recognition HUD tailored for bike riders and delivery van drivers. Speak commands to navigate, call customers, confirm pickups, and verify OTPs safely.
+                </p>
+              </div>
+              <div style={{ marginTop: "1.25rem" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowDrivingMode(true)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    padding: "0.65rem 1.25rem",
+                    borderRadius: "10px",
+                    background: "#dc2626",
+                    color: "white",
+                    border: "none",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    boxShadow: "0 2px 6px rgba(220, 38, 38, 0.3)"
+                  }}
+                >
+                  Launch Driving Mode HUD <Car size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Card 5: Ride-Along */}
+            <div style={{ background: "white", borderRadius: "16px", border: "1.5px solid #e2e8f0", padding: "1.5rem", display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+                  <span style={{ fontSize: "2rem" }}>🎒</span>
+                  <span style={{ background: "#dcfce7", color: "#166534", padding: "3px 9px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 800 }}>
+                    Commuter Mode
+                  </span>
+                </div>
+                <h3 style={{ margin: "0 0 0.4rem", fontSize: "1.15rem", fontWeight: 800, color: "#0f172a" }}>
+                  Ride-Along Commuter Route Dispatch
+                </h3>
+                <p style={{ margin: 0, fontSize: "0.84rem", color: "#64748b", lineHeight: 1.45 }}>
+                  Configure your regular commute origin and destination coordinates to automatically pool farm deliveries along your daily route with 50% split pay.
+                </p>
+              </div>
+              <div style={{ marginTop: "1.25rem" }}>
+                <button
+                  type="button"
+                  onClick={() => setTab("ridealong")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    padding: "0.65rem 1.25rem",
+                    borderRadius: "10px",
+                    background: "#16a34a",
+                    color: "white",
+                    border: "none",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    boxShadow: "0 2px 6px rgba(22, 163, 74, 0.3)"
+                  }}
+                >
+                  Configure Commute Route <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Card 6: Performance & SOP */}
+            <div style={{ background: "white", borderRadius: "16px", border: "1.5px solid #e2e8f0", padding: "1.5rem", display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+                  <span style={{ fontSize: "2rem" }}>💡</span>
+                  <span style={{ background: "#fef3c7", color: "#92400e", padding: "3px 9px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 800 }}>
+                    SOP &amp; Earnings
+                  </span>
+                </div>
+                <h3 style={{ margin: "0 0 0.4rem", fontSize: "1.15rem", fontWeight: 800, color: "#0f172a" }}>
+                  Logistics Performance SOP &amp; Speed Tips
+                </h3>
+                <p style={{ margin: 0, fontSize: "0.84rem", color: "#64748b", lineHeight: 1.45 }}>
+                  Delivery standards, speed bonus criteria, camera angle guidelines for farm produce pickup, and SLA compliance procedures.
+                </p>
+              </div>
+              <div style={{ marginTop: "1.25rem" }}>
+                <button
+                  type="button"
+                  onClick={() => setTab("tips")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    padding: "0.65rem 1.25rem",
+                    borderRadius: "10px",
+                    background: "#f59e0b",
+                    color: "white",
+                    border: "none",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    boxShadow: "0 2px 6px rgba(245, 158, 11, 0.3)"
+                  }}
+                >
+                  View Performance Guidelines <ChevronRight size={16} />
+                </button>
+              </div>
             </div>
           </div>
         </div>

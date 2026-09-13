@@ -423,34 +423,91 @@ export function isTTSPlaying() {
 
 let globalAudioCtx = null;
 
+export const normalizeDialectPhonetics = (text, langCode) => {
+  if (!text) return "";
+  let clean = String(text);
+  const lang = (langCode || "en").split("-")[0];
+
+  if (lang === "te") {
+    clean = clean
+      .replace(/₹\s*(\d+)/g, "$1 రూపాయలు")
+      .replace(/(\d+)\s*kg/gi, "$1 కేజీలు")
+      .replace(/(\d+)\s*quintal/gi, "$1 క్వింటాలు")
+      .replace(/(\d+)\s*ton/gi, "$1 టన్నులు")
+      .replace(/(\d+)\s*bags?/gi, "$1 బస్తాలు")
+      .replace(/\bAI\b/gi, "ఏఐ")
+      .replace(/\bAPMC\b/gi, "ఏపీఎంసీ మార్కెట్");
+  } else if (lang === "hi") {
+    clean = clean
+      .replace(/₹\s*(\d+)/g, "$1 रुपये")
+      .replace(/(\d+)\s*kg/gi, "$1 किलो")
+      .replace(/(\d+)\s*quintal/gi, "$1 क्विंटल")
+      .replace(/(\d+)\s*ton/gi, "$1 टन")
+      .replace(/(\d+)\s*bags?/gi, "$1 बोरी")
+      .replace(/\bAI\b/gi, "एआई")
+      .replace(/\bAPMC\b/gi, "कृषि मंडी");
+  } else if (lang === "ta") {
+    clean = clean
+      .replace(/₹\s*(\d+)/g, "$1 ரூபாய்")
+      .replace(/(\d+)\s*kg/gi, "$1 கிலோ")
+      .replace(/(\d+)\s*ton/gi, "$1 டன்");
+  } else if (lang === "kn") {
+    clean = clean
+      .replace(/₹\s*(\d+)/g, "$1 ರೂಪಾಯಿ")
+      .replace(/(\d+)\s*kg/gi, "$1 ಕಿಲೋಗ್ರಾಂ");
+  } else {
+    clean = clean
+      .replace(/₹\s*(\d+)/g, "$1 Rupees")
+      .replace(/(\d+)\s*kg\b/gi, "$1 kilograms")
+      .replace(/(\d+)\s*ton\b/gi, "$1 tonnes")
+      .replace(/(\d+)\s*quintal\b/gi, "$1 quintals");
+  }
+  return clean;
+};
+
 const fallbackSpeechSynthesis = (text, langCode, options = {}) => {
   return new Promise((resolve) => {
     if (typeof window === "undefined" || !('speechSynthesis' in window)) return resolve(false);
     try {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
+      const phoneticText = normalizeDialectPhonetics(text, langCode);
+      const utterance = new SpeechSynthesisUtterance(phoneticText);
       const localeMap = { en: "en-IN", te: "te-IN", hi: "hi-IN", kn: "kn-IN", ta: "ta-IN", ml: "ml-IN", mr: "mr-IN", gu: "gu-IN", bn: "bn-IN", pa: "pa-IN", or: "or-IN", ur: "ur-IN" };
       const targetLang = localeMap[langCode] || "en-IN";
       utterance.lang = targetLang;
       
       const voices = window.speechSynthesis.getVoices();
       if (voices.length > 0) {
-        let bestVoice = voices.find(v => (v.lang === targetLang || v.lang.startsWith(targetLang.split('-')[0])) && v.name.toLowerCase().includes('google'));
-        if (!bestVoice) bestVoice = voices.find(v => v.lang === targetLang || v.lang.startsWith(targetLang.split('-')[0]));
+        const langPrefix = targetLang.split('-')[0];
+        const matchVoice = (v) => v.lang === targetLang || v.lang.startsWith(langPrefix);
+        
+        // 1. Natural / Neural voice priority (Edge/Chrome/Android/iOS)
+        let bestVoice = voices.find(v => matchVoice(v) && (v.name.toLowerCase().includes('natural') || v.name.toLowerCase().includes('neural')));
+        // 2. Google Indian regional voices (Google हिन्दी, Google తెలుగు, etc.)
+        if (!bestVoice) bestVoice = voices.find(v => matchVoice(v) && v.name.toLowerCase().includes('google'));
+        // 3. Indian character voices (Swara, Mohan, Neerja, Ravi, Heera, Madhav, Priya, etc.)
+        if (!bestVoice) bestVoice = voices.find(v => matchVoice(v) && /(mohan|swara|neerja|ravi|heera|madhav|priya|mukta|shruti|pallavi)/i.test(v.name));
+        // 4. Any voice matching the target dialect
+        if (!bestVoice) bestVoice = voices.find(v => matchVoice(v));
+        // 5. Fallback to any en-IN natural voice
+        if (!bestVoice && targetLang !== "en-IN") {
+          bestVoice = voices.find(v => v.lang === "en-IN" && (v.name.toLowerCase().includes('natural') || v.name.toLowerCase().includes('google')));
+        }
+        
         if (bestVoice) {
           utterance.voice = bestVoice;
         }
       }
 
-      utterance.rate = options.rate || 0.95;
-      if (options.pitch) utterance.pitch = options.pitch;
+      utterance.rate = options.rate || 0.92;
+      utterance.pitch = options.pitch || 1.02;
       if (options.volume !== undefined) utterance.volume = Math.max(0.1, Math.min(1.0, options.volume));
       
       utterance.onend = () => resolve(true);
       utterance.onerror = () => resolve(false);
       window.speechSynthesis.speak(utterance);
       
-      setTimeout(() => resolve(true), Math.max(4000, text.length * 80));
+      setTimeout(() => resolve(true), Math.max(4000, phoneticText.length * 80));
     } catch(err) {
       resolve(false);
     }
