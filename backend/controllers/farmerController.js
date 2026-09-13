@@ -1,6 +1,8 @@
+import fs from "fs";
 import Crop from "../models/Crop.js";
 import User from "../models/User.js";
 import Farmer from "../models/Farmer.js";
+
 export const addCrop = async (req, res) => {
   try {
     // Check if farmer is verified
@@ -18,27 +20,51 @@ export const addCrop = async (req, res) => {
     if (!cropData.farmer && req.user) {
       cropData.farmer = req.user._id;
     }
+
     if (req.file) {
-      cropData.image = `/uploads/${req.file.filename}`;
+      try {
+        const fileBuffer = fs.readFileSync(req.file.path);
+        cropData.image = `data:${req.file.mimetype};base64,${fileBuffer.toString("base64")}`;
+      } catch (err) {
+        cropData.image = `/uploads/${req.file.filename}`;
+      }
     } else if (!cropData.image || cropData.image.trim() === "") {
       const clean = ((cropData.name || "") + " " + (cropData.category || "")).toLowerCase();
-      if (clean.includes("rice") || clean.includes("sona") || clean.includes("bpt") || clean.includes("paddy")) cropData.image = "/uploads/ai_rice.jpg";
-      else if (clean.includes("onion") || clean.includes("ullipaya")) cropData.image = "/uploads/ai_onion.jpg";
-      else if (clean.includes("tomato") || clean.includes("tamota")) cropData.image = "/uploads/ai_tomato.jpg";
-      else if (clean.includes("potato") || clean.includes("aalu")) cropData.image = "/uploads/potato.png";
-      else if (clean.includes("mango") || clean.includes("mamidi")) cropData.image = "/uploads/ai_mango.jpg";
-      else if (clean.includes("banana") || clean.includes("arati")) cropData.image = "/uploads/ai_banana.jpg";
-      else if (clean.includes("spinach") || clean.includes("palak")) cropData.image = "/uploads/ai_spinach.jpg";
-      else if (clean.includes("cabbage")) cropData.image = "/uploads/ai_cabbage.jpg";
-      else if (clean.includes("cauliflower")) cropData.image = "/uploads/ai_cauliflower.jpg";
-      else if (clean.includes("turmeric") || clean.includes("pasupu")) cropData.image = "/uploads/ai_turmeric.jpg";
-      else if (clean.includes("chilli") || clean.includes("mirchi")) cropData.image = "/uploads/ai_red_chilli.jpg";
-      else if (clean.includes("soya")) cropData.image = "/uploads/ai_soya.jpg";
-      else if (clean.includes("carrot")) cropData.image = "/uploads/carrot.png";
-      else if (cropData.category === "fruit") cropData.image = "/uploads/ai_mango.jpg";
-      else if (cropData.category === "grain") cropData.image = "/uploads/ai_rice.jpg";
-      else if (cropData.category === "vegetable") cropData.image = "/uploads/ai_tomato.jpg";
-      else cropData.image = "/uploads/ai_rice.jpg";
+      if (clean.includes("rice") || clean.includes("sona") || clean.includes("bpt") || clean.includes("paddy")) {
+        cropData.image = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("onion") || clean.includes("ullipaya")) {
+        cropData.image = "https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("tomato") || clean.includes("tamota")) {
+        cropData.image = "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("potato") || clean.includes("aalu")) {
+        cropData.image = "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("mango") || clean.includes("mamidi")) {
+        cropData.image = "https://images.unsplash.com/photo-1553279768-865429fa0078?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("banana") || clean.includes("arati")) {
+        cropData.image = "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("spinach") || clean.includes("palak")) {
+        cropData.image = "https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("cabbage")) {
+        cropData.image = "https://images.unsplash.com/photo-1594282486552-05b4d80fbb9f?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("cauliflower")) {
+        cropData.image = "https://images.unsplash.com/photo-1568584711075-3d021a7c3ca3?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("turmeric") || clean.includes("pasupu")) {
+        cropData.image = "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("chilli") || clean.includes("mirchi")) {
+        cropData.image = "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("soya")) {
+        cropData.image = "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("carrot")) {
+        cropData.image = "https://images.unsplash.com/photo-1598170845058-12ef4a457939?w=600&auto=format&fit=crop&q=80";
+      } else if (cropData.category === "fruit") {
+        cropData.image = "https://images.unsplash.com/photo-1553279768-865429fa0078?w=600&auto=format&fit=crop&q=80";
+      } else if (cropData.category === "grain") {
+        cropData.image = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80";
+      } else if (cropData.category === "vegetable") {
+        cropData.image = "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&auto=format&fit=crop&q=80";
+      } else {
+        cropData.image = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80";
+      }
     }
     
     // Parse booleans from FormData

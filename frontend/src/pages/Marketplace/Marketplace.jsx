@@ -73,47 +73,47 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
 }
 
 const CROP_FALLBACK_IMAGES = {
-  rice: `${BASE_URL}/uploads/ai_rice.jpg`,
-  paddy: `${BASE_URL}/uploads/ai_rice.jpg`,
-  sona: `${BASE_URL}/uploads/ai_rice.jpg`,
-  bpt: `${BASE_URL}/uploads/ai_rice.jpg`,
-  wheat: `${BASE_URL}/uploads/ai_wheat.jpg`,
+  rice: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
+  paddy: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
+  sona: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
+  bpt: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
+  wheat: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&auto=format&fit=crop&q=80",
   corn: "https://images.unsplash.com/photo-1551754655-cd27e38d2076?w=600&auto=format&fit=crop&q=80",
   maize: "https://images.unsplash.com/photo-1551754655-cd27e38d2076?w=600&auto=format&fit=crop&q=80",
-  millet: `${BASE_URL}/uploads/ai_millets.jpg`,
-  ragi: `${BASE_URL}/uploads/ai_millets.jpg`,
-  jowar: `${BASE_URL}/uploads/ai_millets.jpg`,
-  bajra: `${BASE_URL}/uploads/ai_millets.jpg`,
-  tomato: `${BASE_URL}/uploads/ai_tomato.jpg`,
-  onion: `${BASE_URL}/uploads/ai_onion.jpg`,
-  potato: `${BASE_URL}/uploads/potato.png`,
-  spinach: `${BASE_URL}/uploads/ai_spinach.jpg`,
-  palak: `${BASE_URL}/uploads/ai_spinach.jpg`,
-  cabbage: `${BASE_URL}/uploads/ai_cabbage.jpg`,
-  cauliflower: `${BASE_URL}/uploads/ai_cauliflower.jpg`,
-  brinjal: `${BASE_URL}/uploads/ai_brinjal.jpg`,
-  eggplant: `${BASE_URL}/uploads/ai_brinjal.jpg`,
-  vankaya: `${BASE_URL}/uploads/ai_brinjal.jpg`,
-  bhindi: `${BASE_URL}/uploads/ai_bhindi.jpg`,
-  ladyfinger: `${BASE_URL}/uploads/ai_bhindi.jpg`,
-  okra: `${BASE_URL}/uploads/ai_bhindi.jpg`,
-  carrot: `${BASE_URL}/uploads/carrot.png`,
-  mango: `${BASE_URL}/uploads/ai_mango.jpg`,
-  banana: `${BASE_URL}/uploads/ai_banana.jpg`,
-  pomegranate: `${BASE_URL}/uploads/ai_pomegranate.jpg`,
-  chilli: `${BASE_URL}/uploads/ai_red_chilli.jpg`,
-  mirchi: `${BASE_URL}/uploads/ai_red_chilli.jpg`,
-  turmeric: `${BASE_URL}/uploads/ai_turmeric.jpg`,
+  millet: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
+  ragi: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
+  jowar: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
+  bajra: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
+  tomato: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&auto=format&fit=crop&q=80",
+  onion: "https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=600&auto=format&fit=crop&q=80",
+  potato: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=600&auto=format&fit=crop&q=80",
+  spinach: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=600&auto=format&fit=crop&q=80",
+  palak: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=600&auto=format&fit=crop&q=80",
+  cabbage: "https://images.unsplash.com/photo-1594282486552-05b4d80fbb9f?w=600&auto=format&fit=crop&q=80",
+  cauliflower: "https://images.unsplash.com/photo-1568584711075-3d021a7c3ca3?w=600&auto=format&fit=crop&q=80",
+  brinjal: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80",
+  eggplant: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80",
+  vankaya: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80",
+  bhindi: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=600&auto=format&fit=crop&q=80",
+  ladyfinger: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=600&auto=format&fit=crop&q=80",
+  okra: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=600&auto=format&fit=crop&q=80",
+  carrot: "https://images.unsplash.com/photo-1598170845058-12ef4a457939?w=600&auto=format&fit=crop&q=80",
+  mango: "https://images.unsplash.com/photo-1553279768-865429fa0078?w=600&auto=format&fit=crop&q=80",
+  banana: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=600&auto=format&fit=crop&q=80",
+  pomegranate: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80",
+  chilli: "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=600&auto=format&fit=crop&q=80",
+  mirchi: "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=600&auto=format&fit=crop&q=80",
+  turmeric: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80",
   coriander: "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600&auto=format&fit=crop&q=80",
   ginger: "https://images.unsplash.com/photo-1599940824399-b87987ceb72a?w=600&auto=format&fit=crop&q=80",
   garlic: "https://images.unsplash.com/photo-1540148426945-6cf22a6b2383?w=600&auto=format&fit=crop&q=80",
-  dal: `${BASE_URL}/uploads/ai_pulses_dal.jpg`,
-  toor: `${BASE_URL}/uploads/ai_pulses_dal.jpg`,
-  moong: `${BASE_URL}/uploads/ai_pulses_dal.jpg`,
-  chana: `${BASE_URL}/uploads/ai_pulses_dal.jpg`,
-  soya: `${BASE_URL}/uploads/ai_soya.jpg`,
-  ghee: `${BASE_URL}/uploads/ai_honey_ghee.jpg`,
-  honey: `${BASE_URL}/uploads/ai_honey_ghee.jpg`,
+  dal: "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80",
+  toor: "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80",
+  moong: "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80",
+  chana: "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80",
+  soya: "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80",
+  ghee: "https://images.unsplash.com/photo-1587049352847-81a56d773cae?w=600&auto=format&fit=crop&q=80",
+  honey: "https://images.unsplash.com/photo-1587049352847-81a56d773cae?w=600&auto=format&fit=crop&q=80",
   jaggery: "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?w=600&auto=format&fit=crop&q=80",
   oil: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600&auto=format&fit=crop&q=80",
   cotton: "https://images.unsplash.com/photo-1606041008023-472dfb5e530f?w=600&auto=format&fit=crop&q=80",
@@ -135,20 +135,47 @@ const APMC_MANDI_DATA = [
 ];
 
 export const getImgSrc = (img, name = "", category = "") => {
+  const cleanStr = (name + " " + category).toLowerCase();
+
   if (img && typeof img === "string" && img.trim() !== "" && img !== "EMPTY") {
-    if (img.startsWith("http://") || img.startsWith("https://")) {
+    // 1. Support Base64 Data URIs stored directly in MongoDB
+    if (img.startsWith("data:image/") || img.startsWith("data:application/")) {
       return img;
     }
-    const cleanPath = img.startsWith("/") ? img : `/${img}`;
-    return `${BASE_URL.replace(/\/api\/?$/, "")}${cleanPath}`;
+    // 2. Support external CDN HTTPS URLs (e.g. Unsplash, Cloudinary, ImgBB)
+    if (img.startsWith("https://")) {
+      return img;
+    }
+    // 3. Handle legacy localhost:5000 URLs from seeded data or local testing
+    if (img.includes("localhost:5000") || img.includes("127.0.0.1")) {
+      // Find matching keyword fallback instead of broken localhost URL
+      for (const [key, url] of Object.entries(CROP_FALLBACK_IMAGES)) {
+        if (cleanStr.includes(key)) return url;
+      }
+      const pathSuffix = img.split("/uploads/")[1];
+      if (pathSuffix) {
+        return `${BASE_URL.replace(/\/api\/?$/, "")}/uploads/${pathSuffix}`;
+      }
+    }
+    // 4. Handle relative paths like "uploads/xyz.jpg"
+    if (!img.startsWith("http://") && !img.startsWith("https://")) {
+      const cleanPath = img.startsWith("/") ? img : `/${img}`;
+      return `${BASE_URL.replace(/\/api\/?$/, "")}${cleanPath}`;
+    }
+    return img;
   }
-  const cleanStr = (name + " " + category).toLowerCase();
+
+  // Fallback lookup based on crop name & category keywords
   for (const [key, url] of Object.entries(CROP_FALLBACK_IMAGES)) {
     if (cleanStr.includes(key)) return url;
   }
-  if (category === "fruit") return `${BASE_URL}/uploads/ai_mango.jpg`;
-  if (category === "grain") return `${BASE_URL}/uploads/ai_rice.jpg`;
-  return `${BASE_URL}/uploads/ai_tomato.jpg`;
+
+  if (category === "fruit") return "https://images.unsplash.com/photo-1553279768-865429fa0078?w=600&auto=format&fit=crop&q=80";
+  if (category === "grain") return "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80";
+  if (category === "pulse") return "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80";
+  if (category === "spice") return "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600&auto=format&fit=crop&q=80";
+
+  return "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&auto=format&fit=crop&q=80";
 };
 
 function FlyToMarker({ crop }) {
