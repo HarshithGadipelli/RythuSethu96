@@ -80,7 +80,7 @@ const FARM_PHOTOS = [
 const REAL_FARMERS_DATA = [
   {
     name: "Srinivas Reddy",
-    email: "farmer@test.com", // Keep demo account login
+    email: "farmer@test.com", // Verified primary farmer account login
     phone: "9848011223",
     location: "Shamshabad, Rangareddy",
     latitude: 17.2403,
@@ -97,7 +97,7 @@ const REAL_FARMERS_DATA = [
     bio: "Pioneer in organic paddy and heirloom vegetables cultivation with natural Jeevamrutham methods for 16+ years.",
     farmTourEnabled: true,
     farmTourPrice: 150,
-    farmTourDetails: "Tour includes traditional organic farming demonstration, soil composting workshop, and fresh tender coconut refreshments."
+    farmTourDetails: "Tour includes traditional organic farming methods, soil composting workshop, and fresh tender coconut refreshments."
   },
   {
     name: "Bikshapathi Reddy",
@@ -181,7 +181,7 @@ const REAL_FARMERS_DATA = [
     bio: "Organic sugarcane processing, traditional jaggery making, and non-GMO soya bean cultivation.",
     farmTourEnabled: true,
     farmTourPrice: 250,
-    farmTourDetails: "Live jaggery making demonstration, sugarcane juice tasting, and traditional earthen cooking."
+    farmTourDetails: "Live traditional jaggery making workshop, sugarcane juice tasting, and traditional earthen cooking."
   },
   {
     name: "Koteswara Rao Chowdary",
@@ -223,7 +223,7 @@ const REAL_FARMERS_DATA = [
     bio: "Certified woman farmer leading organic Robusta Banana, Konaseema Coconut, and Gir Cow A2 Ghee production.",
     farmTourEnabled: true,
     farmTourPrice: 200,
-    farmTourDetails: "A2 dairy farm visit, bio-gas demonstration, and organic fruit sampling."
+    farmTourDetails: "A2 dairy farm visit, bio-gas plant tour, and organic fruit sampling."
   },
   {
     name: "Ramana Murthy",
@@ -265,7 +265,7 @@ const REAL_FARMERS_DATA = [
     bio: "Supplying daily fresh harvested native spinach, coriander, mint, and polyhouse bell peppers to Hyderabad.",
     farmTourEnabled: true,
     farmTourPrice: 100,
-    farmTourDetails: "Hydroponics & polyhouse farming demo, composting session, and take-home veggie sapling."
+    farmTourDetails: "Hydroponics & polyhouse farming workshop, composting session, and take-home veggie sapling."
   },
   {
     name: "Chandraiah Yadav",
@@ -328,14 +328,14 @@ const REAL_FARMERS_DATA = [
     bio: "Supplying Banganapalli mangoes, sweet custard apples, and fresh farm honey to local urban markets.",
     farmTourEnabled: true,
     farmTourPrice: 120,
-    farmTourDetails: "Mango orchard walk, honey bee-keeping demonstration, and seasonal fruit tasting."
+    farmTourDetails: "Mango orchard walk, honey bee-keeping practical session, and seasonal fruit tasting."
   }
 ];
 
 const REAL_CUSTOMERS_DATA = [
   {
     name: "Anand Verma",
-    email: "customer@test.com", // Keep demo account login
+    email: "customer@test.com", // Verified primary customer account login
     phone: "9820011223",
     location: "Banjara Hills, Hyderabad",
     address: "Plot 42, Road No. 12, Banjara Hills, Hyderabad, Telangana",
@@ -474,7 +474,7 @@ const REAL_CUSTOMERS_DATA = [
 const REAL_AGENTS_DATA = [
   {
     name: "Raju Delivery Express",
-    email: "agent@test.com", // Keep demo account login
+    email: "agent@test.com", // Verified primary agent account login
     phone: "9618011223",
     location: "Hyderabad Central",
     latitude: 17.3850,
@@ -1087,21 +1087,24 @@ const seedRealDatabase = async () => {
     console.log("👑 Seeding Admin Users...");
     const createdAdmins = [];
     for (const a of REAL_ADMINS_DATA) {
-      const user = await User.create({
-        name: a.name,
-        email: a.email,
-        password: testPasswordHash,
-        role: "admin",
-        phone: a.phone,
-        location: a.location,
-        latitude: a.latitude,
-        longitude: a.longitude,
-        isVerified: true,
-        acceptedTerms: true,
-        trustScore: 100
-      });
+      let user = await User.findOne({ email: a.email });
+      if (!user) {
+        user = await User.create({
+          name: a.name,
+          email: a.email,
+          password: testPasswordHash,
+          role: "admin",
+          phone: a.phone,
+          location: a.location,
+          latitude: a.latitude,
+          longitude: a.longitude,
+          isVerified: true,
+          acceptedTerms: true,
+          trustScore: 100
+        });
+      }
       createdAdmins.push(user);
-      console.log(`   ↳ Admin created: ${user.name} (${user.email})`);
+      console.log(`   ↳ Admin ready: ${user.name} (${user.email})`);
     }
 
     // 2. Seed Farmers
@@ -1112,58 +1115,64 @@ const seedRealDatabase = async () => {
       const photoIdx = i % FARMER_PHOTOS.length;
       const farmIdx = i % FARM_PHOTOS.length;
 
-      const user = await User.create({
-        name: f.name,
-        email: f.email,
-        password: testPasswordHash,
-        role: "farmer",
-        phone: f.phone,
-        location: f.location,
-        latitude: f.latitude,
-        longitude: f.longitude,
-        farmName: f.farmName,
-        isVerified: true,
-        verificationStatus: "verified",
-        acceptedTerms: true,
-        trustScore: f.trustScore,
-        upiId: f.upiId,
-        bankAccountNumber: f.bankAccount,
-        avatar: FARMER_PHOTOS[photoIdx],
-        aadhaar: `5412-${(1000 + i * 37).toString().padStart(4, "0")}-${(2000 + i * 49).toString().padStart(4, "0")}`
-      });
+      let user = await User.findOne({ email: f.email });
+      if (!user) {
+        user = await User.create({
+          name: f.name,
+          email: f.email,
+          password: testPasswordHash,
+          role: "farmer",
+          phone: f.phone,
+          location: f.location,
+          latitude: f.latitude,
+          longitude: f.longitude,
+          farmName: f.farmName,
+          isVerified: true,
+          verificationStatus: "verified",
+          acceptedTerms: true,
+          trustScore: f.trustScore,
+          upiId: f.upiId,
+          bankAccountNumber: f.bankAccount,
+          avatar: FARMER_PHOTOS[photoIdx],
+          aadhaar: `5412-${(1000 + i * 37).toString().padStart(4, "0")}-${(2000 + i * 49).toString().padStart(4, "0")}`
+        });
+      }
 
-      const farmerProfile = await Farmer.create({
-        user: user._id,
-        farmName: f.farmName,
-        farmLocation: f.farmLocation,
-        latitude: f.latitude,
-        longitude: f.longitude,
-        farmSize: f.farmSize,
-        soilType: f.soilType,
-        experience: f.experience,
-        rating: +(4.5 + (Math.random() * 0.5)).toFixed(1),
-        totalSales: Math.floor(40000 + Math.random() * 120000),
-        verified: true,
-        aadhaarVerified: true,
-        farmerPhoto: FARMER_PHOTOS[photoIdx],
-        farmPhoto: FARM_PHOTOS[farmIdx],
-        productPhoto: CROP_IMAGES.rice,
-        bio: f.bio,
-        profileCompleteness: 100,
-        responseRate: 98,
-        returnRate: 0.5,
-        trustScore: f.trustScore,
-        trustGrade: f.trustGrade,
-        farmTourEnabled: f.farmTourEnabled,
-        farmTourVerified: true,
-        farmTourPrice: f.farmTourPrice,
-        farmTourDetails: f.farmTourDetails,
-        bankAccount: f.bankAccount,
-        upiId: f.upiId
-      });
+      let farmerProfile = await Farmer.findOne({ user: user._id });
+      if (!farmerProfile) {
+        farmerProfile = await Farmer.create({
+          user: user._id,
+          farmName: f.farmName,
+          farmLocation: f.farmLocation,
+          latitude: f.latitude,
+          longitude: f.longitude,
+          farmSize: f.farmSize,
+          soilType: f.soilType,
+          experience: f.experience,
+          rating: +(4.5 + (Math.random() * 0.5)).toFixed(1),
+          totalSales: Math.floor(40000 + Math.random() * 120000),
+          verified: true,
+          aadhaarVerified: true,
+          farmerPhoto: FARMER_PHOTOS[photoIdx],
+          farmPhoto: FARM_PHOTOS[farmIdx],
+          productPhoto: CROP_IMAGES.rice,
+          bio: f.bio,
+          profileCompleteness: 100,
+          responseRate: 98,
+          returnRate: 0.5,
+          trustScore: f.trustScore,
+          trustGrade: f.trustGrade,
+          farmTourEnabled: f.farmTourEnabled,
+          farmTourVerified: true,
+          farmTourPrice: f.farmTourPrice,
+          farmTourDetails: f.farmTourDetails,
+          bankAccount: f.bankAccount,
+          upiId: f.upiId
+        });
+      }
 
       createdFarmers.push({ user, profile: farmerProfile, data: f });
-      console.log(`   ↳ Farmer seeded: ${f.name} | ${f.farmName} (${f.location})`);
+      console.log(`   ↳ Farmer ready: ${f.name} (${f.farmName})`);
     }
 
     // 3. Seed Customers
@@ -1171,39 +1180,45 @@ const seedRealDatabase = async () => {
     const createdCustomers = [];
     for (let i = 0; i < REAL_CUSTOMERS_DATA.length; i++) {
       const c = REAL_CUSTOMERS_DATA[i];
-      const user = await User.create({
-        name: c.name,
-        email: c.email,
-        password: testPasswordHash,
-        role: "customer",
-        phone: c.phone,
-        location: c.location,
-        latitude: c.latitude,
-        longitude: c.longitude,
-        customerType: c.customerType,
-        requiresDailyDelivery: c.requiresDailyDelivery,
-        walletBalance: c.walletBalance,
-        isVerified: true,
-        acceptedTerms: true,
-        trustScore: 95
-      });
+      let user = await User.findOne({ email: c.email });
+      if (!user) {
+        user = await User.create({
+          name: c.name,
+          email: c.email,
+          password: testPasswordHash,
+          role: "customer",
+          phone: c.phone,
+          location: c.location,
+          latitude: c.latitude,
+          longitude: c.longitude,
+          customerType: c.customerType,
+          requiresDailyDelivery: c.requiresDailyDelivery,
+          walletBalance: c.walletBalance,
+          isVerified: true,
+          acceptedTerms: true,
+          trustScore: 95
+        });
+      }
 
-      const customerProfile = await Customer.create({
-        user: user._id,
-        address: c.address,
-        pincode: c.pincode,
-        city: c.city,
-        state: c.state,
-        latitude: c.latitude,
-        longitude: c.longitude,
-        preferences: c.preferences,
-        dietaryRestrictions: c.dietaryRestrictions,
-        totalOrders: Math.floor(4 + Math.random() * 18),
-        loyaltyPoints: Math.floor(120 + Math.random() * 450)
-      });
+      let customerProfile = await Customer.findOne({ user: user._id });
+      if (!customerProfile) {
+        customerProfile = await Customer.create({
+          user: user._id,
+          address: c.address,
+          pincode: c.pincode,
+          city: c.city,
+          state: c.state,
+          latitude: c.latitude,
+          longitude: c.longitude,
+          preferences: c.preferences,
+          dietaryRestrictions: c.dietaryRestrictions,
+          totalOrders: Math.floor(4 + Math.random() * 18),
+          loyaltyPoints: Math.floor(120 + Math.random() * 450)
+        });
+      }
 
       createdCustomers.push({ user, profile: customerProfile, data: c });
-      console.log(`   ↳ Customer seeded: ${c.name} (${c.location})`);
+      console.log(`   ↳ Customer ready: ${c.name} (${c.location})`);
     }
 
     // 4. Seed Logistics / Delivery Agents
@@ -1211,40 +1226,46 @@ const seedRealDatabase = async () => {
     const createdAgents = [];
     for (let i = 0; i < REAL_AGENTS_DATA.length; i++) {
       const a = REAL_AGENTS_DATA[i];
-      const user = await User.create({
-        name: a.name,
-        email: a.email,
-        password: testPasswordHash,
-        role: "agent",
-        agentType: a.agentType,
-        phone: a.phone,
-        location: a.location,
-        latitude: a.latitude,
-        longitude: a.longitude,
-        deliveryScore: a.deliveryScore,
-        walletBalance: a.walletBalance,
-        cashInHand: a.cashInHand,
-        isVerified: true,
-        acceptedTerms: true,
-        trustScore: 98
-      });
+      let user = await User.findOne({ email: a.email });
+      if (!user) {
+        user = await User.create({
+          name: a.name,
+          email: a.email,
+          password: testPasswordHash,
+          role: "agent",
+          agentType: a.agentType,
+          phone: a.phone,
+          location: a.location,
+          latitude: a.latitude,
+          longitude: a.longitude,
+          deliveryScore: a.deliveryScore,
+          walletBalance: a.walletBalance,
+          cashInHand: a.cashInHand,
+          isVerified: true,
+          acceptedTerms: true,
+          trustScore: 98
+        });
+      }
 
-      const agentProfile = await Agent.create({
-        user: user._id,
-        vehicle: a.vehicle,
-        active: true,
-        trustScore: {
-          score: a.deliveryScore,
-          rating: 4.9,
-          totalRatings: 84 + i * 15,
-          totalDeliveries: 120 + i * 45,
-          onTimeDeliveries: 118 + i * 44,
-          issuesReported: 1
-        }
-      });
+      let agentProfile = await Agent.findOne({ user: user._id });
+      if (!agentProfile) {
+        agentProfile = await Agent.create({
+          user: user._id,
+          vehicle: a.vehicle,
+          active: true,
+          trustScore: {
+            score: a.deliveryScore,
+            rating: 4.9,
+            totalRatings: 84 + i * 15,
+            totalDeliveries: 120 + i * 45,
+            onTimeDeliveries: 118 + i * 44,
+            issuesReported: 1
+          }
+        });
+      }
 
       createdAgents.push({ user, profile: agentProfile, data: a });
-      console.log(`   ↳ Delivery Agent seeded: ${a.name} [${a.vehicle}]`);
+      console.log(`   ↳ Delivery Agent ready: ${a.name} [${a.vehicle}]`);
     }
 
     // 5. Seed Real Crops across Farmers

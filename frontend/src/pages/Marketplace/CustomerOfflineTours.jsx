@@ -326,12 +326,11 @@ export default function CustomerOfflineTours({ isEmbedded = false }) {
                       </div>
 
                       <p style={{ fontSize: "0.88rem", color: "#475569", lineHeight: 1.45, margin: "0 0 1rem 0" }}>
-                        {f.farmTourDetails || "Guided walkthrough of organic farm beds, livestock care overview, and traditional agricultural demo."}
+                        {f.farmTourDetails || "Guided walkthrough of organic farm beds, livestock care overview, and traditional agricultural cultivation techniques."}
                       </p>
 
-                      {/* Amenities */}
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem", marginBottom: "1rem" }}>
-                        {["🍃 Fresh Harvest Demo", "🥤 Natural Refreshments", "🚜 Bullock / Tractor Ride"].map((chip, cIdx) => (
+                      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+                        {["🍃 Fresh Harvest Experience", "🥤 Natural Refreshments", "🚜 Bullock / Tractor Ride"].map((chip, cIdx) => (
                           <span key={cIdx} style={{ background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", fontSize: "0.72rem", padding: "0.2rem 0.5rem", borderRadius: "4px", fontWeight: 600 }}>
                             {chip}
                           </span>

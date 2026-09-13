@@ -129,6 +129,7 @@ export default function AdminDashboard() {
     targetRegion: "All Regions",
     message: ""
   });
+  const [showSpecializedAdminDrawer, setShowSpecializedAdminDrawer] = useState(false);
 
   // Admin System Rules Mandate State
   const [sysTermsTitle, setSysTermsTitle] = useState("RythuJanaSethu Mandatory System Rules & Operating Terms");
@@ -474,33 +475,203 @@ export default function AdminDashboard() {
 
       {msg.text && <div className={`alert alert-${msg.type} mb-3`}>{msg.text}</div>}
 
-      {/* Tabs */}
-      <div className="tab-bar mb-3" style={{ flexWrap:"wrap" }}>
-        {[
-          { k:"overview", l:"📊 Overview" },
-          { k:"tracking", l:"🗺️ Live Map" },
-          { k:"users",   l:`👥 Users (${users.length})` },
-          { k:"crops", l:`🌾 Crops (${crops.length})` },
-          { k:"soil", l:`🧪 Soil Testing (${soilRequests.filter(s => s.status === 'pending_assignment').length})` },
-          { k:"verification", l:`🌾 Verify (${pendingFarmers.length})` },
-          { k:"tours", l:`🚜 Verify Tours (${pendingTours.length})` },
-          { k:"orders",  l:`📦 Orders (${orders.length})` },
-          { k:"deliveries", l:`🚚 Delivery (${needsDelivery.length})` },
-          { k:"financials", l:"💵 Financial Ledger" },
-          { k:"security",l:"🛡️ Security" },
-          { k:"support", l:"🎧 Support" },
-          { k:"tips", l:"💡 Tips" },
-          { k:"demand", l:"📊 Demand Prediction" },
-          { k:"broadcast", l:"📢 Broadcast" },
-          { k:"waste", l:"🌱 Waste Management" },
-          { k:"system_terms", l:"📜 System Rules Mandate" },
-          { k:"mlops", l:"🤖 ML Ops" }
-        ].map(tb => (
-          <button key={tb.k} className={`tab-btn ${tab===tb.k?"active":""}`} onClick={() => setTab(tb.k)}>
-            {tb.l}
+      {/* ── BREADCRUMB WHEN IN SPECIALIZED ADMIN SUITE ── */}
+      {["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) && (
+        <div style={{
+          background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
+          border: "1.5px solid #93c5fd",
+          borderRadius: "14px",
+          padding: "0.8rem 1.25rem",
+          marginBottom: "1.2rem",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "0.8rem",
+          boxShadow: "0 2px 8px rgba(37, 99, 235, 0.08)"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontSize: "1.3rem" }}>⚡</span>
+            <div>
+              <span style={{ fontSize: "0.75rem", color: "#1e40af", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Specialized Admin Suite</span>
+              <div style={{ fontWeight: 800, color: "#1e3a8a", fontSize: "0.98rem" }}>
+                {tab === "crops" ? "🌾 Crop Catalog & Supply Inventory" :
+                 tab === "soil" ? "🧪 Soil Testing & Field Lab Allocation" :
+                 tab === "financials" ? "💵 Settlement & Financials Ledger" :
+                 tab === "demand" ? "📊 Consumer Search Demand Spikes" :
+                 tab === "broadcast" ? "📢 Urgent Farmer Supply Broadcast Center" :
+                 tab === "waste" ? "🌱 Circular Waste & Organic Composting" :
+                 tab === "system_terms" ? "📜 Mandatory System Rules Mandate" :
+                 tab === "mlops" ? "🤖 AI & MLOps Pipeline Supervised Diagnostics" :
+                 tab === "security" ? "🛡️ Security Pledge & Fraud Audit Logs" :
+                 tab === "support" ? "🎧 Help Desk & Grievance Redressal" :
+                 tab === "tours" ? "🚜 Farm Tour & Agritourism Verification" :
+                 "💡 Knowledge Base & Agricultural Tips"}
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTab("overview")}
+            style={{
+              background: "#2563eb",
+              color: "white",
+              border: "none",
+              padding: "0.5rem 1rem",
+              borderRadius: "100px",
+              fontWeight: 700,
+              fontSize: "0.82rem",
+              cursor: "pointer",
+              boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)"
+            }}
+          >
+            ← Back to Daily Operations Hub
           </button>
-        ))}
+        </div>
+      )}
+
+      {/* ── DAILY OPERATIONS TAB BAR & SPECIALIZED SUITE ACCESS ── */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem", flexWrap: "wrap", gap: "0.75rem" }}>
+        <div className="tab-bar" style={{ margin: 0, flex: 1, minWidth: 320, flexWrap: "wrap" }}>
+          {[
+            { k:"overview", l:"📊 Overview" },
+            { k:"tracking", l:"🗺️ Live Map" },
+            { k:"verification", l:`🌾 Verify Farmers (${pendingFarmers.length})` },
+            { k:"orders",  l:`📦 Orders (${orders.length})` },
+            { k:"deliveries", l:`🚚 Fleet (${needsDelivery.length})` },
+            { k:"users",   l:`👥 Users (${users.length})` }
+          ].map(tb => (
+            <button key={tb.k} className={`tab-btn ${tab===tb.k?"active":""}`} onClick={() => setTab(tb.k)}>
+              {tb.l}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowSpecializedAdminDrawer(true)}
+          style={{
+            background: ["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "linear-gradient(135deg, #1d4ed8, #2563eb)" : "linear-gradient(135deg, #f8fafc, #f1f5f9)",
+            color: ["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "white" : "#1e293b",
+            border: ["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "1.5px solid #3b82f6" : "1.5px solid #cbd5e1",
+            padding: "0.6rem 1.15rem",
+            borderRadius: "12px",
+            fontWeight: 800,
+            fontSize: "0.85rem",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
+            transition: "all 0.2s ease"
+          }}
+        >
+          <span>⚡ Specialized Admin Suite</span>
+          <span style={{
+            background: ["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "white" : "#2563eb",
+            color: ["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "#1d4ed8" : "white",
+            padding: "1px 7px",
+            borderRadius: "100px",
+            fontSize: "0.72rem",
+            fontWeight: 800
+          }}>
+            {["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "Active" : "12 Tools"}
+          </span>
+        </button>
       </div>
+
+      {/* ── SPECIALIZED ADMIN SUITE DRAWER ── */}
+      {showSpecializedAdminDrawer && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
+          background: "rgba(15, 23, 42, 0.75)", backdropFilter: "blur(8px)",
+          display: "flex", justifyContent: "flex-end", zIndex: 9999
+        }}>
+          <div style={{
+            width: "100%", maxWidth: "480px", height: "100%", background: "#ffffff",
+            boxShadow: "-8px 0 35px rgba(0,0,0,0.3)", padding: "1.75rem", overflowY: "auto",
+            display: "flex", flexDirection: "column"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem" }}>
+              <div>
+                <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.25rem", fontWeight: 800, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  ⚡ Specialized Admin Suite
+                </h3>
+                <p style={{ margin: "3px 0 0 0", color: "#64748b", fontSize: "0.82rem" }}>
+                  12 enterprise modules for lab tests, finance, MLOps, and governance
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSpecializedAdminDrawer(false)}
+                style={{ background: "#f1f5f9", border: "none", width: 34, height: 34, borderRadius: "50%", cursor: "pointer", fontSize: "1rem", color: "#475569", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "0.75rem", flex: 1 }}>
+              {[
+                { k: "crops", icon: "🌾", title: `Crop Catalog (${crops.length})`, desc: "Manage live harvest listings, Mandi benchmark pricing, and inventory." },
+                { k: "soil", icon: "🧪", title: `Soil Testing Labs (${soilRequests.filter(s => s.status === 'pending_assignment').length} pending)`, desc: "Assign field soil test requests to designated agricultural testing facilities." },
+                { k: "financials", icon: "💵", title: "Financial Ledger & Settlements", desc: "Supervise bi-weekly agent disbursements, farmer escrow, and COD remittances." },
+                { k: "demand", icon: "📊", title: "Consumer Search Demand Spikes", desc: "Real-time query metrics, urban demand hotspots, and search volume surges." },
+                { k: "broadcast", icon: "📢", title: "Urgent Supply Broadcast", desc: "Transmit real-time alerts to farmers to cultivate high-demand commodities." },
+                { k: "waste", icon: "🌱", title: "Circular Organic Waste", desc: "Monitor doorstep compost collection and conversion to bio-fertilizers." },
+                { k: "mlops", icon: "🤖", title: "MLOps & Model Performance", desc: "Track computer vision quality inspection, price prediction, and ETA engines." },
+                { k: "security", icon: "🛡️", title: "Security & Fraud Audits", desc: "Review agent tamper pledges, OTP verifications, and suspicious deliveries." },
+                { k: "system_terms", icon: "📜", title: "System Rules Mandate", desc: "Edit and publish binding operating policies and zero-abandonment terms." },
+                { k: "tours", icon: "🚜", title: `Verify Farm Tours (${pendingTours.length})`, desc: "Review agritourism walkthrough proposals and safety amenities." },
+                { k: "support", icon: "🎧", title: "Support & Grievances", desc: "Farmer and consumer ticket desk, dispute escalations, and resolutions." },
+                { k: "tips", icon: "💡", title: "Smart Agronomy Tips", desc: "Configure seasonal agronomy advice and operational guidelines." }
+              ].map(item => (
+                <div
+                  key={item.k}
+                  onClick={() => { setTab(item.k); setShowSpecializedAdminDrawer(false); }}
+                  style={{
+                    background: tab === item.k ? "#eff6ff" : "#f8fafc",
+                    border: tab === item.k ? "2px solid #2563eb" : "1px solid #e2e8f0",
+                    borderRadius: "12px",
+                    padding: "0.85rem 1rem",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "0.75rem"
+                  }}
+                >
+                  <span style={{ fontSize: "1.4rem", marginTop: "2px" }}>{item.icon}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <h4 style={{ margin: 0, fontSize: "0.92rem", fontWeight: 800, color: tab === item.k ? "#1e40af" : "#1e293b" }}>
+                        {item.title}
+                      </h4>
+                      {tab === item.k && (
+                        <span style={{ fontSize: "0.7rem", background: "#2563eb", color: "white", padding: "1px 6px", borderRadius: "100px", fontWeight: 700 }}>
+                          Current
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ margin: "2px 0 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.35 }}>
+                      {item.desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ paddingTop: "1rem", borderTop: "1px solid #e2e8f0", marginTop: "1rem" }}>
+              <button
+                type="button"
+                onClick={() => setShowSpecializedAdminDrawer(false)}
+                style={{ width: "100%", padding: "0.75rem", background: "#f1f5f9", border: "none", borderRadius: "10px", fontWeight: 700, color: "#334155", cursor: "pointer" }}
+              >
+                Close Drawer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="loader-wrapper"><div className="loader"></div><p className="loader-text">{t("loading")}</p></div>

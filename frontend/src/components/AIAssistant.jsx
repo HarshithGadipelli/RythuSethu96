@@ -84,7 +84,7 @@ export default function AIAssistant() {
     if (isOpen && messages.length === 0 && user) {
       const LOCALIZED_TIPS = {
         en: {
-          welcome: `Hi ${user.name?.split(' ')[0]}! I'm your AI Assistant. `,
+          welcome: `Hi ${user.name?.split(' ')[0]}! I'm your Rythu Jana Sethu Assistant. `,
           farmerTip: "Daily Tip: Keep your soil moisture balanced during the early growth of rice.",
           farmerPrompt: "Tell me what crop you'd like to list today. (e.g., 'I want to sell 50kg of tomatoes').",
           customerTip: "Nutritional Tip: Fresh tomatoes are rich in lycopene, great for heart health!",
@@ -429,7 +429,7 @@ export default function AIAssistant() {
             <div style={{ background: "linear-gradient(135deg, var(--green-mid), var(--green-deep))", padding: "1rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", color: "white" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <Sparkles size={20} />
-                <span style={{ fontWeight: 700, fontFamily: "Outfit, sans-serif", fontSize: "1.1rem" }}>Rythu AI Assistant</span>
+                <span style={{ fontWeight: 700, fontFamily: "Outfit, sans-serif", fontSize: "1.02rem" }}>Rythu Jana Sethu Assistant</span>
               </div>
               <button onClick={() => { window.speechSynthesis.cancel(); setIsOpen(false); }} style={{ background: "transparent", border: "none", color: "white", cursor: "pointer", display: "flex" }}>
                 <X size={20} />

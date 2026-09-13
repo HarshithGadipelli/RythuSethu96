@@ -289,14 +289,14 @@ export default function Register() {
 
           {error && <div className="alert alert-error mb-2">⚠️ {error}</div>}
 
-          {/* Guided Assistant Panel (Farmers Only) */}
+          {/* Rythu Jana Sethu Assistant Panel (Farmers Only) */}
           {form.role === "farmer" && (
             <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.3)", borderRadius: "12px", padding: "1rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
               <div style={{ background: "var(--green-mid)", color: "white", padding: "10px", borderRadius: "50%", display: "flex", flexShrink: 0 }}>
                 <Sparkles size={24} />
               </div>
               <div style={{ flex: 1 }}>
-                <h4 style={{ margin: 0, color: "var(--green-deep)", fontSize: "0.95rem" }}>Guided Assistant</h4>
+                <h4 style={{ margin: 0, color: "var(--green-deep)", fontSize: "0.95rem" }}>Rythu Jana Sethu Assistant</h4>
                 <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
                   {assistantRunning
                     ? assistantMsg || "Running..."

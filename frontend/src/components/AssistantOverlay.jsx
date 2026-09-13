@@ -40,13 +40,14 @@ const AssistantOverlay = ({ isActive, onClose, interimText, aiMessage, step }) =
             padding: "0.5rem 1.5rem",
             borderRadius: "30px",
             cursor: "pointer",
-            fontSize: "1rem",
+            fontSize: "0.95rem",
+            fontWeight: 600,
             transition: "all 0.3s ease"
           }}
           onMouseEnter={(e) => e.target.style.background = "rgba(239, 68, 68, 0.8)"}
           onMouseLeave={(e) => e.target.style.background = "rgba(255, 255, 255, 0.1)"}
         >
-          Close Assistant
+          Close Rythu Jana Sethu Assistant
         </button>
 
         {/* Status Text */}
@@ -59,10 +60,11 @@ const AssistantOverlay = ({ isActive, onClose, interimText, aiMessage, step }) =
             fontSize: "1.2rem",
             textTransform: "uppercase",
             letterSpacing: "2px",
-            marginBottom: "2rem"
+            marginBottom: "2rem",
+            fontWeight: 700
           }}
         >
-          <span>{aiMessage ? "AI is speaking..." : "Listening to you..."}</span>
+          <span>{aiMessage ? "Rythu Jana Sethu Assistant Speaking..." : "Rythu Jana Sethu Assistant Listening..."}</span>
         </motion.div>
 
         {/* Pulsing Microphone Wave */}
@@ -109,7 +111,7 @@ const AssistantOverlay = ({ isActive, onClose, interimText, aiMessage, step }) =
             boxShadow: "0 0 30px rgba(34, 197, 94, 0.5)",
             border: aiMessage ? "2px solid var(--green-mid)" : "none"
           }}>
-            <span style={{ fontSize: "3rem" }}>{aiMessage ? "🤖" : "🎙️"}</span>
+            <span style={{ fontSize: "3rem" }}>{aiMessage ? "🌾" : "🎙️"}</span>
           </div>
         </div>
 

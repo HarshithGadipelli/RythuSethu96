@@ -122,7 +122,7 @@ export default function FarmerSchemes() {
   const userState = user?.location?.toLowerCase().includes("telangana") ? "Telangana" : 
                     user?.location?.toLowerCase().includes("andhra") ? "Andhra Pradesh" : 
                     user?.location?.toLowerCase().includes("maharashtra") ? "Maharashtra" : 
-                    user?.location?.toLowerCase().includes("karnataka") ? "Karnataka" : "Telangana"; // Default to TS for demo
+                    user?.location?.toLowerCase().includes("karnataka") ? "Karnataka" : "Telangana";
                     
   const [selectedState, setSelectedState] = useState(userState);
 

@@ -20,11 +20,11 @@ export default function Login() {
   const [guidedStep, setGuidedStep] = useState(null); // null | 'email' | 'password' | 'done'
   const [guidedRunning, setGuidedRunning] = useState(false);
   const DEFAULT_PROFILES = [
-    { name: "Ram Sharma", email: "ram@test.com", role: "farmer", password: "password123" },
-    { name: "Srinivas Reddy", email: "farmer@test.com", role: "farmer", password: "password123" },
-    { name: "Anand Verma", email: "customer@test.com", role: "customer", password: "password123" },
-    { name: "Raju Delivery", email: "agent@test.com", role: "agent", password: "password123" },
-    { name: "Admin Raj", email: "admin@test.com", role: "admin", password: "password123" }
+    { name: "Srinivas Reddy", email: "farmer@test.com", role: "farmer", password: "password123", title: "Organic Cultivator" },
+    { name: "Ram Sharma", email: "ram@test.com", role: "farmer", password: "password123", title: "Fruit Orchards" },
+    { name: "Anand Verma", email: "customer@test.com", role: "customer", password: "password123", title: "Verified Consumer" },
+    { name: "Raju Delivery", email: "agent@test.com", role: "agent", password: "password123", title: "APMC Delivery Fleet" },
+    { name: "APMC Administrator", email: "admin@test.com", role: "admin", password: "password123", title: "APMC Central Control" }
   ];
 
   const [savedAccounts, setSavedAccounts] = useState(() => {
@@ -43,10 +43,10 @@ export default function Login() {
         if (email.includes("admin") || acc.name?.toLowerCase().includes("raj")) role = "admin";
         return {
           name: acc.name || (email.includes("farmer") || email.includes("ram") ? "Farmer" : email.includes("admin") ? "Admin" : "User"),
-          email: email.trim(),
-          role: role,
-          password: acc.password || "password123",
-          avatar: acc.avatar || ""
+          email,
+          role,
+          avatar: acc.avatar || "",
+          password: acc.password || "password123"
         };
       });
     } catch {
@@ -59,7 +59,7 @@ export default function Login() {
     const accs = savedAccounts.filter(a => a.email.toLowerCase() !== user.email.toLowerCase());
     accs.unshift({ 
       email: user.email, 
-      password: password || "test123", 
+      password: password || "password123", 
       name: user.name || "User", 
       role: user.role || "customer", 
       avatar: user.avatar || user.profilePic || "" 
@@ -80,7 +80,7 @@ export default function Login() {
     e.preventDefault();
     setSavedAccounts(DEFAULT_PROFILES);
     localStorage.setItem("rs_saved_accounts", JSON.stringify(DEFAULT_PROFILES));
-    setInfoMsg("Saved profiles reset to verified demo accounts.");
+    setInfoMsg("Saved profiles refreshed to verified operational accounts.");
   };
 
   const performLogin = async (email, password) => {
@@ -90,41 +90,47 @@ export default function Login() {
     try {
       const res = await API.post("/auth/login", { 
         email: (email || "").trim(), 
-        password: password || "test123"
+        password: password || "password123"
       });
       saveAccountToLocal(res.data.user, password);
       login(res.data.user, res.data.token);
+      
       const role = res.data.user.role;
       if (role === "farmer") navigate("/farmer");
       else if (role === "agent") navigate("/agent");
       else if (role === "admin") navigate("/admin");
       else navigate("/marketplace");
     } catch (err) {
-      const errMsg = err.response?.data?.error || "Login failed. Please check credentials and try again.";
-      setError(errMsg);
-      // Auto pre-fill the email so the user can easily re-enter password
-      setForm(f => ({ ...f, email: email || f.email }));
-      if (passwordInputRef.current) passwordInputRef.current.focus();
+      setError(err.response?.data?.message || "Invalid email or password. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogin = async (e) => {
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
+    if (!form.email || !form.password) {
+      setError("Please enter both email and password.");
+      return;
+    }
+    await performLogin(form.email, form.password);
+  };
+
+  const quickAccountLogin = (roleEmail, defaultPass = "password123") => {
+    setForm({ email: roleEmail, password: defaultPass });
+    performLogin(roleEmail, defaultPass);
   };
 
   const fastLogin = async (acc) => {
     setError("");
     setInfoMsg("");
     const targetEmail = (acc.email || acc.username || acc.name || "").trim();
-    const passToTry = acc.password || "test123";
+    const passToTry = acc.password || "password123";
     if (!targetEmail) {
         setError("Invalid saved profile. No email found.");
         return;
     }
     await performLogin(targetEmail, passToTry);
-  };
-
-  const quickDemoLogin = (roleEmail, defaultPass = "test123") => {
-    setForm({ email: roleEmail, password: defaultPass });
-    performLogin(roleEmail, defaultPass);
   };
 
   const readAloud = (label, value) => {
@@ -190,14 +196,6 @@ export default function Login() {
     }
   };
 
-  const handleLogin = async () => {
-    if (!form.email || !form.password) { 
-      setError("Please fill in both email and password."); 
-      return; 
-    }
-    await performLogin(form.email, form.password);
-  };
-
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
       <div style={{ width: "100%", maxWidth: "460px" }}>
@@ -227,7 +225,7 @@ export default function Login() {
                   type="button" 
                   onClick={resetSavedProfiles} 
                   style={{ background: "none", border: "none", color: "var(--green-deep)", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600, textDecoration: "underline" }}
-                  title="Reset saved profiles to verified demo accounts"
+                  title="Reset saved profiles to verified active accounts"
                 >
                   🔄 Reset Defaults
                 </button>
@@ -335,26 +333,26 @@ export default function Login() {
           </button>
 
           <div className="section-divider mt-4 mb-3">
-            <hr /><span>⚡ 1-Click Quick Demo Switcher</span><hr />
+            <hr /><span>⚡ Quick Verified Account Access</span><hr />
           </div>
 
-          {/* Quick Demo Switchers */}
+          {/* Quick Account Switchers */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
             <button
               type="button"
-              onClick={() => quickDemoLogin("ram@test.com", "password123")}
+              onClick={() => quickAccountLogin("farmer@test.com", "password123")}
               disabled={loading}
               style={{
                 padding: "0.6rem 0.5rem", borderRadius: "10px", border: "1px solid #d1fae5",
-                background: "#ecfdf5", color: "#065f46", fontSize: "0.82rem", fontWeight: 700,
+                background: "#f0fdf4", color: "#166534", fontSize: "0.82rem", fontWeight: 700,
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3rem"
               }}
             >
-              🌾 Ram (Farmer)
+              👨‍🌾 Srinivas Reddy (Farmer)
             </button>
             <button
               type="button"
-              onClick={() => quickDemoLogin("admin@test.com", "password123")}
+              onClick={() => quickAccountLogin("admin@test.com", "password123")}
               disabled={loading}
               style={{
                 padding: "0.6rem 0.5rem", borderRadius: "10px", border: "1px solid #fee2e2",
@@ -362,23 +360,23 @@ export default function Login() {
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3rem"
               }}
             >
-              👑 Admin Demo
+              👑 APMC Administrator
             </button>
             <button
               type="button"
-              onClick={() => quickDemoLogin("farmer@test.com", "password123")}
+              onClick={() => quickAccountLogin("ram@test.com", "password123")}
               disabled={loading}
               style={{
                 padding: "0.6rem 0.5rem", borderRadius: "10px", border: "1px solid #d1fae5",
-                background: "#f0fdf4", color: "#166534", fontSize: "0.8rem", fontWeight: 600,
+                background: "#ecfdf5", color: "#065f46", fontSize: "0.8rem", fontWeight: 600,
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3rem"
               }}
             >
-              👨‍🌾 Srinivas Reddy
+              🌾 Ram Sharma (Farmer)
             </button>
             <button
               type="button"
-              onClick={() => quickDemoLogin("customer@test.com", "password123")}
+              onClick={() => quickAccountLogin("customer@test.com", "password123")}
               disabled={loading}
               style={{
                 padding: "0.6rem 0.5rem", borderRadius: "10px", border: "1px solid #e0e7ff",
@@ -386,11 +384,11 @@ export default function Login() {
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3rem"
               }}
             >
-              🛒 Anand Verma
+              🛒 Anand Verma (Buyer)
             </button>
             <button
               type="button"
-              onClick={() => quickDemoLogin("agent@test.com", "password123")}
+              onClick={() => quickAccountLogin("agent@test.com", "password123")}
               disabled={loading}
               style={{
                 padding: "0.6rem 0.5rem", borderRadius: "10px", border: "1px solid #fef3c7",
@@ -398,11 +396,11 @@ export default function Login() {
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3rem"
               }}
             >
-              🚚 Raju Delivery
+              🚚 Raju Delivery (Agent)
             </button>
             <button
               type="button"
-              onClick={() => quickDemoLogin("raj@test.com", "password123")}
+              onClick={() => quickAccountLogin("raj@test.com", "password123")}
               disabled={loading}
               style={{
                 padding: "0.6rem 0.5rem", borderRadius: "10px", border: "1px solid #fee2e2",
@@ -410,7 +408,7 @@ export default function Login() {
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3rem"
               }}
             >
-              🛡️ Raj Admin
+              🛡️ APMC Field Officer
             </button>
           </div>
 

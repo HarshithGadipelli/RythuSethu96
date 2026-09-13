@@ -918,7 +918,7 @@ export default function FarmerDashboard() {
         setWizardStatus("idle");
         stopTTS();
         stopListening();
-        setMsg({ type: "info", text: "Guided Assistant closed." });
+        setMsg({ type: "info", text: "Rythu Jana Sethu Assistant closed." });
         return;
       }
       if (localData.action === "clear") {
@@ -2103,7 +2103,7 @@ export default function FarmerDashboard() {
                 style={{ width:"auto", background:"var(--green-mid)", color:"#fff", fontWeight:600, padding:"0.5rem 1rem", border: "2px solid var(--green-primary)" }} 
                 onClick={startGuidedWizard}
               >
-                {wizardActive ? "🎙️ Assistant Listening..." : "🤖 Start Guided Assistant"}
+                {wizardActive ? "🎙️ Assistant Listening..." : "🌾 Rythu Jana Sethu Assistant"}
               </button>
             </div>
           </div>
@@ -2175,6 +2175,74 @@ export default function FarmerDashboard() {
                     options={["kg","g","quintal","bag","crate","ton","litre","piece","dozen"].map(u => ({ value: u, label: u }))}
                     helperText="Standard selling unit"
                   />
+                </div>
+
+                {/* 1-Tap Low-Literacy Quantity Presets */}
+                <div style={{ marginTop: "0.75rem", marginBottom: "0.75rem" }}>
+                  <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: "0.4rem" }}>
+                    ⚡ 1-Tap Harvest Quantity Presets (రైతుల కోసం సులభమైన ఎంపిక):
+                  </span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                    {[
+                      { qty: 25, unit: "kg", label: "25 kg (Small Bag)" },
+                      { qty: 50, unit: "kg", label: "50 kg (Standard Sack)" },
+                      { qty: 100, unit: "kg", label: "100 kg (1 Quintal)" },
+                      { qty: 250, unit: "kg", label: "250 kg" },
+                      { qty: 500, unit: "kg", label: "500 kg (Half Ton)" },
+                      { qty: 1000, unit: "kg", label: "1000 kg (1 Ton / Truckload)" },
+                      { qty: 2000, unit: "kg", label: "2000 kg (2 Tons)" },
+                    ].map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, quantity: preset.qty, unit: preset.unit }))}
+                        style={{
+                          background: Number(form.quantity) === preset.qty && form.unit === preset.unit ? "var(--green-mid)" : "rgba(34, 197, 94, 0.08)",
+                          color: Number(form.quantity) === preset.qty && form.unit === preset.unit ? "white" : "var(--green-deep)",
+                          border: Number(form.quantity) === preset.qty && form.unit === preset.unit ? "1px solid var(--green-mid)" : "1px solid rgba(34, 197, 94, 0.3)",
+                          padding: "4px 10px",
+                          borderRadius: "100px",
+                          fontSize: "0.78rem",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          transition: "all 0.2s ease"
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 1-Tap Price Steppers */}
+                <div style={{ marginTop: "0.5rem", marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)" }}>
+                    💰 Quick Price Adjustment:
+                  </span>
+                  {[
+                    { diff: -10, label: "-₹10" },
+                    { diff: -5, label: "-₹5" },
+                    { diff: +5, label: "+₹5" },
+                    { diff: +10, label: "+₹10" },
+                  ].map(adj => (
+                    <button
+                      key={adj.label}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, price: Math.max(1, (Number(f.price) || 0) + adj.diff) }))}
+                      style={{
+                        background: "rgba(255,255,255,0.06)",
+                        color: "var(--text-dark)",
+                        border: "1px solid rgba(255,255,255,0.15)",
+                        padding: "3px 9px",
+                        borderRadius: "6px",
+                        fontSize: "0.75rem",
+                        fontWeight: 700,
+                        cursor: "pointer"
+                      }}
+                    >
+                      {adj.label}
+                    </button>
+                  ))}
                 </div>
 
                 {wizardBenchmark && (
@@ -2440,158 +2508,163 @@ export default function FarmerDashboard() {
           </AnimatePresence>
         </div>
 
-        {/* ── ADVANCED GUIDED ASSISTANT PANEL ── */}
-        <div className="form-guide-box" style={{ background: "rgba(15, 23, 42, 0.65)", backdropFilter: "blur(16px)", border: "1px solid rgba(34, 197, 94, 0.25)", borderRadius: "16px", padding: "1.5rem", boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}>
+        {/* ── RYTHU JANA SETHU AGRICULTURAL OFFICER COMPANION CARD ── */}
+        <div className="form-guide-box" style={{ background: "linear-gradient(145deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.9))", backdropFilter: "blur(20px)", border: "1.5px solid rgba(34, 197, 94, 0.35)", borderRadius: "20px", padding: "1.5rem", boxShadow: "0 20px 45px rgba(0,0,0,0.45)" }}>
           
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "0.75rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <span style={{ fontSize: "1.4rem" }}>🤖</span>
+          {/* Officer Companion Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "1rem", flexWrap: "wrap", gap: "0.8rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <div style={{ position: "relative" }}>
+                <img 
+                  src="/rythu_officer.jpg" 
+                  alt="Rythu Jana Sethu Agricultural Officer" 
+                  style={{ width: 68, height: 68, borderRadius: "50%", objectFit: "cover", border: "2.5px solid #22c55e", boxShadow: "0 4px 16px rgba(34, 197, 94, 0.35)", display: "block" }} 
+                />
+                <span style={{ position: "absolute", bottom: 0, right: 0, width: 16, height: 16, borderRadius: "50%", background: "#22c55e", border: "2.5px solid #0f172a" }}></span>
+              </div>
               <div>
-                <h4 style={{ margin: 0, color: "var(--green-mid)", fontSize: "1rem", fontWeight: 700 }}>AI Guided Voice Assistant</h4>
-                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Speak in Telugu, Hindi, Tamil, Kannada, or English</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+                  <h4 style={{ margin: 0, color: "#86efac", fontSize: "1.08rem", fontWeight: 800 }}>రైతు జన సేతు వ్యవసాయ అధికారి</h4>
+                  <span style={{ fontSize: "0.72rem", background: "rgba(34, 197, 94, 0.2)", color: "#86efac", padding: "2px 8px", borderRadius: "100px", fontWeight: 700 }}>Krishi Sahayak</span>
+                </div>
+                <p style={{ margin: "2px 0 0 0", fontSize: "0.78rem", color: "#cbd5e1" }}>
+                  Rythu Jana Sethu Agricultural Extension Officer • Speak in your mother tongue
+                </p>
               </div>
             </div>
             <button 
               type="button" 
               className="tts-btn" 
-              onClick={() => playTTS(aiMessage || "Tell me what crop you want to sell, how many kilograms, and the price.", lang)} 
+              onClick={() => playTTS(aiMessage || "నమస్కారం రైతు సోదరులారా! మీ వద్ద ఉన్న పంట పేరు, బస్తాలు లేదా కిలోలు, ధర చెప్పండి. నేను మొత్తం వివరాలు నింపుతాను.", lang)} 
               title="Hear Assistant Guidance"
+              style={{ background: "rgba(34, 197, 94, 0.15)", border: "1px solid rgba(34, 197, 94, 0.3)", color: "#86efac", width: 40, height: 40, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "1.1rem" }}
             >
               🔊
             </button>
           </div>
 
-          {/* Dynamic Voice Status & Live Visualizer */}
+          {/* Officer Live Speech Bubble */}
           <div style={{ 
-            background: wizardStatus === "listening" ? "rgba(34, 197, 94, 0.12)" : (wizardStatus === "analyzing" ? "rgba(59, 130, 246, 0.12)" : "rgba(255,255,255,0.03)"), 
-            border: wizardStatus === "listening" ? "1px solid rgba(34, 197, 94, 0.4)" : "1px solid rgba(255,255,255,0.08)",
-            borderRadius: "12px", 
+            background: wizardStatus === "listening" ? "rgba(34, 197, 94, 0.12)" : (wizardStatus === "analyzing" ? "rgba(59, 130, 246, 0.12)" : "rgba(255,255,255,0.04)"), 
+            border: wizardStatus === "listening" ? "1.5px solid rgba(34, 197, 94, 0.45)" : "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "14px", 
             padding: "1rem", 
             marginBottom: "1.2rem",
-            textAlign: "center",
             transition: "all 0.3s ease"
           }}>
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.6rem", marginBottom: "0.5rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.5rem" }}>
               {wizardStatus === "listening" && (
-                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <span className="pulse" style={{ width: 10, height: 10, borderRadius: "50%", background: "#22c55e", display: "inline-block" }}></span>
-                  <span style={{ color: "#22c55e", fontWeight: 600, fontSize: "0.9rem" }}>🎙️ Listening... Speak freely!</span>
+                  <span style={{ color: "#22c55e", fontWeight: 700, fontSize: "0.88rem" }}>🎙️ వింటున్నాను... మాట్లాడండి! (Listening... Speak freely!)</span>
                 </div>
               )}
               {wizardStatus === "analyzing" && (
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <span className="loader" style={{ width: 14, height: 14, borderWidth: 2 }}></span>
-                  <span style={{ color: "#60a5fa", fontWeight: 600, fontSize: "0.9rem" }}>⚡ AI Analyzing & Autofilling...</span>
+                  <span style={{ color: "#60a5fa", fontWeight: 700, fontSize: "0.88rem" }}>⚡ వివరాలు పరిశీలిస్తున్నాను... (AI Processing Details...)</span>
                 </div>
               )}
               {wizardStatus === "speaking" && (
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <Volume2 size={16} color="#fbbf24" className="animate-pulse" />
-                  <span style={{ color: "#fbbf24", fontWeight: 600, fontSize: "0.9rem" }}>🔊 Speaking Response...</span>
+                  <span style={{ color: "#fbbf24", fontWeight: 700, fontSize: "0.88rem" }}>🔊 అధికారి మాట్లాడుతున్నారు... (Officer Speaking...)</span>
                 </div>
               )}
               {(wizardStatus === "idle" || wizardStatus === "ready") && (
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <CheckCircle2 size={16} color="var(--green-mid)" />
-                  <span style={{ color: "var(--green-mid)", fontWeight: 600, fontSize: "0.9rem" }}>
-                    {wizardStatus === "ready" ? "✅ All Details Captured!" : "🟢 Assistant Ready"}
+                  <span style={{ color: "var(--green-mid)", fontWeight: 700, fontSize: "0.88rem" }}>
+                    {wizardStatus === "ready" ? "✅ అన్ని వివరాలు నమోదయ్యాయి! (Details Captured Ready)" : "🟢 అధికారి అందుబాటులో ఉన్నారు (Officer Ready)"}
                   </span>
                 </div>
               )}
             </div>
 
-            {/* Live Speech Transcript */}
+            {/* Spoken Hearing Transcript */}
             {wizardHeard && (
-              <div style={{ background: "rgba(0,0,0,0.3)", padding: "0.6rem 0.8rem", borderRadius: "8px", fontSize: "0.85rem", color: "#e2e8f0", fontStyle: "italic", textAlign: "left", marginBottom: "0.5rem", borderLeft: "3px solid var(--green-mid)" }}>
-                <span style={{ color: "var(--text-muted)", fontSize: "0.75rem", display: "block", fontStyle: "normal" }}>What I heard:</span>
+              <div style={{ background: "rgba(0,0,0,0.35)", padding: "0.6rem 0.8rem", borderRadius: "8px", fontSize: "0.85rem", color: "#e2e8f0", fontStyle: "italic", marginBottom: "0.5rem", borderLeft: "3px solid var(--green-mid)" }}>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.72rem", display: "block", fontStyle: "normal", fontWeight: 600 }}>మీరు చెప్పింది (Heard):</span>
                 "{wizardHeard}"
               </div>
             )}
 
-            {/* AI Assistant Spoken Message */}
-            {aiMessage && (
-              <div style={{ background: "rgba(34, 197, 94, 0.08)", padding: "0.6rem 0.8rem", borderRadius: "8px", fontSize: "0.85rem", color: "#86efac", textAlign: "left" }}>
-                <strong>AI:</strong> {aiMessage}
-              </div>
-            )}
+            {/* Officer Advice / Message */}
+            <div style={{ background: "rgba(34, 197, 94, 0.08)", padding: "0.65rem 0.85rem", borderRadius: "10px", fontSize: "0.86rem", color: "#86efac", lineHeight: 1.4 }}>
+              <strong>🌾 సలహాదారు (Officer):</strong> {aiMessage || "నమస్కారం! పంట పేరు (ఉదా: టమాటో, మిర్చి, వరి), పరిమాణం, మరియు మీరు ఆశించే ధర చెప్పండి లేదా కింద ఉన్న ఫోటోలను తాకండి."}
+            </div>
           </div>
 
-          {/* Extracted Fields Live Tags */}
+          {/* Extracted Harvest Details Tags */}
           <div style={{ marginBottom: "1.2rem" }}>
-            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block", marginBottom: "0.5rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Live Extracted Data</span>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-              <div style={{ background: "rgba(255,255,255,0.03)", border: form.name ? "1px solid rgba(34, 197, 94, 0.4)" : "1px solid rgba(255,255,255,0.05)", padding: "0.5rem 0.7rem", borderRadius: "8px", fontSize: "0.8rem" }}>
-                <span style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>🌾 Crop Name</span>
-                <div style={{ fontWeight: 600, color: form.name ? "#22c55e" : "#94a3b8" }}>{form.name || "— Not Set —"}</div>
+            <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", display: "block", marginBottom: "0.5rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>నమోదైన పంట వివరాలు (Live Captured Data)</span>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.5rem" }}>
+              <div style={{ background: "rgba(255,255,255,0.03)", border: form.name ? "1px solid rgba(34, 197, 94, 0.5)" : "1px solid rgba(255,255,255,0.06)", padding: "0.6rem 0.75rem", borderRadius: "10px" }}>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.72rem", display: "block" }}>🌾 పంట పేరు (Crop)</span>
+                <div style={{ fontWeight: 700, color: form.name ? "#22c55e" : "#94a3b8", fontSize: "0.95rem" }}>{form.name || "— Not Set —"}</div>
               </div>
-              <div style={{ background: "rgba(255,255,255,0.03)", border: form.quantity ? "1px solid rgba(34, 197, 94, 0.4)" : "1px solid rgba(255,255,255,0.05)", padding: "0.5rem 0.7rem", borderRadius: "8px", fontSize: "0.8rem" }}>
-                <span style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>⚖️ Quantity</span>
-                <div style={{ fontWeight: 600, color: form.quantity ? "#22c55e" : "#94a3b8" }}>{form.quantity ? `${form.quantity} ${form.unit || 'kg'}` : "— Not Set —"}</div>
+              <div style={{ background: "rgba(255,255,255,0.03)", border: form.quantity ? "1px solid rgba(34, 197, 94, 0.5)" : "1px solid rgba(255,255,255,0.06)", padding: "0.6rem 0.75rem", borderRadius: "10px" }}>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.72rem", display: "block" }}>⚖️ పరిమాణం (Harvest Qty)</span>
+                <div style={{ fontWeight: 700, color: form.quantity ? "#22c55e" : "#94a3b8", fontSize: "0.95rem" }}>{form.quantity ? `${form.quantity} ${form.unit || 'kg'}` : "— Not Set —"}</div>
               </div>
-              <div style={{ background: "rgba(255,255,255,0.03)", border: form.price ? "1px solid rgba(34, 197, 94, 0.4)" : "1px solid rgba(255,255,255,0.05)", padding: "0.5rem 0.7rem", borderRadius: "8px", fontSize: "0.8rem" }}>
-                <span style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>💰 Price</span>
-                <div style={{ fontWeight: 600, color: form.price ? "#22c55e" : "#94a3b8" }}>{form.price ? `₹${form.price}/${form.unit || 'kg'}` : "— Not Set —"}</div>
+              <div style={{ background: "rgba(255,255,255,0.03)", border: form.price ? "1px solid rgba(34, 197, 94, 0.5)" : "1px solid rgba(255,255,255,0.06)", padding: "0.6rem 0.75rem", borderRadius: "10px" }}>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.72rem", display: "block" }}>💰 నిర్ణయించిన ధర (Price)</span>
+                <div style={{ fontWeight: 700, color: form.price ? "#22c55e" : "#94a3b8", fontSize: "0.95rem" }}>{form.price ? `₹${form.price}/${form.unit || 'kg'}` : "— Not Set —"}</div>
               </div>
-              <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", padding: "0.5rem 0.7rem", borderRadius: "8px", fontSize: "0.8rem" }}>
-                <span style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>🌿 Organic</span>
-                <div style={{ fontWeight: 600, color: form.isOrganic ? "#22c55e" : "#cbd5e1" }}>{form.isOrganic ? "✅ 100% Organic" : "Standard"}</div>
+              <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", padding: "0.6rem 0.75rem", borderRadius: "10px" }}>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.72rem", display: "block" }}>🌿 పద్ధతి (Category)</span>
+                <div style={{ fontWeight: 700, color: form.isOrganic ? "#22c55e" : "#cbd5e1", fontSize: "0.95rem" }}>{form.isOrganic ? "✅ 100% సేంద్రీయ (Organic)" : "సాధారణ (Standard)"}</div>
               </div>
             </div>
           </div>
 
-          {/* APMC Market Price & Projected Revenue Advisory Card */}
+          {/* APMC Market Benchmark & Revenue Preview */}
           {(form.name || form.quantity || form.price) && (
             <div style={{ 
-              background: "linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(16, 185, 129, 0.05))", 
-              border: "1px solid rgba(34, 197, 94, 0.25)", 
-              borderRadius: "12px", 
-              padding: "0.9rem", 
+              background: "linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(16, 185, 129, 0.06))", 
+              border: "1px solid rgba(34, 197, 94, 0.3)", 
+              borderRadius: "14px", 
+              padding: "1rem", 
               marginBottom: "1.2rem" 
             }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
-                <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--green-mid)", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                  <TrendingUp size={14} /> Market Intelligence
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "#86efac", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                  <TrendingUp size={15} /> APMC మార్కెట్ సమాచారం (Mandi Benchmark)
                 </span>
                 {wizardBenchmark && (
-                  <span style={{ fontSize: "0.7rem", background: "rgba(34, 197, 94, 0.2)", color: "#86efac", padding: "2px 6px", borderRadius: "6px" }}>
+                  <span style={{ fontSize: "0.72rem", background: "rgba(34, 197, 94, 0.25)", color: "#86efac", padding: "3px 8px", borderRadius: "6px", fontWeight: 700 }}>
                     {wizardBenchmark.trend}
                   </span>
                 )}
               </div>
 
               {wizardBenchmark && (
-                <div style={{ fontSize: "0.8rem", color: "#cbd5e1", marginBottom: "0.4rem" }}>
-                  APMC Benchmark: <strong>₹{wizardBenchmark.avg}/{wizardBenchmark.unit}</strong> (Range: ₹{wizardBenchmark.min} - ₹{wizardBenchmark.max})
+                <div style={{ fontSize: "0.84rem", color: "#e2e8f0", marginBottom: "0.5rem" }}>
+                  ప్రభుత్వ మార్కెట్ సగటు ధర: <strong>₹{wizardBenchmark.avg}/{wizardBenchmark.unit}</strong> (పరిధి: ₹{wizardBenchmark.min} - ₹{wizardBenchmark.max})
                 </div>
               )}
 
               {form.quantity && form.price ? (
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.25)", padding: "0.5rem 0.75rem", borderRadius: "8px", marginTop: "0.4rem" }}>
-                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>💵 Projected Revenue:</span>
-                  <strong style={{ fontSize: "1.1rem", color: "#4ade80" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.3)", padding: "0.6rem 0.9rem", borderRadius: "10px", marginTop: "0.5rem" }}>
+                  <span style={{ fontSize: "0.82rem", color: "#cbd5e1" }}>💵 మొత్తం అంచనా ఆదాయం (Projected Revenue):</span>
+                  <strong style={{ fontSize: "1.2rem", color: "#4ade80", fontWeight: 800 }}>
                     ₹{(Number(form.quantity) * Number(form.price)).toLocaleString('en-IN')}
                   </strong>
                 </div>
               ) : null}
-
-              {wizardBenchmark?.advice && (
-                <p style={{ margin: 0, marginTop: "0.4rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                  💡 {wizardBenchmark.advice}
-                </p>
-              )}
             </div>
           )}
 
-          {/* Read Summary Aloud & Voice Controls */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
+          {/* Voice Controls & Clear Actions */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1.2rem" }}>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
               <button 
                 type="button" 
                 className={`btn-primary ${wizardActive ? "pulse" : ""}`}
                 onClick={startGuidedWizard}
-                style={{ flex: 2, display: "flex", justifyContent: "center", alignItems: "center", gap: "0.4rem", padding: "0.65rem 1rem", fontSize: "0.95rem", fontWeight: 700 }}
+                style={{ flex: 2, minWidth: 200, display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem", padding: "0.75rem 1.2rem", fontSize: "0.95rem", fontWeight: 800, borderRadius: "12px" }}
               >
-                <Mic size={18} /> {wizardActive ? "⏸️ Pause Voice" : "🎙️ Speak to Autofill"}
+                <Mic size={18} /> {wizardActive ? "⏸️ మాట్లాడటం ఆపండి (Pause Voice)" : "🎙️ అధికారితో మాట్లాడండి (Speak to Officer)"}
               </button>
               
               <button 
@@ -2616,10 +2689,10 @@ export default function FarmerDashboard() {
                   setAiMessage(summary);
                   playTTS(summary, langKey);
                 }}
-                style={{ flex: 1.5, padding: "0.6rem", fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem", background: "rgba(59, 130, 246, 0.15)", borderColor: "rgba(59, 130, 246, 0.3)", color: "#93c5fd" }}
+                style={{ flex: 1.2, minWidth: 150, padding: "0.65rem 1rem", fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem", background: "rgba(59, 130, 246, 0.15)", borderColor: "rgba(59, 130, 246, 0.3)", color: "#93c5fd", borderRadius: "12px" }}
                 title="🔊 Read Form Summary Aloud"
               >
-                <Volume2 size={16} /> 🔊 Read Summary
+                <Volume2 size={16} /> 🔊 వివరాలు వినండి (Read)
               </button>
 
               <button 
@@ -2629,34 +2702,34 @@ export default function FarmerDashboard() {
                   setForm({ name:"", description:"", price:"", quantity:"", unit:"kg", category:"vegetable", image:null, farmLocation:"", location:"", sameLocation:true, isOrganic:false, isPesticideFree:false, season:"kharif", harvestDate:"", latitude:"", longitude:"", isPrebooking:false, lifecycleStage: "ready", farmTourUrl:"", qualityGrade:null, isBulk:false, minOrderQty:1 });
                   setWizardHeard("");
                   setWizardBenchmark(null);
-                  setAiMessage("Form reset.");
+                  setAiMessage("వివరాలు క్లియర్ చేయబడ్డాయి. కొత్త పంట వివరాలు చెప్పండి.");
                 }}
-                style={{ padding: "0.6rem 0.8rem", fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3rem" }}
+                style={{ padding: "0.65rem 0.9rem", fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3rem", borderRadius: "12px" }}
                 title="Clear all fields"
               >
-                <RefreshCw size={14} /> Clear
+                <RefreshCw size={14} /> రీసెట్ (Clear)
               </button>
             </div>
           </div>
 
-          {/* Illiterate-Friendly Quick Voice Presets */}
-          <div>
-            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.4rem", fontWeight: 600 }}>
-              ⚡ Quick Spoken Presets (తాకితే స్వయంచాలకంగా నిండుతుంది):
+          {/* 1-Tap Harvest Crop Quick Pills for Low-Literacy Farmers */}
+          <div style={{ marginBottom: "1.2rem" }}>
+            <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", display: "block", marginBottom: "0.5rem", fontWeight: 700 }}>
+              ⚡ తాకితే స్వయంచాలకంగా నిండే పంటలు (1-Tap Instant Presets):
             </span>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem" }}>
               <button 
                 type="button" 
                 onClick={() => {
                   setForm(f => ({ ...f, name: "Tomato", category: "vegetable", quantity: 50, price: 35, unit: "kg", isOrganic: true }));
                   setWizardStep(2);
-                  const msg = "Loaded 50 kg Organic Tomato at ₹35/kg.";
+                  const msg = "50 కేజీల సేంద్రీయ టమాటో కేజీ ₹35 చొప్పున నింపబడింది.";
                   setAiMessage(msg);
                   playTTS(msg, lang);
                 }}
-                style={{ background: "rgba(34, 197, 94, 0.1)", border: "1px solid rgba(34, 197, 94, 0.3)", borderRadius: "12px", padding: "4px 9px", fontSize: "0.75rem", color: "#86efac", cursor: "pointer", fontWeight: 600 }}
+                style={{ background: "rgba(34, 197, 94, 0.12)", border: "1px solid rgba(34, 197, 94, 0.35)", borderRadius: "100px", padding: "5px 12px", fontSize: "0.78rem", color: "#86efac", cursor: "pointer", fontWeight: 700 }}
               >
-                🍅 50 kg Tomato ₹35 (Organic)
+                🍅 50 kg Tomato ₹35
               </button>
               
               <button 
@@ -2664,13 +2737,13 @@ export default function FarmerDashboard() {
                 onClick={() => {
                   setForm(f => ({ ...f, name: "Onion", category: "vegetable", quantity: 1000, price: 30, unit: "kg", isOrganic: false }));
                   setWizardStep(2);
-                  const msg = "Loaded 20 Bags (1000 kg) Onion at ₹30/kg.";
+                  const msg = "1000 కేజీల ఉల్లిగడ్డ కేజీ ₹30 చొప్పున నింపబడింది.";
                   setAiMessage(msg);
                   playTTS(msg, lang);
                 }}
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "12px", padding: "4px 9px", fontSize: "0.75rem", color: "#e2e8f0", cursor: "pointer" }}
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "100px", padding: "5px 12px", fontSize: "0.78rem", color: "#e2e8f0", cursor: "pointer", fontWeight: 600 }}
               >
-                🧅 20 Bags Onion ₹30
+                🧅 1000 kg Onion ₹30
               </button>
 
               <button 
@@ -2678,11 +2751,11 @@ export default function FarmerDashboard() {
                 onClick={() => {
                   setForm(f => ({ ...f, name: "Chili", category: "spice", quantity: 100, price: 120, unit: "kg", isOrganic: true }));
                   setWizardStep(2);
-                  const msg = "Loaded 100 kg Red Chilli at ₹120/kg.";
+                  const msg = "100 కేజీల నాణ్యమైన ఎర్ర మిర్చి కేజీ ₹120 చొప్పున నింపబడింది.";
                   setAiMessage(msg);
                   playTTS(msg, lang);
                 }}
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "12px", padding: "4px 9px", fontSize: "0.75rem", color: "#e2e8f0", cursor: "pointer" }}
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "100px", padding: "5px 12px", fontSize: "0.78rem", color: "#e2e8f0", cursor: "pointer", fontWeight: 600 }}
               >
                 🌶️ 100 kg Chili ₹120
               </button>
@@ -2692,24 +2765,83 @@ export default function FarmerDashboard() {
                 onClick={() => {
                   setForm(f => ({ ...f, name: "Rice", category: "grain", quantity: 500, price: 48, unit: "kg", isOrganic: true }));
                   setWizardStep(2);
-                  const msg = "Loaded 500 kg Sona Masoori Rice at ₹48/kg.";
+                  const msg = "500 కేజీల సోనా మసూరి బియ్యం కేజీ ₹48 చొప్పున నింపబడింది.";
                   setAiMessage(msg);
                   playTTS(msg, lang);
                 }}
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "12px", padding: "4px 9px", fontSize: "0.75rem", color: "#e2e8f0", cursor: "pointer" }}
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "100px", padding: "5px 12px", fontSize: "0.78rem", color: "#e2e8f0", cursor: "pointer", fontWeight: 600 }}
               >
                 🌾 500 kg Rice ₹48
               </button>
 
               <button 
                 type="button" 
-                onClick={handleAddCrop}
-                disabled={!form.name || !form.price || !form.quantity || loading}
-                style={{ background: form.name && form.price && form.quantity ? "linear-gradient(135deg, #22c55e, #16a34a)" : "rgba(255,255,255,0.04)", border: "1px solid rgba(34, 197, 94, 0.3)", borderRadius: "12px", padding: "4px 10px", fontSize: "0.75rem", color: form.name && form.price && form.quantity ? "#ffffff" : "#64748b", cursor: form.name && form.price && form.quantity ? "pointer" : "not-allowed", fontWeight: 700 }}
+                onClick={() => {
+                  setForm(f => ({ ...f, name: "Cotton", category: "other", quantity: 1000, price: 72, unit: "kg", isOrganic: false }));
+                  setWizardStep(2);
+                  const msg = "1000 కేజీల పత్తి కేజీ ₹72 చొప్పున నింపబడింది.";
+                  setAiMessage(msg);
+                  playTTS(msg, lang);
+                }}
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "100px", padding: "5px 12px", fontSize: "0.78rem", color: "#e2e8f0", cursor: "pointer", fontWeight: 600 }}
               >
-                🚀 Post Crop Now
+                ☁️ 1000 kg Cotton ₹72
+              </button>
+
+              <button 
+                type="button" 
+                onClick={() => {
+                  setForm(f => ({ ...f, name: "Mango", category: "fruit", quantity: 250, price: 85, unit: "kg", isOrganic: true }));
+                  setWizardStep(2);
+                  const msg = "250 కేజీల బంగినపల్లి మామిడి కేజీ ₹85 చొప్పున నింపబడింది.";
+                  setAiMessage(msg);
+                  playTTS(msg, lang);
+                }}
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "100px", padding: "5px 12px", fontSize: "0.78rem", color: "#e2e8f0", cursor: "pointer", fontWeight: 600 }}
+              >
+                🥭 250 kg Mango ₹85
               </button>
             </div>
+          </div>
+
+          {/* 1-Tap Direct Publish Crop Listing */}
+          <div style={{ marginTop: "1.2rem", paddingTop: "1rem", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+            <button 
+              type="button" 
+              onClick={handleAddCrop}
+              disabled={!form.name || !form.price || !form.quantity || loading}
+              style={{ 
+                width: "100%", 
+                background: form.name && form.price && form.quantity ? "linear-gradient(135deg, #16a34a, #15803d)" : "rgba(255,255,255,0.06)", 
+                border: "none", 
+                borderRadius: "14px", 
+                padding: "0.95rem 1.5rem", 
+                fontSize: "1.05rem", 
+                color: form.name && form.price && form.quantity ? "#ffffff" : "#64748b", 
+                cursor: form.name && form.price && form.quantity ? "pointer" : "not-allowed", 
+                fontWeight: 800,
+                boxShadow: form.name && form.price && form.quantity ? "0 6px 20px rgba(22, 163, 74, 0.4)" : "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.6rem",
+                transition: "all 0.3s ease"
+              }}
+            >
+              {loading ? (
+                <span>🔄 పబ్లిష్ అవుతోంది (Publishing Listing)...</span>
+              ) : (
+                <>
+                  <Sparkles size={20} />
+                  <span>✨ పంటను నేరుగా మార్కెట్లో ప్రకటించండి (Publish Crop Now)</span>
+                </>
+              )}
+            </button>
+            {!form.name || !form.price || !form.quantity ? (
+              <p style={{ textAlign: "center", margin: "6px 0 0 0", fontSize: "0.76rem", color: "#94a3b8" }}>
+                💡 పైనున్న వాయిస్ బటన్ లేదా ఫోటో ద్వారా పంట, పరిమాణం, ధర నింపగానే ఈ బటన్ ఆన్ అవుతుంది.
+              </p>
+            ) : null}
           </div>
 
         </div>

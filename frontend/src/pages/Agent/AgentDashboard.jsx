@@ -208,6 +208,7 @@ export default function AgentDashboard() {
   const [agentPos, setAgentPos] = useState(null);
   const [showLocModal, setShowLocModal] = useState(false);
   const [radiusFilter, setRadiusFilter] = useState("");
+  const [showSpecializedDrawer, setShowSpecializedDrawer] = useState(false);
 
   useEffect(() => {
     if (user?.latitude && user?.longitude && !agentPos) {
@@ -1072,21 +1073,201 @@ export default function AgentDashboard() {
 
       {msg.text && <div className={`alert alert-${msg.type} mb-2`}>{msg.text}</div>}
 
-      {/* Tabs */}
-      <div className="tab-bar mb-3">
-        {[
-          { k:"my", l:"📦 My Deliveries" },
-          { k:"available", l:"🚚 Available Orders" },
-          { k:"coldstorage", l:"❄️ Cold Storage Vault" },
-          { k:"ridealong", l:"🎒 Ride-Along Route" },
-          { k:"earnings", l:"💰 Earnings" },
-          { k:"tips", l:"💡 Smart Tips" }
-        ].map(tb => (
-          <button key={tb.k} className={`tab-btn ${tab===tb.k?"active":""}`} onClick={() => setTab(tb.k)}>
-            {tb.l}
+      {/* ── BREADCRUMB WHEN IN SPECIALIZED LOGISTICS SUITE ── */}
+      {["coldstorage", "ridealong", "tips"].includes(tab) && (
+        <div style={{
+          background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
+          border: "1.5px solid #93c5fd",
+          borderRadius: "14px",
+          padding: "0.75rem 1.25rem",
+          marginBottom: "1.2rem",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "0.8rem",
+          boxShadow: "0 2px 8px rgba(37, 99, 235, 0.08)"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontSize: "1.2rem" }}>⚡</span>
+            <div>
+              <span style={{ fontSize: "0.75rem", color: "#1e40af", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Specialized Logistics Suite</span>
+              <div style={{ fontWeight: 800, color: "#1e3a8a", fontSize: "0.95rem" }}>
+                {tab === "coldstorage" ? "❄️ Cold Storage Vault Management" : tab === "ridealong" ? "🎒 Freelance Ride-Along & Commuter Route" : "💡 Logistics Tips & Performance SOP"}
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTab("my")}
+            style={{
+              background: "#2563eb",
+              color: "white",
+              border: "none",
+              padding: "0.5rem 1rem",
+              borderRadius: "100px",
+              fontWeight: 700,
+              fontSize: "0.82rem",
+              cursor: "pointer",
+              boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)"
+            }}
+          >
+            ← Back to Daily Deliveries
           </button>
-        ))}
+        </div>
+      )}
+
+      {/* ── DAILY OPERATIONS TAB BAR & SPECIALIZED SUITE ACCESS ── */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem", flexWrap: "wrap", gap: "0.75rem" }}>
+        <div className="tab-bar" style={{ margin: 0, flex: 1, minWidth: 280 }}>
+          {[
+            { k:"my", l:`📦 My Deliveries (${deliveries.filter(d => d.status !== 'delivered').length})` },
+            { k:"available", l:`🚚 Available Orders (${filteredAvailable.length})` },
+            { k:"earnings", l:"💰 Earnings & Ledger" }
+          ].map(tb => (
+            <button key={tb.k} className={`tab-btn ${tab===tb.k?"active":""}`} onClick={() => setTab(tb.k)}>
+              {tb.l}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowSpecializedDrawer(true)}
+          style={{
+            background: ["coldstorage", "ridealong", "tips"].includes(tab) ? "linear-gradient(135deg, #1d4ed8, #2563eb)" : "linear-gradient(135deg, #f8fafc, #f1f5f9)",
+            color: ["coldstorage", "ridealong", "tips"].includes(tab) ? "white" : "#1e293b",
+            border: ["coldstorage", "ridealong", "tips"].includes(tab) ? "1.5px solid #3b82f6" : "1.5px solid #cbd5e1",
+            padding: "0.6rem 1.1rem",
+            borderRadius: "12px",
+            fontWeight: 800,
+            fontSize: "0.85rem",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
+            transition: "all 0.2s ease"
+          }}
+        >
+          <span>⚡ Specialized Logistics Suite</span>
+          <span style={{
+            background: ["coldstorage", "ridealong", "tips"].includes(tab) ? "white" : "#2563eb",
+            color: ["coldstorage", "ridealong", "tips"].includes(tab) ? "#1d4ed8" : "white",
+            padding: "1px 7px",
+            borderRadius: "100px",
+            fontSize: "0.72rem",
+            fontWeight: 800
+          }}>
+            {["coldstorage", "ridealong", "tips"].includes(tab) ? "Active" : "3 Tools"}
+          </span>
+        </button>
       </div>
+
+      {/* ── SPECIALIZED LOGISTICS DRAWER MODAL ── */}
+      {showSpecializedDrawer && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
+          background: "rgba(15, 23, 42, 0.75)", backdropFilter: "blur(8px)",
+          display: "flex", justifyContent: "flex-end", zIndex: 9999
+        }}>
+          <div style={{
+            width: "100%", maxWidth: "440px", height: "100%", background: "#ffffff",
+            boxShadow: "-8px 0 30px rgba(0,0,0,0.25)", padding: "1.75rem", overflowY: "auto",
+            display: "flex", flexDirection: "column"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem" }}>
+              <div>
+                <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.2rem", fontWeight: 800, display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                  ⚡ Specialized Logistics Suite
+                </h3>
+                <p style={{ margin: "2px 0 0 0", color: "#64748b", fontSize: "0.8rem" }}>
+                  Advanced tools for cold chain, commuting, and guidelines
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSpecializedDrawer(false)}
+                style={{ background: "#f1f5f9", border: "none", width: 34, height: 34, borderRadius: "50%", cursor: "pointer", fontSize: "1rem", color: "#475569", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem", flex: 1 }}>
+              <div 
+                onClick={() => { setTab("coldstorage"); setShowSpecializedDrawer(false); }}
+                style={{
+                  background: tab === "coldstorage" ? "#eff6ff" : "#f8fafc",
+                  border: tab === "coldstorage" ? "2px solid #2563eb" : "1.5px solid #e2e8f0",
+                  borderRadius: "14px", padding: "1rem", cursor: "pointer", transition: "all 0.2s ease"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.3rem" }}>
+                  <span style={{ fontSize: "1.6rem" }}>❄️</span>
+                  <div>
+                    <h4 style={{ margin: 0, color: "#1e3a8a", fontSize: "0.98rem", fontWeight: 800 }}>Cold Storage Vault</h4>
+                    <span style={{ fontSize: "0.75rem", color: "#2563eb", fontWeight: 600 }}>Perishable Preservations & Hub Holding</span>
+                  </div>
+                </div>
+                <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b", lineHeight: 1.4 }}>
+                  Monitor temperature zones, shelf capacity, and coordinate refrigerated drop-offs.
+                </p>
+              </div>
+
+              <div 
+                onClick={() => { setTab("ridealong"); setShowSpecializedDrawer(false); }}
+                style={{
+                  background: tab === "ridealong" ? "#eff6ff" : "#f8fafc",
+                  border: tab === "ridealong" ? "2px solid #2563eb" : "1.5px solid #e2e8f0",
+                  borderRadius: "14px", padding: "1rem", cursor: "pointer", transition: "all 0.2s ease"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.3rem" }}>
+                  <span style={{ fontSize: "1.6rem" }}>🎒</span>
+                  <div>
+                    <h4 style={{ margin: 0, color: "#1e3a8a", fontSize: "0.98rem", fontWeight: 800 }}>Ride-Along Commuter Dispatch</h4>
+                    <span style={{ fontSize: "0.75rem", color: "#16a34a", fontWeight: 600 }}>50% Route Payout Split</span>
+                  </div>
+                </div>
+                <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b", lineHeight: 1.4 }}>
+                  Configure your regular commute origin and destination to pool deliveries during daily travel.
+                </p>
+              </div>
+
+              <div 
+                onClick={() => { setTab("tips"); setShowSpecializedDrawer(false); }}
+                style={{
+                  background: tab === "tips" ? "#eff6ff" : "#f8fafc",
+                  border: tab === "tips" ? "2px solid #2563eb" : "1.5px solid #e2e8f0",
+                  borderRadius: "14px", padding: "1rem", cursor: "pointer", transition: "all 0.2s ease"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.3rem" }}>
+                  <span style={{ fontSize: "1.6rem" }}>💡</span>
+                  <div>
+                    <h4 style={{ margin: 0, color: "#1e3a8a", fontSize: "0.98rem", fontWeight: 800 }}>Logistics Performance & SOP</h4>
+                    <span style={{ fontSize: "0.75rem", color: "#d97706", fontWeight: 600 }}>Speed Bonuses & SLA Standards</span>
+                  </div>
+                </div>
+                <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b", lineHeight: 1.4 }}>
+                  Review best practices, vehicle weight limits, AI camera photo guidelines, and speed bonus criteria.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ paddingTop: "1rem", borderTop: "1px solid #e2e8f0", marginTop: "auto" }}>
+              <button
+                type="button"
+                onClick={() => setShowSpecializedDrawer(false)}
+                style={{ width: "100%", padding: "0.75rem", background: "#f1f5f9", border: "none", borderRadius: "10px", fontWeight: 700, color: "#334155", cursor: "pointer" }}
+              >
+                Close Drawer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {tab === "coldstorage" && (
         <div className="mb-3">

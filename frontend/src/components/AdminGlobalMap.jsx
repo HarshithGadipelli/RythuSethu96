@@ -52,30 +52,35 @@ const adminIcon = L.divIcon({
 });
 
 const TILE_LAYERS = {
+  carto: {
+    label: "🌍 Clean View",
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    attribution: "© CARTO, © OpenStreetMap",
+  },
   satellite: {
-    label: "🛰️ Satellite",
+    label: "🛰️ Google Satellite",
     url: "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
     attribution: "© Google Maps",
   },
   street: {
-    label: "🗺️ Street",
+    label: "🗺️ OpenStreetMap",
     url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     attribution: "© OpenStreetMap contributors",
   },
-  terrain: {
-    label: "🏔️ Terrain",
-    url: "https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=free",
-    attribution: "© Thunderforest, © OpenStreetMap",
+  google: {
+    label: "🚗 Google Roads",
+    url: "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
+    attribution: "© Google Maps",
   },
-  carto: {
-    label: "🌍 Carto",
-    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    attribution: "© CARTO",
+  terrain: {
+    label: "🏔️ Topo Terrain",
+    url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+    attribution: "© OpenTopoMap, © OpenStreetMap",
   },
   dark: {
-    label: "🌙 Dark",
-    url: "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png",
-    attribution: "© Stadia Maps, © OpenMapTiles, © OpenStreetMap",
+    label: "🌙 Night Mode",
+    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    attribution: "© CARTO, © OpenStreetMap",
   },
 };
 
