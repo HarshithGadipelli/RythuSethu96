@@ -2241,7 +2241,7 @@ export default function Marketplace() {
                 </div>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(450px, 1fr))", gap: "4rem", marginTop: "4rem", width: "100%", alignItems: "start" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem", marginTop: "1.5rem", width: "100%", alignItems: "start" }}>
                 
                 {/* ── LEFT COLUMN: Product Info, Imagery, Analytics ── */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>

@@ -139,7 +139,7 @@ export default function FarmerCropHistory() {
       </div>
 
       {/* Lifetime Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
         <div style={{ background: "rgba(34, 197, 94, 0.1)", border: "1px solid rgba(34, 197, 94, 0.2)", padding: "1rem", borderRadius: "10px" }}>
           <span style={{ fontSize: "0.75rem", color: "var(--green-light)", textTransform: "uppercase", fontWeight: 700 }}>Total Revenue Recorded</span>
           <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "white" }}>₹{totalLifetimeRevenue.toLocaleString()}</div>

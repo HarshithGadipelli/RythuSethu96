@@ -360,7 +360,7 @@ export default function CustomerGroups({ crops = [], preselectedCrop = null, onC
           <p style={{ marginTop: "1rem", color: "var(--text-muted)" }}>Loading active pools...</p>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "1.5rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.5rem" }}>
           {groups.map((g) => {
             const tiers = g.tiers && g.tiers.length > 0 ? g.tiers : [{ qty: g.targetQuantity, discount: g.discountPercent || 15 }];
             const maxTier = tiers[tiers.length - 1];

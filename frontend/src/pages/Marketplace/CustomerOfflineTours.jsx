@@ -270,7 +270,7 @@ export default function CustomerOfflineTours({ isEmbedded = false }) {
             <p style={{ color: "var(--text-muted)" }}>Check back soon as verified farmers update their harvest visitation calendars!</p>
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: "1.5rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.5rem" }}>
             {farmers.map((f, idx) => {
               const farmImg = f.farmPhoto || FALLBACK_FARM_IMAGES[idx % FALLBACK_FARM_IMAGES.length];
               const price = f.farmTourPrice || 150;
@@ -366,7 +366,7 @@ export default function CustomerOfflineTours({ isEmbedded = false }) {
             <p style={{ color: "var(--text-muted)" }}>Farmers are currently filming 360° field videos for their active crops.</p>
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: "1.5rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.5rem" }}>
             {virtualCrops.map((c) => (
               <div key={c._id} className="glass-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
                 <div style={{ position: "relative", width: "100%", height: "210px", backgroundColor: "#000" }}>

@@ -688,7 +688,7 @@ export default function APMCMandiExplorer() {
       </div>
 
       {/* Grid of APMC Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "1rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1rem" }}>
         {filteredData.map(item => (
           <div
             key={item.id}

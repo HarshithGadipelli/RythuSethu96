@@ -168,7 +168,7 @@ export default function SelectiveBreedingAdvisor() {
       </div>
 
       {/* Variety Cards Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "1.2rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.2rem" }}>
         {filteredCatalog.map(item => (
           <div
             key={item.id}
