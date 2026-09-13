@@ -824,9 +824,9 @@ export default function AgentDashboard() {
       <div className="flex-between mb-3" style={{ flexWrap: "wrap", gap: "1rem" }}>
         <div>
           <h1 className="page-title" style={{ textAlign:"left", fontSize:"1.8rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            {user?.agentType === 'truck' ? '🚛' : '🛵'} {t("welcome")}, {user?.name?.split(" ")[0] || "Agent"}
+            {user?.agentType === 'truck' ? '🚛' : user?.agentType === 'cold_storage' ? '❄️' : (user?.agentType === 'ridealong' || user?.agentType === 'freelance_commuter') ? '🎒' : '🛵'} {t("welcome")}, {user?.name?.split(" ")[0] || "Agent"}
             <span className="badge badge-green" style={{ fontSize: "0.8rem", marginLeft: "0.5rem" }}>
-              {user?.agentType === 'truck' ? 'Heavy / Long Distance' : 'Light / Local'} Agent
+              {user?.agentType === 'truck' ? 'Heavy Freight Truck' : user?.agentType === 'cold_storage' ? 'Cold Storage Warehouse' : (user?.agentType === 'ridealong' || user?.agentType === 'freelance_commuter') ? 'Freelance Commuter Agent' : 'Local Express'}
             </span>
           </h1>
           <p style={{ color: "var(--text-muted)", fontSize:"0.85rem" }}>Manage deliveries & accept new orders</p>

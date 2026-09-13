@@ -41,7 +41,7 @@ const userSchema = new mongoose.Schema({
   accountStatus: { type: String, enum: ["active", "suspended", "banned"], default: "active" },
 
   // ─── Agent Specific Info ───
-  agentType: { type: String, enum: ["bike", "auto", "truck", "ridealong", "vermicompost", "biogas", "cold_storage"], default: "bike" },
+  agentType: { type: String, enum: ["bike", "auto", "truck", "ridealong", "freelance_commuter", "vermicompost", "biogas", "cold_storage"], default: "bike" },
   agentPhoto: { type: String, default: "" },
   vehiclePhoto: { type: String, default: "" },
   vehicleNumber: { type: String, default: "" },

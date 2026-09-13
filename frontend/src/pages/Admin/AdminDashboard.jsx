@@ -908,7 +908,9 @@ export default function AdminDashboard() {
                             )}
                             {u.role === "agent" && (
                               <div>
-                                <span style={{ color: "#d97706", fontWeight: 600 }}>🚚 {u.agentProfile?.vehicle || "Bike"}</span>
+                                <span style={{ color: "#d97706", fontWeight: 600 }}>
+                                  {u.agentType === 'truck' ? '🚛 Heavy Freight' : u.agentType === 'cold_storage' ? '❄️ Cold Storage' : (u.agentType === 'ridealong' || u.agentType === 'freelance_commuter') ? '🎒 Freelance Commuter' : '🛵 Bike Express'}
+                                </span>
                                 <div style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}>💵 ₹{u.cashInHand || 0} cash</div>
                               </div>
                             )}

@@ -582,8 +582,9 @@ export default function Register() {
                     <option value="bike">🛵 Two-Wheeler Bike Agent (Local Express Delivery)</option>
                     <option value="auto">🛺 Auto / Mini-Van Agent (Mid-Volume Logistics)</option>
                     <option value="truck">🚚 Heavy Truck Transport Agent (Long Distance & Bulk Load)</option>
-                    <option value="ridealong">🎒 Ride-Along Commuter Agent (Route Share Delivery)</option>
-                    <option value="cold_storage">❄️ Cold Storage Warehouse Agent (Temperature Controlled Vault & Storage)</option>
+                    <option value="freelance_commuter">🎒 Freelance Commuter Agent (Daily Route Share / Ride-Along)</option>
+                    <option value="ridealong">🎒 Freelance Ride-Along Agent (On-the-way Delivery)</option>
+                    <option value="cold_storage">❄️ Cold Storage Warehouse Agent (Temperature Controlled Vault)</option>
                   </select>
                 </div>
               )}
