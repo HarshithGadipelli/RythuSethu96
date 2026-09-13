@@ -6,7 +6,7 @@ import { useLayout } from "../context/LayoutContext";
 import { useCart } from "../context/CartContext";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, ShoppingBag, Leaf, Truck, Shield, LogOut, User, Bell, Headphones, Volume2, VolumeX, ShoppingCart, MapPin } from "lucide-react";
+import { Home, ShoppingBag, Leaf, Truck, Shield, LogOut, User, Bell, Headphones, Volume2, VolumeX, ShoppingCart, MapPin, Smartphone, Tablet, Monitor, Laptop, Globe } from "lucide-react";
 import API from "../api/api";
 import { io } from "socket.io-client";
 import { createPortal } from "react-dom";
@@ -53,6 +53,15 @@ export default function Navbar() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState("");
   const [settingsTab, setSettingsTab] = useState("profile");
+
+  useEffect(() => {
+    const handleOpenSettings = (e) => {
+      if (e?.detail?.tab) setSettingsTab(e.detail.tab);
+      setShowSettings(true);
+    };
+    window.addEventListener("open_user_settings", handleOpenSettings);
+    return () => window.removeEventListener("open_user_settings", handleOpenSettings);
+  }, []);
 
   // Universal Location States
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -294,6 +303,33 @@ export default function Navbar() {
             {fluteBgm ? <span style={{fontSize:"1.1rem"}}>🎵</span> : <span style={{fontSize:"1.1rem", filter:"grayscale(1) opacity(0.5)"}}>🎵</span>}
           </button>
         </li>
+        <li>
+          <button 
+            className="device-mode-badge" 
+            onClick={() => {
+              const modes = ["auto", "mobile", "tablet", "desktop"];
+              const nextIdx = (modes.indexOf(layoutMode) + 1) % modes.length;
+              setLayoutMode(modes[nextIdx]);
+            }} 
+            title={`Active Device View: ${layoutMode.toUpperCase()} (Click to cycle between Auto, Mobile, Tablet, Desktop)`}
+            style={{ 
+              display: "flex", 
+              alignItems: "center", 
+              gap: "0.35rem",
+              background: "rgba(22, 101, 52, 0.08)",
+              border: "1.5px solid rgba(22, 101, 52, 0.25)",
+              color: "var(--green-deep)",
+              padding: "0.35rem 0.65rem",
+              borderRadius: "100px",
+              cursor: "pointer",
+              fontSize: "0.78rem",
+              fontWeight: 700
+            }}
+          >
+            {layoutMode === "mobile" ? <Smartphone size={14} /> : layoutMode === "tablet" ? <Tablet size={14} /> : layoutMode === "desktop" ? <Monitor size={14} /> : <Globe size={14} />}
+            <span style={{ textTransform: "capitalize" }}>{layoutMode === "auto" ? "Responsive" : layoutMode}</span>
+          </button>
+        </li>
         {user ? (
           <>
             {user.role === "agent" && user.experiencePoints > 0 && (
@@ -468,25 +504,77 @@ export default function Navbar() {
               
               {settingsTab === "app" && (
                 <>
-                  <div style={{ background: "#f8fafc", padding: "1.25rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-                    <h4 style={{ margin: "0 0 1rem 0", fontSize: "0.95rem", color: "var(--text-dark)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      📱 App View Mode
-                    </h4>
-                    <div style={{ display: "flex", gap: "0.5rem" }}>
-                      {["auto", "mobile", "desktop"].map(mode => (
-                        <button
-                          key={mode}
-                          onClick={() => setLayoutMode(mode)}
-                          style={{
-                            flex: 1, padding: "0.6rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer",
-                            background: layoutMode === mode ? "var(--green-mid)" : "white",
-                            color: layoutMode === mode ? "white" : "var(--text-mid)",
-                            border: layoutMode === mode ? "2px solid var(--green-mid)" : "1px solid #cbd5e1"
-                          }}
-                        >
-                          {mode === "auto" ? "Responsive" : mode === "mobile" ? "Mobile" : "Desktop"}
-                        </button>
-                      ))}
+                  <div style={{ background: "#f8fafc", padding: "1.25rem", borderRadius: "14px", border: "1px solid #e2e8f0" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                      <h4 style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-dark)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <Smartphone size={18} color="var(--green-mid)" /> Device Compatibility View
+                      </h4>
+                      <span style={{ fontSize: "0.75rem", background: "#dcfce7", color: "#166534", padding: "3px 8px", borderRadius: "10px", fontWeight: 700 }}>
+                        Active: {layoutMode.toUpperCase()}
+                      </span>
+                    </div>
+                    <p style={{ margin: "0 0 1rem 0", fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
+                      Choose your preferred layout format or let the platform adapt automatically to your handheld phone, tablet, or desktop monitor.
+                    </p>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.75rem" }}>
+                      {[
+                        { 
+                          id: "auto", 
+                          title: "Auto Responsive", 
+                          desc: "Fluid layout adjusting to your current screen size", 
+                          icon: <Globe size={18} /> 
+                        },
+                        { 
+                          id: "mobile", 
+                          title: "Mobile (Handheld)", 
+                          desc: "Single-column touch view with bottom quick-action bar", 
+                          icon: <Smartphone size={18} /> 
+                        },
+                        { 
+                          id: "tablet", 
+                          title: "Tablet (Split Grid)", 
+                          desc: "Optimized two-column grid for tablets & foldables", 
+                          icon: <Tablet size={18} /> 
+                        },
+                        { 
+                          id: "desktop", 
+                          title: "Desktop (Expansive)", 
+                          desc: "Full widescreen density with multi-column views", 
+                          icon: <Monitor size={18} /> 
+                        },
+                      ].map(device => {
+                        const isSelected = layoutMode === device.id;
+                        return (
+                          <button
+                            key={device.id}
+                            type="button"
+                            onClick={() => setLayoutMode(device.id)}
+                            style={{
+                              padding: "0.85rem",
+                              borderRadius: "10px",
+                              border: isSelected ? "2px solid var(--green-mid)" : "1px solid #cbd5e1",
+                              background: isSelected ? "rgba(34, 197, 94, 0.08)" : "white",
+                              cursor: "pointer",
+                              textAlign: "left",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "0.3rem",
+                              transition: "all 0.2s ease",
+                              boxShadow: isSelected ? "0 4px 12px rgba(34, 197, 94, 0.15)" : "none"
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", color: isSelected ? "var(--green-deep)" : "var(--text-dark)", fontWeight: 700, fontSize: "0.88rem" }}>
+                              {device.icon}
+                              <span>{device.title}</span>
+                              {isSelected && <span style={{ marginLeft: "auto", color: "var(--green-mid)", fontSize: "0.85rem", fontWeight: 800 }}>✓</span>}
+                            </div>
+                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.3 }}>
+                              {device.desc}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 

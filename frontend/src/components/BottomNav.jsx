@@ -32,17 +32,43 @@ export default function BottomNav() {
       baseLinks.push({ path: "/ai", icon: <Bot size={24} />, label: "AI Guide" });
     }
 
-    // Common Profile link
-    baseLinks.push({ path: "/profile", icon: <User size={24} />, label: "Profile" });
+    // Common Settings / Profile trigger
+    baseLinks.push({ 
+      isAction: true, 
+      action: "settings", 
+      icon: <User size={22} />, 
+      label: "Settings" 
+    });
 
     return baseLinks;
   };
 
   const links = getLinks();
 
+  const handleAction = (action) => {
+    if (action === "settings") {
+      window.dispatchEvent(new CustomEvent("open_user_settings"));
+    }
+  };
+
   return (
     <div className="bottom-nav">
-      {links.map((link) => {
+      {links.map((link, idx) => {
+        if (link.isAction) {
+          return (
+            <button 
+              key={idx} 
+              type="button"
+              onClick={() => handleAction(link.action)}
+              className="bottom-nav-item"
+              style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+            >
+              <div className="bottom-nav-icon">{link.icon}</div>
+              <span className="bottom-nav-label">{link.label}</span>
+            </button>
+          );
+        }
+
         const isActive = pathname === link.path || (link.path !== "/" && pathname.startsWith(link.path));
         return (
           <Link key={link.path} to={link.path} className={`bottom-nav-item ${isActive ? "active" : ""}`}>

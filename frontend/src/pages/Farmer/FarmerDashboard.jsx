@@ -27,7 +27,7 @@ import SoilTestingHub from "../../components/SoilTestingHub";
 import VermiCompostPanel from "../../components/VermiCompostPanel";
 import AssistantOverlay from "../../components/AssistantOverlay";
 import CropVisualPicker, { VISUAL_CROPS } from "../../components/CropVisualPicker";
-import { Navigation, Volume2, Mic, Sparkles, CheckCircle2, TrendingUp, RefreshCw, IndianRupee, HelpCircle, XCircle, MapPin, LocateFixed, Compass } from "lucide-react";
+import { Navigation, Volume2, Mic, Sparkles, CheckCircle2, TrendingUp, RefreshCw, IndianRupee, HelpCircle, XCircle, MapPin, LocateFixed, Compass, Layers, ArrowLeft, X, ChevronRight, Sliders, ExternalLink, Activity, Search } from "lucide-react";
 import LocationUpdateModal from "../../components/LocationUpdateModal";
 import SecurityPledgeModal from "../../components/SecurityPledgeModal";
 import APMCMandiExplorer from "../../components/APMCMandiExplorer";
@@ -41,6 +41,71 @@ const SOILS      = [
   "loamy", "clay", "sandy", "silt", "peat", "chalk",
   "red_soil", "black_soil", "alluvial_soil", "laterite_soil", "arid_soil", "forest_soil", "saline", "other"
 ];
+
+export const SPECIALIZED_TOOL_GROUPS = [
+  {
+    id: "cultivation",
+    category: "🌱 Seasonal Cultivation & Soil Planning",
+    subtitle: "Used before sowing season and for crop cycle planning",
+    badge: "Pre-Sowing & Seasonal",
+    badgeBg: "#dcfce7",
+    badgeColor: "#166534",
+    tools: [
+      { k: "soil", l: "🧪 Soil Testing & Lab Hub", desc: "NPK analysis, pH testing & official lab sample booking", freq: "Pre-Sowing (Rare)" },
+      { k: "ml", l: "🤖 AI Crop Cultivation Suggestions", desc: "Climate, rainfall & soil-based crop matching at cultivation time", freq: "Cultivation Season" },
+      { k: "selectiveBreeding", l: "🧬 Selective Breeding Advisor", desc: "Hybrid vigor, seed quality & pedigree planning", freq: "Seasonal Planning" },
+      { k: "vermi", l: "🌱 Vermi Compost Production", desc: "Organic fertilizer batch tracking, moisture & earthworms", freq: "Periodic" },
+    ]
+  },
+  {
+    id: "diagnostics",
+    category: "🔬 Plant Health & Diagnostics",
+    subtitle: "Used when symptoms, pests, or nutrient deficiencies appear",
+    badge: "As-Needed / Infestation",
+    badgeBg: "#fef3c7",
+    badgeColor: "#b45309",
+    tools: [
+      { k: "pest", l: "🐛 Pest & Disease Diagnostics", desc: "AI photo diagnosis, symptoms & organic/chemical remedies", freq: "On Infestation" },
+      { k: "weedControl", l: "🌿 Weed Identification & Control", desc: "Weed density assessment, mechanical & biological eradication", freq: "As-Needed" },
+      { k: "tips", l: "💡 Crop Doctor & Smart Tips", desc: "Stage-specific care, nutrient guides & weather adjustments", freq: "Periodic Check" },
+      { k: "aiChat", l: "💬 Farm AI Specialist Chat", desc: "Voice/text agronomy expert in Telugu, Hindi, Tamil & English", freq: "On-Demand" },
+    ]
+  },
+  {
+    id: "finance",
+    category: "💰 Financial, Ledger & Long-Term Planning",
+    subtitle: "For seasonal accounting, lifetime records & warehouse storage",
+    badge: "Accounting & Storage",
+    badgeBg: "#dbeafe",
+    badgeColor: "#1d4ed8",
+    tools: [
+      { k: "cropHistory", l: "📜 Crop History & Revenue Ledger", desc: "Harvest logs, historical yields & sales totals", freq: "Post-Harvest" },
+      { k: "ledger", l: "📒 Financial Ledger / Khata", desc: "Daily farm debit/credit & net profit accounting", freq: "Weekly / Monthly" },
+      { k: "profit", l: "💰 Profit & Yield Calculator", desc: "Pre-season ROI, cost vs return projection", freq: "Pre-Cultivation" },
+      { k: "warehouse", l: "🏭 Warehouse & Cold Storage Hub", desc: "Capacity booking & post-harvest preservation", freq: "Seasonal Harvest" },
+      { k: "leaderboard", l: "🏆 Regional Farmer Leaderboard", desc: "Sustainable yield rankings & community XP", freq: "Periodic" },
+    ]
+  },
+  {
+    id: "community",
+    category: "🏛️ FPO, Community & Govt Support",
+    subtitle: "Community pooling, farm visits, subsidies and extension",
+    badge: "Community & Schemes",
+    badgeBg: "#f3e8ff",
+    badgeColor: "#7e22ce",
+    tools: [
+      { k: "groups", l: "🤝 FPO Group Selling Pool", desc: "Bulk aggregation & collective bargaining with buyers", freq: "Periodic" },
+      { k: "tours", l: "🚜 Farm Tours & Agro-Tourism", desc: "Host city visitors & schedule farm tours", freq: "Occasional" },
+      { k: "schemes", l: "🏛️ PM-KISAN & Govt Schemes", desc: "Subsidies, tractor loans & crop insurance application", freq: "Seasonal" },
+      { k: "broadcast", l: "📢 Local Broadcast Alerts", desc: "Send crop availability alerts to nearby buyers", freq: "Periodic" },
+      { k: "policies", l: "📜 Farm Safety Policies & Pledge", desc: "Organic standards, pledge & legal compliance", freq: "Reference" },
+      { k: "support", l: "🛠️ Dedicated Agronomist Support", desc: "Direct escalation to agriculture extension officers", freq: "As-Needed" },
+    ]
+  }
+];
+
+export const SPECIALIZED_TOOL_KEYS = SPECIALIZED_TOOL_GROUPS.flatMap(g => g.tools.map(t => t.k));
+
 
 // Voice parsing is now handled by voiceParser.js
 
@@ -618,6 +683,8 @@ export default function FarmerDashboard() {
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [showPledge, setShowPledge] = useState(user?.acceptedTerms === false);
   const [showLocModal, setShowLocModal] = useState(false);
+  const [showToolsDrawer, setShowToolsDrawer] = useState(false);
+  const [toolsSearch, setToolsSearch] = useState("");
   const [farmerProfile, setFarmerProfile] = useState(null);
   
   // Stage Update Modal State
@@ -1560,90 +1627,245 @@ export default function FarmerDashboard() {
 
       {msg.text && <div className={`alert alert-${msg.type} mb-2`}>{msg.text}</div>}
 
-      {/* Category Filter Bar */}
+      {/* ── DAILY FARM OPERATIONS & PRODUCE MANAGEMENT QUICK-BAR ── */}
       <div style={{
+        background: "linear-gradient(135deg, rgba(22, 163, 74, 0.09), rgba(16, 185, 129, 0.04))",
+        border: "1.5px solid rgba(22, 163, 74, 0.28)",
+        borderRadius: "16px",
+        padding: "1rem 1.25rem",
+        marginBottom: "1rem",
         display: "flex",
         alignItems: "center",
-        gap: "0.5rem",
-        overflowX: "auto",
-        padding: "0.2rem 0 0.6rem 0",
-        marginBottom: "0.4rem"
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: "1rem",
+        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)"
       }}>
-        {[
-          { id: "all", label: "✨ All Tools (24)", tabs: [] },
-          { id: "market", label: "🛒 Marketplace & APMC (7)", tabs: ["crops", "apmc", "demand", "orders", "auctions", "groups", "broadcast", "add"] },
-          { id: "ai", label: "🤖 AI & Precision (8)", tabs: ["ml", "weedControl", "selectiveBreeding", "aiChat", "tips", "soil", "pest", "vermi"] },
-          { id: "finance", label: "💰 Finance & History (5)", tabs: ["cropHistory", "ledger", "profit", "warehouse", "leaderboard"] },
-          { id: "community", label: "🏛️ Community & Govt (4)", tabs: ["tours", "schemes", "policies", "support"] }
-        ].map(cat => (
+        <div style={{ maxWidth: "560px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+            <span style={{ fontSize: "1.25rem" }}>🌾</span>
+            <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "var(--text-dark)" }}>
+              Daily Farm Operations & Produce Hub
+            </h3>
+            <span style={{
+              background: "#dcfce7", color: "#15803d", fontSize: "0.72rem",
+              fontWeight: 800, padding: "2px 8px", borderRadius: "100px"
+            }}>
+              Primary Daily View
+            </span>
+          </div>
+          <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
+            Quickly update crop listings, add today's fresh harvests, adjust mandi market prices, and process incoming buyer orders.
+          </p>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
           <button
-            key={cat.id}
             type="button"
             onClick={() => {
-              setTabCategory(cat.id);
-              if (cat.id !== "all" && !cat.tabs.includes(tab)) {
-                setTab(cat.tabs[0]);
+              if (!isVerified) {
+                setMsg({ type: "error", text: "Your account must be verified by an admin or agent before adding crops." });
+                return;
               }
+              setTab("add");
             }}
             style={{
-              display: "flex",
+              display: "inline-flex",
               alignItems: "center",
-              gap: "0.35rem",
-              padding: "0.4rem 0.85rem",
-              borderRadius: "20px",
-              fontSize: "0.82rem",
-              fontWeight: tabCategory === cat.id ? 700 : 500,
-              background: tabCategory === cat.id ? "var(--green-deep)" : "white",
-              color: tabCategory === cat.id ? "white" : "var(--text-mid)",
-              border: tabCategory === cat.id ? "1.5px solid var(--green-deep)" : "1px solid #cbd5e1",
+              gap: "0.45rem",
+              padding: "0.65rem 1.25rem",
+              borderRadius: "100px",
+              fontSize: "0.88rem",
+              fontWeight: 700,
+              background: tab === "add" ? "#14532d" : "linear-gradient(135deg, #16a34a, #15803d)",
+              color: "white",
+              border: "none",
+              boxShadow: "0 4px 14px rgba(22, 163, 74, 0.35)",
               cursor: "pointer",
-              whiteSpace: "nowrap",
-              boxShadow: tabCategory === cat.id ? "0 2px 8px rgba(22, 101, 52, 0.25)" : "0 1px 3px rgba(0,0,0,0.05)",
-              transition: "all 0.2s ease"
+              transition: "all 0.2s"
             }}
           >
-            {cat.label}
+            <span style={{ fontSize: "1.1rem" }}>➕</span> Add Fresh Crop
           </button>
-        ))}
+
+          <button
+            type="button"
+            onClick={() => setTab("crops")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              padding: "0.65rem 1.15rem",
+              borderRadius: "100px",
+              fontSize: "0.85rem",
+              fontWeight: 700,
+              background: tab === "crops" ? "#dcfce7" : "white",
+              border: tab === "crops" ? "2px solid #16a34a" : "1.5px solid #cbd5e1",
+              color: "#166534",
+              cursor: "pointer"
+            }}
+          >
+            🌿 My Crops ({crops.length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowToolsDrawer(true)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.45rem",
+              padding: "0.65rem 1.15rem",
+              borderRadius: "100px",
+              fontSize: "0.85rem",
+              fontWeight: 700,
+              background: SPECIALIZED_TOOL_KEYS.includes(tab) ? "linear-gradient(135deg, #0284c7, #0369a1)" : "white",
+              color: SPECIALIZED_TOOL_KEYS.includes(tab) ? "white" : "#0284c7",
+              border: SPECIALIZED_TOOL_KEYS.includes(tab) ? "none" : "1.5px solid #0284c7",
+              boxShadow: "0 2px 8px rgba(2, 132, 199, 0.15)",
+              cursor: "pointer"
+            }}
+          >
+            <Sliders size={15} />
+            <span>Seasonal &amp; Agri-Tools (19+)</span>
+            <span style={{
+              background: SPECIALIZED_TOOL_KEYS.includes(tab) ? "rgba(255,255,255,0.25)" : "#e0f2fe",
+              color: SPECIALIZED_TOOL_KEYS.includes(tab) ? "white" : "#0369a1",
+              fontSize: "0.7rem",
+              fontWeight: 800,
+              padding: "1px 6px",
+              borderRadius: "8px"
+            }}>
+              Drawer
+            </span>
+          </button>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="tab-bar">
-        {[
-          { k:"crops", l:"🌿 My Crops", cat: "market" },
-          { k:"apmc", l:"🏛️ All India APMC Mandis", cat: "market" },
-          { k:"cropHistory", l:"📜 Crop History & Revenue", cat: "finance" },
-          { k:"weedControl", l:"🌿 Weed Control", cat: "ai" },
-          { k:"selectiveBreeding", l:"🧬 Selective Breeding", cat: "ai" },
-          { k:"demand", l:"📊 Demand & Pricing", cat: "market" },
-          { k:"orders", l:`📦 Orders (${orders.length})`, cat: "market" },
-          { k:"auctions", l:`🔨 Auctions`, cat: "market" },
-          { k:"groups", l:"🤝 Group Selling", cat: "market" },
-          { k:"broadcast", l:"📢 Broadcast", cat: "market" },
-          { k:"leaderboard", l:"🏆 Leaderboard", cat: "finance" },
-          { k:"add",   l:`➕ ${t("addCrop")}`, cat: "market" },
-          { k:"tours", l:"🚜 Farm Tours", cat: "community" },
-          { k:"schemes", l:"🏛️ Govt Schemes", cat: "community" },
-          { k:"ml",    l:"🤖 AI Suggestions", cat: "ai" },
-          { k:"aiChat",l:"💬 Farm AI Assistant", cat: "ai" },
-          { k:"tips",  l:"💡 Smart Advisor", cat: "ai" },
-          { k:"ledger", l:"📒 Financial Ledger", cat: "finance" },
-          { k:"profit", l:"💰 Profit Calculator", cat: "finance" },
-          { k:"soil",   l:"🧪 Soil Testing & Lab", cat: "ai" },
-          { k:"vermi",  l:"🌱 Vermi Compost", cat: "ai" },
-          { k:"pest",  l:"🐛 Pest Detection", cat: "ai" },
-          { k:"warehouse", l:"🏭 Warehouse Planning", cat: "finance" },
-          { k:"policies", l:"📜 Policies", cat: "community" },
-          { k:"support", l:"🛠️ Contact Admin", cat: "community" }
-        ].filter(tb => tabCategory === "all" || tb.cat === tabCategory).map(tb => (
-          <button key={tb.k} className={`tab-btn ${tab===tb.k?"active":""}`} onClick={() => {
-            if (tb.k === "add" && !isVerified) { setMsg({ type:"error", text:"Account not verified yet." }); return; }
-            setTab(tb.k);
-          }}>
-            {tb.l}
+      {/* ── WORKSPACE HEADER IF SPECIALIZED TOOL IS ACTIVE ── */}
+      {SPECIALIZED_TOOL_KEYS.includes(tab) ? (
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          background: "linear-gradient(135deg, #f0fdf4, #e0f2fe)",
+          border: "1.5px solid rgba(2, 132, 199, 0.3)",
+          borderRadius: "14px",
+          padding: "0.75rem 1.25rem",
+          marginBottom: "1.25rem",
+          flexWrap: "wrap",
+          gap: "0.75rem",
+          boxShadow: "0 4px 15px rgba(2, 132, 199, 0.08)"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => setTab("crops")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "0.45rem 0.95rem",
+                borderRadius: "100px",
+                background: "#166534",
+                color: "white",
+                border: "none",
+                fontSize: "0.82rem",
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(22, 101, 52, 0.3)"
+              }}
+            >
+              <ArrowLeft size={15} /> Back to Daily Dashboard (My Crops)
+            </button>
+            
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem", color: "#374151" }}>
+              <span style={{ color: "#0369a1", fontWeight: 700 }}>🌾 Seasonal Suite</span>
+              <span>/</span>
+              <strong style={{ color: "#0f172a" }}>
+                {SPECIALIZED_TOOL_GROUPS.flatMap(g => g.tools).find(t => t.k === tab)?.l || tab}
+              </strong>
+              {SPECIALIZED_TOOL_GROUPS.flatMap(g => g.tools).find(t => t.k === tab)?.freq && (
+                <span style={{
+                  background: "#dcfce7",
+                  color: "#166534",
+                  padding: "2px 8px",
+                  borderRadius: "8px",
+                  fontSize: "0.72rem",
+                  fontWeight: 700
+                }}>
+                  {SPECIALIZED_TOOL_GROUPS.flatMap(g => g.tools).find(t => t.k === tab)?.freq}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button
+              type="button"
+              onClick={() => setShowToolsDrawer(true)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "0.45rem 0.85rem",
+                borderRadius: "100px",
+                background: "white",
+                color: "#0369a1",
+                border: "1.5px solid #0284c7",
+                fontSize: "0.82rem",
+                fontWeight: 700,
+                cursor: "pointer"
+              }}
+            >
+              <Sliders size={14} /> Switch Tool (19+) ▾
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* ── DAILY NAVIGATION TABS ── */
+        <div className="tab-bar mb-3">
+          {[
+            { k: "crops", l: `🌿 My Crops (${crops.length})` },
+            { k: "add", l: `➕ ${t("addCrop")}` },
+            { k: "orders", l: `📦 Daily Orders (${orders.length})` },
+            { k: "apmc", l: "🏛️ All India APMC Mandis" },
+            { k: "demand", l: "📊 Demand & Dynamic Pricing" },
+            { k: "auctions", l: `🔨 Live Auctions (${auctions.length})` }
+          ].map(tb => (
+            <button
+              key={tb.k}
+              className={`tab-btn ${tab === tb.k ? "active" : ""}`}
+              onClick={() => {
+                if (tb.k === "add" && !isVerified) {
+                  setMsg({ type: "error", text: "Account not verified yet." });
+                  return;
+                }
+                setTab(tb.k);
+              }}
+            >
+              {tb.l}
+            </button>
+          ))}
+
+          <button
+            type="button"
+            className="tab-btn"
+            onClick={() => setShowToolsDrawer(true)}
+            style={{
+              background: "#f0fdf4",
+              border: "1.5px dashed #16a34a",
+              color: "#166534",
+              fontWeight: 700,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "5px"
+            }}
+          >
+            <Sliders size={14} /> More Seasonal Tools (19+) ▾
           </button>
-        ))}
-      </div>
+        </div>
+      )}
 
       {/* ── APMC MANDI EXPLORER TAB ── */}
       {tab === "apmc" && <APMCMandiExplorer />}
@@ -3258,6 +3480,255 @@ export default function FarmerDashboard() {
           onClose={() => setShowLocModal(false)}
         />
       )}
+
+      {/* ── SPECIALIZED & SEASONAL AGRI-TOOLS SLIDING DRAWER / SIDEBAR ── */}
+      <AnimatePresence>
+        {showToolsDrawer && (
+          <div 
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.6)",
+              backdropFilter: "blur(4px)",
+              zIndex: 999999,
+              display: "flex",
+              justifyContent: "flex-end"
+            }}
+            onClick={() => setShowToolsDrawer(false)}
+          >
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 280 }}
+              style={{
+                width: "min(560px, 95vw)",
+                height: "100vh",
+                background: "#ffffff",
+                boxShadow: "-10px 0 40px rgba(0, 0, 0, 0.25)",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden"
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Drawer Header */}
+              <div style={{
+                padding: "1.25rem 1.5rem",
+                borderBottom: "1px solid #e2e8f0",
+                background: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start"
+              }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <span style={{ fontSize: "1.4rem" }}>🌾</span>
+                    <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800, color: "#166534" }}>
+                      Seasonal &amp; Specialized Agri-Suite
+                    </h3>
+                  </div>
+                  <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.4 }}>
+                    Analytical, pre-sowing soil, pest diagnostic &amp; government planning tools. Select any feature to open its workspace.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowToolsDrawer(false)}
+                  style={{
+                    background: "white",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "50%",
+                    width: 32,
+                    height: 32,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    color: "#64748b"
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Search in Drawer */}
+              <div style={{ padding: "0.85rem 1.5rem", borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
+                <div style={{ position: "relative" }}>
+                  <Search size={16} color="#94a3b8" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
+                  <input
+                    type="text"
+                    placeholder="Search tools (e.g. soil, pest, weed, scheme, ledger, profit)..."
+                    value={toolsSearch}
+                    onChange={(e) => setToolsSearch(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "0.55rem 0.75rem 0.55rem 2rem",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "0.85rem",
+                      background: "white"
+                    }}
+                  />
+                  {toolsSearch && (
+                    <button
+                      onClick={() => setToolsSearch("")}
+                      style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Tool Groups Content */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem 1.5rem" }}>
+                {SPECIALIZED_TOOL_GROUPS.map(group => {
+                  const filteredTools = group.tools.filter(t => 
+                    !toolsSearch || 
+                    t.l.toLowerCase().includes(toolsSearch.toLowerCase()) || 
+                    t.desc.toLowerCase().includes(toolsSearch.toLowerCase())
+                  );
+
+                  if (filteredTools.length === 0) return null;
+
+                  return (
+                    <div key={group.id} style={{ marginBottom: "1.75rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.65rem" }}>
+                        <div>
+                          <h4 style={{ margin: 0, fontSize: "0.92rem", fontWeight: 700, color: "#1e293b" }}>
+                            {group.category}
+                          </h4>
+                          <p style={{ margin: "2px 0 0 0", fontSize: "0.75rem", color: "#64748b" }}>
+                            {group.subtitle}
+                          </p>
+                        </div>
+                        <span style={{
+                          fontSize: "0.7rem",
+                          fontWeight: 700,
+                          background: group.badgeBg,
+                          color: group.badgeColor,
+                          padding: "2px 8px",
+                          borderRadius: "100px",
+                          whiteSpace: "nowrap"
+                        }}>
+                          {group.badge}
+                        </span>
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                        {filteredTools.map(tool => {
+                          const isSelected = tab === tool.k;
+                          return (
+                            <button
+                              key={tool.k}
+                              type="button"
+                              onClick={() => {
+                                setTab(tool.k);
+                                setShowToolsDrawer(false);
+                              }}
+                              style={{
+                                display: "flex",
+                                alignItems: "flex-start",
+                                justifyContent: "space-between",
+                                padding: "0.85rem 1rem",
+                                borderRadius: "12px",
+                                background: isSelected ? "rgba(22, 163, 74, 0.08)" : "#ffffff",
+                                border: isSelected ? "2px solid #16a34a" : "1px solid #e2e8f0",
+                                cursor: "pointer",
+                                textAlign: "left",
+                                transition: "all 0.15s ease",
+                                boxShadow: isSelected ? "0 4px 12px rgba(22, 163, 74, 0.12)" : "0 1px 3px rgba(0, 0, 0, 0.03)"
+                              }}
+                            >
+                              <div style={{ flex: 1, paddingRight: "0.75rem" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "3px" }}>
+                                  <strong style={{ fontSize: "0.9rem", color: isSelected ? "#15803d" : "#0f172a" }}>
+                                    {tool.l}
+                                  </strong>
+                                  {isSelected && (
+                                    <span style={{ fontSize: "0.72rem", background: "#16a34a", color: "white", padding: "1px 6px", borderRadius: "6px", fontWeight: 700 }}>
+                                      Active
+                                    </span>
+                                  )}
+                                </div>
+                                <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b", lineHeight: 1.35 }}>
+                                  {tool.desc}
+                                </p>
+                              </div>
+
+                              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.4rem" }}>
+                                <span style={{ fontSize: "0.7rem", color: "#64748b", background: "#f1f5f9", padding: "2px 6px", borderRadius: "6px", whiteSpace: "nowrap" }}>
+                                  {tool.freq}
+                                </span>
+                                <ChevronRight size={16} color={isSelected ? "#16a34a" : "#94a3b8"} />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Drawer Footer */}
+              <div style={{
+                padding: "1rem 1.5rem",
+                borderTop: "1px solid #e2e8f0",
+                background: "#f8fafc",
+                display: "flex",
+                gap: "0.75rem"
+              }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTab("crops");
+                    setShowToolsDrawer(false);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "0.7rem",
+                    borderRadius: "10px",
+                    background: "white",
+                    border: "1.5px solid #cbd5e1",
+                    color: "#334155",
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    cursor: "pointer"
+                  }}
+                >
+                  🌿 Back to My Crops
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTab("add");
+                    setShowToolsDrawer(false);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "0.7rem",
+                    borderRadius: "10px",
+                    background: "#16a34a",
+                    border: "none",
+                    color: "white",
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 8px rgba(22, 163, 74, 0.3)"
+                  }}
+                >
+                  ➕ Add Fresh Crop
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
