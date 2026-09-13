@@ -46,6 +46,8 @@ const userSchema = new mongoose.Schema({
   vehiclePhoto: { type: String, default: "" },
   vehicleNumber: { type: String, default: "" },
   agentVerificationStatus: { type: String, enum: ["pending", "verified", "rejected"], default: "pending" },
+  agentAgreementSigned: { type: Boolean, default: false },
+  agentAgreementSignedAt: { type: Date },
 
   // ─── Cold Storage Agent Info ───
   coldStorageName: { type: String, default: "" },

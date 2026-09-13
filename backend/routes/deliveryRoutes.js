@@ -1199,14 +1199,24 @@ router.post("/:id/complete-handover", async (req, res) => {
       }
     }
 
-    // ─── Update Agent Wallet Balance (Under 2-Week Bi-Weekly Settlement Hold) ───
-    const baseDeliveryEarnings = order.agentEarnings || order.deliveryCharges || 40;
+    // ─── Update Agent Wallet Balance & Escrow (Zero-Abandonment & Verification Lock) ───
+    const isFreelanceCommuter = delivery.agent?.agentType === "freelance_commuter" || order.isRidealong;
+    const rawDeliveryFee = order.deliveryCharges || 40;
+    // Freelance commuters earn 50% of base fee since delivery is along their daily commute route
+    const baseDeliveryEarnings = isFreelanceCommuter ? Math.round(rawDeliveryFee * 0.5) : (order.agentEarnings || rawDeliveryFee);
     const totalAgentEarnings = baseDeliveryEarnings + speedBonusCash;
 
     if (delivery.agent) {
+      const agentUser = await User.findById(delivery.agent);
+      const isSigned = agentUser?.agentAgreementSigned === true;
+      const isVerified = agentUser?.agentVerificationStatus === "verified" || agentUser?.isVerified === true;
+      const isFullyVerified = isSigned && isVerified;
+
       await User.findByIdAndUpdate(delivery.agent, {
         $inc: {
-          walletBalance: totalAgentEarnings,
+          // If agreement is signed and agent is verified, deposit directly into walletBalance.
+          // Otherwise, lock funds securely in escrowBalance until agreement and verification are complete!
+          [isFullyVerified ? "walletBalance" : "escrowBalance"]: totalAgentEarnings,
           rewardPoints: speedBonusPoints,
           experiencePoints: speedBonusPoints,
           deliveryScore: isEarly ? 3 : 1
@@ -1331,7 +1341,56 @@ router.post("/remit-cod", async (req, res) => {
   }
 });
 
-// ─── Agent 2-Week (14-Day) Bi-Weekly Settlement Ledger ───
+// ─── Digital Agent Terms & Zero-Abandonment Agreement Signature ───
+router.post("/sign-agreement", async (req, res) => {
+  try {
+    const { agentId } = req.body;
+    const idToUse = agentId || (req.user ? req.user._id : null);
+    if (!idToUse) return res.status(400).json({ error: "Agent ID is required." });
+
+    const agent = await User.findById(idToUse);
+    if (!agent) return res.status(404).json({ error: "Agent account not found." });
+
+    agent.agentAgreementSigned = true;
+    agent.agentAgreementSignedAt = new Date();
+
+    const isVerified = agent.agentVerificationStatus === "verified" || agent.isVerified === true;
+    let unlockedAmount = 0;
+
+    // If agent identity is already verified, release any funds locked in escrowBalance to walletBalance!
+    if (isVerified && agent.escrowBalance > 0) {
+      unlockedAmount = agent.escrowBalance;
+      agent.walletBalance = (agent.walletBalance || 0) + agent.escrowBalance;
+      agent.escrowBalance = 0;
+    }
+
+    await agent.save();
+
+    await notify(
+      req.app,
+      agent._id,
+      "📜 Digital Agreement Executed",
+      unlockedAmount > 0
+        ? `Digital Agent Agreement signed successfully! ₹${unlockedAmount} locked escrow earnings have been transferred to your wallet balance.`
+        : "Digital Agent Agreement signed successfully! Payout escrow lock will be automatically released once your account verification is approved.",
+      "delivery"
+    );
+
+    res.json({
+      success: true,
+      message: "Digital Agent Service & Zero-Abandonment Agreement signed successfully.",
+      agentAgreementSigned: agent.agentAgreementSigned,
+      agentAgreementSignedAt: agent.agentAgreementSignedAt,
+      unlockedAmount,
+      walletBalance: agent.walletBalance || 0,
+      escrowBalance: agent.escrowBalance || 0
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Agent 2-Week (14-Day) Bi-Weekly Settlement Ledger & Escrow Status ───
 router.get("/settlements/:agentId", async (req, res) => {
   try {
     const { agentId } = req.params;
@@ -1347,6 +1406,15 @@ router.get("/settlements/:agentId", async (req, res) => {
     const cycleEndDate = new Date(cycleStartDate.getTime() + 14 * 24 * 60 * 60 * 1000);
     const daysRemaining = Math.max(1, Math.ceil((cycleEndDate - now) / (1000 * 60 * 60 * 24)));
 
+    const isSigned = agent.agentAgreementSigned === true;
+    const isVerified = agent.agentVerificationStatus === "verified" || agent.isVerified === true;
+    const isPayoutLocked = !isSigned || !isVerified;
+
+    let lockReason = "";
+    if (!isSigned && !isVerified) lockReason = "Digital Agreement not signed and Aadhaar ID verification pending";
+    else if (!isSigned) lockReason = "Digital Agent Service & Zero-Abandonment Agreement not signed";
+    else if (!isVerified) lockReason = "Aadhaar Identity verification pending approval by Admin";
+
     const pastSettlements = await Settlement.find({ recipient: agentId, recipientRole: "agent" }).sort({ createdAt: -1 });
 
     const deliveries = await Delivery.find({ agent: agentId, status: "delivered" })
@@ -1361,7 +1429,14 @@ router.get("/settlements/:agentId", async (req, res) => {
       currentCycleEnd: cycleEndDate.toISOString(),
       nextPayoutDate: cycleEndDate.toISOString(),
       daysRemainingInCycle: daysRemaining,
-      unsettledWalletBalance: agent.walletBalance || 0,
+      agentAgreementSigned: isSigned,
+      agentAgreementSignedAt: agent.agentAgreementSignedAt || null,
+      agentVerificationStatus: agent.agentVerificationStatus || (agent.isVerified ? "verified" : "pending"),
+      isPayoutLocked,
+      lockReason,
+      escrowBalance: agent.escrowBalance || 0,
+      unsettledWalletBalance: isPayoutLocked ? 0 : (agent.walletBalance || 0),
+      rawWalletBalance: agent.walletBalance || 0,
       cashInHand: agent.cashInHand || 0,
       pastSettlements,
       recentDeliveries: deliveries

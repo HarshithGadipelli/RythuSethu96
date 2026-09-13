@@ -4,7 +4,7 @@ import { useLang } from "../../context/LangContext";
 import { useAuth } from "../../context/AuthContext";
 import API from "../../api/api";
 
-export default function AgentFinancialLedger({ deliveries = [], onOpenRemit }) {
+export default function AgentFinancialLedger({ deliveries = [], onOpenRemit, onOpenAgreement }) {
   const { t } = useLang();
   const { user } = useAuth();
   const [settlementData, setSettlementData] = useState(null);
@@ -33,8 +33,9 @@ export default function AgentFinancialLedger({ deliveries = [], onOpenRemit }) {
     : "Next Bi-Weekly Cutoff";
 
   const daysRemaining = settlementData?.daysRemainingInCycle ?? 14;
-
   const pastSettlements = settlementData?.pastSettlements || [];
+  const isPayoutLocked = settlementData?.isPayoutLocked || (!user?.agentAgreementSigned || user?.agentVerificationStatus !== "verified");
+  const escrowBalance = settlementData?.escrowBalance ?? (user?.escrowBalance || 0);
 
   return (
     <div className="glass-card" style={{ padding: "1.75rem" }}>
@@ -46,7 +47,7 @@ export default function AgentFinancialLedger({ deliveries = [], onOpenRemit }) {
           <div>
             <h2 style={{ margin: 0, color: "var(--text-dark)", fontSize: "1.4rem" }}>Agent Earnings & Settlement Ledger</h2>
             <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.85rem" }}>
-              Bi-weekly logistics earnings, COD collections, and scheduled disbursements.
+              Bi-weekly logistics earnings, COD collections, and Escrow payout safeguards.
             </p>
           </div>
         </div>
@@ -66,6 +67,41 @@ export default function AgentFinancialLedger({ deliveries = [], onOpenRemit }) {
           </button>
         )}
       </div>
+
+      {/* ─── ESCROW PAYOUT LOCK WARNING CALLOUT ─── */}
+      {isPayoutLocked && (
+        <div style={{
+          background: "linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)",
+          borderRadius: "14px", border: "1.5px solid #f97316",
+          padding: "1.1rem 1.35rem", marginBottom: "1.5rem",
+          display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <AlertCircle size={24} color="#ea580c" />
+            <div>
+              <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#9a3412" }}>
+                🔒 Escrow Settlement Lock Active ({settlementData?.lockReason || "Digital Agreement or Verification Pending"})
+              </div>
+              <p style={{ margin: "2px 0 0 0", fontSize: "0.8rem", color: "#c2410c" }}>
+                Earnings remain safely locked in Escrow until identity verification and Digital Agent Agreement signing are completed.
+              </p>
+            </div>
+          </div>
+
+          {!user?.agentAgreementSigned && onOpenAgreement && (
+            <button
+              onClick={onOpenAgreement}
+              style={{
+                background: "#ea580c", color: "white", border: "none",
+                padding: "0.6rem 1rem", borderRadius: "10px", fontWeight: 800,
+                fontSize: "0.82rem", cursor: "pointer", boxShadow: "0 2px 8px rgba(234, 88, 12, 0.3)"
+              }}
+            >
+              📜 Sign Agreement Now
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ─── 2-WEEK SETTLEMENT POLICY BANNER ─── */}
       <div style={{
@@ -105,6 +141,22 @@ export default function AgentFinancialLedger({ deliveries = [], onOpenRemit }) {
 
       {/* ─── SUMMARY STATS ─── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
+        {/* Escrow Locked Balance */}
+        <div style={{ background: escrowBalance > 0 ? "#fff7ed" : "white", padding: "1.25rem", borderRadius: "14px", border: escrowBalance > 0 ? "1.5px solid #ffdbb5" : "1.5px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+            <span style={{ fontSize: "0.82rem", color: escrowBalance > 0 ? "#ea580c" : "#64748b", fontWeight: 700 }}>ESCROW BALANCE (LOCKED)</span>
+            <div style={{ width: 32, height: 32, borderRadius: "8px", background: escrowBalance > 0 ? "#ffedd5" : "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", color: "#ea580c" }}>
+              <ShieldCheck size={18} />
+            </div>
+          </div>
+          <div style={{ fontSize: "1.8rem", fontWeight: 800, color: escrowBalance > 0 ? "#c2410c" : "#1e293b" }}>
+            ₹{escrowBalance.toLocaleString()}
+          </div>
+          <div style={{ fontSize: "0.75rem", color: escrowBalance > 0 ? "#ea580c" : "#64748b", marginTop: "4px", fontWeight: 600 }}>
+            {escrowBalance > 0 ? "🔒 Unlocks upon agreement & verification" : "✅ 0 Escrow holds"}
+          </div>
+        </div>
+
         {/* Unsettled Wallet Balance */}
         <div style={{ background: "white", padding: "1.25rem", borderRadius: "14px", border: "1.5px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
@@ -117,7 +169,7 @@ export default function AgentFinancialLedger({ deliveries = [], onOpenRemit }) {
             ₹{(user?.walletBalance || settlementData?.unsettledWalletBalance || 0).toLocaleString()}
           </div>
           <div style={{ fontSize: "0.75rem", color: "#2563eb", marginTop: "4px", fontWeight: 600 }}>
-            Pending next bi-weekly payout batch
+            Ready for next bi-weekly payout batch
           </div>
         </div>
 

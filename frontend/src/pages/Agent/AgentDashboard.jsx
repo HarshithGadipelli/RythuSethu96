@@ -251,6 +251,32 @@ export default function AgentDashboard() {
   const [remitTxRef, setRemitTxRef] = useState("");
   const [remitting, setRemitting] = useState(false);
 
+  // ─── Digital Agent Agreement & Zero-Abandonment State ───
+  const [showAgreementModal, setShowAgreementModal] = useState(false);
+  const [agreementChecked, setAgreementChecked] = useState(false);
+  const [signingAgreement, setSigningAgreement] = useState(false);
+
+  const handleSignAgreement = async () => {
+    if (!agreementChecked) {
+      setMsg({ type: "danger", text: "Please check the box to confirm your agreement to the Digital Agent Terms & Zero-Abandonment Clause." });
+      return;
+    }
+    try {
+      setSigningAgreement(true);
+      const res = await API.post("/delivery/sign-agreement", { agentId: user._id });
+      if (res.data.success) {
+        setMsg({ type: "success", text: "📜 Digital Agent Agreement signed successfully! Escrow payout lock updated." });
+        playTTS("Digital Agent Service and Zero Abandonment Agreement signed successfully!", lang);
+        setShowAgreementModal(false);
+        setTimeout(() => window.location.reload(), 1200);
+      }
+    } catch (err) {
+      setMsg({ type: "danger", text: err.response?.data?.error || "Failed to sign agreement." });
+    } finally {
+      setSigningAgreement(false);
+    }
+  };
+
   // ─── Multi-Algorithm Routing Constraint State ───
   const [selectedAlgorithm, setSelectedAlgorithm] = useState("dabbawala_cluster");
 
@@ -945,6 +971,74 @@ export default function AgentDashboard() {
           </button>
         </div>
       </div>
+
+      {/* ─── DIGITAL AGENT AGREEMENT & ESCROW PAYOUT WARNING BANNER ─── */}
+      {(!user?.agentAgreementSigned || (user?.agentVerificationStatus !== "verified" && !user?.isVerified)) && (
+        <div style={{
+          background: "linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)",
+          border: "2px solid #f97316",
+          borderRadius: "16px",
+          padding: "1.25rem 1.5rem",
+          marginBottom: "1.5rem",
+          boxShadow: "0 4px 15px rgba(249, 115, 22, 0.15)",
+          display: "flex",
+          justify: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "1rem"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: "12px", background: "#ffedd5",
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem"
+            }}>
+              📜
+            </div>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <h4 style={{ margin: 0, color: "#9a3412", fontSize: "1.05rem", fontWeight: 800 }}>
+                  {!user?.agentAgreementSigned
+                    ? "📜 Action Required: Sign Digital Agent Service & Zero-Abandonment Agreement"
+                    : "⏳ Identity Verification Pending Approval"}
+                </h4>
+                <span style={{
+                  background: "#ea580c", color: "white", padding: "2px 8px", borderRadius: "100px",
+                  fontSize: "0.72rem", fontWeight: 800, textTransform: "uppercase"
+                }}>
+                  Escrow Locked
+                </span>
+              </div>
+              <p style={{ margin: "4px 0 0 0", color: "#c2410c", fontSize: "0.83rem" }}>
+                {!user?.agentAgreementSigned
+                  ? "Your delivery earnings are held in Escrow and cannot be settled until you review & digitally sign the Zero-Abandonment & Portal Terms Agreement."
+                  : "Your agreement is signed! Settlement withdrawals will unlock automatically as soon as Admin approves your identity verification."}
+              </p>
+            </div>
+          </div>
+
+          {!user?.agentAgreementSigned && (
+            <button
+              onClick={() => setShowAgreementModal(true)}
+              style={{
+                background: "linear-gradient(135deg, #ea580c, #c2410c)",
+                color: "white",
+                border: "none",
+                padding: "0.75rem 1.25rem",
+                borderRadius: "12px",
+                fontWeight: 800,
+                fontSize: "0.88rem",
+                cursor: "pointer",
+                boxShadow: "0 4px 12px rgba(234, 88, 12, 0.3)",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem"
+              }}
+            >
+              <span>✍️ Review & Sign Agreement</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Earnings, Speed Bonuses & Trust Row */}
       <div className="grid-5 mb-3" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem" }}>
@@ -1673,7 +1767,7 @@ export default function AgentDashboard() {
       )}
 
       {tab === "earnings" && (
-        <AgentFinancialLedger deliveries={deliveries} onOpenRemit={() => setRemitModal(true)} />
+        <AgentFinancialLedger deliveries={deliveries} onOpenRemit={() => setRemitModal(true)} onOpenAgreement={() => setShowAgreementModal(true)} />
       )}
 
       {/* ── POLICIES TAB ── */}
@@ -2143,6 +2237,109 @@ export default function AgentDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── DIGITAL AGENT AGREEMENT & ZERO-ABANDONMENT MODAL ─── */}
+      {showAgreementModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(15, 23, 42, 0.75)", backdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "1rem"
+        }}>
+          <div style={{
+            background: "white", borderRadius: "20px", maxWidth: "680px", width: "100%",
+            maxHeight: "90vh", overflowY: "auto", padding: "2rem", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+            border: "1px solid #e2e8f0"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <div style={{ width: 44, height: 44, borderRadius: "12px", background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>
+                  📜
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.25rem", fontWeight: 800 }}>
+                    Digital Agent Service & Zero-Abandonment Agreement
+                  </h3>
+                  <span style={{ fontSize: "0.78rem", color: "#ea580c", fontWeight: 700 }}>
+                    Mandatory Portal Terms & Conditions for Payout Settlement Release
+                  </span>
+                </div>
+              </div>
+              <button onClick={() => setShowAgreementModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b" }}>
+                <X size={24} />
+              </button>
+            </div>
+
+            <div style={{ background: "#f8fafc", borderRadius: "14px", border: "1px solid #e2e8f0", padding: "1.25rem", fontSize: "0.85rem", color: "#334155", lineHeight: 1.6, marginBottom: "1.5rem", maxHeight: "300px", overflowY: "auto" }}>
+              <h5 style={{ margin: "0 0 0.5rem 0", color: "#0f172a", fontSize: "0.95rem", fontWeight: 800 }}>
+                1. Escrow Payout Settlement & Identity Verification Lock
+              </h5>
+              <p style={{ margin: "0 0 1rem 0" }}>
+                All agent delivery earnings (base delivery fee + speed bonuses) are routed to a secure <strong>Escrow Balance</strong>. Money is locked in Escrow and will NOT be released to your active wallet balance or bi-weekly disbursement schedule until (a) your government identity & Aadhaar verification is approved by Admin, and (b) this agreement is digitally signed.
+              </p>
+
+              <h5 style={{ margin: "0 0 0.5rem 0", color: "#0f172a", fontSize: "0.95rem", fontWeight: 800 }}>
+                2. Zero-Abandonment & Performance Guarantee
+              </h5>
+              <p style={{ margin: "0 0 1rem 0" }}>
+                By accepting an order on RythuJanaSethu, you pledge to complete doorstep delivery without unauthorized delays or abandonment. Abandoning an order in transit without explicit SOS emergency approval will result in a <strong>50-point Trust Score penalty</strong>, strike logging, and potential account suspension with forfeiture of escrowed earnings.
+              </p>
+
+              <h5 style={{ margin: "0 0 0.5rem 0", color: "#0f172a", fontSize: "0.95rem", fontWeight: 800 }}>
+                3. Freelance Commuter vs Full-Time Agent Differential Pay Structure
+              </h5>
+              <p style={{ margin: "0 0 1rem 0" }}>
+                Agents registered as <strong>Freelance Commuters (Daily Route / Ride-Along)</strong> deliver produce while traveling on their regular commute routes. Freelance commuters agree to receive a reduced base fee share (~50% of regular fee), passing a 40% delivery discount directly to farmers and consumers. Commuters are strictly prohibited from misrepresenting themselves as full-time dedicated agents to extract full delivery charges.
+              </p>
+
+              <h5 style={{ margin: "0 0 0.5rem 0", color: "#0f172a", fontSize: "0.95rem", fontWeight: 800 }}>
+                4. COD Cash Remittance Compliance
+              </h5>
+              <p style={{ margin: "0 0 0" }}>
+                Any Cash-on-Delivery (COD) payments collected from customers belong to the platform/farmer and must be remitted promptly to Admin via UPI or Hub deposit. Outstanding COD cash in hand exceeding limits will freeze new order assignments.
+              </p>
+            </div>
+
+            <div style={{ background: "#fff7ed", border: "1px solid #ffedd5", borderRadius: "12px", padding: "1rem", marginBottom: "1.5rem" }}>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={agreementChecked}
+                  onChange={(e) => setAgreementChecked(e.target.checked)}
+                  style={{ width: 18, height: 18, marginTop: 2, accentColor: "#ea580c" }}
+                />
+                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#9a3412", lineHeight: 1.4 }}>
+                  I have read, understood, and solemnly accept the RythuJanaSethu Digital Agent Terms, Zero-Abandonment Policy, Escrow Payout Lock Rules, and Freelance Commuter Rate Structure.
+                </span>
+              </label>
+            </div>
+
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button
+                type="button"
+                onClick={() => setShowAgreementModal(false)}
+                className="btn-secondary"
+                style={{ flex: 1, padding: "0.85rem", borderRadius: "12px", fontWeight: 700 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!agreementChecked || signingAgreement}
+                onClick={handleSignAgreement}
+                style={{
+                  flex: 2, padding: "0.85rem", borderRadius: "12px",
+                  background: agreementChecked ? "linear-gradient(135deg, #ea580c, #c2410c)" : "#cbd5e1",
+                  color: "white", border: "none", fontWeight: 800, fontSize: "0.95rem",
+                  cursor: agreementChecked ? "pointer" : "not-allowed",
+                  boxShadow: agreementChecked ? "0 4px 14px rgba(234,88,12,0.35)" : "none"
+                }}
+              >
+                {signingAgreement ? "Processing Signature..." : "✍️ Digitally Sign & Unlock Escrow"}
+              </button>
+            </div>
           </div>
         </div>
       )}
