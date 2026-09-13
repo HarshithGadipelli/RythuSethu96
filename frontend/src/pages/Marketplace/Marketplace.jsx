@@ -339,6 +339,223 @@ const getSeasonalCrops = () => {
   return ["wheat", "mustard", "potato", "onion", "cabbage", "cauliflower", "spinach", "carrot", "peas", "garlic", "apple"];
 };
 
+// Returns doctor & Ayurvedic recommended seasonal diet products to consume
+const getFallbackDietProducts = (seasonName = "", temp = 28, humidity = 60) => {
+  const sLower = (seasonName || "").toLowerCase();
+  const isSummer = sLower.includes("summer") || sLower.includes("zaid") || temp > 30;
+  const isMonsoon = sLower.includes("monsoon") || sLower.includes("kharif") || humidity > 70;
+
+  if (isSummer) {
+    return [
+      {
+        name: "Watermelon",
+        icon: "🍉",
+        category: "hydration",
+        categoryLabel: "Hydration",
+        badge: "92% Water Content",
+        benefit: "Prevents heat stroke, replaces sweat electrolytes, and delivers cooling lycopene.",
+        nutrients: "Lycopene, Potassium, Vit C",
+        ayurveda: "❄️ Sheeta (Cooling Coolant)",
+        searchKeyword: "watermelon"
+      },
+      {
+        name: "Cucumber",
+        icon: "🥒",
+        category: "hydration",
+        categoryLabel: "Hydration",
+        badge: "Zero-Calorie Hydrator",
+        benefit: "Restores cellular hydration, flushes uric acid, and calms internal stomach heat.",
+        nutrients: "Silica, Caffeic Acid, Fiber",
+        ayurveda: "❄️ Pitta Pacifier",
+        searchKeyword: "cucumber"
+      },
+      {
+        name: "Raw Mango (Kairi)",
+        icon: "🥭",
+        category: "minerals",
+        categoryLabel: "Heat Defense",
+        badge: "Heatstroke Shield",
+        benefit: "Aam Panna made from raw mango prevents sodium exhaustion and maintains electrolytes in peak heat.",
+        nutrients: "Vitamin C, Pectin, Malic Acid",
+        ayurveda: "🛡️ Tridosha Balancer",
+        searchKeyword: "mango"
+      },
+      {
+        name: "Bottle Gourd (Lauki / Sorakaya)",
+        icon: "🍈",
+        category: "digestive",
+        categoryLabel: "Digestives",
+        badge: "Light & Cooling",
+        benefit: "Extremely easy to digest in humid heat; prevents acid reflux and keeps blood pressure stable.",
+        nutrients: "Soluble Fiber, Zinc, Magnesium",
+        ayurveda: "🌱 Deepana (Gentle Digest)",
+        searchKeyword: "gourd"
+      },
+      {
+        name: "Mint & Coriander Leaves",
+        icon: "🌿",
+        category: "digestive",
+        categoryLabel: "Digestives",
+        badge: "Anti-Acidity Herb",
+        benefit: "Natural internal cooling agent; cleanses liver bile and soothes summer stomach cramps.",
+        nutrients: "Menthol, Chlorophyll, Vit A",
+        ayurveda: "❄️ Sheeta Rechana",
+        searchKeyword: "mint"
+      },
+      {
+        name: "Tender Coconut & Lemon",
+        icon: "🥥",
+        category: "hydration",
+        categoryLabel: "Hydration",
+        badge: "Natural Isotonic Drink",
+        benefit: "Replaces lost potassium and bio-minerals instantly; prevents afternoon heat fatigue.",
+        nutrients: "Electrolytes, Bio-enzymes, Vit C",
+        ayurveda: "💧 Hridya Vitality Tonic",
+        searchKeyword: "lemon"
+      }
+    ];
+  } else if (isMonsoon) {
+    return [
+      {
+        name: "Fresh Ginger (Allam)",
+        icon: "🫚",
+        category: "immunity",
+        categoryLabel: "Immunity",
+        badge: "Monsoon Digestive Fire",
+        benefit: "Ignites sluggish monsoon digestion, protects bronchial airways, and fights waterborne pathogens.",
+        nutrients: "Gingerol, Shogaols, Magnesium",
+        ayurveda: "🔥 Agni Deepana",
+        searchKeyword: "ginger"
+      },
+      {
+        name: "Raw Turmeric (Pasupu)",
+        icon: "🟡",
+        category: "immunity",
+        categoryLabel: "Immunity",
+        badge: "Anti-Viral Defense",
+        benefit: "Natural broad-spectrum antibiotic that shields gut lining from seasonal wet-weather infections.",
+        nutrients: "Curcumin, Volatile Oils",
+        ayurveda: "🛡️ Krimighna (Anti-Bacterial)",
+        searchKeyword: "turmeric"
+      },
+      {
+        name: "Garlic (Vellulli)",
+        icon: "🧄",
+        category: "immunity",
+        categoryLabel: "Immunity",
+        badge: "Natural Antibiotic",
+        benefit: "Active allicin boosts white blood cell response against damp weather fungal and bacterial spores.",
+        nutrients: "Allicin, Sulfur, Selenium",
+        ayurveda: "🛡️ Rasayana Rejuvenator",
+        searchKeyword: "garlic"
+      },
+      {
+        name: "Steamed Sweet Corn (Bhutta)",
+        icon: "🌽",
+        category: "digestive",
+        categoryLabel: "Digestives",
+        badge: "Warm Energy Snack",
+        benefit: "Provides slow-release energy and insoluble fiber to maintain regular gut motility during damp days.",
+        nutrients: "Lutein, Zeaxanthin, B-Complex",
+        ayurveda: "🌱 Balya (Strength Giving)",
+        searchKeyword: "maize"
+      },
+      {
+        name: "Bitter Gourd (Kakarakaya)",
+        icon: "🥒",
+        category: "digestive",
+        categoryLabel: "Digestives",
+        badge: "Blood Purifier",
+        benefit: "Flushes gut parasites common in rainy season and stabilizes blood glucose against humidity spikes.",
+        nutrients: "Charantin, Vicine, Polypeptides",
+        ayurveda: "🌱 Rakta Shodhaka",
+        searchKeyword: "bitter gourd"
+      },
+      {
+        name: "Pomegranate (Danimma)",
+        icon: "🍎",
+        category: "minerals",
+        categoryLabel: "Vitality",
+        badge: "Platelet & Immunity Booster",
+        benefit: "Maintains optimal hemoglobin and platelet levels; protects against seasonal monsoon viral fevers.",
+        nutrients: "Punicalagins, Ellagic Acid, Iron",
+        ayurveda: "🛡️ Rakta Vardhaka",
+        searchKeyword: "pomegranate"
+      }
+    ];
+  } else {
+    // Winter (Rabi)
+    return [
+      {
+        name: "Fresh Spinach & Methi",
+        icon: "🥬",
+        category: "minerals",
+        categoryLabel: "Vitality",
+        badge: "Winter Super Greens",
+        benefit: "Rich in bioavailable iron and folate; warms core blood circulation and builds seasonal stamina.",
+        nutrients: "Iron, Calcium, Vit K, Folate",
+        ayurveda: "🌱 Pushtida (Nourishing)",
+        searchKeyword: "spinach"
+      },
+      {
+        name: "Carrots & Beetroot",
+        icon: "🥕",
+        category: "immunity",
+        categoryLabel: "Immunity",
+        badge: "Circulation & Vision",
+        benefit: "Improves blood vessel elasticity in cold temperatures and delivers beta-carotene for winter skin.",
+        nutrients: "Beta-Carotene, Nitrates, Vit A",
+        ayurveda: "🔥 Rakta Prasadana",
+        searchKeyword: "carrot"
+      },
+      {
+        name: "Amla (Indian Gooseberry)",
+        icon: "🫒",
+        category: "immunity",
+        categoryLabel: "Immunity",
+        badge: "Highest Vitamin C (20x Orange)",
+        benefit: "The premier Ayurvedic immunity fruit; builds natural antibodies to ward off winter cold, cough, and flu.",
+        nutrients: "Ascorbic Acid, Tannins, Flavonoids",
+        ayurveda: "🛡️ Rasayana Supreme",
+        searchKeyword: "amla"
+      },
+      {
+        name: "Sweet Potatoes",
+        icon: "🍠",
+        category: "minerals",
+        categoryLabel: "Thermal Energy",
+        badge: "Winter Thermal Sustenance",
+        benefit: "Slow-burning complex carbohydrates provide sustained thermal energy against crisp morning chills.",
+        nutrients: "Complex Carbs, Potassium, Vit B6",
+        ayurveda: "🔥 Vata Shamak",
+        searchKeyword: "sweet potato"
+      },
+      {
+        name: "Organic Jaggery (Bellam)",
+        icon: "🍯",
+        category: "minerals",
+        categoryLabel: "Internal Warmer",
+        badge: "Lungs & Internal Warmer",
+        benefit: "Expels particulate matter from lungs during winter smog and warms the digestive tract naturally.",
+        nutrients: "Unrefined Cane Iron, Minerals",
+        ayurveda: "🔥 Ushna (Thermal Warmth)",
+        searchKeyword: "jaggery"
+      },
+      {
+        name: "Citrus Oranges & Sweet Lime",
+        icon: "🍊",
+        category: "hydration",
+        categoryLabel: "Hydration",
+        badge: "Respiratory Cold Defense",
+        benefit: "Maintains mucosal hydration, prevents winter dry cough, and boosts collagen for radiant skin.",
+        nutrients: "Vitamin C, Bioflavonoids",
+        ayurveda: "💧 Ruchya (Appetite Enhancer)",
+        searchKeyword: "orange"
+      }
+    ];
+  }
+};
+
 export default function Marketplace() {
   const { user } = useAuth();
   const { t, lang } = useLang();
@@ -434,6 +651,7 @@ export default function Marketplace() {
   // ─── Real-Time Seasonal Prediction State ───
   const [seasonalPrediction, setSeasonalPrediction] = useState(null);
   const [seasonalLoading, setSeasonalLoading] = useState(false);
+  const [dietCategoryFilter, setDietCategoryFilter] = useState("all");
 
   // Synchronize customer location with AuthContext or guest storage
   useEffect(() => {
@@ -1855,6 +2073,267 @@ export default function Marketplace() {
                   </motion.div>
                 ))}
               </div>
+
+              {/* ─── SEASONAL DIET & NUTRITION: WHAT TO CONSUME THIS SEASON ─── */}
+              {(() => {
+                const rawDiet = seasonalPrediction.suggestedConsumptionProducts?.length
+                  ? seasonalPrediction.suggestedConsumptionProducts
+                  : getFallbackDietProducts(seasonalPrediction.season, seasonalPrediction.weather?.temperature, seasonalPrediction.weather?.humidity);
+
+                const activeDiet = rawDiet.filter(item => {
+                  if (dietCategoryFilter === "all") return true;
+                  return item.category === dietCategoryFilter;
+                });
+
+                return (
+                  <div style={{ marginTop: "1.8rem", marginBottom: "1.5rem" }}>
+                    <div style={{
+                      background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #eff6ff 100%)",
+                      border: "1.5px solid #86efac",
+                      borderRadius: "18px",
+                      padding: "1.5rem 1.6rem",
+                      boxShadow: "0 4px 20px rgba(16, 185, 129, 0.08)"
+                    }}>
+                      {/* Section Header */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem", marginBottom: "1.2rem" }}>
+                        <div>
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", background: "#dcfce7", color: "#166534", padding: "0.25rem 0.75rem", borderRadius: "100px", fontSize: "0.75rem", fontWeight: 700, marginBottom: "0.4rem", border: "1px solid #bbf7d0" }}>
+                            <span>🩺 Certified Agro-Nutrition & Ayurvedic Ritucharya</span>
+                            <span>•</span>
+                            <span>Live Weather Regimen</span>
+                          </div>
+                          <h3 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 800, color: "#064e3b" }}>
+                            🥗 Recommended Seasonal Diet: What to Consume Right Now
+                          </h3>
+                          <p style={{ margin: "0.35rem 0 0 0", color: "#047857", fontSize: "0.85rem", maxWidth: "720px", lineHeight: 1.45 }}>
+                            At <strong>{seasonalPrediction.weather?.temperature}°C</strong> and <strong>{seasonalPrediction.weather?.humidity}% humidity</strong>, human digestion and hydration needs shift. Consume these natural seasonal foods to balance metabolism, replenish electrolytes, and protect against weather-induced illnesses.
+                          </p>
+                        </div>
+
+                        {/* Category Filter Pills */}
+                        <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
+                          {[
+                            { k: "all", l: `All Foods (${rawDiet.length})` },
+                            { k: "hydration", l: "💧 Hydration" },
+                            { k: "immunity", l: "🛡️ Immunity" },
+                            { k: "digestive", l: "🌱 Digestives" },
+                            { k: "minerals", l: "⚡ Vitality" }
+                          ].map(pill => (
+                            <button
+                              key={pill.k}
+                              type="button"
+                              onClick={() => setDietCategoryFilter(pill.k)}
+                              style={{
+                                background: dietCategoryFilter === pill.k ? "#059669" : "#ffffff",
+                                color: dietCategoryFilter === pill.k ? "#ffffff" : "#065f46",
+                                border: dietCategoryFilter === pill.k ? "none" : "1px solid #a7f3d0",
+                                padding: "0.4rem 0.8rem",
+                                borderRadius: "100px",
+                                fontWeight: 700,
+                                fontSize: "0.78rem",
+                                cursor: "pointer",
+                                transition: "all 0.15s ease",
+                                boxShadow: dietCategoryFilter === pill.k ? "0 2px 8px rgba(5, 150, 105, 0.25)" : "none"
+                              }}
+                            >
+                              {pill.l}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Products Grid */}
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))", gap: "1rem" }}>
+                        {activeDiet.map((item, idx) => {
+                          const sKey = (item.searchKeyword || item.name || "").toLowerCase();
+                          const matches = crops.filter(c => {
+                            const cName = (c.name || "").toLowerCase();
+                            return cName.includes(sKey) || sKey.includes(cName);
+                          });
+                          const inStock = matches.length > 0;
+                          const lowestPrice = inStock ? Math.min(...matches.map(c => c.price || 999)) : null;
+                          const bestCrop = inStock ? matches.sort((a,b) => (b.trustScore || 0) - (a.trustScore || 0))[0] : null;
+
+                          return (
+                            <div
+                              key={item.name + idx}
+                              style={{
+                                background: "#ffffff",
+                                borderRadius: "14px",
+                                border: inStock ? "1.5px solid #86efac" : "1px solid #e2e8f0",
+                                padding: "1.1rem",
+                                display: "flex",
+                                flexDirection: "column",
+                                justifyContent: "space-between",
+                                gap: "0.85rem",
+                                boxShadow: "0 2px 10px rgba(0,0,0,0.03)",
+                                position: "relative"
+                              }}
+                            >
+                              <div>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                                    <span style={{ fontSize: "2rem", lineHeight: 1 }}>{item.icon}</span>
+                                    <div>
+                                      <h4 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#0f172a" }}>
+                                        {item.name}
+                                      </h4>
+                                      <span style={{ fontSize: "0.72rem", color: "#059669", fontWeight: 700, textTransform: "capitalize" }}>
+                                        {item.categoryLabel || item.category}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <span style={{
+                                    fontSize: "0.7rem",
+                                    fontWeight: 700,
+                                    padding: "2px 8px",
+                                    borderRadius: "100px",
+                                    background: "#f0fdf4",
+                                    color: "#166534",
+                                    border: "1px solid #bbf7d0"
+                                  }}>
+                                    {item.badge}
+                                  </span>
+                                </div>
+
+                                <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.82rem", color: "#334155", lineHeight: 1.45 }}>
+                                  {item.benefit}
+                                </p>
+
+                                <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.4rem" }}>
+                                  <span style={{ fontSize: "0.7rem", background: "#f8fafc", color: "#475569", border: "1px solid #e2e8f0", padding: "2px 7px", borderRadius: "6px", fontWeight: 600 }}>
+                                    💊 {item.nutrients}
+                                  </span>
+                                  {item.ayurveda && (
+                                    <span style={{ fontSize: "0.7rem", background: "#ecfdf5", color: "#065f46", border: "1px solid #a7f3d0", padding: "2px 7px", borderRadius: "6px", fontWeight: 600 }}>
+                                      {item.ayurveda}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Marketplace Integration Footer */}
+                              <div style={{ paddingTop: "0.75rem", borderTop: "1px solid #f1f5f9", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                                {inStock && bestCrop ? (
+                                  <>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.78rem" }}>
+                                      <span style={{ color: "#16a34a", fontWeight: 700, display: "flex", alignItems: "center", gap: "4px" }}>
+                                        <span>🟢 Available Fresh</span>
+                                        <span style={{ color: "#64748b", fontWeight: 500 }}>({matches.length} farmer{matches.length > 1 ? "s" : ""})</span>
+                                      </span>
+                                      <strong style={{ color: "#0f172a", fontSize: "0.88rem" }}>
+                                        ₹{lowestPrice}/{bestCrop.unit || "kg"}
+                                      </strong>
+                                    </div>
+                                    <div style={{ display: "flex", gap: "0.4rem" }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => openCrop(bestCrop)}
+                                        style={{
+                                          flex: 1,
+                                          background: "#059669",
+                                          color: "white",
+                                          border: "none",
+                                          padding: "0.5rem 0.8rem",
+                                          borderRadius: "8px",
+                                          fontWeight: 700,
+                                          fontSize: "0.8rem",
+                                          cursor: "pointer",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          gap: "0.3rem",
+                                          boxShadow: "0 2px 6px rgba(5, 150, 105, 0.2)"
+                                        }}
+                                      >
+                                        🛒 Buy from Farmers
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          addToCart(bestCrop);
+                                          setMsg({ type: "success", text: `🛒 Added fresh in-season ${bestCrop.name} to cart!` });
+                                          setTimeout(() => setMsg({ type: "", text: "" }), 2500);
+                                        }}
+                                        style={{
+                                          background: "#ecfdf5",
+                                          color: "#047857",
+                                          border: "1.5px solid #a7f3d0",
+                                          padding: "0.5rem 0.75rem",
+                                          borderRadius: "8px",
+                                          fontWeight: 800,
+                                          fontSize: "0.8rem",
+                                          cursor: "pointer"
+                                        }}
+                                        title="Quick Add to Shopping Cart"
+                                      >
+                                        + Cart
+                                      </button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <span style={{ fontSize: "0.75rem", color: "#d97706", fontWeight: 700 }}>
+                                      ⏳ High Seasonal Demand
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSearch(item.searchKeyword || item.name);
+                                        setMsg({ type: "success", text: `Searching marketplace for ${item.name}...` });
+                                        setTimeout(() => setMsg({ type: "", text: "" }), 2500);
+                                      }}
+                                      style={{
+                                        background: "#f1f5f9",
+                                        color: "#334155",
+                                        border: "1px solid #cbd5e1",
+                                        padding: "0.4rem 0.75rem",
+                                        borderRadius: "8px",
+                                        fontWeight: 700,
+                                        fontSize: "0.75rem",
+                                        cursor: "pointer"
+                                      }}
+                                    >
+                                      🔍 Search Market
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Ayurvedic Ritucharya Weather Tip Box */}
+                      <div style={{
+                        marginTop: "1.2rem",
+                        background: "#ffffff",
+                        borderRadius: "12px",
+                        border: "1px dashed #86efac",
+                        padding: "0.9rem 1.2rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.8rem",
+                        flexWrap: "wrap"
+                      }}>
+                        <span style={{ fontSize: "1.4rem" }}>🍵</span>
+                        <div style={{ flex: 1, minWidth: 260 }}>
+                          <strong style={{ fontSize: "0.85rem", color: "#065f46" }}>
+                            Ayurvedic Ritucharya (Seasonal Living) Rule for {seasonalPrediction.season}:
+                          </strong>
+                          <span style={{ fontSize: "0.82rem", color: "#334155", marginLeft: "0.35rem" }}>
+                            {seasonalPrediction.weather?.temperature > 30
+                              ? "Drink plenty of natural lemon/coconut water, consume light gourd curries, and avoid heavy deep-fried foods during hot peak hours."
+                              : seasonalPrediction.weather?.humidity > 70
+                              ? "Boil your drinking water, incorporate fresh ginger and garlic to kindle digestive fire, and avoid cold uncooked leafy street salads."
+                              : "Start mornings with warm water and amla, eat soaked nuts with unrefined jaggery, and consume winter carrots to kindle digestive fire."}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Seasonal Insights */}
               {seasonalPrediction.insights?.length > 0 && (

@@ -745,7 +745,8 @@ export const getSeasonalPrediction = async (req, res) => {
       },
       recommendedCrops: scoredCrops.slice(0, 8),
       insights: generateSeasonalInsights(currentTemp, currentHumidity, avgDailyRainfall, zone, season),
-      cropNames: scoredCrops.slice(0, 8).map(c => c.key)
+      cropNames: scoredCrops.slice(0, 8).map(c => c.key),
+      suggestedConsumptionProducts: generateSeasonalDietRecommendations(season, currentTemp, currentHumidity)
     });
   } catch (error) {
     console.error("Seasonal Prediction Error:", error);
@@ -809,4 +810,200 @@ function generateSeasonalInsights(temp, humidity, rainfall, zone, season) {
   insights.push("🚫 Do NOT burn crop residue after harvest. It causes severe air pollution and destroys beneficial soil organisms. Use composting or sell to biogas plants.");
   
   return insights;
+}
+
+function generateSeasonalDietRecommendations(season, temp, humidity) {
+  // Zaid / Summer / High heat conditions
+  if (season === "zaid" || temp > 30) {
+    return [
+      {
+        name: "Watermelon",
+        icon: "🍉",
+        category: "Hydration & Electrolytes",
+        badge: "92% Water Content",
+        benefit: "Prevents severe heat stroke, replenishes electrolytes lost in sweat, and delivers potent cooling lycopene.",
+        nutrients: "Lycopene, Citrulline, Potassium, Vit C",
+        ayurveda: "Sheeta (Natural Coolant)",
+        searchKeyword: "watermelon"
+      },
+      {
+        name: "Cucumber",
+        icon: "🥒",
+        category: "Hydration & Detox",
+        badge: "Zero Calorie Coolant",
+        benefit: "Flushes uric acid, maintains gut pH balance, and prevents afternoon dehydration fatigue.",
+        nutrients: "Silica, Caffeic Acid, Fiber, Water",
+        ayurveda: "Pitta Pacifying (Balances Heat)",
+        searchKeyword: "cucumber"
+      },
+      {
+        name: "Raw Mango (Kairi)",
+        icon: "🥭",
+        category: "Heat Defense & Minerals",
+        badge: "Loo & Stroke Defense",
+        benefit: "Consuming raw mango panna prevents heat stroke, treats sodium exhaustion, and boosts iron absorption.",
+        nutrients: "Vitamin C, Pectin, Malic Acid, Sodium",
+        ayurveda: "Balances Tridosha in Extreme Heat",
+        searchKeyword: "mango"
+      },
+      {
+        name: "Bottle Gourd (Sorakaya / Lauki)",
+        icon: "🍈",
+        category: "Digestive Balance",
+        badge: "Light & Alkalizing",
+        benefit: "Extremely easy to digest in summer when metabolic fire is low; naturally cools body temperature.",
+        nutrients: "Dietary Fiber, Zinc, Magnesium, Thiamine",
+        ayurveda: "Deepana (Gentle Digestive)",
+        searchKeyword: "gourd"
+      },
+      {
+        name: "Mint & Coriander Leaves",
+        icon: "🌿",
+        category: "Cooling Digestive Herb",
+        badge: "Anti-Acidity Herbal",
+        benefit: "Relieves heartburn, summer acid reflux, and body odor by cooling the internal digestive tract.",
+        nutrients: "Menthol, Rosmarinic Acid, Chlorophyll",
+        ayurveda: "Sheeta & Rechana (Cooling Cleanser)",
+        searchKeyword: "mint"
+      },
+      {
+        name: "Tender Coconut & Lemon",
+        icon: "🥥",
+        category: "Natural Isotonic Drink",
+        badge: "Instant Rehydration",
+        benefit: "Balances cellular electrolytes and prevents heat cramps without artificial sugars or preservatives.",
+        nutrients: "Natural Electrolytes, Potassium, Bio-active Enzymes",
+        ayurveda: "Hridya (Heart & Vitality Tonic)",
+        searchKeyword: "lemon"
+      }
+    ];
+  } else if (season === "kharif" || humidity > 70) {
+    // Kharif / Monsoon / High humidity
+    return [
+      {
+        name: "Fresh Ginger (Adrak)",
+        icon: "🫚",
+        category: "Immunity & Digestion",
+        badge: "Monsoon Digestive Tonic",
+        benefit: "Stimulates digestive enzymes during damp weather, clears respiratory congestion, and stops nausea.",
+        nutrients: "Gingerol, Shogaols, Chromium, Magnesium",
+        ayurveda: "Agni Deepana (Kindles Digestive Fire)",
+        searchKeyword: "ginger"
+      },
+      {
+        name: "Raw Turmeric (Pasupu)",
+        icon: "🟡",
+        category: "Anti-Viral & Immunity",
+        badge: "Anti-Microbial Defense",
+        benefit: "Potent natural antibiotic that protects against waterborne bacteria and seasonal monsoon coughs.",
+        nutrients: "Curcumin, Essential Volatile Oils",
+        ayurveda: "Varnya & Krimighna (Anti-Microbial)",
+        searchKeyword: "turmeric"
+      },
+      {
+        name: "Garlic (Vellulli)",
+        icon: "🧄",
+        category: "Infection Defense",
+        badge: "Natural Antibacterial",
+        benefit: "Allicin compounds strengthen white blood cells against damp climate bacterial infections.",
+        nutrients: "Allicin, Sulfur compounds, Selenium",
+        ayurveda: "Rasayana (Rejuvenator & Anti-toxin)",
+        searchKeyword: "garlic"
+      },
+      {
+        name: "Steamed Sweet Corn (Bhutta)",
+        icon: "🌽",
+        category: "Wholesome Fiber",
+        badge: "Warm Energy Snack",
+        benefit: "Rich in insoluble fiber that promotes smooth gut motility when wet weather slows metabolism.",
+        nutrients: "Lutein, Zeaxanthin, B-Complex, Fiber",
+        ayurveda: "Balya (Strength Giving)",
+        searchKeyword: "maize"
+      },
+      {
+        name: "Bitter Gourd (Karela / Kakarakaya)",
+        icon: "🥒",
+        category: "Blood Purification",
+        badge: "Anti-Parasitic Shield",
+        benefit: "Essential in rainy season to eliminate intestinal parasites and reduce blood sugar spikes.",
+        nutrients: "Charantin, Polypeptide-p, Vicine",
+        ayurveda: "Raktashodhaka (Blood Purifier)",
+        searchKeyword: "bitter gourd"
+      },
+      {
+        name: "Pomegranate (Danimma)",
+        icon: "🍎",
+        category: "Platelet & Blood Booster",
+        badge: "Monsoon Vitality Booster",
+        benefit: "Boosts immunity, maintains high blood platelet counts, and fights seasonal viral fatigue.",
+        nutrients: "Punicalagins, Ellagic Acid, Vitamin K, Iron",
+        ayurveda: "Rakta Vardhaka (Hemoglobin Enhancer)",
+        searchKeyword: "pomegranate"
+      }
+    ];
+  } else {
+    // Winter (Rabi) / Cool weather
+    return [
+      {
+        name: "Fresh Spinach & Methi (Palak)",
+        icon: "🥬",
+        category: "Iron & Vitality",
+        badge: "Winter Super Greens",
+        benefit: "Delivers dense iron, calcium, and vitamin A for blood warmth, bone strength, and winter skin glow.",
+        nutrients: "Iron, Calcium, Folate, Vitamin K1",
+        ayurveda: "Pushtida (Nourishing Tissue Builder)",
+        searchKeyword: "spinach"
+      },
+      {
+        name: "Carrots & Beetroot",
+        icon: "🥕",
+        category: "Immunity & Blood Flow",
+        badge: "Vascular & Vision Health",
+        benefit: "Improves blood circulation in cold mornings, supports eye health, and flushes winter sluggishness.",
+        nutrients: "Beta-Carotene, Nitrates, Vitamin A",
+        ayurveda: "Raktapitta Shanthi (Cooling Circulation)",
+        searchKeyword: "carrot"
+      },
+      {
+        name: "Amla (Indian Gooseberry)",
+        icon: "🫒",
+        category: "Maximum Vitamin C",
+        badge: "Ultimate Immunity Shield",
+        benefit: "Contains 20x more Vitamin C than oranges; the supreme Ayurvedic fruit to prevent winter colds and sore throats.",
+        nutrients: "Ascorbic Acid, Tannins, Flavonoids",
+        ayurveda: "Chyawanprash King (Anti-Aging & Defense)",
+        searchKeyword: "amla"
+      },
+      {
+        name: "Sweet Potatoes (Chilagada Dumpa)",
+        icon: "🍠",
+        category: "Complex Sustained Energy",
+        badge: "Winter Warmth Root",
+        benefit: "Provides slow-burning complex carbs and beta-carotene to sustain core body heat in crisp winter temperatures.",
+        nutrients: "Complex Fiber, Potassium, Vitamin A, B6",
+        ayurveda: "Vata Shamak (Calms Winter Dryness)",
+        searchKeyword: "sweet potato"
+      },
+      {
+        name: "Organic Jaggery (Bellam / Gur)",
+        icon: "🍯",
+        category: "Internal Warmth & Lungs",
+        badge: "Unrefined Natural Warmer",
+        benefit: "Cleanses respiratory tract of winter pollution, warms the stomach, and provides natural unrefined iron.",
+        nutrients: "Non-centrifugal Cane Iron, Magnesium, Potassium",
+        ayurveda: "Ushna (Internal Thermal Fire)",
+        searchKeyword: "jaggery"
+      },
+      {
+        name: "Citrus Oranges & Sweet Lime",
+        icon: "🍊",
+        category: "Hydration & Vitamin C",
+        badge: "Cold Defense Booster",
+        benefit: "Prevents dry winter skin, protects lungs from viral seasonal coughs, and keeps body hydrated.",
+        nutrients: "Vitamin C, Hesperidin, Citric Acid",
+        ayurveda: "Deepana & Ruchya (Enhances Appetite & Taste)",
+        searchKeyword: "orange"
+      }
+    ];
+  }
 }
