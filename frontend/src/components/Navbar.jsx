@@ -221,8 +221,8 @@ export default function Navbar() {
       <Link to="/" className="navbar-brand">
         <motion.img whileHover={{ scale: 1.05 }} src="/logo.png?v=2" alt="Rythu Jana Sethu Logo" style={{ height: "42px", width: "auto", borderRadius: "12px" }} />
         <div>
-          <span className="navbar-title" translate="no">{t("appName")}</span>
-          <span className="navbar-subtitle">{t("tagline")}</span>
+          <span className="navbar-title notranslate" translate="no">{t("appName")}</span>
+          <span className="navbar-subtitle notranslate" translate="no">{t("tagline")}</span>
         </div>
       </Link>
 

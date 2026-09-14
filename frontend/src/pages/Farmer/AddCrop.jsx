@@ -346,9 +346,13 @@ export default function AddCrop() {
     setIsSpeaking(false);
     isSpeakingRef.current = false;
 
-    // After AI finishes speaking, open the mic for the farmer
+    // After AI finishes speaking, add a small delay then open the mic for the farmer
     if (step !== 'COMPLETED' && wizardStepRef.current === step) {
-      startListeningForStep(step);
+      // Delay prevents echo from TTS playing into the mic
+      await new Promise(resolve => setTimeout(resolve, 600));
+      if (wizardStepRef.current === step) {
+        startListeningForStep(step);
+      }
     }
   };
 
@@ -404,7 +408,7 @@ export default function AddCrop() {
          if (recognitionRef.current) {
              try { recognitionRef.current.stop(); } catch(e) {}
          }
-      }, 1500); // Stop after 1.5s of silence
+      }, 2500); // Stop after 2.5s of silence (increased for slower speakers)
     };
 
     recognition.onerror = (event) => {

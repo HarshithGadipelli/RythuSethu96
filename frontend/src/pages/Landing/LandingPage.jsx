@@ -339,7 +339,7 @@ export default function LandingPage() {
               position: "relative",
               zIndex: 3
             }}>
-              రైతు
+              <span className="notranslate" translate="no">రైతు</span>
             </span>
           </motion.div>
           <motion.div
@@ -1640,3 +1640,5 @@ export default function LandingPage() {
     </div>
   );
 }
+
+

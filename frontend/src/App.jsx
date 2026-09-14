@@ -29,6 +29,7 @@ import GlobalSystemTermsModal from "./components/GlobalSystemTermsModal";
 import ColdStoragePortal from "./pages/Agent/ColdStoragePortal";
 import BiogasAgentPortal from "./pages/Agent/BiogasAgentPortal";
 import SoilTestAgentPortal from "./pages/Agent/SoilTestAgentPortal";
+import VirtualKeyboard from "./components/VirtualKeyboard";
 // Ensure Google Translate re-translates when React Router changes pages
 function RouteChangeListener() {
   const location = useLocation();
@@ -206,6 +207,7 @@ function AppRoutes() {
 
       <PWAInstallPrompt />
       <GlobalSystemTermsModal />
+      <VirtualKeyboard />
       <BottomNav />
     </>
   );

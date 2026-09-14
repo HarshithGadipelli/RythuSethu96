@@ -104,11 +104,16 @@ export default function Register() {
     }, { fieldId: field, lang: isEnglishOnly ? "en" : lang });
   };
 
-  // One-shot voice listen that resolves a promise
-  const listenOnce = (fieldId, processVal) =>
+  // One-shot voice listen that resolves a promise with a timeout
+  const listenOnce = (fieldId, processVal, timeoutMs = 15000) =>
     new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        if (typeof stopListening === "function") stopListening(true);
+        resolve("");
+      }, timeoutMs);
       startListening(
         (val) => {
+          clearTimeout(timer);
           const raw = typeof val === "function" ? val("") : val;
           const processed = processVal ? processVal(raw) : raw;
           resolve(processed);
@@ -180,6 +185,57 @@ export default function Register() {
       setAssistantStep("");
       setAssistantRunning(false);
     }
+  };
+
+  // ─── AI Guess Soil from Photo ───
+  const handleAIGuessSoil = () => {
+    setAiGuesserActive(true);
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
+    fileInput.style.display = "none";
+    fileInput.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) { setAiGuesserActive(false); return; }
+      try {
+        const fd = new FormData();
+        fd.append("soilPhoto", file);
+        fd.append("sampleNotes", "AI photo scan from registration");
+        const res = await API.post("/soil-testing/instant-scan", fd, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+        const result = res.data?.analysisResult || res.data;
+        if (result?.soilType) {
+          // Map the detailed soil type back to our dropdown values
+          const typeStr = result.soilType.toLowerCase();
+          let mapped = "loamy";
+          if (typeStr.includes("black")) mapped = "black_soil";
+          else if (typeStr.includes("red")) mapped = "red_soil";
+          else if (typeStr.includes("clay")) mapped = "clay";
+          else if (typeStr.includes("sandy")) mapped = "sandy";
+          else if (typeStr.includes("alluvial")) mapped = "alluvial_soil";
+          else if (typeStr.includes("laterite")) mapped = "laterite_soil";
+          else if (typeStr.includes("silt")) mapped = "silt";
+          else if (typeStr.includes("peat")) mapped = "peat";
+          else if (typeStr.includes("chalk")) mapped = "chalk";
+          else if (typeStr.includes("arid")) mapped = "arid_soil";
+          else if (typeStr.includes("forest")) mapped = "forest_soil";
+          else if (typeStr.includes("saline")) mapped = "saline";
+          setForm(f => ({ ...f, soilType: mapped }));
+          alert(`🤖 AI detected: ${result.soilType}\nMapped to: ${mapped.replace(/_/g, " ").toUpperCase()}`);
+        } else {
+          alert("AI could not determine the soil type. Please select manually.");
+        }
+      } catch (err) {
+        console.error("AI Soil Guess failed:", err);
+        alert("AI Soil Scan failed. Please check your internet connection or select manually.");
+      } finally {
+        setAiGuesserActive(false);
+      }
+    };
+    document.body.appendChild(fileInput);
+    fileInput.click();
+    document.body.removeChild(fileInput);
   };
 
 
@@ -289,18 +345,17 @@ export default function Register() {
 
           {error && <div className="alert alert-error mb-2">⚠️ {error}</div>}
 
-          {/* Rythu Jana Sethu Assistant Panel (Farmers Only) */}
-          {form.role === "farmer" && (
+          {/* Voice Assistant Panel - Available for ALL roles */}
             <div style={{ background: "rgba(34, 197, 94, 0.08)", border: "1px solid rgba(34, 197, 94, 0.3)", borderRadius: "12px", padding: "1rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
               <div style={{ background: "var(--green-mid)", color: "white", padding: "10px", borderRadius: "50%", display: "flex", flexShrink: 0 }}>
                 <Sparkles size={24} />
               </div>
               <div style={{ flex: 1 }}>
-                <h4 style={{ margin: 0, color: "var(--green-deep)", fontSize: "0.95rem" }}>Rythu Jana Sethu Assistant</h4>
+                <h4 style={{ margin: 0, color: "var(--green-deep)", fontSize: "0.95rem" }}>🌾 Rythu Jana Sethu Voice Assistant</h4>
                 <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
                   {assistantRunning
                     ? assistantMsg || "Running..."
-                    : assistantMsg || "Tap the mic to fill Name, Phone, Farm Location, Size & Experience by voice."}
+                    : assistantMsg || (form.role === "farmer" ? "Tap the mic to fill Name, Phone, Farm Location, Size & Experience by voice." : "Tap the mic to fill Name & Phone by voice.")}
                 </p>
                 {assistantRunning && (
                   <div style={{ display: "flex", gap: "0.3rem", marginTop: "0.5rem", flexWrap: "wrap" }}>
@@ -330,7 +385,6 @@ export default function Register() {
                 {assistantRunning ? <Loader2 size={20} className="lucide-spin" style={{ animation: "spin 2s linear infinite" }} /> : <Mic size={20} />}
               </button>
             </div>
-          )}
 
           {/* ── STEP 1: Basic Info ── */}
           {step === 1 && (
@@ -565,11 +619,11 @@ export default function Register() {
               <AutoSuggestInput value={form.address} onChange={set("address")} onSpeak={() => speak("address")} listening={listening && activeField === "address"} interim={interim} label={t("address")} placeholder="Full address" />
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                <AutoSuggestInput value={form.pincode} onChange={set("pincode")} onSpeak={() => speak("pincode")} listening={listening && activeField === "pincode"} interim={interim} label="Pincode" placeholder="500001" />
-                <AutoSuggestInput value={form.city} onChange={set("city")} onSpeak={() => speak("city")} listening={listening && activeField === "city"} interim={interim} label="City" placeholder="City" fieldType="city" />
+                <AutoSuggestInput value={form.pincode} onChange={set("pincode")} onSpeak={() => speak("pincode")} listening={listening && activeField === "pincode"} interim={interim} label={t("pincode")} placeholder="500001" />
+                <AutoSuggestInput value={form.city} onChange={set("city")} onSpeak={() => speak("city")} listening={listening && activeField === "city"} interim={interim} label={t("city")} placeholder={t("city")} fieldType="city" />
               </div>
 
-              <AutoSuggestInput value={form.state} onChange={set("state")} onSpeak={() => speak("state")} listening={listening && activeField === "state"} interim={interim} label="State" placeholder="State" fieldType="state" />
+              <AutoSuggestInput value={form.state} onChange={set("state")} onSpeak={() => speak("state")} listening={listening && activeField === "state"} interim={interim} label={t("state")} placeholder={t("state")} fieldType="state" />
 
               {(form.role === "agent" || form.role === "farmer") && (
                 <AutoSuggestInput value={form.aadhaar} onChange={set("aadhaar")} onSpeak={() => speak("aadhaar")} listening={listening && activeField === "aadhaar"} interim={interim} label={`${t("aadhaar")} (Required for Verification)`} placeholder="XXXX-XXXX-XXXX" />
