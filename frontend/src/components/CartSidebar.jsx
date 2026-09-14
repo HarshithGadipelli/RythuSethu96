@@ -7,7 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import PaymentModal from "./PaymentModal";
 import OrderInvoiceModal from "./OrderInvoiceModal";
-import { getImgSrc } from "../pages/Marketplace/Marketplace";
+import { getImgSrc } from "../views/Marketplace/Marketplace";
 
 export default function CartSidebar() {
   const { cart, isCartOpen, setIsCartOpen, removeFromCart, updateQuantity, getCartTotal, getCartCount, clearCart } = useCart();

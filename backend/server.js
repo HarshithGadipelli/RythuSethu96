@@ -97,7 +97,12 @@ io.on("connection", (socket) => {
 
 connectDB();
 
-app.use(cors({ origin: "*", credentials: true }));
+app.use(cors({ 
+  origin: function (origin, callback) {
+    callback(null, true);
+  },
+  credentials: true 
+}));
 
 // Security Middlewares
 app.use(helmet({ crossOriginResourcePolicy: false }));

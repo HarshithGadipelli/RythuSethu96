@@ -479,6 +479,7 @@ export default function AddCrop() {
     if (step !== 'COMPLETED' && wizardStepRef.current === step) {
        playChime('start');
        setInterim("Listening... Please speak now 🎙️");
+       startContinuousListening();
     }
   };
 
@@ -515,7 +516,7 @@ export default function AddCrop() {
         if (!hasUserSpokenRef.current && !isSpeakingRef.current && wizardStepRef.current !== 'COMPLETED' && wizardStepRef.current !== 'IDLE') {
           handleNoSpeechDetected(wizardStepRef.current);
         }
-      }, 10000); // 10 seconds silence
+      }, 15000); // 15 seconds silence
     };
 
     recognition.onresult = (event) => {
@@ -540,7 +541,7 @@ export default function AddCrop() {
             capturedTextRef.current = ""; // Clear immediately so it doesn't fire twice
             processStepInput(wizardStepRef.current, textToProcess);
          }
-      }, 2500); // Stop after 2.5s of silence
+      }, 5000); // Stop after 5s of silence
     };
 
     recognition.onerror = (event) => {
@@ -601,7 +602,12 @@ export default function AddCrop() {
   };
 
   const handleManualTapToSpeak = () => {
-    if (wizardStep !== 'IDLE' && wizardStep !== 'COMPLETED') {
+    if (wizardStep === 'IDLE') {
+      // Initiate the wizard from the beginning when idle
+      setWizardStep('NAME');
+      askStep('NAME');
+    } else if (wizardStep !== 'COMPLETED') {
+      // Continue listening for the current step
       startContinuousListening();
     }
   };

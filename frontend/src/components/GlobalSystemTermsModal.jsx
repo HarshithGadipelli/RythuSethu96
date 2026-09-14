@@ -28,7 +28,9 @@ export default function GlobalSystemTermsModal() {
   useEffect(() => {
     fetchTerms();
 
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+    const isVercel = window.location.hostname.includes("vercel.app");
+    const defaultBackend = isVercel ? "https://rythusethu96.onrender.com" : "http://localhost:5000";
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || defaultBackend;
     const socket = io(backendUrl);
     socket.on("system_terms_updated", (data) => {
       setTermsData(data);

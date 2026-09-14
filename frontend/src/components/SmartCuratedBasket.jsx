@@ -5,7 +5,7 @@ import { useCart } from "../context/CartContext";
 import { useVoiceInput } from "../utils/useVoiceInput";
 import { useLang } from "../context/LangContext";
 import API, { BASE_URL } from "../api/api";
-import { getImgSrc } from "../pages/Marketplace/Marketplace";
+import { getImgSrc } from "../views/Marketplace/Marketplace";
 
 const PRESET_LISTS = [
   { label: "🍛 Weekly Kitchen Essentials", text: "5kg rice, 2kg onions, 2kg tomatoes, 1kg potatoes, 500g ginger, 250g green chillies" },

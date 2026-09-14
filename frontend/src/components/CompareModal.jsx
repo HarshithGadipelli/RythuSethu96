@@ -2,7 +2,7 @@ import React from "react";
 import { X, ShieldCheck, Leaf, Tractor, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import { BASE_URL } from "../api/api";
-import { getImgSrc } from "../pages/Marketplace/Marketplace";
+import { getImgSrc } from "../views/Marketplace/Marketplace";
 
 export default function CompareModal({ crops, onClose }) {
   if (!crops || crops.length === 0) return null;

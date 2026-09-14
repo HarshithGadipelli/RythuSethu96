@@ -12,7 +12,9 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || BASE_URL;
+    const isVercel = window.location.hostname.includes("vercel.app");
+    const defaultSocket = isVercel ? "https://rythusethu96.onrender.com" : BASE_URL;
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || defaultSocket;
     const newSocket = io(socketUrl, {
       autoConnect: true,
       reconnection: true
