@@ -17,6 +17,7 @@ import FarmerDashboard from "./pages/Farmer/FarmerDashboard";
 import AgentDashboard from "./pages/Agent/AgentDashboard";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import Marketplace from "./pages/Marketplace/Marketplace";
+import MyOrdersPage from "./pages/Customer/MyOrdersPage";
 import CustomerFarmTours from "./pages/Marketplace/CustomerFarmTours";
 import CustomerOfflineTours from "./pages/Marketplace/CustomerOfflineTours";
 import CuratedBoxes from "./pages/Marketplace/CuratedBoxes";
@@ -140,7 +141,7 @@ function AppRoutes() {
         <Route path="/farm-tours" element={<CustomerFarmTours />} />
         <Route path="/offline-tours" element={<CustomerOfflineTours />} />
         <Route path="/curated-boxes" element={<CuratedBoxes />} />
-
+        <Route path="/my-orders" element={<Protected roles={["farmer", "customer"]}><MyOrdersPage /></Protected>} />
         <Route path="/farmer" element={
           <Protected roles={["farmer", "admin"]}>
             <FarmerDashboard />

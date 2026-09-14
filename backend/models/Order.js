@@ -95,7 +95,20 @@ const orderSchema = new mongoose.Schema({
   agentEarnings: { type: Number, default: 0 },
 
   // ─── Multi-Location Delivery ───
-  multiLocationGroupId: { type: String, default: "" }
+  multiLocationGroupId: { type: String, default: "" },
+
+  // ─── Circular Economy Wet-Waste Collection ───
+  hasWetWasteDonation: { type: Boolean, default: false },
+  wetWasteEstKg: { type: Number, default: 0 },
+  wetWasteNotes: { type: String, default: "" },
+  agentWasteAlertSent: { type: Boolean, default: false },
+  chatMessages: [{
+    sender: { type: String, enum: ["customer", "agent", "system"], default: "customer" },
+    senderName: { type: String, default: "" },
+    text: { type: String, required: true },
+    isWasteAlert: { type: Boolean, default: false },
+    timestamp: { type: Date, default: Date.now }
+  }]
 }, { timestamps: true });
 
 // Auto-generate bill number

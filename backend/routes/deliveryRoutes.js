@@ -1469,7 +1469,7 @@ router.post("/:id/verify-waste", upload.single("wastePhoto"), async (req, res) =
     const delivery = await Delivery.findByIdAndUpdate(id, { wastePhoto: photoUrl }, { new: true });
     if (!delivery) return res.status(404).json({ error: "Delivery not found" });
 
-    const prompt = `Analyze this image. Is it primarily biodegradable agricultural or kitchen waste (e.g., vegetable peels, fruit waste, leaves, crop residue)? Respond strictly with a JSON object: {"isBiodegradable": boolean, "confidence": number, "reason": "string"}`;
+    const prompt = `Analyze this image. Is it strictly wet organic kitchen waste of VEGETABLES and FRUITS (e.g., vegetable peels, potato skins, fruit scraps, leafy greens, banana peels, citrus rinds, melon rinds)? Reject immediately if it contains plastics, packaging, cooked oily food, meat, bones, dairy, or general non-plant garbage. Respond strictly with a JSON object: {"isBiodegradable": boolean, "confidence": number, "reason": "string"}`;
     
     let isVerified = false;
     let reason = "AI Verification Failed";
@@ -1501,7 +1501,7 @@ router.post("/:id/verify-waste", upload.single("wastePhoto"), async (req, res) =
   }
 });
 
-// ─── Drop-off Waste at Admin Storage (₹15 Customer Reward Points) ───
+// ─── Drop-off Waste at Cold Storage Hub (Allocated to Farmers / Biogas / Compost) ───
 router.post("/:id/dropoff-waste", async (req, res) => {
   try {
     const { id } = req.params;
@@ -1509,13 +1509,14 @@ router.post("/:id/dropoff-waste", async (req, res) => {
     if (!delivery) return res.status(404).json({ error: "Delivery not found" });
 
     if (delivery.wasteCollectedKg <= 0 || delivery.wasteScanStatus !== "verified") {
-      return res.status(400).json({ error: "No verified waste collected for this delivery." });
+      return res.status(400).json({ error: "No verified raw fruit/vegetable wet-waste collected for this delivery." });
     }
     if (delivery.wasteDroppedOff) {
-      return res.status(400).json({ error: "Waste already dropped off." });
+      return res.status(400).json({ error: "Waste already dropped off at Cold Storage Hub." });
     }
 
     delivery.wasteDroppedOff = true;
+    delivery.wasteDestinationHub = "Central Cold Storage & Vermicompost/Biogas Hub";
     await delivery.save();
 
     // Add to Global Config Inventory
@@ -1536,13 +1537,17 @@ router.post("/:id/dropoff-waste", async (req, res) => {
 
       // Notify customer
       await notify(req.app, customerId, 
-        "🌱 Thank You for Donating Waste!",
-        `The delivery agent has successfully deposited your ${delivery.wasteCollectedKg} kg of biodegradable waste at our central storage. You earned ${WASTE_REWARD_POINTS} reward points!`,
+        "🌱 Thank You for Circular Economy Contribution!",
+        `Your ${delivery.wasteCollectedKg} kg of verified fruit & vegetable peels has been deposited at Central Cold Storage Hub and routed to local farmer compost pits & biogas digesters. You earned ${WASTE_REWARD_POINTS} Green Reward Points!`,
         "reward", "normal", { deliveryId: delivery._id, rewardPoints: WASTE_REWARD_POINTS }
       );
     }
 
-    res.json({ success: true, message: "Waste dropped off successfully", delivery });
+    res.json({ 
+      success: true, 
+      message: `Successfully deposited ${delivery.wasteCollectedKg} kg wet waste at Central Cold Storage Hub. Allocated to biogas and organic compost units.`, 
+      delivery 
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

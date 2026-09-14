@@ -11,6 +11,7 @@ export default function CuratedBoxes() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [subscribingTo, setSubscribingTo] = useState(null);
+  const [subscribeWithWaste, setSubscribeWithWaste] = useState(true);
   
   // Custom Box State
   const [customBoxItems, setCustomBoxItems] = useState([]);
@@ -107,7 +108,10 @@ export default function CuratedBoxes() {
       // Typically calls API.post("/boxes/subscribe") but we simulate it for now 
       // if backend route isn't fully scaffolded for creation.
       setTimeout(() => {
-        setMsg({ type: "success", text: `Successfully subscribed to ${plan.name}! Pay ₹${plan.price} on your first delivery (COD).` });
+        setMsg({
+          type: "success",
+          text: `🎉 Successfully subscribed to ${plan.name}! Pay ₹${plan.price} on your first delivery. ${subscribeWithWaste ? "🌱 Weekly raw peel wet-waste collection activated (+15 Green Points/delivery!)." : ""}`
+        });
         setSubscribingTo(null);
       }, 1500);
     } catch (e) {
@@ -181,6 +185,9 @@ export default function CuratedBoxes() {
               </li>
               <li style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px", fontSize: "0.9rem", color: "var(--text-dark)" }}>
                 <CheckCircle size={16} color="var(--primary)" /> Cancel Anytime
+              </li>
+              <li style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px", fontSize: "0.9rem", color: "#166534", fontWeight: 700 }}>
+                🌱 Wet-Waste Peel Exchange (+15 Pts/Drop)
               </li>
             </ul>
 
@@ -292,6 +299,26 @@ export default function CuratedBoxes() {
                           <span>Total per Box:</span>
                           <span>₹{Math.round(customBoxFinalPrice)}</span>
                         </div>
+                      </div>
+
+                      {/* Wet Waste Exchange Toggle */}
+                      <div style={{
+                        padding: "0.75rem", borderRadius: "10px", marginBottom: "1rem",
+                        background: subscribeWithWaste ? "#f0fdf4" : "#f8fafc",
+                        border: subscribeWithWaste ? "1.5px solid #86efac" : "1px dashed #cbd5e1"
+                      }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 700, color: "#166534" }}>
+                          <input
+                            type="checkbox"
+                            checked={subscribeWithWaste}
+                            onChange={e => setSubscribeWithWaste(e.target.checked)}
+                            style={{ width: 16, height: 16, accentColor: "#16a34a" }}
+                          />
+                          🌱 Exchange Kitchen Wet Waste (+15 Points each delivery)
+                        </label>
+                        <p style={{ margin: "4px 0 0 24px", fontSize: "0.72rem", color: "#854d0e" }}>
+                          ⚠️ <em>Only raw vegetable & fruit peels accepted. Agent collects in sealed bin and returns to Cold Storage Hub.</em>
+                        </p>
                       </div>
 
                       <button 

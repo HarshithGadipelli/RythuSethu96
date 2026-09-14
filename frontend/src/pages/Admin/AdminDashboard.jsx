@@ -1,4 +1,5 @@
 import { BASE_URL } from '../../api/api';
+import { getImgSrc } from '../Marketplace/Marketplace';
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -10,6 +11,7 @@ import { io } from "socket.io-client";
 import AdminFinancials from "./AdminFinancials";
 import AdminGlobalMap from "../../components/AdminGlobalMap";
 import AdminWasteManagement from "../../components/AdminWasteManagement";
+import AdminStockAdvisory from "../../components/AdminStockAdvisory";
 
 const TABS = ["overview","users","verification","orders","deliveries","profit","security","support", "tips", "demand", "stock", "mlops", "waste", "soiltests", "clearance", "broadcasts"];
 
@@ -2360,6 +2362,18 @@ export default function AdminDashboard() {
                 >
                   🌱 Lifecycle Proofs ({crops.filter(c => c.lifecycleUpdates?.length > 0).length})
                 </button>
+                <button
+                  onClick={() => setCropSubTab("stock_advisory")}
+                  style={{
+                    padding: "0.45rem 1rem", borderRadius: "20px", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer",
+                    border: cropSubTab === "stock_advisory" ? "1.5px solid #0f172a" : "1px solid #cbd5e1",
+                    background: cropSubTab === "stock_advisory" ? "#0f172a" : "white",
+                    color: cropSubTab === "stock_advisory" ? "white" : "#334155",
+                    boxShadow: cropSubTab === "stock_advisory" ? "0 2px 8px rgba(0,0,0,0.15)" : "none"
+                  }}
+                >
+                  📊 Stock Maintenance &amp; Supply-Demand Advisory
+                </button>
               </div>
 
               {cropSubTab === "catalog" && (
@@ -2377,9 +2391,7 @@ export default function AdminDashboard() {
                     </thead>
                     <tbody>
                       {crops.map(c => {
-                        const cropImg = c.image 
-                          ? (c.image.startsWith("http") || c.image.startsWith("data:") ? c.image : `${BASE_URL}/${c.image.replace(/^\/+/, "")}`)
-                          : null;
+                        const cropImg = getImgSrc(c.image, c.name, c.category);
                         return (
                           <tr key={c._id}>
                             <td>
@@ -2506,7 +2518,16 @@ export default function AdminDashboard() {
                   )}
                 </div>
               )}
+
+              {cropSubTab === "stock_advisory" && (
+                <AdminStockAdvisory />
+              )}
             </div>
+          )}
+
+          {/* ── STANDALONE STOCK & ADVISORY TAB ── */}
+          {tab === "stock" && (
+            <AdminStockAdvisory />
           )}
 
           {/* ── SUPPORT TICKETS ── */}
@@ -2787,17 +2808,8 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Mock data representing physical requests */}
-                  <tr>
-                    <td>Duniya Farmer</td>
-                    <td>Hyderabad Outskirts</td>
-                    <td><span className="badge warning">Pending Assignment</span></td>
-                    <td>
-                      <button className="btn-secondary" style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }} onClick={() => alert("Dispatching Soil Test Team!")}>
-                        Dispatch Team (69% Discount applied)
-                      </button>
-                    </td>
-                  </tr>
+                  {/* Mock data representing physical requests removed for production */}
+                  {/* Dynamic data will be fetched from API and mapped here */}
                 </tbody>
               </table>
             </div>

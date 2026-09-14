@@ -178,6 +178,66 @@ function createFarmerIcon(grade = "New", isOrganic = false, imgUrl = null, cropC
   });
 }
 
+function createRealFarmIcon(isOrganic = false) {
+  return L.divIcon({
+    className: "",
+    html: `<div style="
+      position:relative;
+      width:42px;height:42px;
+      background:linear-gradient(135deg, #15803d, #16a34a);
+      border:3px solid white;
+      border-radius:50%;
+      box-shadow:0 4px 14px rgba(22,163,74,0.6);
+      display:flex;align-items:center;justify-content:center;
+      font-size:1.25rem;
+      cursor:pointer;
+    ">
+      🌾
+      <span style="
+        position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);
+        background:#166534;color:white;font-size:8px;font-weight:900;
+        padding:1px 5px;border-radius:100px;border:1.5px solid white;
+        white-space:nowrap;letter-spacing:0.5px;
+      ">FARM ORIGIN</span>
+    </div>`,
+    iconSize: [42, 42],
+    iconAnchor: [21, 21],
+    popupAnchor: [0, -24],
+  });
+}
+
+function createRealSalePlaceIcon(hubType = "mandi") {
+  const isCold = hubType === "cold_storage";
+  const bg = isCold ? "linear-gradient(135deg, #0284c7, #0ea5e9)" : "linear-gradient(135deg, #2563eb, #3b82f6)";
+  const emoji = isCold ? "❄️" : "🏪";
+  const label = isCold ? "COLD HUB" : "SALE MANDI";
+  return L.divIcon({
+    className: "",
+    html: `<div style="
+      position:relative;
+      width:42px;height:42px;
+      background:${bg};
+      border:3px solid white;
+      border-radius:50%;
+      box-shadow:0 4px 14px rgba(37,99,235,0.6);
+      display:flex;align-items:center;justify-content:center;
+      font-size:1.25rem;
+      cursor:pointer;
+    ">
+      ${emoji}
+      <span style="
+        position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);
+        background:#1e3a8a;color:white;font-size:8px;font-weight:900;
+        padding:1px 5px;border-radius:100px;border:1.5px solid white;
+        white-space:nowrap;letter-spacing:0.5px;
+      ">${label}</span>
+    </div>`,
+    iconSize: [42, 42],
+    iconAnchor: [21, 21],
+    popupAnchor: [0, -24],
+  });
+}
+
 const customerIcon = L.divIcon({
   className: "",
   html: `<div style="
@@ -444,6 +504,7 @@ export default function MarketplaceMap({
   const visibleCrops = crops.filter(c => {
     if (quickFilter === "organic" && !c.isOrganic) return false;
     if (quickFilter === "prebook" && !c.isPrebooking) return false;
+    if (quickFilter === "trace" && (!c.realFarmDetails?.latitude || !c.realSalePlace?.latitude)) return false;
     if (!customerLat || !customerLng) return true;
     const lat = c.latitude || c.farmer?.latitude;
     const lng = c.longitude || c.farmer?.longitude;
@@ -502,16 +563,21 @@ export default function MarketplaceMap({
         position: "absolute", top: 60, left: 10, zIndex: 1000,
         display: "flex", flexDirection: "column", gap: "0.4rem"
       }}>
-        {["all", "organic", "prebook"].map(type => (
-          <button key={type} onClick={() => setQuickFilter(type)} style={{
+        {[
+          { type: "all", label: "🌍 All Crops" },
+          { type: "organic", label: "🌿 Organic Only" },
+          { type: "prebook", label: "⏳ Pre-Book" },
+          { type: "trace", label: "📍 Farm ↔ Sale Hubs" }
+        ].map(item => (
+          <button key={item.type} onClick={() => setQuickFilter(item.type)} style={{
             padding: "6px 12px", borderRadius: "100px", border: "1px solid #e2e8f0",
-            background: quickFilter === type ? "#16a34a" : "rgba(255,255,255,0.9)",
-            color: quickFilter === type ? "white" : "#475569",
+            background: quickFilter === item.type ? "#16a34a" : "rgba(255,255,255,0.9)",
+            color: quickFilter === item.type ? "white" : "#475569",
             fontWeight: 700, fontSize: "0.75rem", cursor: "pointer",
             boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
             transition: "all 0.2s"
           }}>
-            {type === "all" ? "🌍 All Crops" : type === "organic" ? "🌿 Organic Only" : "⏳ Pre-Book"}
+            {item.label}
           </button>
         ))}
       </div>
@@ -898,6 +964,117 @@ export default function MarketplaceMap({
             </Popup>
           </Polygon>
         )}
+
+        {/* ── REAL FARM & REAL SALE PLACE TRACEABILITY LAYER ── */}
+        {visibleCrops.filter(c => 
+          c.realFarmDetails && c.realFarmDetails.latitude && c.realFarmDetails.longitude &&
+          c.realSalePlace && c.realSalePlace.latitude && c.realSalePlace.longitude &&
+          (quickFilter === "trace" || selected?._id === c._id || hoveredCrop?._id === c._id)
+        ).map((c, idx) => {
+          const farmLat = Number(c.realFarmDetails.latitude);
+          const farmLng = Number(c.realFarmDetails.longitude);
+          const saleLat = Number(c.realSalePlace.latitude);
+          const saleLng = Number(c.realSalePlace.longitude);
+          const dist = c.realSalePlace.distanceFarmToSaleKm || Math.round(haversine(farmLat, farmLng, saleLat, saleLng));
+
+          return (
+            <React.Fragment key={`trace-layer-${c._id || idx}`}>
+              {/* Transit Polyline Line */}
+              <Polyline
+                positions={[[farmLat, farmLng], [saleLat, saleLng]]}
+                pathOptions={{
+                  color: "#f59e0b",
+                  weight: 4,
+                  dashArray: "8 8",
+                  opacity: 0.95,
+                  className: "animated-path"
+                }}
+              />
+
+              {/* Real Farm Marker */}
+              <Marker
+                position={[farmLat, farmLng]}
+                icon={createRealFarmIcon(c.isOrganic)}
+                zIndexOffset={950}
+              >
+                <Popup maxWidth={280}>
+                  <div style={{ fontFamily: "'Inter', sans-serif", padding: "4px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                      <span style={{ fontSize: "1.3rem" }}>🌾</span>
+                      <div>
+                        <strong style={{ fontSize: "0.92rem", color: "#166534", display: "block" }}>
+                          {c.realFarmDetails.farmName || "Real Farm of Origin"}
+                        </strong>
+                        <span style={{ fontSize: "0.74rem", color: "#64748b" }}>
+                          Farmer: {c.realFarmDetails.farmerName || c.farmer?.name || "Organic Producer"}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ background: "#f0fdf4", padding: "6px 8px", borderRadius: "8px", border: "1px solid #bbf7d0", fontSize: "0.76rem", marginBottom: "6px" }}>
+                      <div>📍 <strong>Farm Location:</strong> {c.realFarmDetails.farmLocation}</div>
+                      {c.realFarmDetails.soilType && <div>🌱 <strong>Soil Type:</strong> {c.realFarmDetails.soilType}</div>}
+                      {c.realFarmDetails.farmSizeAcres && <div>📏 <strong>Acreage:</strong> {c.realFarmDetails.farmSizeAcres} Acres</div>}
+                      <div style={{ marginTop: "3px", color: "#15803d", fontWeight: 700 }}>
+                        GPS: {farmLat.toFixed(4)}°, {farmLng.toFixed(4)}°
+                      </div>
+                    </div>
+                    <div style={{ fontSize: "0.74rem", color: "#065f46", fontWeight: 700, marginBottom: "4px" }}>
+                      {c.isOrganic ? "🌿 100% Genuine Certified Organic Parcel" : "🌾 Registered Direct Farm Producer"}
+                    </div>
+                    <div style={{ fontSize: "0.7rem", color: "#d97706", fontWeight: 700 }}>
+                      🚚 Dispatched to: {c.realSalePlace.hubName} (~{dist} km transit)
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+
+              {/* Real Sale / Mandi Place Marker */}
+              <Marker
+                position={[saleLat, saleLng]}
+                icon={createRealSalePlaceIcon(c.realSalePlace.hubType)}
+                zIndexOffset={950}
+              >
+                <Popup maxWidth={280}>
+                  <div style={{ fontFamily: "'Inter', sans-serif", padding: "4px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                      <span style={{ fontSize: "1.3rem" }}>
+                        {c.realSalePlace.hubType === "cold_storage" ? "❄️" : "🏪"}
+                      </span>
+                      <div>
+                        <strong style={{ fontSize: "0.92rem", color: "#1e40af", display: "block" }}>
+                          {c.realSalePlace.hubName || "Official Sale Place / Mandi"}
+                        </strong>
+                        <span style={{ fontSize: "0.74rem", color: "#64748b", textTransform: "capitalize" }}>
+                          {c.realSalePlace.hubType ? c.realSalePlace.hubType.replace('_', ' ') : "APMC Market Yard"}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ background: "#eff6ff", padding: "6px 8px", borderRadius: "8px", border: "1px solid #bfdbfe", fontSize: "0.76rem", marginBottom: "6px" }}>
+                      <div>📍 <strong>Sale Address:</strong> {c.realSalePlace.hubLocation}</div>
+                      <div style={{ marginTop: "3px", color: "#1d4ed8", fontWeight: 700 }}>
+                        GPS: {saleLat.toFixed(4)}°, {saleLng.toFixed(4)}°
+                      </div>
+                      <div style={{ marginTop: "4px", fontWeight: 800, color: "#b45309" }}>
+                        🚚 Transit Distance from Farm: ~{dist} km
+                      </div>
+                    </div>
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&origin=${farmLat},${farmLng}&destination=${saleLat},${saleLng}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        display: "block", textAlign: "center", background: "#2563eb", color: "white",
+                        padding: "6px 0", borderRadius: "8px", textDecoration: "none", fontSize: "0.75rem", fontWeight: 700
+                      }}
+                    >
+                      🧭 View Real Farm → Sale Place Route
+                    </a>
+                  </div>
+                </Popup>
+              </Marker>
+            </React.Fragment>
+          );
+        })}
 
         {/* Demand Heatmap Layer */}
         {showDemand && visibleCrops.map((c, index) => {

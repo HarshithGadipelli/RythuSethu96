@@ -131,7 +131,12 @@ async function autoAssignDelivery(app, orderDoc) {
       vehicleType: "bike",
       estimatedTime: etaText,
       estimatedMinutes: etaMinutes,
-      trackingCode: "TRK-" + Date.now().toString(36).toUpperCase()
+      trackingCode: "TRK-" + Date.now().toString(36).toUpperCase(),
+      customerHasWetWaste: Boolean(order.hasWetWasteDonation),
+      wetWasteEstKg: order.wetWasteEstKg || 0,
+      wetWasteNotes: order.wetWasteNotes || "",
+      agentCarryingWasteKit: true,
+      wasteDestinationHub: "Central Cold Storage & Vermicompost/Biogas Hub"
     });
 
     const io = app.get("io");
@@ -142,9 +147,17 @@ async function autoAssignDelivery(app, orderDoc) {
     
     await notify(app, bestAgent._id, 
       "🚀 New Delivery Auto-Assigned!", 
-      `You have been assigned a new delivery. Pickup is ${bestAgentData.dist.toFixed(1)}km away.`,
+      `You have been assigned a new delivery. Pickup is ${bestAgentData.dist.toFixed(1)}km away.${order.hasWetWasteDonation ? ` (🌱 Wet Waste Pickup: ~${order.wetWasteEstKg || 2}kg raw peels)` : ""}`,
       "delivery", "high", { deliveryId: delivery._id }
     );
+
+    if (order.hasWetWasteDonation) {
+      await notify(app, bestAgent._id,
+        "🌱 Wet Waste Collection Kit Required",
+        `Customer requested wet-waste collection (~${order.wetWasteEstKg || 2}kg raw fruits/vegetables). Verify with doorstep scan and return to Cold Storage Hub for composting/biogas!`,
+        "delivery", "high", { deliveryId: delivery._id, orderId: order._id }
+      );
+    }
   } catch (err) {
     console.error("Auto assign delivery failed:", err);
   }
@@ -153,7 +166,7 @@ async function autoAssignDelivery(app, orderDoc) {
 // Create order (with stock validation, delivery charges, bill, product snapshot, verification code)
 router.post("/create", async (req, res) => {
   try {
-    const { crop, quantity, deliveryType, deliveryCharges, deliveryDistance, isPrebooked, pointsUsed, customer, farmer } = req.body;
+    const { crop, quantity, deliveryType, deliveryCharges, deliveryDistance, isPrebooked, pointsUsed, customer, farmer, hasWetWasteDonation, wetWasteEstKg, wetWasteNotes } = req.body;
 
     // Stock validation
     let cropDoc = null;
@@ -262,6 +275,17 @@ router.post("/create", async (req, res) => {
       pickupLatitude: pickupLat,
       pickupLongitude: pickupLng,
       productSnapshot,
+      hasWetWasteDonation: Boolean(hasWetWasteDonation),
+      wetWasteEstKg: hasWetWasteDonation ? (Number(wetWasteEstKg) || 2) : 0,
+      wetWasteNotes: wetWasteNotes || "",
+      agentWasteAlertSent: Boolean(hasWetWasteDonation),
+      chatMessages: hasWetWasteDonation ? [{
+        sender: "system",
+        senderName: "Rythu Sethu Circular Economy",
+        text: `🌱 Wet-waste collection pre-alert: Customer will donate ~${Number(wetWasteEstKg) || 2}kg raw vegetable & fruit scraps upon delivery. Please ensure your collection bin & scale are ready.`,
+        isWasteAlert: true,
+        timestamp: new Date()
+      }] : [],
       timeline: [{ status: initialStatus, note: isPrebooked ? "Pre-booking placed" : "Order placed by customer" }]
     });
 
@@ -357,7 +381,7 @@ router.post("/create", async (req, res) => {
 // Multi-address group checkout
 router.post("/checkout-multi", async (req, res) => {
   try {
-    const { items, customer, paymentMode, pointsUsed } = req.body;
+    const { items, customer, paymentMode, pointsUsed, hasWetWasteDonation, wetWasteEstKg, wetWasteNotes } = req.body;
 
     if (!items || items.length === 0) return res.status(400).json({ error: "Cart is empty" });
 
@@ -402,16 +426,17 @@ router.post("/checkout-multi", async (req, res) => {
     // Multi-location grouping identifier
     const isMultiDrop = items.length > 1 || items.some(it => it.deliveryAddress);
     const groupId = isMultiDrop ? ("MLG-" + Date.now().toString(36).toUpperCase()) : "";
-    const createdOrders = [];
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const cropDoc = await Crop.findById(item.cropId);
-      
+    
+    const itemsWithDiscount = items.map(item => {
       const itemDiscount = Math.min(remainingDiscount, item.totalAmount);
       remainingDiscount -= itemDiscount;
+      return { ...item, itemDiscount };
+    });
+
+    const createdOrders = await Promise.all(itemsWithDiscount.map(async (item) => {
+      const cropDoc = await Crop.findById(item.cropId);
       
-      const itemTotalAmount = Math.max(0, item.totalAmount - itemDiscount);
+      const itemTotalAmount = Math.max(0, item.totalAmount - item.itemDiscount);
       const platformFee = Math.round(item.subtotal * 0.05);
       
       let pointsEarned = Math.floor(itemTotalAmount / 100);
@@ -459,7 +484,7 @@ router.post("/checkout-multi", async (req, res) => {
         status: item.isPrebooked ? "prebooked" : "pending",
         isPrebooked: item.isPrebooked || false,
         pointsEarned,
-        pointsUsed: itemDiscount,
+        pointsUsed: item.itemDiscount,
         subtotal: item.subtotal,
         deliveryCharges: item.deliveryType === "farm_pickup" ? 0 : (item.deliveryCharges || 0),
         deliveryDistance: item.deliveryDistance || 0,
@@ -477,6 +502,17 @@ router.post("/checkout-multi", async (req, res) => {
         deliveryType: item.deliveryType || "standard",
         multiLocationGroupId: groupId,
         productSnapshot,
+        hasWetWasteDonation: Boolean(hasWetWasteDonation),
+        wetWasteEstKg: hasWetWasteDonation ? (Number(wetWasteEstKg) || 2) : 0,
+        wetWasteNotes: wetWasteNotes || "",
+        agentWasteAlertSent: Boolean(hasWetWasteDonation),
+        chatMessages: hasWetWasteDonation ? [{
+          sender: "system",
+          senderName: "Rythu Sethu Circular Economy",
+          text: `🌱 Wet-waste collection pre-alert: Customer will donate ~${Number(wetWasteEstKg) || 2}kg raw fruit & vegetable scraps upon delivery.`,
+          isWasteAlert: true,
+          timestamp: new Date()
+        }] : [],
         timeline: [{ status: "pending", note: isMultiDrop ? "Multi-location order placed" : "Order placed by customer" }]
       });
 
@@ -488,21 +524,22 @@ router.post("/checkout-multi", async (req, res) => {
 
       // Notifications
       if (cropDoc.farmer) {
-        await notify(req.app, cropDoc.farmer, "📦 New Group Order Received!", `New order for ${cropDoc.name} — ${item.quantity} ${cropDoc.unit} • ₹${itemTotalAmount}`, "order", "high", { orderId: order._id });
+        // Send notifications without awaiting sequentially to speed up checkout
+        notify(req.app, cropDoc.farmer, "📦 New Group Order Received!", `New order for ${cropDoc.name} — ${item.quantity} ${cropDoc.unit} • ₹${itemTotalAmount}`, "order", "high", { orderId: order._id }).catch(console.error);
         if (farmerPoints > 0) {
-           await User.findByIdAndUpdate(cropDoc.farmer, { $inc: { rewardPoints: farmerPoints } });
-           await notify(req.app, cropDoc.farmer, "💰 New Sale & Points!", `You earned ${farmerPoints} Reward Points.`, "reward", "normal", { orderId: order._id });
+           User.findByIdAndUpdate(cropDoc.farmer, { $inc: { rewardPoints: farmerPoints } }).catch(console.error);
+           notify(req.app, cropDoc.farmer, "💰 New Sale & Points!", `You earned ${farmerPoints} Reward Points.`, "reward", "normal", { orderId: order._id }).catch(console.error);
         }
       }
       
       // Blockchain
-      await addBlockToChain(order._id, item.cropId, "Group Order Placed", `Quantity: ${item.quantity}`, cust?.name || "Customer", effectiveDeliveryAddr);
-      
-      createdOrders.push(order);
+      addBlockToChain(order._id, item.cropId, "Group Order Placed", `Quantity: ${item.quantity}`, cust?.name || "Customer", effectiveDeliveryAddr).catch(console.error);
       
       const io = req.app.get("io");
       if (io) io.emit("order_created", order);
-    }
+      
+      return order;
+    }));
 
     // Trigger auto-assignment: multi-delivery for multi-drop, else single delivery
     if (isMultiDrop && createdOrders.length > 1) {
@@ -647,6 +684,156 @@ router.put("/:id/live-location", async (req, res) => {
     res.json({ success: true, order });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ─── Customer-Agent Chat & 1-Tap Waste Alert Shortcut ───
+router.post("/:id/agent-chat", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { sender = "customer", senderName = "Customer", text, isWasteAlert = false, wetWasteEstKg } = req.body;
+
+    if (!text || !text.trim()) {
+      return res.status(400).json({ error: "Message text is required." });
+    }
+
+    const order = await Order.findById(id).populate("agent customer");
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    const newMsg = {
+      sender,
+      senderName,
+      text: text.trim(),
+      isWasteAlert: Boolean(isWasteAlert),
+      timestamp: new Date()
+    };
+
+    order.chatMessages = order.chatMessages || [];
+    order.chatMessages.push(newMsg);
+
+    // If this is a wet waste alert shortcut
+    if (isWasteAlert) {
+      order.hasWetWasteDonation = true;
+      if (wetWasteEstKg) order.wetWasteEstKg = Number(wetWasteEstKg);
+      order.agentWasteAlertSent = true;
+
+      // Also update linked active delivery
+      await Delivery.findOneAndUpdate(
+        { order: order._id },
+        { 
+          customerHasWetWaste: true, 
+          wetWasteEstKg: order.wetWasteEstKg || 2,
+          agentCarryingWasteKit: true
+        }
+      );
+    }
+
+    await order.save();
+
+    // Real-time socket broadcast
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("agent_chat_message", {
+        orderId: order._id,
+        message: newMsg,
+        hasWetWasteDonation: order.hasWetWasteDonation,
+        wetWasteEstKg: order.wetWasteEstKg
+      });
+      io.emit("order_updated", order);
+    }
+
+    // Send push / DB notification to agent if assigned
+    if (order.agent) {
+      const agentId = order.agent._id || order.agent;
+      const notifTitle = isWasteAlert ? "🌱 Customer Wet Waste Pickup Alert!" : `💬 New Message from ${senderName}`;
+      const notifMsg = isWasteAlert 
+        ? `Customer alerted: "${text.trim()}". Bring your vehicle collection kit to accept raw fruit/veggie peels and return to Cold Storage Hub!`
+        : `Customer sent: "${text.trim()}" for Order #${order.billNumber}`;
+
+      await notify(req.app, agentId, notifTitle, notifMsg, "delivery", "high", {
+        orderId: order._id,
+        isWasteAlert: Boolean(isWasteAlert)
+      });
+    }
+
+    res.json({ success: true, chatMessages: order.chatMessages, order });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get chat messages for an order
+router.get("/:id/chat-messages", async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id).select("chatMessages hasWetWasteDonation wetWasteEstKg agentWasteAlertSent");
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    res.json({
+      chatMessages: order.chatMessages || [],
+      hasWetWasteDonation: order.hasWetWasteDonation,
+      wetWasteEstKg: order.wetWasteEstKg,
+      agentWasteAlertSent: order.agentWasteAlertSent
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 1-Tap shortcut to opt-in for wet waste collection on active order
+router.put("/:id/add-waste-pickup", async (req, res) => {
+  try {
+    const { estKg = 2, notes = "" } = req.body;
+    const order = await Order.findById(req.params.id).populate("agent customer");
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    order.hasWetWasteDonation = true;
+    order.wetWasteEstKg = Number(estKg) || 2;
+    order.wetWasteNotes = notes;
+    order.agentWasteAlertSent = true;
+
+    const alertMsg = {
+      sender: "system",
+      senderName: "Rythu Sethu Circular Economy",
+      text: `🌱 1-Tap Wet Waste Alert: Customer confirmed they will provide ~${order.wetWasteEstKg}kg segregated raw vegetable & fruit scraps upon delivery. (Carry vehicle collection kit; verify at doorstep; return to Cold Storage Hub).`,
+      isWasteAlert: true,
+      timestamp: new Date()
+    };
+    order.chatMessages = order.chatMessages || [];
+    order.chatMessages.push(alertMsg);
+    await order.save();
+
+    await Delivery.findOneAndUpdate(
+      { order: order._id },
+      { 
+        customerHasWetWaste: true, 
+        wetWasteEstKg: order.wetWasteEstKg,
+        wetWasteNotes: notes,
+        agentCarryingWasteKit: true
+      }
+    );
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("agent_chat_message", {
+        orderId: order._id,
+        message: alertMsg,
+        hasWetWasteDonation: true,
+        wetWasteEstKg: order.wetWasteEstKg
+      });
+      io.emit("order_updated", order);
+    }
+
+    if (order.agent) {
+      const agentId = order.agent._id || order.agent;
+      await notify(req.app, agentId,
+        "🌱 Customer Added Wet-Waste Pickup!",
+        `Customer confirmed ~${order.wetWasteEstKg}kg raw fruit/veggie peels for Order #${order.billNumber}. Bring collection kit!`,
+        "delivery", "high", { orderId: order._id, wetWasteEstKg: order.wetWasteEstKg }
+      );
+    }
+
+    res.json({ success: true, message: "Wet-waste pickup added to delivery!", order });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -58,7 +58,7 @@ const playChime = (type = 'start') => {
 
 export default function AddCrop() {
   const { user } = useAuth();
-  const { lang } = useLang();
+  const { lang, t } = useLang();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -316,8 +316,10 @@ export default function AddCrop() {
     stopTTS();
 
     setWizardStep(step);
+    wizardStepRef.current = step; // Immediate ref update to fix race condition
     setInterim("");
     setIsProcessing(false);
+    isProcessingRef.current = false;
 
     let promptText = getPromptForStep(
       step, 
@@ -332,6 +334,7 @@ export default function AddCrop() {
 
     setWizardMsg(promptText);
     setIsSpeaking(true);
+    isSpeakingRef.current = true;
 
     // Speak prompt aloud
     try {
@@ -341,6 +344,7 @@ export default function AddCrop() {
     }
 
     setIsSpeaking(false);
+    isSpeakingRef.current = false;
 
     // After AI finishes speaking, open the mic for the farmer
     if (step !== 'COMPLETED' && wizardStepRef.current === step) {
@@ -362,7 +366,7 @@ export default function AddCrop() {
     if (silentRetryCount === 0) playChime('start');
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = false; // Native VAD: stops automatically when user pauses
+    recognition.continuous = true; // Use robust manual silence detection instead of native VAD
     recognition.interimResults = true;
     recognition.lang = LANG_MAP[lang] || "en-IN";
 
@@ -376,6 +380,13 @@ export default function AddCrop() {
       setIsListening(true);
       setInterim("Listening... Please speak now 🎙️");
       micStarted = Date.now();
+      
+      if (initialSilenceTimerRef.current) clearTimeout(initialSilenceTimerRef.current);
+      initialSilenceTimerRef.current = setTimeout(() => {
+          if (!hasUserSpokenRef.current && recognitionRef.current) {
+              try { recognitionRef.current.stop(); } catch(e) {}
+          }
+      }, 6000); // 6 seconds initial wait
     };
 
     recognition.onresult = (event) => {
@@ -387,6 +398,13 @@ export default function AddCrop() {
       currentText = currentText.trim();
       capturedTextRef.current = currentText;
       setInterim(currentText);
+
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = setTimeout(() => {
+         if (recognitionRef.current) {
+             try { recognitionRef.current.stop(); } catch(e) {}
+         }
+      }, 1500); // Stop after 1.5s of silence
     };
 
     recognition.onerror = (event) => {
@@ -399,6 +417,9 @@ export default function AddCrop() {
 
     recognition.onend = () => {
       setIsListening(false);
+      if (initialSilenceTimerRef.current) clearTimeout(initialSilenceTimerRef.current);
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      
       const textToProcess = capturedTextRef.current.trim();
       
       if (textToProcess && wizardStepRef.current === step && !isProcessingRef.current) {
@@ -738,7 +759,7 @@ export default function AddCrop() {
     <div className="page-wrapper fade-in" style={{ padding: '2rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
         <PackagePlus size={32} color="#16a34a" />
-        <h1 className="page-title" style={{ margin: 0 }}>List Produce or Byproducts</h1>
+        <h1 className="page-title" style={{ margin: 0 }}>{t('addCrop')}</h1>
       </div>
       <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
         You can list your harvest, vegetables, fruits, grains, or farm byproducts like Hay Bales and Slurry.

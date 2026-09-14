@@ -8,10 +8,12 @@ import API from "../../api/api";
 import { io } from "socket.io-client";
 import AgentLiveMap from "../../components/AgentLiveMap";
 import AgentFinancialLedger from "./AgentFinancialLedger";
+import TrustScoreModal from "../../components/TrustScoreModal";
 import { Volume2, MapPin, LocateFixed, Compass, Radio, Camera, CheckCircle2, ShieldCheck, KeyRound, Coins, Sparkles, UploadCloud, Loader2, Check, X, ArrowUpRight, ShieldAlert, Star, Car, Sliders, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import LocationUpdateModal from "../../components/LocationUpdateModal";
 import ColdStorageAgentPanel from "../../components/ColdStorageAgentPanel";
+import FoodSafetyOrganicAgentPanel from "../../components/FoodSafetyOrganicAgentPanel";
 import AgentDrivingAssistant from "../../components/AgentDrivingAssistant";
 import { playTTS } from "../../utils/voiceParser";
 const STATUS_STEPS = ["assigned","picked_up","in_transit","delivered"];
@@ -210,6 +212,7 @@ export default function AgentDashboard() {
   const [showLocModal, setShowLocModal] = useState(false);
   const [radiusFilter, setRadiusFilter] = useState("");
   const [showDrivingMode, setShowDrivingMode] = useState(false);
+  const [showTrustModal, setShowTrustModal] = useState(false);
 
   useEffect(() => {
     if (user?.latitude && user?.longitude && !agentPos) {
@@ -579,7 +582,10 @@ export default function AgentDashboard() {
   const handleOpenHandover = (deliveryItem) => {
     setHandoverModal(deliveryItem);
     setHandoverOtp("");
-    setHandoverWasteKg("");
+    const defaultWaste = deliveryItem.customerHasWetWaste || deliveryItem.order?.hasWetWasteDonation 
+      ? (deliveryItem.wetWasteEstKg || deliveryItem.order?.wetWasteEstKg || 2) 
+      : "";
+    setHandoverWasteKg(defaultWaste);
   };
 
   const handleCompleteHandover = async () => {
@@ -1065,10 +1071,17 @@ export default function AgentDashboard() {
           </div>
           <div className="stat-label">Late Penalties Incurred</div>
         </div>
-        <div className="stat-card" style={{ background: "rgba(22, 163, 74, 0.05)", border: "1px solid var(--green-mid)" }}>
+        <div
+          className="stat-card"
+          onClick={() => setShowTrustModal(true)}
+          style={{ background: "rgba(22, 163, 74, 0.05)", border: "1px solid var(--green-mid)", cursor: "pointer", transition: "transform 0.2s" }}
+          title="Click to view full Agent Trust Score, On-Time ETA & Wet-Waste compliance audit"
+          onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+          onMouseLeave={e => e.currentTarget.style.transform = "none"}
+        >
           <span className="stat-icon">🛡️</span>
-          <div className="stat-value" style={{ color: "var(--green-mid)" }}>{user?.deliveryScore || earnings.trustScore?.score || 100}</div>
-          <div className="stat-label">Delivery Score ({earnings.trustScore?.rating || 5.0} ⭐)</div>
+          <div className="stat-value" style={{ color: "var(--green-mid)" }}>{user?.deliveryScore || user?.trustScore || earnings.trustScore?.score || 100}</div>
+          <div className="stat-label">Agent Trust Score (Audit 🔍)</div>
         </div>
       </div>
 
@@ -1125,7 +1138,8 @@ export default function AgentDashboard() {
             { k:"my", l:`📦 My Deliveries (${deliveries.filter(d => d.status !== 'delivered').length})` },
             { k:"available", l:`🚚 Available Orders (${filteredAvailable.length})` },
             { k:"earnings", l:"💰 Earnings & Ledger" },
-            { k:"specialized_hub", l:"⚡ Specialized Logistics & Portals (5+)" }
+            { k:"food_safety", l:"🛡️ Food Safety & Organic Verifier" },
+            { k:"specialized_hub", l:"⚡ Specialized Logistics & Portals (6+)" }
           ].map(tb => (
             <button key={tb.k} className={`tab-btn ${tab===tb.k?"active":""}`} onClick={() => setTab(tb.k)}>
               {tb.l}
@@ -1444,6 +1458,46 @@ export default function AgentDashboard() {
                 </button>
               </div>
             </div>
+
+            {/* Card 7: Food Safety & Organic Verification */}
+            <div style={{ background: "white", borderRadius: "16px", border: "1.5px solid #bbf7d0", padding: "1.5rem", display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: "0 2px 8px rgba(16,185,129,0.06)" }}>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+                  <span style={{ fontSize: "2rem" }}>🛡️</span>
+                  <span style={{ background: "#dcfce7", color: "#166534", padding: "3px 9px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 800 }}>
+                    Anti-Fake Audit
+                  </span>
+                </div>
+                <h3 style={{ margin: "0 0 0.4rem", fontSize: "1.15rem", fontWeight: 800, color: "#0f172a" }}>
+                  Food Safety &amp; Organic Verification Officer
+                </h3>
+                <p style={{ margin: 0, fontSize: "0.84rem", color: "#64748b", lineHeight: 1.45 }}>
+                  Inspect farm crops step-by-step with 5-stage photographic evidence (soil prep, untreated seeds, corn borders, NSKE 5% sprays, hygiene). Conduct rapid chemical spot tests and award 100% genuine organic seals.
+                </p>
+              </div>
+              <div style={{ marginTop: "1.25rem" }}>
+                <button
+                  type="button"
+                  onClick={() => setTab("food_safety")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    padding: "0.65rem 1.25rem",
+                    borderRadius: "10px",
+                    background: "#16a34a",
+                    color: "white",
+                    border: "none",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    boxShadow: "0 2px 6px rgba(22, 163, 74, 0.3)"
+                  }}
+                >
+                  Open Food Safety Inspector <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1451,6 +1505,12 @@ export default function AgentDashboard() {
       {tab === "coldstorage" && (
         <div className="mb-3">
           <ColdStorageAgentPanel user={user} />
+        </div>
+      )}
+
+      {tab === "food_safety" && (
+        <div className="mb-3">
+          <FoodSafetyOrganicAgentPanel user={user} />
         </div>
       )}
 
@@ -1596,6 +1656,47 @@ export default function AgentDashboard() {
       {/* ── MY DELIVERIES ── */}
       {tab === "my" && (
         <>
+          {/* 🎒 Agent Zero-Waste Setup & Vehicle Gear Banner */}
+          <div style={{
+            background: "linear-gradient(135deg, #064e3b 0%, #065f46 100%)",
+            color: "white",
+            padding: "1.25rem 1.5rem",
+            borderRadius: "16px",
+            marginBottom: "1.5rem",
+            boxShadow: "0 4px 15px rgba(6, 78, 59, 0.2)",
+            border: "1px solid rgba(52, 211, 153, 0.3)"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}>
+              <div style={{ flex: 1, minWidth: "280px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                  <span style={{ fontSize: "1.4rem" }}>🎒</span>
+                  <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "#a7f3d0" }}>
+                    Agent Eco-Kit & Circular Return Logistics Setup
+                  </h3>
+                  <span style={{ background: "#059669", color: "#ecfdf5", fontSize: "0.7rem", fontWeight: 800, padding: "2px 8px", borderRadius: "100px" }}>
+                    Standard SOP
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: "0.82rem", color: "#d1fae5", lineHeight: 1.45 }}>
+                  Never return empty to the hub! As part of Rythu Jana Sethu, collect verified raw fruit & vegetable wet waste simultaneously from customers at doorstep, then return it to the <strong>Central Cold Storage Hub</strong> for biogas & farmer vermicomposting.
+                </p>
+              </div>
+
+              {/* Gear Checklist Pills */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                <span style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", padding: "4px 10px", borderRadius: "8px", fontSize: "0.75rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "4px" }}>
+                  ✓ Airtight Waste Bin Mounted
+                </span>
+                <span style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", padding: "4px 10px", borderRadius: "8px", fontSize: "0.75rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "4px" }}>
+                  ✓ Handheld Spring Scale
+                </span>
+                <span style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", padding: "4px 10px", borderRadius: "8px", fontSize: "0.75rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "4px" }}>
+                  ✓ Sanitation Gloves & Liners
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Filter tabs */}
           <div className="tab-bar mb-3" style={{ background:"transparent", padding:0 }}>
             {[{ k:"all", l:"📦 All" }, ...STATUS_STEPS.map(s => ({ k:s, l:`${STATUS_ICONS[s]} ${STATUS_LABELS[s]} (${counts[s]||0})` }))].map(tb => (
@@ -1706,6 +1807,37 @@ export default function AgentDashboard() {
                         </div>
                       )}
                     </div>
+
+                    {/* ── Circular Economy Wet Waste Collection Alert ── */}
+                    {(d.customerHasWetWaste || order?.hasWetWasteDonation) && (
+                      <div style={{
+                        background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+                        border: "1.5px solid #86efac",
+                        borderRadius: "12px",
+                        padding: "0.85rem 1rem",
+                        marginBottom: "1rem"
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.4rem" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span style={{ fontSize: "1.1rem" }}>🌱</span>
+                            <strong style={{ fontSize: "0.88rem", color: "#166534" }}>
+                              Customer Wet-Waste Collection Alert (~{d.wetWasteEstKg || order?.wetWasteEstKg || 2} kg)
+                            </strong>
+                          </div>
+                          <span style={{ background: "#16a34a", color: "white", fontSize: "0.7rem", fontWeight: 800, padding: "2px 8px", borderRadius: "100px" }}>
+                            Reverse Logistics Active
+                          </span>
+                        </div>
+                        <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "#334155", lineHeight: 1.4 }}>
+                          Customer will hand over segregated raw vegetable/fruit peels upon delivery. <strong>Strict rule:</strong> Conduct doorstep inspection to ensure ONLY raw peels (reject plastics/cooked food). Return collected waste to Central Cold Storage Hub.
+                        </p>
+                        {order?.wetWasteNotes && (
+                          <div style={{ marginTop: "4px", fontSize: "0.75rem", color: "#166534", fontWeight: 600 }}>
+                            💬 Customer Note: "{order.wetWasteNotes}"
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {d.status === "in_transit" && agentPos && d.deliveryLatitude && (
                       <SmartETA 
@@ -1875,35 +2007,49 @@ export default function AgentDashboard() {
                       )}
                     </div>
 
-                    {/* Waste Management UI */}
+                    {/* Waste Management & Cold Storage Hub Reverse Logistics UI */}
                     {d.wasteCollectedKg > 0 && d.status === "delivered" && (
-                      <div className="mt-2" style={{ background:"rgba(34, 197, 94, 0.05)", padding:"1rem", borderRadius:"var(--radius-sm)", border:"1px solid rgba(34, 197, 94, 0.2)" }}>
-                        <h4 style={{ color: "var(--green-deep)", marginBottom:"0.5rem", fontSize:"0.9rem", display:"flex", alignItems:"center", gap:"0.3rem" }}>
-                          🌱 Waste Verification ({d.wasteCollectedKg} kg collected)
-                        </h4>
+                      <div className="mt-2" style={{ background:"linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)", padding:"1.25rem", borderRadius:"14px", border:"1.5px solid #86efac" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                          <h4 style={{ color: "#166534", margin: 0, fontSize:"0.95rem", display:"flex", alignItems:"center", gap:"0.4rem", fontWeight: 800 }}>
+                            🔄 Return Route: Central Cold Storage & Compost/Biogas Hub
+                          </h4>
+                          <span style={{ background: "#16a34a", color: "white", fontSize: "0.72rem", fontWeight: 800, padding: "2px 8px", borderRadius: "100px" }}>
+                            {d.wasteCollectedKg} kg Loaded
+                          </span>
+                        </div>
+
+                        <p style={{ margin: "0 0 0.75rem 0", fontSize: "0.8rem", color: "#334155", lineHeight: 1.4 }}>
+                          You have collected {d.wasteCollectedKg} kg of verified raw fruit & vegetable scraps. Instead of returning empty, transport this feedstock back to the <strong>{d.wasteDestinationHub || "Central Cold Storage Hub"}</strong> to shift to local farmer compost pits & biogas digesters.
+                        </p>
                         
                         <div style={{ marginBottom: "0.5rem" }}>
                           {d.wasteScanStatus === "pending" && (
-                            <label className="btn-secondary w-100" style={{ display:"block", textAlign:"center", padding:"0.5rem", cursor:"pointer", fontSize:"0.8rem" }}>
-                              📸 Upload Waste Photo & Verify AI
-                              <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => {
-                                if (e.target.files[0]) uploadWastePhoto(d._id, e.target.files[0]);
-                              }} disabled={updating === d._id} />
-                            </label>
+                            <div>
+                              <div style={{ background: "#fffbeb", border: "1px solid #fef08a", borderRadius: "8px", padding: "0.5rem", marginBottom: "0.5rem", fontSize: "0.75rem", color: "#854d0e" }}>
+                                ⚠️ <strong>Inspection Required:</strong> Take a photo of the collected waste to confirm it is exclusively raw fruit/vegetable scraps before returning to hub.
+                              </div>
+                              <label className="btn-secondary w-100" style={{ display:"block", textAlign:"center", padding:"0.6rem", cursor:"pointer", fontSize:"0.85rem", fontWeight: 700, background: "white", border: "1px solid #16a34a", color: "#16a34a" }}>
+                                📸 Doorstep Camera Scan & AI Verify Waste
+                                <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => {
+                                  if (e.target.files[0]) uploadWastePhoto(d._id, e.target.files[0]);
+                                }} disabled={updating === d._id} />
+                              </label>
+                            </div>
                           )}
                           
                           {d.wasteScanStatus === "verified" && (
-                            <div style={{ color:"#22c55e", fontSize:"0.85rem", display:"flex", alignItems:"center", gap:"0.3rem" }}>
-                              <span style={{ fontSize:"1.2rem" }}>✅</span> Verified Organic Waste
+                            <div style={{ color:"#166534", fontSize:"0.85rem", display:"flex", alignItems:"center", gap:"0.4rem", background: "white", padding: "0.5rem 0.75rem", borderRadius: "8px", border: "1px solid #86efac", fontWeight: 700 }}>
+                              <span style={{ fontSize:"1.1rem" }}>✅</span> Verified Raw Plant Scraps: Ready for Hub Deposit
                             </div>
                           )}
 
                           {d.wasteScanStatus === "rejected" && (
-                            <div style={{ color:"#ef4444", fontSize:"0.85rem", marginTop:"0.5rem" }}>
+                            <div style={{ color:"#ef4444", fontSize:"0.85rem", marginTop:"0.5rem", background: "#fef2f2", padding: "0.6rem", borderRadius: "8px", border: "1px solid #fca5a5" }}>
                               <div style={{ display:"flex", alignItems:"center", gap:"0.3rem", fontWeight:700 }}>
-                                <span style={{ fontSize:"1.2rem" }}>❌</span> Rejected: Non-Biodegradable
+                                <span style={{ fontSize:"1.1rem" }}>❌</span> Rejected: Non-Plant or Cooked Waste
                               </div>
-                              <p style={{ marginTop:"0.2rem", color:"var(--text-muted)" }}>{d.aiVerificationNotes}</p>
+                              <p style={{ marginTop:"0.2rem", color:"#991b1b", fontSize: "0.75rem", margin: "4px 0 0 0" }}>{d.aiVerificationNotes}</p>
                             </div>
                           )}
                         </div>
@@ -1911,17 +2057,18 @@ export default function AgentDashboard() {
                         {d.wasteScanStatus === "verified" && !d.wasteDroppedOff && (
                           <button 
                             className="btn-primary w-100" 
-                            style={{ background: "var(--green-mid)", border:"none", marginTop: "0.5rem" }}
+                            style={{ background: "linear-gradient(135deg, #16a34a, #15803d)", border:"none", marginTop: "0.5rem", padding: "0.75rem", fontWeight: 800, fontSize: "0.9rem", boxShadow: "0 2px 8px rgba(22, 163, 74, 0.3)" }}
                             onClick={() => dropoffWaste(d._id)}
                             disabled={updating === d._id}
                           >
-                            {updating === d._id ? "Processing..." : "♻️ Drop-off Waste at Storage"}
+                            {updating === d._id ? "Processing..." : "♻️ Deposit at Cold Storage Hub (Allocate to Biogas & Compost)"}
                           </button>
                         )}
+
                         {d.wasteDroppedOff && (
-                           <div style={{ color:"var(--text-muted)", fontSize:"0.8rem", textAlign:"center", marginTop: "0.5rem" }}>
-                             ✓ Dropped off at Admin Storage
-                           </div>
+                          <div style={{ color:"#166534", fontSize:"0.82rem", textAlign:"center", marginTop: "0.5rem", background: "white", padding: "0.5rem", borderRadius: "8px", border: "1px solid #86efac", fontWeight: 700 }}>
+                            ✓ Deposited at Central Cold Storage Hub • Shifted to Biogas & Farmer Compost
+                          </div>
                         )}
                       </div>
                     )}
@@ -2468,20 +2615,42 @@ export default function AgentDashboard() {
                 />
               </div>
 
-              {/* Circular Economy Waste (Optional) */}
-              <div>
-                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#475569", marginBottom: "0.3rem" }}>
-                  🌱 Kitchen Organic Waste Donated by Customer (kg):
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  value={handoverWasteKg}
-                  onChange={(e) => setHandoverWasteKg(e.target.value)}
-                  placeholder="e.g. 2.5 kg (leaves 0 if none)"
-                  style={{ width: "100%", padding: "0.6rem 0.8rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.9rem" }}
-                />
+              {/* Circular Economy Waste (Doorstep Collection) */}
+              <div style={{
+                background: (handoverModal.customerHasWetWaste || handoverModal.order?.hasWetWasteDonation) ? "#f0fdf4" : "#f8fafc",
+                border: (handoverModal.customerHasWetWaste || handoverModal.order?.hasWetWasteDonation) ? "1.5px solid #86efac" : "1px solid #cbd5e1",
+                borderRadius: "12px", padding: "1rem"
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.3rem" }}>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#166534", display: "flex", alignItems: "center", gap: "5px" }}>
+                    🌱 Doorstep Wet-Waste Collection (kg):
+                  </label>
+                  {(handoverModal.customerHasWetWaste || handoverModal.order?.hasWetWasteDonation) && (
+                    <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "#16a34a", background: "#dcfce7", padding: "2px 8px", borderRadius: "100px" }}>
+                      Customer Requested ~{handoverModal.wetWasteEstKg || handoverModal.order?.wetWasteEstKg || 2} kg
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ background: "#fffbeb", border: "1px solid #fef08a", borderRadius: "8px", padding: "0.5rem", marginBottom: "0.5rem", fontSize: "0.73rem", color: "#854d0e" }}>
+                  ⚠️ <strong>Caution Checklist:</strong> Inspect waste bag visually first. MUST strictly be raw vegetable/fruit scraps. Reject any plastics, packaging, bones, dairy, or cooked food!
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={handoverWasteKg}
+                    onChange={(e) => setHandoverWasteKg(e.target.value)}
+                    placeholder="Weigh on spring scale (e.g. 2.0 kg)"
+                    style={{ flex: 1, padding: "0.65rem 0.8rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.9rem", fontWeight: 600 }}
+                  />
+                  <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#475569" }}>kg</span>
+                </div>
+                <p style={{ margin: "4px 0 0 0", fontSize: "0.72rem", color: "#64748b" }}>
+                  Place accepted waste into your vehicle's airtight organic bin. Return to Cold Storage Hub after delivery.
+                </p>
               </div>
 
               {/* Complete Handover Button */}
@@ -2703,6 +2872,13 @@ export default function AgentDashboard() {
           </div>
         </div>
       )}
+
+      <TrustScoreModal
+        userId={user?._id}
+        userRole="agent"
+        isOpen={showTrustModal}
+        onClose={() => setShowTrustModal(false)}
+      />
 
       </>
       )}

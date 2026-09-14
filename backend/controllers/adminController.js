@@ -1,15 +1,22 @@
 import User from "../models/User.js";
 import Order from "../models/Order.js";
 
-export const getUsers=async(req,res)=>{
- const users=await User.find();
-
- res.json(users);
-}
+export const getUsers = async (req, res) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 export const getOrders = async (req, res) => {
-  const orders = await Order.find();
-  res.json(orders);
+  try {
+    const orders = await Order.find();
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 export const deleteUser = async (req, res) => {
@@ -22,63 +29,241 @@ export const deleteUser = async (req, res) => {
   }
 };
 
+// ─── Live Stock Analysis & Agricultural Advisory ───
+
 export const getLiveStockAnalysis = async (req, res) => {
   try {
     const SearchHistory = (await import("../models/SearchHistory.js")).default;
     const Crop = (await import("../models/Crop.js")).default;
     const Order = (await import("../models/Order.js")).default;
 
-    // 1. Get current supply (total stock per crop name)
+    // 1. Get current supply aggregated by crop name
     const supplyAgg = await Crop.aggregate([
-      { $group: { _id: "$name", totalStock: { $sum: "$quantity" }, avgPrice: { $avg: "$price" } } }
+      {
+        $group: {
+          _id: { $toLower: "$name" },
+          originalName: { $first: "$name" },
+          category: { $first: "$category" },
+          unit: { $first: "$unit" },
+          totalStock: { $sum: "$quantity" },
+          avgPrice: { $avg: "$price" },
+          isMillet: { $max: "$isMillet" },
+          cropCount: { $sum: 1 }
+        }
+      }
     ]);
-    const supplyMap = new Map(supplyAgg.map(s => [s._id.toLowerCase(), s]));
+    const supplyMap = new Map(supplyAgg.map(s => [s._id, s]));
 
-    // 2. Get current demand (from orders)
+    // 2. Get current demand from orders
     const demandAgg = await Order.aggregate([
       { $lookup: { from: "crops", localField: "crop", foreignField: "_id", as: "cropData" } },
       { $unwind: "$cropData" },
-      { $group: { _id: "$cropData.name", totalOrdered: { $sum: "$quantity" } } }
+      {
+        $group: {
+          _id: { $toLower: "$cropData.name" },
+          totalOrdered: { $sum: "$quantity" },
+          orderCount: { $sum: 1 }
+        }
+      }
     ]);
-    const demandMap = new Map(demandAgg.map(d => [d._id.toLowerCase(), d.totalOrdered]));
+    const demandMap = new Map(demandAgg.map(d => [d._id, d]));
 
-    // 3. Get search demand (from SearchHistory)
-    const searchAgg = await SearchHistory.aggregate([
-      { $group: { _id: "$query", searchVolume: { $sum: 1 } } }
-    ]);
-    
-    // Combine everything
-    const allCropNames = new Set([...supplyMap.keys(), ...demandMap.keys(), ...searchAgg.map(s => s._id.toLowerCase())]);
-    
-    const analysis = Array.from(allCropNames).map(name => {
-      const supply = supplyMap.get(name) || { totalStock: 0, avgPrice: 0 };
-      const orderVol = demandMap.get(name) || 0;
-      const searchVol = searchAgg.find(s => s._id.toLowerCase() === name)?.searchVolume || 0;
-      
-      const totalDemand = orderVol + (searchVol * 0.5); // Weighting search volume
+    // 3. Get search interest from SearchHistory
+    let searchAgg = [];
+    try {
+      searchAgg = await SearchHistory.aggregate([
+        { $group: { _id: { $toLower: "$query" }, searchVolume: { $sum: 1 } } }
+      ]);
+    } catch (e) {
+      // SearchHistory might be empty or optional
+    }
+    const searchMap = new Map(searchAgg.map(s => [s._id, s.searchVolume]));
+
+    // Combine all unique crop names
+    const allCropKeys = new Set([...supplyMap.keys(), ...demandMap.keys()]);
+
+    const analysis = Array.from(allCropKeys).map(key => {
+      const supply = supplyMap.get(key) || {
+        originalName: key.charAt(0).toUpperCase() + key.slice(1),
+        category: "vegetable",
+        unit: "kg",
+        totalStock: 0,
+        avgPrice: 40,
+        isMillet: false,
+        cropCount: 0
+      };
+      const orderData = demandMap.get(key) || { totalOrdered: 0, orderCount: 0 };
+      const searchVol = searchMap.get(key) || 0;
+
+      const orderVol = orderData.totalOrdered;
+      const totalDemand = orderVol + Math.round(searchVol * 1.5);
+      const stock = supply.totalStock;
+
       let status = "Balanced";
-      
-      if (supply.totalStock === 0 && totalDemand > 5) status = "Lacking";
-      else if (supply.totalStock < totalDemand * 0.5) status = "Lacking";
-      else if (supply.totalStock > totalDemand * 2 && supply.totalStock > 20) status = "Oversupplied";
+      let advisoryType = "BALANCED";
+      let recommendedAction = "Supply matches demand velocity. Maintain current seasonal schedule.";
+      let suggestedTargetQty = 0;
+      let urgency = "low";
+
+      if (stock === 0 && totalDemand > 0) {
+        status = "Critical Deficit";
+        advisoryType = "GROW_MORE";
+        urgency = "high";
+        suggestedTargetQty = Math.max(50, totalDemand * 2);
+        recommendedAction = "Zero active stock! Urgent market deficit. Advise farmers to sow immediately with guaranteed purchase MSP.";
+      } else if (stock < totalDemand * 0.6) {
+        status = "Deficit";
+        advisoryType = "GROW_MORE";
+        urgency = "medium";
+        suggestedTargetQty = Math.round(totalDemand * 1.5 - stock);
+        recommendedAction = "Stock running lower than demand velocity. Advise farmers to expand production or prepare next harvest batch.";
+      } else if (stock > totalDemand * 3 && stock > 80) {
+        status = "Surplus";
+        advisoryType = "DIVERT_OR_PROCESS";
+        urgency = "medium";
+        suggestedTargetQty = Math.round(stock - totalDemand * 1.2);
+        recommendedAction = "High surplus inventory at risk of spoilage. Advise farmers to divert to solar dehydration, cold hub storage, or rotate land into soil-restoring millets (Ragi/Bajra).";
+      } else if (stock > totalDemand * 5 && stock > 200) {
+        status = "Critical Surplus";
+        advisoryType = "DIVERT_OR_PROCESS";
+        urgency = "high";
+        suggestedTargetQty = Math.round(stock - totalDemand);
+        recommendedAction = "Severe market glut. Immediately pause fresh harvesting; encourage value-addition processing or bio-composting.";
+      }
 
       return {
-        cropName: name,
-        currentStock: supply.totalStock,
-        avgPrice: supply.avgPrice,
+        cropKey: key,
+        cropName: supply.originalName || key,
+        category: supply.category || "vegetable",
+        unit: supply.unit || "kg",
+        isMillet: !!supply.isMillet,
+        currentStock: stock,
+        avgPrice: Math.round(supply.avgPrice || 0),
         orderVolume: orderVol,
         searchVolume: searchVol,
-        status
+        totalDemand,
+        status,
+        advisoryType,
+        urgency,
+        suggestedTargetQty,
+        recommendedAction
       };
     });
 
-    // Sort: Lacking first, then Balanced, then Oversupplied
-    const statusWeight = { "Lacking": 1, "Balanced": 2, "Oversupplied": 3 };
-    analysis.sort((a, b) => statusWeight[a.status] - statusWeight[b.status]);
+    // Priority sort: Critical Deficit -> Deficit -> Critical Surplus -> Surplus -> Balanced
+    const statusPriority = {
+      "Critical Deficit": 1,
+      "Deficit": 2,
+      "Critical Surplus": 3,
+      "Surplus": 4,
+      "Balanced": 5
+    };
+    analysis.sort((a, b) => (statusPriority[a.status] || 99) - (statusPriority[b.status] || 99));
 
-    res.json(analysis);
+    // Summary statistics
+    const summary = {
+      totalCropsTracked: analysis.length,
+      deficitCount: analysis.filter(a => a.advisoryType === "GROW_MORE").length,
+      surplusCount: analysis.filter(a => a.advisoryType === "DIVERT_OR_PROCESS").length,
+      balancedCount: analysis.filter(a => a.advisoryType === "BALANCED").length,
+      totalInventoryKg: analysis.reduce((acc, curr) => acc + curr.currentStock, 0)
+    };
+
+    res.json({ success: true, summary, analysis });
   } catch (error) {
     console.error("Live Stock Analysis Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const broadcastStockAdvisory = async (req, res) => {
+  try {
+    const {
+      cropName,
+      category,
+      actionType, // "GROW_MORE" or "DIVERT_OR_PROCESS"
+      advisoryMessage,
+      targetVolumeKg,
+      recommendedMSP,
+      permacultureTip,
+      urgency = "high"
+    } = req.body;
+
+    if (!cropName || !advisoryMessage) {
+      return res.status(400).json({ error: "Crop name and advisory message are required" });
+    }
+
+    const Notification = (await import("../models/Notification.js")).default;
+    const User = (await import("../models/User.js")).default;
+
+    const isGrowMore = actionType === "GROW_MORE";
+    const title = isGrowMore
+      ? `📢 Agricultural Advisory: High Demand for ${cropName} (Plant More)`
+      : `⚠️ Market Advisory: Surplus Risk for ${cropName} (Divert / Value Addition)`;
+
+    let fullMessage = advisoryMessage;
+    if (targetVolumeKg) {
+      fullMessage += `\n🎯 Recommended Target: ${targetVolumeKg} kg.`;
+    }
+    if (recommendedMSP) {
+      fullMessage += `\n💰 Recommended MSP: ₹${recommendedMSP}/kg.`;
+    }
+    if (permacultureTip) {
+      fullMessage += `\n🌱 Permaculture / Soil Tip: ${permacultureTip}`;
+    }
+
+    const activeFarmers = await User.find({ role: "farmer", isActive: true });
+    
+    if (activeFarmers.length > 0) {
+      const notifications = activeFarmers.map(farmer => ({
+        user: farmer._id,
+        title,
+        message: fullMessage,
+        type: "system",
+        priority: urgency === "urgent" || urgency === "high" ? "urgent" : "normal",
+        metadata: {
+          cropName,
+          category,
+          actionType,
+          recommendedMSP,
+          targetVolumeKg,
+          isAdvisory: true
+        }
+      }));
+
+      await Notification.insertMany(notifications);
+    }
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("admin_broadcast_received", {
+        title,
+        message: fullMessage,
+        cropName,
+        actionType,
+        isAdvisory: true
+      });
+      io.emit("stock_advisory_broadcast", {
+        cropName,
+        actionType,
+        message: fullMessage,
+        title
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Agricultural advisory successfully broadcasted to ${activeFarmers.length} farmers.`,
+      recipientCount: activeFarmers.length,
+      advisory: {
+        cropName,
+        actionType,
+        title,
+        fullMessage
+      }
+    });
+  } catch (error) {
+    console.error("Broadcast Stock Advisory Error:", error);
     res.status(500).json({ error: error.message });
   }
 };

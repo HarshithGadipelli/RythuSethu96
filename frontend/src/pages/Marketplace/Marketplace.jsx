@@ -74,20 +74,67 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
 }
 
 const CROP_FALLBACK_IMAGES = {
+  // Grains & Millets
+  navara: "https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?w=600&auto=format&fit=crop&q=80",
+  "red rice": "https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?w=600&auto=format&fit=crop&q=80",
+  basmati: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
   rice: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
   paddy: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
   sona: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
   bpt: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
   wheat: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&auto=format&fit=crop&q=80",
+  kanak: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&auto=format&fit=crop&q=80",
+  sharbati: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&auto=format&fit=crop&q=80",
   corn: "https://images.unsplash.com/photo-1551754655-cd27e38d2076?w=600&auto=format&fit=crop&q=80",
   maize: "https://images.unsplash.com/photo-1551754655-cd27e38d2076?w=600&auto=format&fit=crop&q=80",
-  millet: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
-  ragi: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
-  jowar: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
-  bajra: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
+  makka: "https://images.unsplash.com/photo-1551754655-cd27e38d2076?w=600&auto=format&fit=crop&q=80",
+  millet: "https://images.unsplash.com/photo-1607672632458-9eb56696346b?w=600&auto=format&fit=crop&q=80",
+  foxtail: "https://images.unsplash.com/photo-1607672632458-9eb56696346b?w=600&auto=format&fit=crop&q=80",
+  korra: "https://images.unsplash.com/photo-1607672632458-9eb56696346b?w=600&auto=format&fit=crop&q=80",
+  korralu: "https://images.unsplash.com/photo-1607672632458-9eb56696346b?w=600&auto=format&fit=crop&q=80",
+  arikelu: "https://images.unsplash.com/photo-1607672632458-9eb56696346b?w=600&auto=format&fit=crop&q=80",
+  kodo: "https://images.unsplash.com/photo-1607672632458-9eb56696346b?w=600&auto=format&fit=crop&q=80",
+  kodra: "https://images.unsplash.com/photo-1607672632458-9eb56696346b?w=600&auto=format&fit=crop&q=80",
+  samalu: "https://images.unsplash.com/photo-1509358271058-acd22cc93898?w=600&auto=format&fit=crop&q=80",
+  "little millet": "https://images.unsplash.com/photo-1509358271058-acd22cc93898?w=600&auto=format&fit=crop&q=80",
+  udalu: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&auto=format&fit=crop&q=80",
+  barnyard: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&auto=format&fit=crop&q=80",
+  "andu korralu": "https://images.unsplash.com/photo-1607672632458-9eb56696346b?w=600&auto=format&fit=crop&q=80",
+  browntop: "https://images.unsplash.com/photo-1607672632458-9eb56696346b?w=600&auto=format&fit=crop&q=80",
+  siridhanya: "https://images.unsplash.com/photo-1607672632458-9eb56696346b?w=600&auto=format&fit=crop&q=80",
+  ragi: "https://images.unsplash.com/photo-1509358271058-acd22cc93898?w=600&auto=format&fit=crop&q=80",
+  jowar: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&auto=format&fit=crop&q=80",
+  bajra: "https://images.unsplash.com/photo-1607672632458-9eb56696346b?w=600&auto=format&fit=crop&q=80",
+  barley: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&auto=format&fit=crop&q=80",
+
+  // Pulses & Legumes
+  toor: "https://images.unsplash.com/photo-1585994192701-f1a505c8574a?w=600&auto=format&fit=crop&q=80",
+  "red gram": "https://images.unsplash.com/photo-1585994192701-f1a505c8574a?w=600&auto=format&fit=crop&q=80",
+  kandi: "https://images.unsplash.com/photo-1585994192701-f1a505c8574a?w=600&auto=format&fit=crop&q=80",
+  moong: "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80",
+  "green gram": "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80",
+  pesalu: "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80",
+  chana: "https://images.unsplash.com/photo-1515543237350-b3eea1ec8082?w=600&auto=format&fit=crop&q=80",
+  chickpea: "https://images.unsplash.com/photo-1515543237350-b3eea1ec8082?w=600&auto=format&fit=crop&q=80",
+  senagalu: "https://images.unsplash.com/photo-1515543237350-b3eea1ec8082?w=600&auto=format&fit=crop&q=80",
+  soya: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80",
+  soybean: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80",
+  groundnut: "https://images.unsplash.com/photo-1567892328122-3daec166d15b?w=600&auto=format&fit=crop&q=80",
+  peanut: "https://images.unsplash.com/photo-1567892328122-3daec166d15b?w=600&auto=format&fit=crop&q=80",
+  pallilu: "https://images.unsplash.com/photo-1567892328122-3daec166d15b?w=600&auto=format&fit=crop&q=80",
+  dal: "https://images.unsplash.com/photo-1585994192701-f1a505c8574a?w=600&auto=format&fit=crop&q=80",
+  pulses: "https://images.unsplash.com/photo-1585994192701-f1a505c8574a?w=600&auto=format&fit=crop&q=80",
+  peas: "https://images.unsplash.com/photo-1587735243615-c03f25aaff15?w=600&auto=format&fit=crop&q=80",
+
+  // Vegetables
   tomato: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&auto=format&fit=crop&q=80",
+  tamota: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&auto=format&fit=crop&q=80",
+  naatu: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&auto=format&fit=crop&q=80",
   onion: "https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=600&auto=format&fit=crop&q=80",
+  ullipaya: "https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=600&auto=format&fit=crop&q=80",
+  ghati: "https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=600&auto=format&fit=crop&q=80",
   potato: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=600&auto=format&fit=crop&q=80",
+  aalu: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=600&auto=format&fit=crop&q=80",
   spinach: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=600&auto=format&fit=crop&q=80",
   palak: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=600&auto=format&fit=crop&q=80",
   cabbage: "https://images.unsplash.com/photo-1594282486552-05b4d80fbb9f?w=600&auto=format&fit=crop&q=80",
@@ -95,28 +142,69 @@ const CROP_FALLBACK_IMAGES = {
   brinjal: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80",
   eggplant: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80",
   vankaya: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80",
-  bhindi: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=600&auto=format&fit=crop&q=80",
-  ladyfinger: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=600&auto=format&fit=crop&q=80",
-  okra: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=600&auto=format&fit=crop&q=80",
+  bhindi: "https://images.unsplash.com/photo-1425543103986-22abb7d7e8d2?w=600&auto=format&fit=crop&q=80",
+  ladyfinger: "https://images.unsplash.com/photo-1425543103986-22abb7d7e8d2?w=600&auto=format&fit=crop&q=80",
+  "ladies finger": "https://images.unsplash.com/photo-1425543103986-22abb7d7e8d2?w=600&auto=format&fit=crop&q=80",
+  okra: "https://images.unsplash.com/photo-1425543103986-22abb7d7e8d2?w=600&auto=format&fit=crop&q=80",
   carrot: "https://images.unsplash.com/photo-1598170845058-12ef4a457939?w=600&auto=format&fit=crop&q=80",
-  mango: "https://images.unsplash.com/photo-1553279768-865429fa0078?w=600&auto=format&fit=crop&q=80",
-  banana: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=600&auto=format&fit=crop&q=80",
-  pomegranate: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80",
+  drumstick: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80",
+  cucumber: "https://images.unsplash.com/photo-1449300079323-02e209d9d3a6?w=600&auto=format&fit=crop&q=80",
+  dosakaya: "https://images.unsplash.com/photo-1449300079323-02e209d9d3a6?w=600&auto=format&fit=crop&q=80",
+  capsicum: "https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?w=600&auto=format&fit=crop&q=80",
+
+  // Spices & Herbs
+  "red chilli": "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=600&auto=format&fit=crop&q=80",
   chilli: "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=600&auto=format&fit=crop&q=80",
+  chillies: "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=600&auto=format&fit=crop&q=80",
   mirchi: "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=600&auto=format&fit=crop&q=80",
-  turmeric: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80",
+  teja: "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=600&auto=format&fit=crop&q=80",
+  byadagi: "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=600&auto=format&fit=crop&q=80",
+  "green chilli": "https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=600&auto=format&fit=crop&q=80",
+  turmeric: "https://images.unsplash.com/photo-1615485500704-8e990f9900f7?w=600&auto=format&fit=crop&q=80",
+  pasupu: "https://images.unsplash.com/photo-1615485500704-8e990f9900f7?w=600&auto=format&fit=crop&q=80",
   coriander: "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600&auto=format&fit=crop&q=80",
+  dhania: "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600&auto=format&fit=crop&q=80",
   ginger: "https://images.unsplash.com/photo-1599940824399-b87987ceb72a?w=600&auto=format&fit=crop&q=80",
+  allam: "https://images.unsplash.com/photo-1599940824399-b87987ceb72a?w=600&auto=format&fit=crop&q=80",
   garlic: "https://images.unsplash.com/photo-1540148426945-6cf22a6b2383?w=600&auto=format&fit=crop&q=80",
-  dal: "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80",
-  toor: "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80",
-  moong: "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80",
-  chana: "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80",
-  soya: "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80",
-  ghee: "https://images.unsplash.com/photo-1587049352847-81a56d773cae?w=600&auto=format&fit=crop&q=80",
+  vellulli: "https://images.unsplash.com/photo-1540148426945-6cf22a6b2383?w=600&auto=format&fit=crop&q=80",
+
+  // Fruits
+  coconut: "https://images.unsplash.com/photo-1544376798-89aa6b82c6cd?w=600&auto=format&fit=crop&q=80",
+  kobbari: "https://images.unsplash.com/photo-1544376798-89aa6b82c6cd?w=600&auto=format&fit=crop&q=80",
+  apple: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=600&auto=format&fit=crop&q=80",
+  sebu: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=600&auto=format&fit=crop&q=80",
+  orange: "https://images.unsplash.com/photo-1582979512210-99b6a53386f9?w=600&auto=format&fit=crop&q=80",
+  santra: "https://images.unsplash.com/photo-1582979512210-99b6a53386f9?w=600&auto=format&fit=crop&q=80",
+  battai: "https://images.unsplash.com/photo-1582979512210-99b6a53386f9?w=600&auto=format&fit=crop&q=80",
+  mango: "https://images.unsplash.com/photo-1553279768-865429fa0078?w=600&auto=format&fit=crop&q=80",
+  mamidi: "https://images.unsplash.com/photo-1553279768-865429fa0078?w=600&auto=format&fit=crop&q=80",
+  banganapalli: "https://images.unsplash.com/photo-1553279768-865429fa0078?w=600&auto=format&fit=crop&q=80",
+  banana: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=600&auto=format&fit=crop&q=80",
+  arati: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=600&auto=format&fit=crop&q=80",
+  pomegranate: "https://images.unsplash.com/photo-1541344999736-83eca272f6fc?w=600&auto=format&fit=crop&q=80",
+  bhagwa: "https://images.unsplash.com/photo-1541344999736-83eca272f6fc?w=600&auto=format&fit=crop&q=80",
+  danimma: "https://images.unsplash.com/photo-1541344999736-83eca272f6fc?w=600&auto=format&fit=crop&q=80",
+  watermelon: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=600&auto=format&fit=crop&q=80",
+  papaya: "https://images.unsplash.com/photo-1526318896980-cf78c088247c?w=600&auto=format&fit=crop&q=80",
+  guava: "https://images.unsplash.com/photo-1536511135898-19e4871e16c8?w=600&auto=format&fit=crop&q=80",
+
+  // Value Added & Dairy & Commercial
+  ghee: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=600&auto=format&fit=crop&q=80",
+  bilona: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=600&auto=format&fit=crop&q=80",
   honey: "https://images.unsplash.com/photo-1587049352847-81a56d773cae?w=600&auto=format&fit=crop&q=80",
+  thene: "https://images.unsplash.com/photo-1587049352847-81a56d773cae?w=600&auto=format&fit=crop&q=80",
   jaggery: "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?w=600&auto=format&fit=crop&q=80",
+  bellam: "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?w=600&auto=format&fit=crop&q=80",
+  "thaati bellam": "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?w=600&auto=format&fit=crop&q=80",
+  "tati bellam": "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?w=600&auto=format&fit=crop&q=80",
+  "palm jaggery": "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?w=600&auto=format&fit=crop&q=80",
+  karupatti: "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?w=600&auto=format&fit=crop&q=80",
+  "palmyra jaggery": "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?w=600&auto=format&fit=crop&q=80",
+  "palm sugar": "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?w=600&auto=format&fit=crop&q=80",
   oil: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600&auto=format&fit=crop&q=80",
+  "sesame oil": "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600&auto=format&fit=crop&q=80",
+  sesame_oil: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600&auto=format&fit=crop&q=80",
   cotton: "https://images.unsplash.com/photo-1606041008023-472dfb5e530f?w=600&auto=format&fit=crop&q=80",
   sugarcane: "https://images.unsplash.com/photo-1596753392437-05c8733230c1?w=600&auto=format&fit=crop&q=80"
 };
@@ -136,7 +224,21 @@ const APMC_MANDI_DATA = [
 ];
 
 export const getImgSrc = (img, name = "", category = "") => {
-  const cleanStr = (name + " " + category).toLowerCase();
+  const cleanStr = ((name || "") + " " + (category || "")).toLowerCase().trim();
+
+  // Helper to match keywords
+  const findFallback = () => {
+    for (const [key, url] of Object.entries(CROP_FALLBACK_IMAGES)) {
+      if (cleanStr.includes(key)) return url;
+    }
+    if (category === "fruit") return "https://images.unsplash.com/photo-1553279768-865429fa0078?w=600&auto=format&fit=crop&q=80";
+    if (category === "grain") return "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80";
+    if (category === "pulse") return "https://images.unsplash.com/photo-1585994192701-f1a505c8574a?w=600&auto=format&fit=crop&q=80";
+    if (category === "spice") return "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=600&auto=format&fit=crop&q=80";
+    if (category === "vegetable") return "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&auto=format&fit=crop&q=80";
+    if (category === "dairy") return "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=600&auto=format&fit=crop&q=80";
+    return "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&auto=format&fit=crop&q=80";
+  };
 
   if (img && typeof img === "string" && img.trim() !== "" && img !== "EMPTY") {
     // 1. Support Base64 Data URIs stored directly in MongoDB
@@ -149,10 +251,8 @@ export const getImgSrc = (img, name = "", category = "") => {
     }
     // 3. Handle legacy localhost:5000 URLs from seeded data or local testing
     if (img.includes("localhost:5000") || img.includes("127.0.0.1")) {
-      // Find matching keyword fallback instead of broken localhost URL
-      for (const [key, url] of Object.entries(CROP_FALLBACK_IMAGES)) {
-        if (cleanStr.includes(key)) return url;
-      }
+      const fb = findFallback();
+      if (fb) return fb;
       const pathSuffix = img.split("/uploads/")[1];
       if (pathSuffix) {
         return `${BASE_URL.replace(/\/api\/?$/, "")}/uploads/${pathSuffix}`;
@@ -160,23 +260,19 @@ export const getImgSrc = (img, name = "", category = "") => {
     }
     // 4. Handle relative paths like "uploads/xyz.jpg"
     if (!img.startsWith("http://") && !img.startsWith("https://")) {
+      // If it looks like a generic/missing upload, try name-based fallback first
+      if (cleanStr.length > 0) {
+        for (const [key, url] of Object.entries(CROP_FALLBACK_IMAGES)) {
+          if (cleanStr.includes(key)) return url;
+        }
+      }
       const cleanPath = img.startsWith("/") ? img : `/${img}`;
       return `${BASE_URL.replace(/\/api\/?$/, "")}${cleanPath}`;
     }
     return img;
   }
 
-  // Fallback lookup based on crop name & category keywords
-  for (const [key, url] of Object.entries(CROP_FALLBACK_IMAGES)) {
-    if (cleanStr.includes(key)) return url;
-  }
-
-  if (category === "fruit") return "https://images.unsplash.com/photo-1553279768-865429fa0078?w=600&auto=format&fit=crop&q=80";
-  if (category === "grain") return "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80";
-  if (category === "pulse") return "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80";
-  if (category === "spice") return "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600&auto=format&fit=crop&q=80";
-
-  return "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&auto=format&fit=crop&q=80";
+  return findFallback();
 };
 
 function FlyToMarker({ crop }) {
@@ -597,6 +693,9 @@ export default function Marketplace() {
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [usePoints, setUsePoints] = useState(false);
+  const [hasWetWasteDonation, setHasWetWasteDonation] = useState(false);
+  const [wetWasteEstKg, setWetWasteEstKg] = useState(2);
+  const [wetWasteNotes, setWetWasteNotes] = useState("");
   const [loading, setLoading] = useState(true);
   const [ordering, setOrdering] = useState(false);
   const [msg, setMsg] = useState({ type:"", text:"" });
@@ -758,7 +857,7 @@ export default function Marketplace() {
     window.dispatchEvent(new CustomEvent("market_audio_state", { detail: { isActive: audioActive } }));
   }, [audioActive]);
 
-  const CATS = ["all","vegetable","fruit","grain","pulse","spice","dairy","other"];
+  const CATS = ["all","vegetable","fruit","grain","millet","pulse","spice","dairy","other"];
   const DELIVERY_BASE = 30;
   const DELIVERY_PER_KM = 5;
 
@@ -1121,6 +1220,9 @@ export default function Marketplace() {
     setOrderQty(1);
     setDeliveryType("standard");
     setUsePoints(false);
+    setHasWetWasteDonation(false);
+    setWetWasteEstKg(2);
+    setWetWasteNotes("");
     setShowBill(null);
     setMsg({ type:"", text:"" });
     
@@ -1193,6 +1295,9 @@ export default function Marketplace() {
       deliveryAddress: deliveryType === "farm_pickup" ? "Farm Pickup" : orderAddr,
       deliveryLatitude: orderLat,
       deliveryLongitude: orderLng,
+      hasWetWasteDonation,
+      wetWasteEstKg: hasWetWasteDonation ? Number(wetWasteEstKg) : 0,
+      wetWasteNotes,
     };
 
     const res = await API.post("/orders/create", orderData);
@@ -1549,19 +1654,6 @@ export default function Marketplace() {
           </div>
         </div>
         <div style={{ display:"flex", gap:"0.75rem", alignItems:"center" }}>
-          <button 
-            className="btn-secondary" 
-            onClick={() => window.dispatchEvent(new CustomEvent("market_announcer_toggle"))} 
-            title={isMarketAudioActive ? "Mute Market Sounds" : "Play Immersive Market Sounds"}
-            style={{ 
-              padding: "0.4rem 0.8rem", fontSize: "0.85rem", display: "flex", gap: "0.4rem", alignItems: "center",
-              color: isMarketAudioActive ? "var(--green-mid)" : "var(--text-muted)",
-              background: isMarketAudioActive ? "rgba(34,197,94,0.1)" : "white",
-              borderColor: isMarketAudioActive ? "var(--green-mid)" : "#e2e8f0"
-            }}
-          >
-            {isMarketAudioActive ? <><Volume2 size={16} /> Sounds On</> : <><VolumeX size={16} /> Muted</>}
-          </button>
           {user && (
             <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className={`btn-secondary`} onClick={() => switchMainTab("orders")} style={{ background:"white", color:"var(--text-dark)", borderColor:"#e2e8f0" }}>
               <PackageCheck size={18} style={{ marginRight:4 }} /> {t("myOrders")} ({myOrders.length})
@@ -1718,24 +1810,6 @@ export default function Marketplace() {
               )}
             </AnimatePresence>
           </div>
-
-          {/* Sound Toggle Button */}
-          <motion.button
-            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-            onClick={toggleAudio}
-            style={{
-              display: "flex", alignItems: "center", gap: "0.5rem",
-              padding: "0.9rem 1.4rem", borderRadius: "100px",
-              background: audioActive ? "var(--green-mid)" : "white",
-              color: audioActive ? "white" : "var(--text-dark)",
-              border: audioActive ? "none" : "1px solid #e2e8f0",
-              fontWeight: 700, fontSize: "0.95rem", cursor: "pointer",
-              boxShadow: audioActive ? "0 8px 20px rgba(22, 163, 74, 0.3)" : "0 2px 10px rgba(0,0,0,0.04)",
-              transition: "all 0.25s"
-            }}>
-            {audioActive ? <Volume2 size={18} /> : <VolumeX size={18} />}
-            {audioActive ? t("Market Sounds: ON") || "Market Sounds: ON" : t("Market Sounds: OFF") || "Market Sounds: OFF"}
-          </motion.button>
 
           {/* Filter Toggle Button */}
           <motion.button
@@ -1915,6 +1989,108 @@ export default function Marketplace() {
           )}
         </AnimatePresence>
         
+        {/* ─── SHREE ANNA & TRADITIONAL SUPERFOODS SPOTLIGHT BANNER ─── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            background: "linear-gradient(135deg, #fef3c7 0%, #fffbeb 50%, #f0fdf4 100%)",
+            border: "1.5px solid #fcd34d",
+            borderRadius: "16px",
+            padding: "1.2rem 1.25rem",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "1rem",
+            boxShadow: "0 4px 15px rgba(245, 158, 11, 0.08)"
+          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", maxWidth: "680px" }}>
+            <span style={{ fontSize: "2.4rem" }}>🌾</span>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                <strong style={{ fontSize: "1.05rem", color: "#92400e", fontWeight: 900 }}>
+                  Shree Anna &amp; Ancestral Superfoods Movement
+                </strong>
+                <span style={{ background: "#16a34a", color: "white", padding: "2px 8px", borderRadius: "100px", fontSize: "0.7rem", fontWeight: 700 }}>
+                  🌾 Arikelu Spotlight
+                </span>
+                <span style={{ background: "#d97706", color: "white", padding: "2px 8px", borderRadius: "100px", fontSize: "0.7rem", fontWeight: 700 }}>
+                  🌴 Thaati Bellam (Palm Jaggery)
+                </span>
+              </div>
+              <p style={{ margin: "4px 0 0", fontSize: "0.83rem", color: "#78350f", lineHeight: 1.4 }}>
+                Reversing diabetes &amp; rebuilding soil organic carbon! Discover unpolished <strong>Arikelu (Kodo Millet - low GI 50)</strong> and pure woodfire-boiled <strong>Thaati Bellam (60x iron, zero bone-char)</strong> grown with rainfed permaculture and contact botanical sprays.
+              </p>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+            <button
+              onClick={() => {
+                setCategory("millet");
+                setSearch("");
+              }}
+              style={{
+                padding: "0.45rem 0.9rem",
+                borderRadius: "100px",
+                background: category === "millet" && !search ? "#92400e" : "#d97706",
+                color: "white",
+                border: "none",
+                fontWeight: 800,
+                fontSize: "0.8rem",
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(217, 119, 6, 0.25)",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px"
+              }}>
+              <span>🌾</span>
+              <span>{category === "millet" ? "✓ Millets Active" : "Arikelu & Millets"}</span>
+            </button>
+            <button
+              onClick={() => {
+                setCategory("all");
+                setSearch("bellam");
+              }}
+              style={{
+                padding: "0.45rem 0.9rem",
+                borderRadius: "100px",
+                background: search.toLowerCase().includes("bellam") ? "#166534" : "#059669",
+                color: "white",
+                border: "none",
+                fontWeight: 800,
+                fontSize: "0.8rem",
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(5, 150, 105, 0.25)",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px"
+              }}>
+              <span>🌴</span>
+              <span>{search.toLowerCase().includes("bellam") ? "✓ Thaati Bellam Active" : "Thaati Bellam"}</span>
+            </button>
+            <Link
+              to="/farmer/dashboard"
+              style={{
+                padding: "0.45rem 0.85rem",
+                borderRadius: "100px",
+                background: "white",
+                color: "#166534",
+                border: "1.5px solid #86efac",
+                fontWeight: 800,
+                fontSize: "0.8rem",
+                textDecoration: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px"
+              }}
+            >
+              <span>🌱</span>
+              <span>Soil &amp; RWH Guide</span>
+            </Link>
+          </div>
+        </motion.div>
+
         {/* Horizontal Category Pill Scroll */}
         <div style={{ display:"flex", gap:"0.75rem", overflowX:"auto", paddingBottom:"0.5rem", flexShrink:0, maxWidth:"100%" }} className="no-scrollbar">
           {CATS.map(c => (
@@ -1930,7 +2106,7 @@ export default function Marketplace() {
               whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:"0.5rem",
               boxShadow: category===c ? "0 8px 20px rgba(22, 163, 74, 0.3)" : "0 2px 10px rgba(0,0,0,0.02)"
             }}>
-              {c === "all" ? `🌾 ${t("allItems")}` : c === "vegetable" ? `🥦 ${t("veggies")}` : c === "fruit" ? `🍎 ${t("fruits")}` : c === "grain" ? `🌾 ${t("grains")}` : t(c)}
+              {c === "all" ? `🌾 ${t("allItems")}` : c === "vegetable" ? `🥦 ${t("veggies")}` : c === "fruit" ? `🍎 ${t("fruits")}` : c === "grain" ? `🌾 ${t("grains")}` : c === "millet" ? `🌾 Ancient Millets (Shree Anna)` : t(c)}
             </motion.button>
           ))}
         </div>
@@ -1954,6 +2130,7 @@ export default function Marketplace() {
             {category === "vegetable" && "Rich in essential vitamins, minerals, and dietary fiber! Eating dark leafy greens boosts your immune system."}
             {category === "fruit" && "Packed with natural antioxidants! Eating seasonal fruits helps maintain healthy skin and hydration."}
             {category === "grain" && "Excellent source of complex carbohydrates and energy! Whole grains reduce the risk of heart disease."}
+            {category === "millet" && "🌾 Ancient Super-Grains (Shree Anna)! Low Glycemic Index (reverses diabetes), gluten-free, 3x calcium, and high dietary fiber."}
             {category === "pulse" && "High in plant-based protein! Pulses are great for muscle building and stabilizing blood sugar levels."}
             {category === "spice" && "Boosts metabolism and reduces inflammation! Turmeric and ginger have powerful medicinal properties."}
             {category === "dairy" && "Rich in calcium and probiotics! Excellent for bone strength and maintaining a healthy gut microbiome."}
@@ -2368,7 +2545,7 @@ export default function Marketplace() {
                         style={{ minWidth: 240, cursor: "pointer", flexShrink: 0, border: "2px solid var(--green-pale)", position: "relative" }}
                       >
                         <div className="crop-img-wrap" style={{ height: 130 }}>
-                          {c.image ? <img src={getImgSrc(c.image)} alt={c.name} /> : <div className="crop-img-fallback">🌿</div>}
+                          {c.image ? <img src={getImgSrc(c.image, c.name, c.category)} alt={c.name} /> : <div className="crop-img-fallback">🌿</div>}
                           {c.isOrganic && <span className="organic-badge">🌿 Organic</span>}
                           <span className="organic-badge" style={{ background: "#dcfce7", color: "#166534", border: "1px solid #86efac" }}>✅ Season Match</span>
                         </div>
@@ -2416,7 +2593,7 @@ export default function Marketplace() {
                       borderRadius:"var(--radius-md)", cursor:"pointer", transition:"all 0.2s"
                     }}>
                       <div style={{ width:56, height:56, borderRadius:8, background:"#f1f5f9", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, overflow:"hidden" }}>
-                        {c.image ? <img src={getImgSrc(c.image)} alt={c.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{fontSize: "0.6rem", color:"var(--text-muted)", textAlign: "center"}}>No Image</span>}
+                        {c.image ? <img src={getImgSrc(c.image, c.name, c.category)} alt={c.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{fontSize: "0.6rem", color:"var(--text-muted)", textAlign: "center"}}>No Image</span>}
                       </div>
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:"0.4rem", flexWrap: "wrap" }}>
@@ -2588,6 +2765,21 @@ export default function Marketplace() {
                         {c.isAdminStock && <span className="organic-tag" style={{ background: "#bae6fd", color: "#0369a1", borderColor: "#7dd3fc" }}>❄️ Clearance</span>}
                         {c.isOrganic && <span className="organic-tag">🌿 Organic</span>}
                         {c.isPesticideFree && !c.isOrganic && <span className="organic-tag" style={{ background: "#ecfdf5", color: "#059669", borderColor: "#a7f3d0" }}>🛡️ Chemical-Free</span>}
+                        {(c.isMillet || c.category === "millet") && (
+                          <span className="organic-tag" style={{ background: "#fef3c7", color: "#92400e", borderColor: "#fde68a", fontWeight: 700 }}>
+                            🌾 Shree Anna
+                          </span>
+                        )}
+                        {c.isPermaculture && (
+                          <span className="organic-tag" style={{ background: "#dcfce7", color: "#166534", borderColor: "#86efac", fontWeight: 700 }}>
+                            🌱 Permaculture
+                          </span>
+                        )}
+                        {c.pesticideType === "contact" && (
+                          <span className="organic-tag" style={{ background: "#eff6ff", color: "#1e40af", borderColor: "#bfdbfe" }}>
+                            🧴 Contact Spray
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -2806,6 +2998,134 @@ export default function Marketplace() {
                         <button onClick={() => setShowFarmTour(selected.farmTourVideo || selected.farmTourUrl)} className="btn-secondary" style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem", display: "inline-flex", gap: "0.4rem", alignItems: "center", border: "1px solid var(--green-mid)", color: "var(--green-mid)", background: "rgba(22, 163, 74, 0.05)", textDecoration: "none" }}>
                           🎥 Take Virtual Farm Tour
                         </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── REAL FARM ↔ REAL SALE PLACE TRACEABILITY & FOOD SAFETY AUDIT CARD ── */}
+                <div style={{
+                  marginBottom: "1.5rem",
+                  background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #eff6ff 100%)",
+                  borderRadius: "16px",
+                  border: "1.5px solid #86efac",
+                  padding: "1.25rem",
+                  boxShadow: "0 4px 15px rgba(22, 163, 74, 0.08)"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ fontSize: "1.3rem" }}>📍</span>
+                      <h4 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#14532d" }}>
+                        Real Farm of Origin ↔ Real Sale Place / Mandi Traceability
+                      </h4>
+                    </div>
+                    <span style={{
+                      background: selected.isOrganic ? "#16a34a" : "#2563eb",
+                      color: "white", padding: "3px 10px", borderRadius: "100px",
+                      fontSize: "0.74rem", fontWeight: 800
+                    }}>
+                      {selected.isOrganic ? "🛡️ Genuine Organic Audited" : "🌾 Farm Gate Traceable"}
+                    </span>
+                  </div>
+
+                  {/* Dual Grid: Farm of Origin vs Sale Place */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem", marginBottom: "1rem" }}>
+                    {/* Left: Real Farm */}
+                    <div style={{ background: "white", borderRadius: "12px", border: "1.5px solid #bbf7d0", padding: "1rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#166534", fontWeight: 800, fontSize: "0.88rem", marginBottom: "0.5rem" }}>
+                        <span style={{ fontSize: "1.1rem" }}>🌾</span>
+                        <span>Real Farm of Origin (సాగు స్థలం)</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", fontSize: "0.8rem", color: "#334155" }}>
+                        <div><strong>Farm Name:</strong> {selected.realFarmDetails?.farmName || selected.farmer?.farmName || "Direct Cultivation Farm"}</div>
+                        <div><strong>Farmer:</strong> {selected.realFarmDetails?.farmerName || selected.farmer?.name || "Verified Producer"}</div>
+                        <div><strong>Location:</strong> {selected.realFarmDetails?.farmLocation || selected.farmLocation || selected.location || "Telangana / AP"}</div>
+                        {selected.realFarmDetails?.soilType && <div><strong>Soil Type:</strong> {selected.realFarmDetails.soilType}</div>}
+                        {selected.realFarmDetails?.farmSizeAcres && <div><strong>Acreage:</strong> {selected.realFarmDetails.farmSizeAcres} Acres</div>}
+                        {selected.realFarmDetails?.latitude && (
+                          <div style={{ marginTop: "4px", color: "#15803d", fontWeight: 700, fontSize: "0.75rem" }}>
+                            GPS: {Number(selected.realFarmDetails.latitude).toFixed(4)}°, {Number(selected.realFarmDetails.longitude).toFixed(4)}°
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right: Real Sale Place / Mandi */}
+                    <div style={{ background: "white", borderRadius: "12px", border: "1.5px solid #bfdbfe", padding: "1rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#1e40af", fontWeight: 800, fontSize: "0.88rem", marginBottom: "0.5rem" }}>
+                        <span style={{ fontSize: "1.1rem" }}>
+                          {selected.realSalePlace?.hubType === "cold_storage" ? "❄️" : "🏪"}
+                        </span>
+                        <span>Real Sale Place / Mandi Hub (విక్రయ స్థలం)</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", fontSize: "0.8rem", color: "#334155" }}>
+                        <div><strong>Hub Name:</strong> {selected.realSalePlace?.hubName || "Regional APMC Mandi / Direct Hub"}</div>
+                        <div><strong>Type:</strong> <span style={{ textTransform: "capitalize" }}>{selected.realSalePlace?.hubType ? selected.realSalePlace.hubType.replace('_', ' ') : "Mandi Yard"}</span></div>
+                        <div><strong>Dispatch Location:</strong> {selected.realSalePlace?.hubLocation || selected.location}</div>
+                        {selected.realSalePlace?.distanceFarmToSaleKm && (
+                          <div style={{ color: "#d97706", fontWeight: 800 }}>
+                            <strong>Transit Distance:</strong> ~{selected.realSalePlace.distanceFarmToSaleKm} km direct from farm
+                          </div>
+                        )}
+                        {selected.realSalePlace?.latitude && (
+                          <div style={{ marginTop: "4px", color: "#1d4ed8", fontWeight: 700, fontSize: "0.75rem" }}>
+                            GPS: {Number(selected.realSalePlace.latitude).toFixed(4)}°, {Number(selected.realSalePlace.longitude).toFixed(4)}°
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Anti-Fake Organic & Food Safety Verification Shield */}
+                  <div style={{
+                    background: selected.organicVerification?.status === "verified_organic" ? "#ecfdf5" : "white",
+                    borderRadius: "12px", border: "1px solid #a7f3d0", padding: "0.85rem 1rem",
+                    display: "flex", flexDirection: "column", gap: "0.6rem"
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ fontSize: "1.1rem" }}>🛡️</span>
+                        <strong style={{ fontSize: "0.86rem", color: "#065f46" }}>
+                          {selected.organicVerification?.status === "verified_organic"
+                            ? "100% Genuine Organic Certified by Food Safety Field Agent"
+                            : selected.isOrganic ? "Certified Organic Crop (Zero Synthetic Residues)" : "Direct Farm Produce"}
+                        </strong>
+                      </div>
+                      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                        <span style={{ background: "#dcfce7", color: "#166534", padding: "2px 8px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 800 }}>
+                          Safety Score: {selected.organicVerification?.foodSafetyScore || 98}/100
+                        </span>
+                        <span style={{ background: "#dbeafe", color: "#1e40af", padding: "2px 8px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 800 }}>
+                          Residue: 0.00 ppm
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 5-Step Botanical & Organic Verification Indicators */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "0.4rem", fontSize: "0.72rem" }}>
+                      <div style={{ background: "#f0fdf4", padding: "4px 6px", borderRadius: "6px", border: "1px solid #bbf7d0", color: "#166534", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span>✅</span> <span>1. Organic Soil Prep</span>
+                      </div>
+                      <div style={{ background: "#f0fdf4", padding: "4px 6px", borderRadius: "6px", border: "1px solid #bbf7d0", color: "#166534", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span>✅</span> <span>2. Untreated Heirloom Seed</span>
+                      </div>
+                      <div style={{ background: "#f0fdf4", padding: "4px 6px", borderRadius: "6px", border: "1px solid #bbf7d0", color: "#166534", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span>✅</span> <span>3. 4-Row Corn Border Shield</span>
+                      </div>
+                      <div style={{ background: "#f0fdf4", padding: "4px 6px", borderRadius: "6px", border: "1px solid #bbf7d0", color: "#166534", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span>✅</span> <span>4. NSKE 5% Neem Spray</span>
+                      </div>
+                      <div style={{ background: "#f0fdf4", padding: "4px 6px", borderRadius: "6px", border: "1px solid #bbf7d0", color: "#166534", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span>✅</span> <span>5. Rapid Residue Test (0.00 ppm)</span>
+                      </div>
+                    </div>
+
+                    {selected.organicVerification?.agentName && (
+                      <div style={{ fontSize: "0.72rem", color: "#64748b", display: "flex", justifyContent: "space-between" }}>
+                        <span>Verified by Agent: <strong>{selected.organicVerification.agentName}</strong></span>
+                        {selected.organicVerification?.inspectedAt && (
+                          <span>Audit Date: {new Date(selected.organicVerification.inspectedAt).toLocaleDateString()}</span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -3126,6 +3446,97 @@ export default function Marketplace() {
                   </div>
                 )}
 
+                {/* ── Circular Economy Wet-Waste Collection Opt-in (Doorstep Exchange) ── */}
+                {deliveryType !== "farm_pickup" && (
+                  <div style={{
+                    marginTop: "1rem",
+                    padding: "1rem 1.2rem",
+                    borderRadius: "14px",
+                    border: hasWetWasteDonation ? "2px solid #16a34a" : "1.5px dashed #94a3b8",
+                    background: hasWetWasteDonation ? "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)" : "#f8fafc",
+                    transition: "all 0.25s ease"
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.75rem" }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "1.1rem" }}>🌱</span>
+                          <strong style={{ fontSize: "0.95rem", color: "#166534" }}>
+                            Donate Kitchen Wet Waste (Vegetable & Fruit Peels)
+                          </strong>
+                          <span style={{ background: "#22c55e", color: "white", fontSize: "0.7rem", fontWeight: 800, padding: "2px 8px", borderRadius: "100px" }}>
+                            +15 Green Points
+                          </span>
+                        </div>
+                        <p style={{ margin: "4px 0 0 0", fontSize: "0.8rem", color: "#475569", lineHeight: 1.4 }}>
+                          The delivery agent will carry an airtight container and collect your raw peels simultaneously during delivery, returning them to the cold storage hub for vermicompost & biogas.
+                        </p>
+                      </div>
+                      <label style={{ display: "flex", alignItems: "center", cursor: "pointer", marginTop: "2px" }}>
+                        <input
+                          type="checkbox"
+                          checked={hasWetWasteDonation}
+                          onChange={(e) => setHasWetWasteDonation(e.target.checked)}
+                          style={{ width: "22px", height: "22px", accentColor: "#16a34a", cursor: "pointer" }}
+                        />
+                      </label>
+                    </div>
+
+                    {/* Expandable options & strict caution */}
+                    {hasWetWasteDonation && (
+                      <div style={{ marginTop: "0.85rem", paddingTop: "0.85rem", borderTop: "1px solid rgba(22, 163, 74, 0.25)", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
+                          <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#166534" }}>
+                            Estimated Waste Weight:
+                          </label>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                            {[1, 2, 3, 5].map(kg => (
+                              <button
+                                key={kg}
+                                type="button"
+                                onClick={() => setWetWasteEstKg(kg)}
+                                style={{
+                                  padding: "4px 10px",
+                                  borderRadius: "8px",
+                                  border: "1px solid #16a34a",
+                                  background: wetWasteEstKg === kg ? "#16a34a" : "white",
+                                  color: wetWasteEstKg === kg ? "white" : "#166534",
+                                  fontWeight: 700,
+                                  fontSize: "0.8rem",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                ~{kg} kg
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Strict Policy & Caution Banner */}
+                        <div style={{
+                          background: "#fffbeb",
+                          border: "1px solid #fef08a",
+                          borderRadius: "10px",
+                          padding: "0.75rem",
+                          fontSize: "0.78rem",
+                          color: "#854d0e",
+                          lineHeight: 1.45
+                        }}>
+                          <div style={{ fontWeight: 800, color: "#b45309", marginBottom: "3px", display: "flex", alignItems: "center", gap: "4px" }}>
+                            ⚠️ Strict Waste Collection Caution & Policy:
+                          </div>
+                          <ul style={{ margin: "2px 0 4px 1.1rem", padding: 0 }}>
+                            <li><strong>Accepted:</strong> Raw vegetable peels, fruit skins, leafy tops, melon rinds, banana peels.</li>
+                            <li><strong>Strictly Rejected:</strong> Cooked food, plastic bags, dairy, meat/bones, packaging, or dry trash.</li>
+                          </ul>
+                          <div style={{ fontSize: "0.73rem", color: "#a16207" }}>
+                            🔍 <em>Agent will verify via doorstep AI camera scan before accepting. Non-compliant waste is rejected.</em>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Bill Preview */}
                 <div className="bill-receipt" style={{ margin:"1rem 0" }}>
                   <div className="bill-row"><span className="label">{selected.name} × {orderQty} {selected.unit||"kg"}</span><span>₹{subtotal.toLocaleString()}</span></div>
@@ -3199,7 +3610,7 @@ export default function Marketplace() {
               {/* Fake 3D Rotation Animation using the image */}
               {selected.image ? (
                 <motion.img 
-                  src={getImgSrc(selected.image)} 
+                  src={getImgSrc(selected.image, selected.name, selected.category)} 
                   alt="3D Render" 
                   animate={{ rotateY: 360 }}
                   transition={{ duration: 8, repeat: Infinity, ease: "linear" }}

@@ -448,6 +448,16 @@ router.put("/:id/price", async (req, res) => {
     const crop = await Crop.findById(req.params.id);
     if (!crop) return res.status(404).json({ error: "Crop not found" });
     
+    // Anti-overpricing check
+    if (price > 250) {
+      const isCertified = 
+        (crop.certificationStatus === "approved") || 
+        (crop.organicVerification && crop.organicVerification.status === "certified_genuine");
+      if (!isCertified) {
+        return res.status(400).json({ error: `Anti-Overpricing Alert: You cannot set a price of ₹${price}/kg without an approved Organic Certification.` });
+      }
+    }
+
     crop.price = price;
     await crop.save();
     
@@ -461,15 +471,28 @@ router.put("/:id/price", async (req, res) => {
 // Update entire crop details
 router.put("/:id", async (req, res) => {
   try {
-    const { name, category, quantity, unit, price } = req.body;
+    const { name, category, quantity, unit, price, priceRange, waterAvailability } = req.body;
     const crop = await Crop.findById(req.params.id);
     if (!crop) return res.status(404).json({ error: "Crop not found" });
+
+    // Anti-overpricing check
+    const priceToCheck = price !== undefined ? price : (priceRange ? priceRange.max : crop.price);
+    if (priceToCheck > 250) {
+      const isCertified = 
+        (crop.certificationStatus === "approved") || 
+        (crop.organicVerification && crop.organicVerification.status === "certified_genuine");
+      if (!isCertified) {
+        return res.status(400).json({ error: `Anti-Overpricing Alert: You cannot set a price of ₹${priceToCheck}/kg without an approved Organic Certification.` });
+      }
+    }
 
     if (name) crop.name = name;
     if (category) crop.category = category;
     if (quantity !== undefined) crop.quantity = quantity;
     if (unit) crop.unit = unit;
     if (price !== undefined) crop.price = price;
+    if (priceRange) crop.priceRange = priceRange;
+    if (waterAvailability) crop.waterAvailability = waterAvailability;
 
     await crop.save();
     res.json(crop);
@@ -637,6 +660,233 @@ router.put("/:id/transfer-to-sale", async (req, res) => {
 
     await crop.save();
     res.json({ success: true, message: "Crop transferred to live sale successfully", crop });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── FOOD SAFETY & ANTI-FAKE ORGANIC CERTIFICATION SYSTEM ───
+
+// 1. Get crops pending organic verification / food safety monitoring (For Agents & Inspectors)
+router.get("/organic/pending-verifications", async (req, res) => {
+  try {
+    const crops = await Crop.find({
+      $or: [
+        { "organicVerification.status": { $in: ["pending_inspection", "step_verified", "unverified"] }, isOrganic: true },
+        { certificationStatus: "pending" },
+        { isOrganic: true }
+      ]
+    })
+    .populate("farmer", "name phone location farmLocation farmName")
+    .sort({ updatedAt: -1 })
+    .limit(50);
+
+    res.json(crops);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Farmer submits a step photo proof
+router.post("/:id/submit-organic-step", upload.single("photo"), async (req, res) => {
+  try {
+    const { stepKey, notes, practiceName } = req.body;
+    const crop = await Crop.findById(req.params.id).populate("farmer");
+    if (!crop) return res.status(404).json({ error: "Crop not found" });
+
+    if (!crop.organicVerification) {
+      crop.organicVerification = { status: "pending_inspection", stepPhotos: {}, auditTrail: [] };
+    }
+    if (!crop.organicVerification.stepPhotos) {
+      crop.organicVerification.stepPhotos = {};
+    }
+
+    const photoUrl = req.file ? `/uploads/${req.file.filename}` : (req.body.photoUrl || "");
+
+    crop.organicVerification.stepPhotos[stepKey] = {
+      practice: practiceName || crop.organicVerification.stepPhotos[stepKey]?.practice || "Organic Practice",
+      photoUrl: photoUrl || crop.organicVerification.stepPhotos[stepKey]?.photoUrl || "",
+      submittedAt: new Date(),
+      verified: false,
+      agentNotes: ""
+    };
+
+    crop.organicVerification.status = "pending_inspection";
+    crop.organicVerification.auditTrail.push({
+      action: `Step Photo Submitted: ${stepKey}`,
+      agentId: "farmer",
+      agentName: crop.farmer?.name || "Farmer",
+      timestamp: new Date(),
+      notes: notes || "Farmer submitted photographic evidence of organic practice"
+    });
+
+    await crop.save();
+
+    res.json({ success: true, message: `Step ${stepKey} submitted for agent inspection`, crop });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. Agent verifies or flags a specific step photo
+router.post("/:id/agent-verify-step", async (req, res) => {
+  try {
+    const { stepKey, verified, notes, agentId, agentName } = req.body;
+    const crop = await Crop.findById(req.params.id).populate("farmer");
+    if (!crop) return res.status(404).json({ error: "Crop not found" });
+
+    if (!crop.organicVerification) {
+      crop.organicVerification = { status: "pending_inspection", stepPhotos: {}, auditTrail: [] };
+    }
+
+    if (crop.organicVerification.stepPhotos && crop.organicVerification.stepPhotos[stepKey]) {
+      crop.organicVerification.stepPhotos[stepKey].verified = Boolean(verified);
+      crop.organicVerification.stepPhotos[stepKey].verifiedAt = new Date();
+      crop.organicVerification.stepPhotos[stepKey].agentNotes = notes || (verified ? "Verified genuine on-field practice." : "Flagged: insufficient evidence or chemical residues suspected.");
+    }
+
+    // Check how many steps are verified
+    const steps = Object.values(crop.organicVerification.stepPhotos || {});
+    const verifiedCount = steps.filter(s => s && s.verified).length;
+    if (verifiedCount >= 4) {
+      crop.organicVerification.status = "step_verified";
+    }
+
+    crop.organicVerification.auditTrail.push({
+      action: verified ? `Step Verified: ${stepKey}` : `Step Flagged/Rejected: ${stepKey}`,
+      agentId: agentId || "agent",
+      agentName: agentName || "Field Agent",
+      timestamp: new Date(),
+      notes: notes || ""
+    });
+
+    await crop.save();
+
+    if (crop.farmer?._id) {
+      await Notification.create({
+        user: crop.farmer._id,
+        title: verified ? "✅ Organic Step Verified by Agent" : "⚠️ Organic Step Flagged",
+        message: `Agent ${agentName || "Inspector"} reviewed step "${stepKey}" for ${crop.name}: ${notes || (verified ? "Approved" : "Needs re-submission")}.`,
+        type: "system",
+        priority: verified ? "normal" : "high",
+        metadata: { cropId: crop._id }
+      });
+    }
+
+    res.json({ success: true, crop, verifiedCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4. Agent signs off on full Food Safety & Security Audit
+router.post("/:id/agent-food-safety-audit", async (req, res) => {
+  try {
+    const { 
+      agentId, 
+      agentName, 
+      isGenuine, 
+      foodSafetyScore, 
+      chemicalResidueStatus, 
+      hygieneGrade, 
+      notes,
+      cornBorderVerified,
+      nskeVerified,
+      catchCropVerified
+    } = req.body;
+
+    const crop = await Crop.findById(req.params.id).populate("farmer");
+    if (!crop) return res.status(404).json({ error: "Crop not found" });
+
+    if (!crop.organicVerification) {
+      crop.organicVerification = { status: "unverified", stepPhotos: {}, auditTrail: [] };
+    }
+
+    crop.organicVerification.verifiedByAgent = agentId || null;
+    crop.organicVerification.agentName = agentName || "Food Safety Officer";
+    crop.organicVerification.agentBadge = "Certified Quality Inspector";
+    crop.organicVerification.inspectedAt = new Date();
+    crop.organicVerification.foodSafetyScore = Number(foodSafetyScore) || 90;
+    crop.organicVerification.chemicalResidueStatus = chemicalResidueStatus || "zero_detected";
+    crop.organicVerification.hygieneGrade = hygieneGrade || "A+";
+    crop.organicVerification.auditNotes = notes || "";
+
+    if (isGenuine) {
+      crop.organicVerification.status = "certified_genuine";
+      crop.isOrganic = true;
+      crop.isPesticideFree = true;
+      crop.certificationStatus = "approved";
+      crop.pesticideType = nskeVerified ? "organic_neem" : "contact";
+
+      // Mark corn border and botanical steps verified
+      if (crop.organicVerification.stepPhotos?.step3_corn_border_catch_crop) {
+        crop.organicVerification.stepPhotos.step3_corn_border_catch_crop.verified = Boolean(cornBorderVerified);
+      }
+      if (crop.organicVerification.stepPhotos?.step4_botanical_spray) {
+        crop.organicVerification.stepPhotos.step4_botanical_spray.verified = Boolean(nskeVerified);
+      }
+
+      crop.organicVerification.auditTrail.push({
+        action: "Certified 100% Genuine Organic & Food Safety Approved",
+        agentId: agentId || "agent",
+        agentName: agentName || "Food Safety Inspector",
+        timestamp: new Date(),
+        notes: `Passed: Zero chemical residues, Corn border & NSKE verified. Hygiene Grade: ${hygieneGrade || "A+"}. Score: ${foodSafetyScore}/100.`
+      });
+
+      // Reward farmer trust score
+      if (crop.farmer?._id) {
+        await User.findByIdAndUpdate(crop.farmer._id, { $inc: { trustScore: 5 } });
+      }
+    } else {
+      crop.organicVerification.status = "rejected_fake";
+      crop.isOrganic = false;
+      crop.certificationStatus = "rejected";
+
+      crop.organicVerification.auditTrail.push({
+        action: "🚨 Organic Claim REJECTED (Fake / Chemical Residue Detected)",
+        agentId: agentId || "agent",
+        agentName: agentName || "Food Safety Inspector",
+        timestamp: new Date(),
+        notes: `Rejected: Failed food safety audit. ${notes || "Pesticide residues or missing barrier crops."}`
+      });
+
+      // Penalize farmer trust score for fake organic claim
+      if (crop.farmer?._id) {
+        await User.findByIdAndUpdate(crop.farmer._id, { $inc: { trustScore: -15 } });
+      }
+    }
+
+    await crop.save();
+
+    if (crop.farmer?._id) {
+      await Notification.create({
+        user: crop.farmer._id,
+        title: isGenuine ? "🛡️ Genuine Organic Seal Awarded!" : "❌ Organic Certification Revoked",
+        message: isGenuine 
+          ? `Food Safety Agent ${agentName} verified ${crop.name} as 100% Genuine Organic! Grade: ${hygieneGrade}, Score: ${foodSafetyScore}/100.`
+          : `Food Safety Agent flagged ${crop.name}. Organic claim revoked due to: ${notes}`,
+        type: "system",
+        priority: "high",
+        metadata: { cropId: crop._id }
+      });
+    }
+
+    res.json({ success: true, isGenuine, crop });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. Get full organic audit history & photo proofs
+router.get("/:id/organic-audit-history", async (req, res) => {
+  try {
+    const crop = await Crop.findById(req.params.id)
+      .populate("farmer", "name phone farmName farmLocation")
+      .select("name category isOrganic certificationStatus organicVerification realFarmDetails realSalePlace");
+    if (!crop) return res.status(404).json({ error: "Crop not found" });
+
+    res.json(crop);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

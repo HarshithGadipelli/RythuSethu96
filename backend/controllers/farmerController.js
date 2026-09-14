@@ -20,6 +20,32 @@ export const addCrop = async (req, res) => {
     if (!cropData.farmer && req.user) {
       cropData.farmer = req.user._id;
     }
+    
+    // Parse price range if provided
+    if (cropData.priceRangeMin !== undefined) {
+      cropData.priceRange = {
+        min: Number(cropData.priceRangeMin),
+        max: Number(cropData.priceRangeMax)
+      };
+      delete cropData.priceRangeMin;
+      delete cropData.priceRangeMax;
+    }
+
+    // Anti-Overpricing Logic:
+    // Restrict extreme prices unless the crop is officially certified organic.
+    const priceToCheck = cropData.price || (cropData.priceRange ? cropData.priceRange.max : 0);
+    if (priceToCheck > 250) {
+      // If price is very high, check certification
+      const isCertified = 
+        (cropData.certificationStatus === "approved") || 
+        (cropData.organicVerification && cropData.organicVerification.status === "certified_genuine");
+        
+      if (!isCertified) {
+        return res.status(400).json({
+          error: `Anti-Overpricing Alert: You cannot list a crop at ₹${priceToCheck}/kg without an approved Organic Certification. Please get certified first to unlock premium pricing.`
+        });
+      }
+    }
 
     if (req.file) {
       try {
@@ -32,34 +58,70 @@ export const addCrop = async (req, res) => {
       const clean = ((cropData.name || "") + " " + (cropData.category || "")).toLowerCase();
       if (clean.includes("rice") || clean.includes("sona") || clean.includes("bpt") || clean.includes("paddy")) {
         cropData.image = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("wheat") || clean.includes("gehu") || clean.includes("godhuma")) {
+        cropData.image = "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("corn") || clean.includes("maize") || clean.includes("makka")) {
+        cropData.image = "https://images.unsplash.com/photo-1551754655-cd27e38d2076?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("millet") || clean.includes("korralu") || clean.includes("ragi") || clean.includes("jowar") || clean.includes("bajra")) {
+        cropData.image = "https://images.unsplash.com/photo-1607672632458-9eb56696346b?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("toor") || clean.includes("kandi") || clean.includes("arhar") || clean.includes("dal")) {
+        cropData.image = "https://images.unsplash.com/photo-1585994192701-f1a505c8574a?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("moong") || clean.includes("pesalu")) {
+        cropData.image = "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("chana") || clean.includes("chickpea") || clean.includes("senagalu")) {
+        cropData.image = "https://images.unsplash.com/photo-1515543237350-b3eea1ec8082?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("groundnut") || clean.includes("peanut") || clean.includes("palli")) {
+        cropData.image = "https://images.unsplash.com/photo-1567892328122-3daec166d15b?w=600&auto=format&fit=crop&q=80";
       } else if (clean.includes("onion") || clean.includes("ullipaya")) {
         cropData.image = "https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=600&auto=format&fit=crop&q=80";
       } else if (clean.includes("tomato") || clean.includes("tamota")) {
         cropData.image = "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&auto=format&fit=crop&q=80";
       } else if (clean.includes("potato") || clean.includes("aalu")) {
         cropData.image = "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=600&auto=format&fit=crop&q=80";
-      } else if (clean.includes("mango") || clean.includes("mamidi")) {
-        cropData.image = "https://images.unsplash.com/photo-1553279768-865429fa0078?w=600&auto=format&fit=crop&q=80";
-      } else if (clean.includes("banana") || clean.includes("arati")) {
-        cropData.image = "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=600&auto=format&fit=crop&q=80";
       } else if (clean.includes("spinach") || clean.includes("palak")) {
         cropData.image = "https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("brinjal") || clean.includes("eggplant") || clean.includes("vankaya")) {
+        cropData.image = "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("bhindi") || clean.includes("ladyfinger") || clean.includes("okra") || clean.includes("bendakaya")) {
+        cropData.image = "https://images.unsplash.com/photo-1425543103986-22abb7d7e8d2?w=600&auto=format&fit=crop&q=80";
       } else if (clean.includes("cabbage")) {
         cropData.image = "https://images.unsplash.com/photo-1594282486552-05b4d80fbb9f?w=600&auto=format&fit=crop&q=80";
       } else if (clean.includes("cauliflower")) {
         cropData.image = "https://images.unsplash.com/photo-1568584711075-3d021a7c3ca3?w=600&auto=format&fit=crop&q=80";
-      } else if (clean.includes("turmeric") || clean.includes("pasupu")) {
-        cropData.image = "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("turmeric") || clean.includes("pasupu") || clean.includes("haldi")) {
+        cropData.image = "https://images.unsplash.com/photo-1615485500704-8e990f9900f7?w=600&auto=format&fit=crop&q=80";
       } else if (clean.includes("chilli") || clean.includes("mirchi")) {
         cropData.image = "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=600&auto=format&fit=crop&q=80";
-      } else if (clean.includes("soya")) {
-        cropData.image = "https://images.unsplash.com/photo-1515543904379-3d757abe9981?w=600&auto=format&fit=crop&q=80";
-      } else if (clean.includes("carrot")) {
+      } else if (clean.includes("soya") || clean.includes("soybean")) {
+        cropData.image = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("carrot") || clean.includes("gajar")) {
         cropData.image = "https://images.unsplash.com/photo-1598170845058-12ef4a457939?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("mango") || clean.includes("mamidi")) {
+        cropData.image = "https://images.unsplash.com/photo-1553279768-865429fa0078?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("banana") || clean.includes("arati")) {
+        cropData.image = "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("pomegranate") || clean.includes("danimma") || clean.includes("anar")) {
+        cropData.image = "https://images.unsplash.com/photo-1541344999736-83eca272f6fc?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("ghee") || clean.includes("neyi")) {
+        cropData.image = "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("honey") || clean.includes("thene")) {
+        cropData.image = "https://images.unsplash.com/photo-1587049352847-81a56d773cae?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("jaggery") || clean.includes("bellam")) {
+        cropData.image = "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("oil") || clean.includes("nune")) {
+        cropData.image = "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("cotton") || clean.includes("patti")) {
+        cropData.image = "https://images.unsplash.com/photo-1606041008023-472dfb5e530f?w=600&auto=format&fit=crop&q=80";
+      } else if (clean.includes("sugarcane") || clean.includes("cheruku")) {
+        cropData.image = "https://images.unsplash.com/photo-1596753392437-05c8733230c1?w=600&auto=format&fit=crop&q=80";
       } else if (cropData.category === "fruit") {
         cropData.image = "https://images.unsplash.com/photo-1553279768-865429fa0078?w=600&auto=format&fit=crop&q=80";
       } else if (cropData.category === "grain") {
         cropData.image = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80";
+      } else if (cropData.category === "pulse") {
+        cropData.image = "https://images.unsplash.com/photo-1585994192701-f1a505c8574a?w=600&auto=format&fit=crop&q=80";
+      } else if (cropData.category === "spice") {
+        cropData.image = "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=600&auto=format&fit=crop&q=80";
       } else if (cropData.category === "vegetable") {
         cropData.image = "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&auto=format&fit=crop&q=80";
       } else {

@@ -6,7 +6,7 @@ import { useLayout } from "../context/LayoutContext";
 import { useCart } from "../context/CartContext";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, ShoppingBag, Leaf, Truck, Shield, LogOut, User, Bell, Headphones, Volume2, VolumeX, ShoppingCart, MapPin, Smartphone, Tablet, Monitor, Laptop, Globe } from "lucide-react";
+import { Home, ShoppingBag, Leaf, Truck, Shield, LogOut, User, Bell, Headphones, Volume2, VolumeX, ShoppingCart, MapPin, Smartphone, Tablet, Monitor, Laptop, Globe, Package } from "lucide-react";
 import API from "../api/api";
 import { io } from "socket.io-client";
 import { createPortal } from "react-dom";
@@ -14,6 +14,7 @@ import { toggleNatureSound, toggleKrishnaFlute, getNatureSoundStatus, stopAllNat
 
 import CartSidebar from "./CartSidebar";
 import LocationUpdateModal from "./LocationUpdateModal";
+import TrustScoreModal from "./TrustScoreModal";
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { lang, changeLang, t } = useLang();
@@ -65,6 +66,7 @@ export default function Navbar() {
 
   // Universal Location States
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showTrustModal, setShowTrustModal] = useState(false);
   const [currentLocText, setCurrentLocText] = useState("");
 
   useEffect(() => {
@@ -99,8 +101,16 @@ export default function Navbar() {
   const handleNatureToggle = () => {
     if (natureAudioInfo.isPlaying) {
       stopAllNatureAudio();
+      if (isAnnouncerActive) {
+        setIsAnnouncerActive(false);
+        window.dispatchEvent(new CustomEvent("market_announcer_toggle", { detail: { isActive: false } }));
+      }
     } else {
       toggleNatureSound(true);
+      if (!isAnnouncerActive) {
+        setIsAnnouncerActive(true);
+        window.dispatchEvent(new CustomEvent("market_announcer_toggle", { detail: { isActive: true } }));
+      }
     }
   };
 
@@ -269,15 +279,10 @@ export default function Navbar() {
           </button>
         </li>
         <li>
-          <button className="icon-btn" onClick={handleAnnouncerToggle} title="Market Voices">
-            {isAnnouncerActive ? <span style={{fontSize:"1.1rem"}}>🗣️</span> : <span style={{fontSize:"1.1rem", filter:"grayscale(1) opacity(0.5)"}}>🗣️</span>}
-          </button>
-        </li>
-        <li>
           <button 
             className={`icon-btn ${natureAudioInfo.isPlaying ? "nature-sound-active" : ""}`} 
             onClick={handleNatureToggle} 
-            title={`Nature Sound: ${natureAudioInfo.label} (Click to ${natureAudioInfo.isPlaying ? "Mute" : "Play"})`}
+            title={`Ambient Farm & Market Sounds (Click to ${natureAudioInfo.isPlaying ? "Mute" : "Play"})`}
             style={{ position: "relative" }}
           >
             <span style={{ fontSize: "1.1rem", filter: natureAudioInfo.isPlaying ? "none" : "grayscale(1) opacity(0.5)" }}>
@@ -332,6 +337,31 @@ export default function Navbar() {
         </li>
         {user ? (
           <>
+            <li>
+              <button
+                type="button"
+                onClick={() => setShowTrustModal(true)}
+                style={{
+                  background: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
+                  border: "1.5px solid #86efac",
+                  color: "#166534",
+                  padding: "0.3rem 0.75rem",
+                  borderRadius: "100px",
+                  fontSize: "0.78rem",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  boxShadow: "0 2px 6px rgba(22, 163, 74, 0.15)"
+                }}
+                title="Click to view full Trust Score breakdown & audit"
+              >
+                <span>🛡️</span>
+                <span>Trust: {user.trustScore || 85}%</span>
+                {user.rewardPoints > 0 && <span>• 🪙 {user.rewardPoints} Pts</span>}
+              </button>
+            </li>
             {user.role === "agent" && user.experiencePoints > 0 && (
               <li>
                 <span className="rewards-badge" style={{ padding: "0.3rem 0.8rem", fontSize: "0.8rem" }}>⭐ {user.experiencePoints} XP</span>
@@ -445,6 +475,15 @@ export default function Navbar() {
               </button>
             </li>
 
+            {user.role === 'customer' && (
+              <li>
+                <Link to="/my-orders" style={{ textDecoration: 'none' }}>
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-secondary" style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem", color: "var(--green-deep)", borderColor: "var(--green-pale)", background: "rgba(34,197,94,0.05)" }}>
+                    <Package size={16} /> Orders & Boxes
+                  </motion.button>
+                </Link>
+              </li>
+            )}
             <li>
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-secondary" onClick={() => setShowSettings(true)} style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem", color: "var(--text-dark)", borderColor: "#e2e8f0" }}>
                 <User size={16} /> Profile
@@ -691,6 +730,12 @@ export default function Navbar() {
 
       <CartSidebar />
       <LocationUpdateModal isOpen={showLocationModal} onClose={() => setShowLocationModal(false)} />
+      <TrustScoreModal
+        userId={user?._id}
+        userRole={user?.role}
+        isOpen={showTrustModal}
+        onClose={() => setShowTrustModal(false)}
+      />
     </nav>
   );
 }

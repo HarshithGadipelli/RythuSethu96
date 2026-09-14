@@ -5,6 +5,7 @@ import API, { BASE_URL } from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { MapPin, ArrowLeft, Calendar, Users, Tractor, CheckCircle2, Star, ShieldCheck, Play, Sparkles, Clock, Compass, PhoneCall } from "lucide-react";
 import PaymentModal from "../../components/PaymentModal";
+import { getImgSrc } from "./Marketplace";
 
 const FALLBACK_FARM_IMAGES = [
   "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=800&q=80",
@@ -384,7 +385,7 @@ export default function CustomerOfflineTours({ isEmbedded = false }) {
                       src={c.farmTourVideo?.startsWith("http") ? c.farmTourVideo : `${BASE_URL}${c.farmTourVideo}`}
                       controls
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      poster={c.image ? (c.image.startsWith("http") ? c.image : `${BASE_URL}${c.image}`) : null}
+                      poster={getImgSrc(c.image, c.name, c.category)}
                     />
                   )}
                   {c.isOrganic && (

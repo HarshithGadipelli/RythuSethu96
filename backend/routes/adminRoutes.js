@@ -9,7 +9,7 @@ import Notification from "../models/Notification.js";
 import GlobalConfig from "../models/GlobalConfig.js";
 import Settlement from "../models/Settlement.js";
 import { 
-  getLiveStockAnalysis, getClearanceStock, updateClearancePrice, broadcastPromotion,
+  getLiveStockAnalysis, broadcastStockAdvisory, getClearanceStock, updateClearancePrice, broadcastPromotion,
   getWasteManagement, approveWasteRequest, sellBiogas
 } from "../controllers/adminController.js";
 
@@ -94,6 +94,7 @@ router.put("/users/:id/role", async (req, res) => {
 
 // ─── CROPS MANAGEMENT ───
 router.get("/stock-analysis", getLiveStockAnalysis);
+router.post("/stock-advisory/broadcast", broadcastStockAdvisory);
 router.get("/clearance", getClearanceStock);
 router.put("/clearance/:id/price", updateClearancePrice);
 router.post("/broadcast", broadcastPromotion);

@@ -21,10 +21,14 @@ const runPythonScript = async (endpoint, payload) => {
 
 export const suggestCrop = async (req, res) => {
   try {
-    const { temp, hum, rain, soil, location } = req.body;
+    const { temp, hum, rain, soil, location, waterAvailability, region } = req.body;
     if (temp === undefined || temp === null || hum === undefined || hum === null || rain === undefined || rain === null) return res.status(400).json({ error: "Missing temp, hum, or rain" });
 
-    let result = await getGeminiCropSuggestion({ temp, hum, rain }, soil || "loamy", location || "India");
+    // Use waterAvailability and region in the Gemini prompt
+    const waterContext = waterAvailability ? `, with ${waterAvailability} water availability` : "";
+    const locStr = (region || location || "India") + waterContext;
+
+    let result = await getGeminiCropSuggestion({ temp, hum, rain }, soil || "loamy", locStr);
     if (!result) {
       result = await suggestAdvancedCrop(temp, hum, rain);
     }
@@ -56,10 +60,11 @@ export const analyzeNutrition = async (req, res) => {
 
 export const farmerSuggestions = async (req, res) => {
   try {
-    const { crop, soil, location, stage } = req.body;
+    const { crop, soil, location, stage, waterAvailability } = req.body;
     if (!crop || !soil) return res.status(400).json({ error: "Missing crop or soil" });
     
-    let result = await getGeminiFarmerTips(crop, soil, location, stage);
+    const waterContext = waterAvailability ? `, and ${waterAvailability} water availability` : "";
+    let result = await getGeminiFarmerTips(crop, soil, (location || "") + waterContext, stage);
     if (result) return res.json(result);
     
     const locNote = location ? ` based on your location: ${location}` : "";

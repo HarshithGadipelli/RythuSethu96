@@ -24,6 +24,8 @@ export default function CartSidebar() {
   const [showOnlinePaymentModal, setShowOnlinePaymentModal] = useState(false);
   const [isMultiLocation, setIsMultiLocation] = useState(false);
   const [itemAddresses, setItemAddresses] = useState({});
+  const [hasWetWasteDonation, setHasWetWasteDonation] = useState(false);
+  const [wetWasteEstKg, setWetWasteEstKg] = useState(2);
   const [viewportHeight, setViewportHeight] = React.useState(window.innerHeight);
 
   React.useEffect(() => {
@@ -82,7 +84,9 @@ export default function CartSidebar() {
       const res = await API.post("/orders/checkout-multi", { 
         items: orderItems,
         customer: user._id,
-        paymentMode: payMethod
+        paymentMode: payMethod,
+        hasWetWasteDonation,
+        wetWasteEstKg: hasWetWasteDonation ? Number(wetWasteEstKg) : 0
       });
       
       setPlacedOrderDetails({
@@ -114,14 +118,17 @@ export default function CartSidebar() {
         <div 
           onClick={() => setIsCartOpen(true)}
           style={{
-            position: "fixed", bottom: "24px", right: "24px", zIndex: 99990,
-            background: "linear-gradient(135deg, #15803d, #166534)", color: "white",
-            borderRadius: "50px", padding: "12px 20px",
+            position: "fixed", bottom: "30px", right: "30px", zIndex: 99990,
+            background: "linear-gradient(135deg, #16a34a, #15803d)", color: "white",
+            borderRadius: "50px", padding: "14px 24px",
             display: "flex", alignItems: "center", gap: "12px",
-            boxShadow: "0 10px 25px -3px rgba(21,128,61,0.5)", cursor: "pointer",
-            border: "2px solid #86efac", transition: "transform 0.2s ease",
+            boxShadow: "0 12px 30px rgba(21,128,61,0.4)", cursor: "pointer",
+            border: "1px solid rgba(255,255,255,0.2)", transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+            backdropFilter: "blur(8px)"
           }}
           className="hover-scale"
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1) translateY(0)'}
           title="Click to view cart & checkout"
         >
           <div style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: "700", fontSize: "0.95rem" }}>
@@ -146,21 +153,24 @@ export default function CartSidebar() {
           <div 
             style={{
               position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-              background: "rgba(0,0,0,0.5)", zIndex: 999998,
-              backdropFilter: "blur(2px)"
+              background: "rgba(15, 23, 42, 0.4)", zIndex: 999998,
+              backdropFilter: "blur(5px)",
+              animation: "fadeIn 0.3s ease-out"
             }}
             onClick={() => setIsCartOpen(false)}
           />
           <div style={{
-            position: "fixed", top: 0, right: 0, width: "100%", maxWidth: "440px",
-            height: `${viewportHeight}px`, /* Perfect DOM viewport height */
-            background: "white", zIndex: 999999, boxShadow: "-5px 0 25px rgba(0,0,0,0.15)",
+            position: "fixed", top: 0, right: 0, width: "100%", maxWidth: "450px",
+            height: `${viewportHeight}px`,
+            background: "rgba(255, 255, 255, 0.95)", zIndex: 999999, 
+            boxShadow: "-10px 0 30px rgba(0,0,0,0.1)",
+            backdropFilter: "blur(12px)",
             display: "flex", flexDirection: "column",
             transform: isCartOpen ? "translateX(0)" : "translateX(100%)",
-            transition: "transform 0.3s ease-in-out"
+            transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)"
           }}>
-            {/* Ultra-Compact Header & Multi-Location Toggle */}
-            <div style={{ padding: "0.75rem 1rem", background: "var(--green-main)", color: "white", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+            {/* Premium Header & Multi-Location Toggle */}
+            <div style={{ padding: "1rem 1.25rem", background: "linear-gradient(135deg, #065f46, #047857)", color: "white", display: "flex", flexDirection: "column", gap: "0.6rem", borderBottomLeftRadius: "12px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h2 style={{ display: "flex", alignItems: "center", gap: "0.4rem", margin: 0, fontSize: "1.05rem" }}>
                   <ShoppingCart size={18} /> Cart {cart.length > 0 && `(${cart.length})`}
@@ -182,7 +192,7 @@ export default function CartSidebar() {
             </div>
 
             {/* Cart Items */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "0.6rem", background: "#f8fafc", minHeight: 0 }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: "1rem", background: "transparent", minHeight: 0 }}>
               {cart.length === 0 ? (
                 <div style={{ textAlign: "center", color: "#888", marginTop: "3rem" }}>
                   <ShoppingCart size={40} style={{ opacity: 0.2, margin: "0 auto 0.5rem" }} />
@@ -198,9 +208,17 @@ export default function CartSidebar() {
                     const imgSrc = getImgSrc(crop.image, crop.name, crop.category);
 
                     return (
-                      <div key={idx} style={{ display: "flex", flexDirection: "column", padding: "0.5rem", borderRadius: "8px", background: "white", border: "1px solid #e2e8f0" }}>
-                        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                          <div style={{ width: "45px", height: "45px", borderRadius: "6px", overflow: "hidden", background: "#f1f5f9", flexShrink: 0 }}>
+                      <div key={idx} style={{ 
+                        display: "flex", flexDirection: "column", padding: "0.8rem", borderRadius: "12px", 
+                        background: "white", border: "1px solid rgba(226, 232, 240, 0.6)", 
+                        boxShadow: "0 4px 15px rgba(0,0,0,0.03)", marginBottom: "0.8rem",
+                        transition: "transform 0.2s ease, box-shadow 0.2s ease"
+                      }} 
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.06)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.03)'; }}
+                      >
+                        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                          <div style={{ width: "55px", height: "55px", borderRadius: "10px", overflow: "hidden", background: "#f1f5f9", flexShrink: 0, boxShadow: "inset 0 0 10px rgba(0,0,0,0.05)" }}>
                             {imgSrc ? (
                               <img src={imgSrc} alt={crop.name || "Crop"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                             ) : (
@@ -260,9 +278,9 @@ export default function CartSidebar() {
               )}
             </div>
 
-            {/* Ultra-Compact Footer */}
+            {/* Premium Footer */}
             {cart.length > 0 && (
-              <div style={{ padding: "0.75rem 1rem", background: "white", borderTop: "1px solid #e2e8f0", boxShadow: "0 -4px 15px rgba(0,0,0,0.03)" }}>
+              <div style={{ padding: "1.25rem", background: "rgba(255, 255, 255, 0.9)", borderTop: "1px solid rgba(226, 232, 240, 0.5)", boxShadow: "0 -10px 30px rgba(0,0,0,0.04)", backdropFilter: "blur(10px)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                     <div style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--green-deep)" }}>
@@ -282,6 +300,37 @@ export default function CartSidebar() {
                       style={{ padding: "3px 8px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 700, border: "none", cursor: "pointer", background: selectedPayMode === "online" ? "#2563eb" : "transparent", color: selectedPayMode === "online" ? "white" : "var(--text-mid)" }}
                     >UPI</button>
                   </div>
+                </div>
+
+                {/* ── Circular Economy Wet Waste Collection ── */}
+                <div style={{
+                  marginBottom: "0.6rem",
+                  padding: "0.5rem 0.6rem",
+                  borderRadius: "8px",
+                  background: hasWetWasteDonation ? "#f0fdf4" : "#f8fafc",
+                  border: hasWetWasteDonation ? "1.5px solid #22c55e" : "1px dashed #cbd5e1"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: "5px", cursor: "pointer", fontSize: "0.75rem", fontWeight: 700, color: "#166534" }}>
+                      <input
+                        type="checkbox"
+                        checked={hasWetWasteDonation}
+                        onChange={(e) => setHasWetWasteDonation(e.target.checked)}
+                        style={{ width: 14, height: 14, accentColor: "#16a34a" }}
+                      />
+                      🌱 Give Kitchen Wet Waste (+15 Pts)
+                    </label>
+                    {hasWetWasteDonation && (
+                      <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "#16a34a", background: "#dcfce7", padding: "1px 6px", borderRadius: "4px" }}>
+                        ~{wetWasteEstKg} kg
+                      </span>
+                    )}
+                  </div>
+                  {hasWetWasteDonation && (
+                    <div style={{ marginTop: "4px", fontSize: "0.68rem", color: "#64748b", lineHeight: 1.3 }}>
+                      <span style={{ color: "#b45309", fontWeight: 700 }}>⚠️ Raw fruit/veggie peels only!</span> Agent carries collection kit and verifies at door before hub return.
+                    </div>
+                  )}
                 </div>
 
                 {error && <div style={{ color: "#ef4444", fontSize: "0.75rem", marginBottom: "0.4rem", textAlign: "center" }}>⚠️ {error}</div>}

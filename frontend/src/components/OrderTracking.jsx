@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
-import { Package, Clock, CheckCircle, Truck, MapPin, Phone, MessageSquare, ShieldCheck, User } from "lucide-react";
+import { Package, Clock, CheckCircle, Truck, MapPin, Phone, MessageSquare, ShieldCheck, User, X, Send, Leaf, AlertCircle, Sparkles, CheckCircle2 } from "lucide-react";
 import L from "leaflet";
 import ReviewModal from "./ReviewModal";
 import OrderInvoiceModal from "./OrderInvoiceModal";
@@ -34,6 +34,24 @@ export default function OrderTracking({ orderId, onClose }) {
   const [loading, setLoading] = useState(!order);
   const [showReview, setShowReview] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [sendingChat, setSendingChat] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
+  const chatBottomRef = useRef(null);
+
+  useEffect(() => {
+    if (order?.chatMessages) {
+      setChatMessages(order.chatMessages);
+    }
+  }, [order]);
+
+  useEffect(() => {
+    if (showChatModal && chatBottomRef.current) {
+      chatBottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatMessages, showChatModal]);
 
   const fetchOrder = async () => {
     if (!actualOrderId) {
@@ -78,8 +96,63 @@ export default function OrderTracking({ orderId, onClose }) {
       }
     });
 
+    socket.on("agent_chat_message", (data) => {
+      if (data.orderId === actualOrderId) {
+        setChatMessages(prev => [...prev, data.message]);
+        if (data.hasWetWasteDonation) {
+          setOrder(prev => prev ? { ...prev, hasWetWasteDonation: true, wetWasteEstKg: data.wetWasteEstKg } : prev);
+        }
+      }
+    });
+
     return () => socket.disconnect();
   }, [actualOrderId]);
+
+  const handleSendChat = async (textToSend, isWasteAlert = false, wetWasteEstKg = 2) => {
+    const text = (textToSend || chatInput).trim();
+    if (!text) return;
+    setSendingChat(true);
+    try {
+      const res = await API.post(`/orders/${actualOrderId}/agent-chat`, {
+        sender: "customer",
+        senderName: order?.customer?.name || "Customer",
+        text,
+        isWasteAlert,
+        wetWasteEstKg
+      });
+      if (res.data?.chatMessages) {
+        setChatMessages(res.data.chatMessages);
+      }
+      setChatInput("");
+      if (isWasteAlert) {
+        setOrder(prev => prev ? ({ ...prev, hasWetWasteDonation: true, wetWasteEstKg }) : prev);
+        setToastMsg("🌱 Pre-delivery wet waste alert sent to rider!");
+        setTimeout(() => setToastMsg(""), 4000);
+      }
+    } catch (err) {
+      console.error("Failed to send chat message:", err);
+    } finally {
+      setSendingChat(false);
+    }
+  };
+
+  const handle1TapShortcut = (presetText, estKg = 2) => {
+    handleSendChat(presetText, true, estKg);
+  };
+
+  const handleAddWasteShortcut = async (estKg = 2) => {
+    try {
+      const res = await API.put(`/orders/${actualOrderId}/add-waste-pickup`, { estKg });
+      if (res.data?.order) {
+        setOrder(res.data.order);
+      }
+      setToastMsg(`🌱 Added ${estKg}kg wet waste pickup! Agent alerted.`);
+      setTimeout(() => setToastMsg(""), 4000);
+      fetchOrder();
+    } catch (err) {
+      console.error("Failed to add waste pickup:", err);
+    }
+  };
 
   if (loading) {
     return (
@@ -213,8 +286,9 @@ export default function OrderTracking({ orderId, onClose }) {
                 </div>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <button 
+                    onClick={() => setShowChatModal(true)}
                     style={{ width: 40, height: 40, borderRadius: "50%", border: "none", background: "#dcfce7", color: "#16a34a", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                    title="Chat with Dabbawala Rider"
+                    title="Chat or Send Wet-Waste Alert to Rider"
                   >
                     <MessageSquare size={18} />
                   </button>
@@ -278,10 +352,65 @@ export default function OrderTracking({ orderId, onClose }) {
           <div style={{ marginTop: "3rem", padding: "1.5rem", background: "#f8fafc", borderRadius: "16px", border: "1px solid #e2e8f0" }}>
             <h4 style={{ margin: "0 0 1rem 0", fontSize: "1rem" }}>Delivery Details</h4>
             <div style={{ fontSize: "0.9rem", color: "#475569", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <div><strong>Items:</strong> {order.items?.[0]?.name} x{order.items?.[0]?.quantity}</div>
+              <div><strong>Items:</strong> {order.items?.[0]?.name || order.productSnapshot?.name || order.crop?.name || "Crop"} x{order.items?.[0]?.quantity || order.quantity}</div>
               <div><strong>Amount:</strong> ₹{order.totalAmount?.toLocaleString()}</div>
               <div><strong>Payment:</strong> <span style={{ textTransform: "uppercase" }}>{order.paymentMode}</span> ({order.paymentStatus})</div>
               <div><strong>Address:</strong> {order.customer?.address || order.deliveryAddress}</div>
+            </div>
+
+            {/* ── Circular Economy Wet-Waste Collection Status Card ── */}
+            <div style={{
+              marginTop: "1.25rem",
+              padding: "1rem",
+              borderRadius: "14px",
+              background: order.hasWetWasteDonation ? "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)" : "#f8fafc",
+              border: order.hasWetWasteDonation ? "1.5px solid #86efac" : "1.5px dashed #cbd5e1"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.4rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Leaf size={18} color="#16a34a" />
+                  <strong style={{ fontSize: "0.92rem", color: "#166534" }}>
+                    {order.hasWetWasteDonation ? "🌱 Wet Waste Pickup Confirmed" : "🌱 Zero-Waste Circular Delivery"}
+                  </strong>
+                </div>
+                <span style={{ fontSize: "0.72rem", background: order.hasWetWasteDonation ? "#16a34a" : "#64748b", color: "white", padding: "2px 8px", borderRadius: "100px", fontWeight: 700 }}>
+                  {order.hasWetWasteDonation ? `~${order.wetWasteEstKg || 2} kg` : "+15 Points"}
+                </span>
+              </div>
+
+              {order.hasWetWasteDonation ? (
+                <div>
+                  <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.8rem", color: "#334155", lineHeight: 1.4 }}>
+                    Your delivery rider is notified to carry an airtight wet-waste collection kit & scale to collect your raw peels simultaneously during delivery, returning them to the <strong>Cold Storage Hub</strong> for vermicompost & biogas.
+                  </p>
+                  <div style={{ background: "#fffbeb", border: "1px solid #fef08a", borderRadius: "8px", padding: "0.5rem 0.75rem", fontSize: "0.75rem", color: "#854d0e" }}>
+                    <strong>⚠️ Reminder:</strong> Only raw vegetable peels and fruit scraps accepted. Rider conducts AI inspection at doorstep.
+                  </div>
+                  <button
+                    onClick={() => setShowChatModal(true)}
+                    style={{ marginTop: "0.6rem", width: "100%", padding: "0.5rem", borderRadius: "8px", border: "1px solid #16a34a", background: "white", color: "#16a34a", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                  >
+                    <MessageSquare size={14} /> Send Note / Chat with Rider
+                  </button>
+                </div>
+              ) : order.status !== "delivered" ? (
+                <div>
+                  <p style={{ margin: "0 0 0.6rem 0", fontSize: "0.8rem", color: "#475569", lineHeight: 1.4 }}>
+                    Have vegetable or fruit peels? The rider will carry a collection kit and take them back to the cold storage hub for farmer compost & biogas generation.
+                  </p>
+                  <button
+                    onClick={() => handleAddWasteShortcut(2)}
+                    style={{
+                      width: "100%", padding: "0.65rem", borderRadius: "8px", border: "none",
+                      background: "linear-gradient(135deg, #16a34a, #15803d)", color: "white",
+                      fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", display: "flex",
+                      alignItems: "center", justifyContent: "center", gap: "6px", boxShadow: "0 2px 8px rgba(22, 163, 74, 0.25)"
+                    }}
+                  >
+                    <Sparkles size={14} /> Inform Rider: I will give Wet Waste (~2kg)
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -302,6 +431,174 @@ export default function OrderTracking({ orderId, onClose }) {
           order={order} 
           onClose={() => setShowInvoice(false)} 
         />
+      )}
+
+      {/* ─── INTERACTIVE RIDER CHAT & 1-TAP WASTE NOTIFICATION MODAL ─── */}
+      {showChatModal && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.65)", backdropFilter: "blur(6px)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100002, padding: "1rem"
+        }}>
+          <div style={{
+            background: "white", borderRadius: "20px", maxWidth: "520px", width: "100%",
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.35)", overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "88vh"
+          }}>
+            {/* Header */}
+            <div style={{ padding: "1rem 1.25rem", background: "linear-gradient(135deg, #166534 0%, #15803d 100%)", color: "white", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>
+                  🚲
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: "1rem" }}>
+                    {order.agent?.name || "Ramesh Kumar (Dabbawala Rider #402)"}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#bbf7d0" }}>
+                    Hyperlocal Carrier • Active on Delivery Route
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <button
+                  onClick={() => window.location.href = `tel:${order.agent?.phone || '9876543210'}`}
+                  style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "white", borderRadius: "50%", width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                  title="Call Rider"
+                >
+                  <Phone size={16} />
+                </button>
+                <button
+                  onClick={() => setShowChatModal(false)}
+                  style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "white", borderRadius: "50%", width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Toast Notification */}
+            {toastMsg && (
+              <div style={{ background: "#dcfce7", color: "#166534", padding: "0.6rem 1rem", fontSize: "0.82rem", fontWeight: 700, textAlign: "center", borderBottom: "1px solid #86efac" }}>
+                {toastMsg}
+              </div>
+            )}
+
+            {/* 1-Tap Waste Alert Shortcuts Bar */}
+            <div style={{ padding: "0.75rem 1rem", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: "0.75rem", fontWeight: 800, color: "#166534", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "0.4rem", display: "flex", alignItems: "center", gap: "4px" }}>
+                <Sparkles size={13} color="#16a34a" /> 1-Tap Waste Pickup Shortcuts:
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                <button
+                  type="button"
+                  onClick={() => handle1TapShortcut("🌱 I have ~2kg fruit & vegetable peels ready for collection upon delivery!", 2)}
+                  style={{ padding: "5px 10px", borderRadius: "100px", border: "1px solid #86efac", background: "#f0fdf4", color: "#166534", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer" }}
+                >
+                  🌱 I have ~2kg Peels Ready
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handle1TapShortcut("📍 Kept segregated organic waste bin outside front door for pickup.", 2)}
+                  style={{ padding: "5px 10px", borderRadius: "100px", border: "1px solid #86efac", background: "#f0fdf4", color: "#166534", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer" }}
+                >
+                  📍 Waste Bin Kept Outside Door
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSendChat("📞 Please call 2 minutes before arriving so I can bring the wet waste.")}
+                  style={{ padding: "5px 10px", borderRadius: "100px", border: "1px solid #cbd5e1", background: "white", color: "#334155", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}
+                >
+                  📞 Call 2 mins before arriving
+                </button>
+              </div>
+            </div>
+
+            {/* Message Thread */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "1rem", display: "flex", flexDirection: "column", gap: "0.75rem", background: "#f1f5f9", minHeight: "220px" }}>
+              {chatMessages.length === 0 ? (
+                <div style={{ textAlign: "center", margin: "auto", color: "#64748b", padding: "1.5rem" }}>
+                  <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>💬</div>
+                  <div style={{ fontWeight: 700, color: "#1e293b", fontSize: "0.95rem" }}>No messages yet</div>
+                  <p style={{ fontSize: "0.8rem", margin: "4px 0 0 0", color: "#64748b" }}>
+                    Use the 1-tap shortcuts above or write to notify your delivery rider about wet-waste collection or delivery instructions.
+                  </p>
+                </div>
+              ) : (
+                chatMessages.map((msg, i) => {
+                  const isCustomer = msg.sender === "customer";
+                  const isSystem = msg.sender === "system";
+
+                  if (isSystem) {
+                    return (
+                      <div key={i} style={{ alignSelf: "center", maxWidth: "90%", background: "#e0f2fe", border: "1px solid #bae6fd", borderRadius: "10px", padding: "0.5rem 0.8rem", textAlign: "center", fontSize: "0.75rem", color: "#0369a1", margin: "0.25rem 0" }}>
+                        {msg.text}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        alignSelf: isCustomer ? "flex-end" : "flex-start",
+                        maxWidth: "80%",
+                        background: isCustomer ? (msg.isWasteAlert ? "#dcfce7" : "#16a34a") : "white",
+                        color: isCustomer ? (msg.isWasteAlert ? "#166534" : "white") : "#1e293b",
+                        padding: "0.65rem 0.9rem",
+                        borderRadius: "14px",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                        border: msg.isWasteAlert ? "1px solid #86efac" : "none"
+                      }}
+                    >
+                      {msg.isWasteAlert && (
+                        <div style={{ fontSize: "0.7rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px", color: "#15803d", marginBottom: "2px" }}>
+                          🌱 Wet Waste Pickup Alert
+                        </div>
+                      )}
+                      <div style={{ fontSize: "0.85rem", lineHeight: 1.4 }}>{msg.text}</div>
+                      <div style={{ fontSize: "0.65rem", marginTop: "3px", textAlign: "right", opacity: 0.75 }}>
+                        {new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={chatBottomRef} />
+            </div>
+
+            {/* Strict Policy Reminder Banner */}
+            <div style={{ background: "#fffbeb", padding: "0.4rem 1rem", borderTop: "1px solid #fef08a", fontSize: "0.72rem", color: "#92400e", textAlign: "center" }}>
+              ⚠️ <strong>Strict Rule:</strong> ONLY raw vegetable & fruit scraps accepted. Cooked food/plastics strictly rejected at doorstep scan.
+            </div>
+
+            {/* Input Bar */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendChat();
+              }}
+              style={{ padding: "0.75rem 1rem", background: "white", borderTop: "1px solid #e2e8f0", display: "flex", gap: "0.5rem" }}
+            >
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Type message to delivery rider..."
+                style={{ flex: 1, padding: "0.65rem 0.9rem", borderRadius: "100px", border: "1px solid #cbd5e1", fontSize: "0.85rem", outline: "none" }}
+              />
+              <button
+                type="submit"
+                disabled={sendingChat || !chatInput.trim()}
+                style={{
+                  background: "#16a34a", color: "white", border: "none", borderRadius: "50%",
+                  width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: (!chatInput.trim() || sendingChat) ? "not-allowed" : "pointer", opacity: (!chatInput.trim() || sendingChat) ? 0.6 : 1
+                }}
+              >
+                <Send size={16} />
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

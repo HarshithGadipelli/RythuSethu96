@@ -137,8 +137,8 @@ const connectDB = async (retries = 5, delay = 2000) => {
       console.log(`🟢 MongoDB Connected Successfully: ${mongoUri.replace(/\/\/[^:]+:[^@]+@/, "//***:***@")}`);
       isConnected = true;
 
-      // Check if DB needs auto-seeding
-      await autoSeedIfEmpty();
+      // Check if DB needs auto-seeding (DISABLED FOR PRODUCTION)
+      // await autoSeedIfEmpty();
       return mongoose.connection;
     } catch (error) {
       console.warn(`⚠️ Connection attempt ${attempt} failed: ${error.message}`);
@@ -181,7 +181,7 @@ const scheduleBackgroundReconnect = (uri) => {
       await mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 });
       console.log("🟢 MongoDB Reconnected Successfully!");
       isConnected = true;
-      await autoSeedIfEmpty();
+      // await autoSeedIfEmpty(); // DISABLED FOR PRODUCTION
       clearInterval(timer);
     } catch (e) {
       // Keep background retry silent

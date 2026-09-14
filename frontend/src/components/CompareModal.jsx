@@ -2,6 +2,7 @@ import React from "react";
 import { X, ShieldCheck, Leaf, Tractor, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import { BASE_URL } from "../api/api";
+import { getImgSrc } from "../pages/Marketplace/Marketplace";
 
 export default function CompareModal({ crops, onClose }) {
   if (!crops || crops.length === 0) return null;
@@ -46,7 +47,7 @@ export default function CompareModal({ crops, onClose }) {
                   <th key={c._id} style={{ padding: "1rem", borderBottom: "2px solid #eee", textAlign: "center", width: `${80/crops.length}%` }}>
                     <div style={{ width: "80px", height: "80px", margin: "0 auto 0.5rem", borderRadius: "8px", overflow: "hidden" }}>
                       <img 
-                        src={c.image ? (c.image.startsWith("http") ? c.image : `${BASE_URL}${c.image}`) : "/placeholder.png"} 
+                        src={getImgSrc(c.image, c.name, c.category)} 
                         alt={c.name}
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
                       />

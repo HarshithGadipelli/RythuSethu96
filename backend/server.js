@@ -35,6 +35,7 @@ import boxRoutes from "./routes/boxRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import translationRoutes from "./routes/translationRoutes.js";
 import soilTestRoutes from "./routes/soilTestRoutes.js";
+import trustScoreRoutes from "./routes/trustScoreRoutes.js";
 
 import { GoogleGenAI } from "@google/genai";
 
@@ -150,6 +151,7 @@ app.use("/api/boxes", boxRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/translate", translationRoutes);
 app.use("/api/soil-test", soilTestRoutes);
+app.use("/api/trust-score", trustScoreRoutes);
 
 app.get("/", (req, res) => {
   res.send("Rythu Jana Sethu Backend Running");

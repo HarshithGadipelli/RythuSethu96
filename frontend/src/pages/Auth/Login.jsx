@@ -4,7 +4,16 @@ import API from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { useLang } from "../../context/LangContext";
 import { useVoiceInput } from "../../utils/useVoiceInput";
-import { playTTS } from "../../utils/voiceParser";
+import { playTTS, stopTTS, VOICE_PROMPTS } from "../../utils/voiceParser";
+
+const BASE_URL = API.defaults?.baseURL || "http://localhost:5000";
+const getSafeAvatarUrl = (url) => {
+  if (!url) return null;
+  if (url.includes("localhost:5000") || url.includes("127.0.0.1:5000")) {
+    return url.replace(/http:\/\/(localhost|127\.0\.0\.1):5000/, BASE_URL);
+  }
+  return url;
+};
 
 export default function Login() {
   const { login } = useAuth();
@@ -249,8 +258,17 @@ export default function Login() {
                       title="Remove profile"
                       style={{ position: "absolute", top: -5, right: -5, background: "#ef4444", color: "white", border: "none", borderRadius: "50%", width: "20px", height: "20px", fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                     >×</button>
-                    <div style={{ width: "42px", height: "42px", borderRadius: "50%", background: "var(--green-pale)", color: "var(--green-deep)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", fontWeight: "bold", marginBottom: "0.35rem", backgroundImage: acc.avatar ? `url(${acc.avatar})` : "none", backgroundSize: "cover", backgroundPosition: "center" }}>
-                      {!acc.avatar && (acc.name ? acc.name.charAt(0).toUpperCase() : "U")}
+                    <div style={{ width: "42px", height: "42px", borderRadius: "50%", background: "var(--green-pale)", color: "var(--green-deep)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", fontWeight: "bold", marginBottom: "0.35rem", position: "relative", overflow: "hidden" }}>
+                      {getSafeAvatarUrl(acc.avatar) ? (
+                        <img 
+                          src={getSafeAvatarUrl(acc.avatar)} 
+                          alt={acc.name}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      ) : (
+                        acc.name ? acc.name.charAt(0).toUpperCase() : "U"
+                      )}
                     </div>
                     <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-dark)", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{acc.name || "User"}</span>
                     <span style={{ fontSize: "0.68rem", color: "var(--text-muted)", textTransform: "capitalize" }}>{acc.role}</span>

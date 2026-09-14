@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import API, { BASE_URL } from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { Play, ArrowLeft, ShieldCheck, MapPin } from "lucide-react";
+import { getImgSrc } from "./Marketplace";
 
 export default function CustomerFarmTours() {
   const { user } = useAuth();
@@ -68,12 +69,12 @@ export default function CustomerFarmTours() {
                     allowFullScreen
                   />
                 ) : (
-                  <video 
-                    src={c.farmTourVideo?.startsWith("http") ? c.farmTourVideo : `${BASE_URL}${c.farmTourVideo}`} 
-                    controls 
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    poster={c.image ? (c.image.startsWith("http") ? c.image : `${BASE_URL}${c.image}`) : null}
-                  />
+                    <video 
+                      src={c.farmTourVideo?.startsWith("http") ? c.farmTourVideo : `${BASE_URL}${c.farmTourVideo}`} 
+                      controls 
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      poster={getImgSrc(c.image, c.name, c.category)}
+                    />
                 )}
                 {c.isOrganic && (
                   <div style={{ position: "absolute", top: "10px", right: "10px", background: "var(--green-deep)", color: "white", padding: "4px 8px", borderRadius: "4px", fontSize: "0.75rem", display: "flex", alignItems: "center", gap: "4px", fontWeight: "bold" }}>

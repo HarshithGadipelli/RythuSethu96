@@ -56,11 +56,16 @@ const deliverySchema = new mongoose.Schema({
   deliveredAt: { type: Date },
   
   // ── Circular Economy / Waste Collection ──
+  customerHasWetWaste: { type: Boolean, default: false },
+  wetWasteEstKg: { type: Number, default: 0 },
+  wetWasteNotes: { type: String, default: "" },
+  agentCarryingWasteKit: { type: Boolean, default: true },
   wasteCollectedKg: { type: Number, default: 0 },
   wastePointsAwarded: { type: Number, default: 0 },
   wastePhoto: { type: String, default: "" },
   wasteScanStatus: { type: String, enum: ["pending", "verified", "rejected"], default: "pending" },
-  wasteDroppedOff: { type: Boolean, default: false }
+  wasteDroppedOff: { type: Boolean, default: false },
+  wasteDestinationHub: { type: String, default: "Central Cold Storage & Vermicompost/Biogas Hub" }
 }, { timestamps: true });
 
 export default mongoose.model("Delivery", deliverySchema);
