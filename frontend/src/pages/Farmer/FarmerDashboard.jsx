@@ -34,6 +34,7 @@ import APMCMandiExplorer from "../../components/APMCMandiExplorer";
 import WeedControlAdvisor from "../../components/WeedControlAdvisor";
 import SelectiveBreedingAdvisor from "../../components/SelectiveBreedingAdvisor";
 import FarmerCropHistory from "./FarmerCropHistory";
+import AddCrop from "./AddCrop";
 
 const CATEGORIES = ["vegetable", "fruit", "grain", "pulse", "spice", "dairy", "other"];
 const SEASONS    = ["kharif","rabi","zaid","perennial"];

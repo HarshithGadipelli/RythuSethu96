@@ -104,21 +104,30 @@ export default function Register() {
     }, { fieldId: field, lang: isEnglishOnly ? "en" : lang });
   };
 
-  // One-shot voice listen that resolves a promise with a timeout
-  const listenOnce = (fieldId, processVal, timeoutMs = 15000) =>
+  // One-shot voice listen that resolves a promise with a timeout and generous pauses
+  const listenOnce = (fieldId, processVal, options = {}) =>
     new Promise((resolve) => {
+      let resolved = false;
+      const timeoutMs = options.timeoutMs || 12000;
+      const stepLang = options.lang || lang;
       const timer = setTimeout(() => {
-        if (typeof stopListening === "function") stopListening(true);
-        resolve("");
+        if (!resolved) {
+          resolved = true;
+          if (typeof stopListening === "function") stopListening(true);
+          resolve("");
+        }
       }, timeoutMs);
       startListening(
         (val) => {
-          clearTimeout(timer);
-          const raw = typeof val === "function" ? val("") : val;
-          const processed = processVal ? processVal(raw) : raw;
-          resolve(processed);
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timer);
+            const raw = typeof val === "function" ? val("") : val;
+            const processed = processVal ? processVal(raw) : raw;
+            resolve(processed || "");
+          }
         },
-        { fieldId, lang }
+        { fieldId, lang: stepLang, silenceDelay: 2200, initialWaitDelay: 8000 }
       );
     });
 
@@ -131,56 +140,96 @@ export default function Register() {
       setAssistantStep("name");
       setAssistantMsg(t("sayName"));
       await playTTS(t("sayName"), lang);
+      await new Promise((r) => setTimeout(r, 600));
       const name = await listenOnce("assistant_name", (v) => v.trim());
-      if (name) setForm((f) => ({ ...f, name }));
+      if (name) {
+        setForm((f) => ({ ...f, name }));
+        setAssistantMsg(`✅ ${name}`);
+        await new Promise((r) => setTimeout(r, 400));
+      }
 
       // Step 2: Phone
       setAssistantStep("phone");
       setAssistantMsg(t("sayPhone"));
       await playTTS(t("sayPhone"), lang);
+      await new Promise((r) => setTimeout(r, 600));
       const phone = await listenOnce("assistant_phone", (v) => parseSpokenSequence(v).replace(/\D/g, "").substring(0, 10));
-      if (phone) setForm((f) => ({ ...f, phone }));
+      if (phone) {
+        setForm((f) => ({ ...f, phone }));
+        setAssistantMsg(`✅ ${phone}`);
+        await new Promise((r) => setTimeout(r, 400));
+      }
 
-      // Step 3: Farm Location
-      setAssistantStep("farmLocation");
-      setAssistantMsg(t("sayFarmLoc"));
-      await playTTS(t("sayFarmLoc"), lang);
-      const farmLocation = await listenOnce("assistant_farmLocation", (v) => v.trim());
-      if (farmLocation) setForm((f) => ({ ...f, farmLocation }));
+      // Step 3: Location / Village (relevant for all users)
+      setAssistantStep("location");
+      const locPrompt = t("sayFarmLoc") || "Please say your village or city name.";
+      setAssistantMsg(locPrompt);
+      await playTTS(locPrompt, lang);
+      await new Promise((r) => setTimeout(r, 600));
+      const loc = await listenOnce("assistant_location", (v) => v.trim());
+      if (loc) {
+        setForm((f) => ({ ...f, location: loc, farmLocation: f.farmLocation || loc }));
+        setAssistantMsg(`✅ ${loc}`);
+        await new Promise((r) => setTimeout(r, 400));
+      }
 
-      // Step 4: Farm Size
-      setAssistantStep("farmSize");
-      setAssistantMsg(t("sayAcres"));
-      await playTTS(t("sayAcres"), lang);
-      const farmSize = await listenOnce("assistant_farmSize", (v) => parseSpokenNumber(v));
-      if (farmSize) setForm((f) => ({ ...f, farmSize }));
+      // Farmer-specific fields
+      if (form.role === "farmer") {
+        setAssistantStep("farmSize");
+        setAssistantMsg(t("sayAcres"));
+        await playTTS(t("sayAcres"), lang);
+        await new Promise((r) => setTimeout(r, 600));
+        const farmSize = await listenOnce("assistant_farmSize", (v) => Math.max(0, parseFloat(parseSpokenNumber(v)) || 0));
+        if (farmSize) {
+          setForm((f) => ({ ...f, farmSize }));
+          setAssistantMsg(`✅ ${farmSize} acres`);
+          await new Promise((r) => setTimeout(r, 400));
+        }
 
-      // Step 5: Experience
-      setAssistantStep("experience");
-      setAssistantMsg(t("sayExp"));
-      await playTTS(t("sayExp"), lang);
-      const experience = await listenOnce("assistant_experience", (v) => parseSpokenNumber(v));
-      if (experience) setForm((f) => ({ ...f, experience }));
+        setAssistantStep("experience");
+        setAssistantMsg(t("sayExp"));
+        await playTTS(t("sayExp"), lang);
+        await new Promise((r) => setTimeout(r, 600));
+        const expRaw = await listenOnce("assistant_experience", (v) => Math.max(0, parseInt(parseSpokenNumber(v), 10) || 0));
+        if (expRaw) {
+          setForm((f) => ({ ...f, experience: expRaw }));
+          setAssistantMsg(`✅ ${expRaw} years`);
+          await new Promise((r) => setTimeout(r, 400));
+        }
+      }
 
-      // Step 6: Email
+      // Step: Email (always English speech recognition)
       setAssistantStep("email");
-      setAssistantMsg(t("guidedStart"));
-      await playTTS(t("guidedStart"), lang);
-      const email = await listenOnce("assistant_email", (v) => v.replace(/\s+/g, "").toLowerCase().replace(/at/g, "@").replace(/dot/g, "."));
-      if (email) setForm((f) => ({ ...f, email }));
+      const emailPrompt = t("guidedStart") || "Please say your email address now.";
+      setAssistantMsg(emailPrompt);
+      await playTTS(emailPrompt, lang);
+      await new Promise((r) => setTimeout(r, 600));
+      const email = await listenOnce("assistant_email", (v) => v.replace(/\s+/g, "").toLowerCase().replace(/at/gi, "@").replace(/dot/gi, "."), { lang: "en" });
+      if (email) {
+        setForm((f) => ({ ...f, email }));
+        setAssistantMsg(`✅ ${email}`);
+        await new Promise((r) => setTimeout(r, 400));
+      }
 
-      // Step 7: Password
+      // Step: Password (always English speech recognition)
       setAssistantStep("password");
-      setAssistantMsg(t("guidedPass"));
-      await playTTS(t("guidedPass"), lang);
-      const password = await listenOnce("assistant_password", (v) => v.replace(/\s+/g, "").toLowerCase());
-      if (password) setForm((f) => ({ ...f, password, confirmPass: password })); // Auto confirm pass for voice
+      const passPrompt = t("guidedPass") || "Now please say your password.";
+      setAssistantMsg(passPrompt);
+      await playTTS(passPrompt, lang);
+      await new Promise((r) => setTimeout(r, 600));
+      const password = await listenOnce("assistant_password", (v) => v.replace(/\s+/g, "").toLowerCase(), { lang: "en" });
+      if (password) {
+        setForm((f) => ({ ...f, password, confirmPass: password }));
+        setAssistantMsg(`✅ Password set`);
+        await new Promise((r) => setTimeout(r, 400));
+      }
 
       setAssistantStep("done");
       setAssistantMsg(t("allDone"));
       await playTTS(t("allDone"), lang);
     } catch (err) {
-      setAssistantMsg("Voice error. Please try again or fill manually.");
+      console.warn("Voice assistant error:", err);
+      setAssistantMsg("Voice assistant finished. Please review details.");
     } finally {
       setAssistantStep("");
       setAssistantRunning(false);
@@ -199,12 +248,23 @@ export default function Register() {
       if (!file) { setAiGuesserActive(false); return; }
       try {
         const fd = new FormData();
+        fd.append("photo", file);
         fd.append("soilPhoto", file);
         fd.append("sampleNotes", "AI photo scan from registration");
-        const res = await API.post("/soil-testing/instant-scan", fd, {
-          headers: { "Content-Type": "multipart/form-data" }
-        });
-        const result = res.data?.analysisResult || res.data;
+        
+        let res;
+        try {
+          res = await API.post("/soil-test/scan-photo", fd, {
+            headers: { "Content-Type": "multipart/form-data" }
+          });
+        } catch (postErr) {
+          // Fallback alias route
+          res = await API.post("/soil-testing/instant-scan", fd, {
+            headers: { "Content-Type": "multipart/form-data" }
+          });
+        }
+
+        const result = res.data?.analysis || res.data?.analysisResult || res.data;
         if (result?.soilType) {
           // Map the detailed soil type back to our dropdown values
           const typeStr = result.soilType.toLowerCase();
@@ -222,9 +282,9 @@ export default function Register() {
           else if (typeStr.includes("forest")) mapped = "forest_soil";
           else if (typeStr.includes("saline")) mapped = "saline";
           setForm(f => ({ ...f, soilType: mapped }));
-          alert(`🤖 AI detected: ${result.soilType}\nMapped to: ${mapped.replace(/_/g, " ").toUpperCase()}`);
+          alert(`🌱 AI Soil Detected: ${result.soilType}\nConfidence: ${result.confidence || 95}%\nSelected: ${mapped.replace(/_/g, " ").toUpperCase()}`);
         } else {
-          alert("AI could not determine the soil type. Please select manually.");
+          alert("AI could not determine the soil type. Please select manually from the list.");
         }
       } catch (err) {
         console.error("AI Soil Guess failed:", err);
@@ -326,7 +386,7 @@ export default function Register() {
       <div style={{ width: "100%", maxWidth: "560px" }}>
         <div className="text-center mb-4">
           <span style={{ fontSize: "3.5rem", display: "block" }}>🌱</span>
-          <h1 className="page-title" style={{ fontSize: "1.8rem" }}>Join {t("appName")}</h1>
+          <h1 className="page-title notranslate" translate="no">Join {t("appName")}</h1>
         </div>
 
         <div className="glass-card">
@@ -565,14 +625,14 @@ export default function Register() {
 
               <div className="form-group">
                 <label className="field-label" style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>{form.role === "farmer" ? "Personal Address" : form.role === "agent" ? "Agent's Address" : t("location")}</span>
-                  <button type="button" className="btn-icon" onClick={() => readAloud(form.role === "farmer" ? "Personal Address" : "Location", form.location)} style={{ padding: 0 }}>🔊</button>
+                  <span>{form.role === "farmer" ? t("personalAddress") : form.role === "agent" ? t("agentAddress") : t("place")}</span>
+                  <button type="button" className="btn-icon" onClick={() => readAloud(form.role === "farmer" ? t("personalAddress") : t("place"), form.location)} style={{ padding: 0 }}>🔊</button>
                 </label>
                 <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                   <div className="input-wrapper" style={{ flex: 1, display: "flex", gap: "0.5rem" }}>
                     <input
                       className="rs-input"
-                      placeholder="Type or speak Village / Town / City..."
+                      placeholder={`${t("place")} (Village / Town / City)...`}
                       value={listening && activeField === "location" && interim ? `${form.location} ${interim}...` : form.location}
                       onChange={set("location")}
                       style={listening && activeField === "location" && interim ? { color: "rgba(183,228,199,0.7)", fontStyle: "italic" } : {}}
@@ -776,12 +836,18 @@ export default function Register() {
                     <input
                       className="rs-input"
                       type="number"
+                      min="0"
+                      max="70"
                       placeholder="Years"
                       value={listening && activeField === "experience" && interim ? `${form.experience} ${interim}...` : form.experience}
-                      onChange={set("experience")}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const clean = raw === "" ? "" : Math.max(0, parseInt(raw, 10) || 0);
+                        setForm(f => ({ ...f, experience: clean }));
+                      }}
                       style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, ...(listening && activeField === "experience" && interim ? { color: "rgba(183,228,199,0.7)", fontStyle: "italic" } : {}) }}
                     />
-                    <select className="rs-select" style={{ width: "60px", padding: "0 5px", borderLeft: "none", borderRadius: 0 }} onChange={(e) => { if(e.target.value) setForm(f => ({ ...f, experience: e.target.value })); e.target.value = ""; }}>
+                    <select className="rs-select" style={{ width: "60px", padding: "0 5px", borderLeft: "none", borderRadius: 0 }} onChange={(e) => { if(e.target.value) setForm(f => ({ ...f, experience: Math.max(0, parseInt(e.target.value, 10) || 0) })); e.target.value = ""; }}>
                       <option value="">--</option>
                       <option value="1">1</option>
                       <option value="3">3</option>

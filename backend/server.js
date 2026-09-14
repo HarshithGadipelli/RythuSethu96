@@ -151,6 +151,7 @@ app.use("/api/boxes", boxRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/translate", translationRoutes);
 app.use("/api/soil-test", soilTestRoutes);
+app.use("/api/soil-testing", soilTestRoutes);
 app.use("/api/trust-score", trustScoreRoutes);
 
 app.get("/", (req, res) => {

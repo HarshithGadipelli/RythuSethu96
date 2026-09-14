@@ -62,7 +62,8 @@ export default function LandingPage() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="page-title" 
+          className="page-title notranslate" 
+          translate="no"
           style={{ 
             background: "linear-gradient(135deg, var(--green-deep) 0%, var(--green-light) 100%)", 
             WebkitBackgroundClip: "text", 

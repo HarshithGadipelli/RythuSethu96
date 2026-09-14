@@ -181,69 +181,94 @@ function classifySoilFallback(text = "") {
   }
 }
 
-// ─── 1. Instant AI Photo Soil Scanner ───
-router.post("/scan-photo", upload.single("photo"), async (req, res) => {
+// ─── 1. Instant AI Photo Soil Scanner (Supports both /scan-photo and /instant-scan) ───
+router.post(["/scan-photo", "/instant-scan"], upload.any(), async (req, res) => {
   try {
-    const { imageBase64, sampleNotes } = req.body;
-    let photoUrl = req.file ? `/uploads/${req.file.filename}` : "";
+    const { imageBase64, sampleNotes, soilPhoto, photo: bodyPhoto } = req.body;
+    const uploadedFile = req.file || (req.files && req.files.length > 0 ? req.files[0] : null);
+    let photoUrl = uploadedFile ? `/uploads/${uploadedFile.filename}` : "";
     let analysisResult = null;
+
+    const rawBase64 = imageBase64 || (typeof soilPhoto === "string" && soilPhoto.startsWith("data:") ? soilPhoto : null) || (typeof bodyPhoto === "string" && bodyPhoto.startsWith("data:") ? bodyPhoto : null);
 
     // Use Gemini Vision if API key is present
     const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey && (imageBase64 || req.file)) {
+    if (apiKey && (rawBase64 || uploadedFile)) {
       try {
         const ai = getGenAI() || new GoogleGenAI({ apiKey });
 
         const prompt = `You are a certified senior agricultural soil chemist and pedologist in India.
-Analyze this farm soil photograph and return ONLY a valid JSON object without any markdown code blocks or triple backticks.
-Provide a complete chemical and elemental agronomic evaluation including:
+Analyze this farm soil photograph with high precision and return ONLY a valid JSON object without any markdown code blocks or triple backticks.
+Classify the exact soil type from standard Indian categories:
+- Black Cotton Soil (Regur)
+- Red Sandy Loam Soil
+- Alluvial Loam Soil
+- Clay Loam Soil
+- Laterite Soil
+- Sandy Soil
+- Silt Loam Soil
+- Peat Soil
+- Saline Soil
+- Arid Desert Soil
+- Forest Soil
+
+Provide a complete agronomic evaluation including:
 {
-  "soilType": "e.g. Black Cotton Soil (Regur), Red Sandy Loam, Alluvial Loam, Clay Loam, or Laterite Soil",
-  "confidence": 93,
-  "texture": "detailed physical particle size, clay/sand/silt balance, aeration and moisture retention capacity",
-  "colorProfile": "visual color shade and mineral indicators (e.g. high iron oxide, organic humus)",
+  "soilType": "e.g. Black Cotton Soil (Regur) or Red Sandy Loam Soil",
+  "confidence": 95,
+  "texture": "detailed physical particle size and aeration",
+  "colorProfile": "visual color shade and mineral indicators",
   "organicMatterEstimate": "Low (<0.5%), Medium (0.5% - 0.75%), or High (>0.75%)",
-  "organicCarbonPercent": 0.72,
+  "organicCarbonPercent": 0.75,
   "organicCarbonStatus": "High (>0.75%) or Moderate or Low",
-  "estimatedPH": 6.8,
-  "phStatus": "Slightly Acidic, Neutral, or Slightly Alkaline",
+  "estimatedPH": 7.0,
+  "phStatus": "Neutral, Slightly Acidic, or Slightly Alkaline",
   "electricalConductivityEC": "0.35 dS/m (Normal / Non-saline)",
   "npkEstimate": {
-    "nitrogen": "e.g. Medium (260 kg/ha)",
-    "phosphorus": "e.g. Adequate (22 kg/ha)",
-    "potassium": "e.g. High (320 kg/ha)"
+    "nitrogen": "Medium (260 kg/ha)",
+    "phosphorus": "Adequate (22 kg/ha)",
+    "potassium": "High (320 kg/ha)"
   },
   "micronutrients": {
-    "zinc": "e.g. Deficient (0.48 ppm) or Adequate (0.75 ppm)",
-    "iron": "e.g. Sufficient (5.8 ppm)",
-    "boron": "e.g. Marginal (0.42 ppm)",
-    "manganese": "e.g. Adequate (3.8 ppm)",
-    "copper": "e.g. Sufficient (0.9 ppm)",
-    "sulphur": "e.g. Medium (13 ppm)"
+    "zinc": "Adequate (0.75 ppm)",
+    "iron": "Sufficient (6.0 ppm)",
+    "boron": "Adequate (0.50 ppm)",
+    "manganese": "Adequate (4.0 ppm)",
+    "copper": "Sufficient (0.9 ppm)",
+    "sulphur": "Medium (14 ppm)"
   },
-  "suitableCrops": ["Crop 1", "Crop 2", "Crop 3", "Crop 4", "Crop 5"],
-  "suggestedOrganicFertilizers": ["Tip 1", "Tip 2", "Tip 3"],
+  "suitableCrops": ["Paddy", "Cotton", "Groundnut", "Chili", "Millets"],
+  "suggestedOrganicFertilizers": ["Jeevamrutham", "Vermicompost", "Neem Cake"],
   "recommendations": "practical irrigation and organic management advice",
-  "notice": "Visual AI scan estimates chemical & elemental parameters based on soil chromas, pedological texture, and regional agro-climatic indicators. For statutory certification, mobile laboratory spectrometer testing is available."
+  "notice": "Visual AI scan estimates chemical & elemental parameters based on soil chromas, pedological texture, and regional agro-climatic indicators."
 }`;
 
         let imagePart;
-        if (imageBase64) {
-          const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+        if (rawBase64) {
+          const cleanBase64 = rawBase64.replace(/^data:image\/\w+;base64,/, "");
           imagePart = { inlineData: { data: cleanBase64, mimeType: "image/jpeg" } };
-        } else if (req.file) {
-          const fileData = fs.readFileSync(req.file.path).toString("base64");
-          imagePart = { inlineData: { data: fileData, mimeType: req.file.mimetype } };
+        } else if (uploadedFile) {
+          const fileData = fs.readFileSync(uploadedFile.path).toString("base64");
+          imagePart = { inlineData: { data: fileData, mimeType: uploadedFile.mimetype || "image/jpeg" } };
         }
 
-        const geminiRes = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: [prompt, imagePart]
-        });
-        const text = geminiRes.text || "";
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          analysisResult = JSON.parse(jsonMatch[0]);
+        // Try modern Gemini models with fallback
+        const visionModels = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"];
+        for (const modelName of visionModels) {
+          try {
+            const geminiRes = await ai.models.generateContent({
+              model: modelName,
+              contents: [prompt, imagePart]
+            });
+            const text = geminiRes.text || "";
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              analysisResult = JSON.parse(jsonMatch[0]);
+              break;
+            }
+          } catch (modelErr) {
+            console.warn(`Model ${modelName} vision failed:`, modelErr.message);
+          }
         }
       } catch (geminiErr) {
         console.warn("Gemini vision analysis fallback triggered:", geminiErr.message);

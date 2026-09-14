@@ -30,7 +30,7 @@ export function useVoiceInput(lang = "en") {
 
   const dispatchResult = useCallback((text) => {
     const trimmed = (text || "").trim();
-    if (trimmed && onResultRef.current) {
+    if (onResultRef.current) {
       try {
         const callback = onResultRef.current;
         onResultRef.current = null; // prevent double dispatch
@@ -47,7 +47,7 @@ export function useVoiceInput(lang = "en") {
   const stopListening = useCallback((forceCancel = false) => {
     clearSilenceTimer();
     const captured = latestTextRef.current.trim() || finalTranscriptRef.current.trim();
-    if (!forceCancel && captured && isListeningRef.current) {
+    if (!forceCancel && isListeningRef.current) {
       dispatchResult(captured);
     }
     isListeningRef.current = false;
@@ -67,7 +67,7 @@ export function useVoiceInput(lang = "en") {
     onResultRef.current = onResult;
     optionsRef.current = options;
     setActiveField(options.fieldId || "default");
-    setInterim(options.initialInterim || "Listening...");
+    setInterim(options.initialInterim || "Listening... Please speak 🎙️");
     
     isListeningRef.current = true;
     setListening(true);
@@ -78,29 +78,33 @@ export function useVoiceInput(lang = "en") {
     
     if (!SpeechRecognition) {
       alert("Speech recognition is not supported in this browser. Please use Chrome or Edge.");
-      stopListening();
+      stopListening(true);
+      if (onResult) onResult("");
       return;
     }
 
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
-    recognition.continuous = true;
+    recognition.continuous = options.continuous !== false;
     recognition.interimResults = true;
-    recognition.lang = LANG_MAP[lang] || "en-IN";
+    recognition.lang = LANG_MAP[options.lang || lang] || "en-IN";
 
-    const silenceDelay = options.silenceDelay || 1400;
+    let hasSpoken = false;
+    const postSpeechSilenceDelay = options.silenceDelay || 2200;
+    const initialWaitDelay = options.initialWaitDelay || 8000;
 
-    const triggerSilenceTimeout = () => {
+    const triggerSilenceTimeout = (delay) => {
       clearSilenceTimer();
       silenceTimerRef.current = setTimeout(() => {
         if (!isListeningRef.current) return;
         const captured = latestTextRef.current.trim() || finalTranscriptRef.current.trim();
         stopListening();
-        dispatchResult(captured); // Dispatch even if empty, to trigger retry logic
-      }, silenceDelay);
+        dispatchResult(captured);
+      }, delay);
     };
 
     recognition.onresult = (event) => {
+      hasSpoken = true;
       let interimTranscript = "";
       let newFinal = "";
       
@@ -120,14 +124,14 @@ export function useVoiceInput(lang = "en") {
       const currentFullText = (finalTranscriptRef.current + " " + interimTranscript).trim();
       latestTextRef.current = currentFullText;
       
-      setInterim(currentFullText || "Listening...");
+      setInterim(currentFullText || "Listening... 🎙️");
 
       if (options.onInterim) {
         options.onInterim(currentFullText);
       }
 
-      // Reset silence timer whenever user speaks
-      triggerSilenceTimeout();
+      // Reset silence timer: user is speaking, give them 2.2s after pause
+      triggerSilenceTimeout(postSpeechSilenceDelay);
     };
 
     recognition.onend = () => {
@@ -154,8 +158,8 @@ export function useVoiceInput(lang = "en") {
 
     recognition.onerror = (event) => {
       if (event.error === 'not-allowed') {
-        alert("Microphone access was denied. Please allow microphone permissions.");
-        stopListening();
+        alert("Microphone access was denied. Please allow microphone permissions in browser settings.");
+        stopListening(true);
       } else if (event.error !== 'no-speech') {
         console.warn("Speech recognition notice:", event.error);
       }
@@ -163,7 +167,8 @@ export function useVoiceInput(lang = "en") {
 
     try {
       recognition.start();
-      triggerSilenceTimeout(); // Trigger initial silence timer
+      // Generous 8s initial wait for the user to begin speaking
+      triggerSilenceTimeout(initialWaitDelay);
     } catch (err) {
       if (err.name !== 'InvalidStateError') {
         console.warn("Could not start microphone:", err.message);
@@ -171,14 +176,28 @@ export function useVoiceInput(lang = "en") {
     }
   }, [lang, stopListening, dispatchResult]);
 
-  // Helper to listen for a single turn with Promise
+  // Helper to listen for a single turn with Promise that never hangs
   const listenOnce = useCallback((options = {}) => {
     return new Promise((resolve) => {
+      let resolved = false;
+      const timeoutMs = options.timeoutMs || 10000;
+      const timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          stopListening(true);
+          resolve("");
+        }
+      }, timeoutMs);
+
       startListening((text) => {
-        resolve(text);
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timer);
+          resolve(text || "");
+        }
       }, { ...options, continuous: false });
     });
-  }, [startListening]);
+  }, [startListening, stopListening]);
 
   return { listening, activeField, interim, startListening, stopListening, listenOnce };
 }

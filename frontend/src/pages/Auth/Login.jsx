@@ -169,19 +169,34 @@ export default function Login() {
     }, { fieldId: field, lang: "en" });
   };
 
-  // A one-shot voice listener that resolves a Promise when speech is detected
-  const listenOnce = (field) =>
+  // A one-shot voice listener that resolves a Promise when speech is detected (with safe timeout)
+  const listenOnce = (field, timeoutMs = 12000) =>
     new Promise((resolve) => {
+      let resolved = false;
+      const timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          if (typeof stopListening === "function") stopListening(true);
+          resolve("");
+        }
+      }, timeoutMs);
+
       startListening(
         (val) => {
-          let result = typeof val === "function" ? val("") : val;
-          if (field === "email") {
-            result = result.replace(/\s+/g, "").toLowerCase().replace(/at/gi, "@").replace(/dot/gi, ".");
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timer);
+            let result = typeof val === "function" ? val("") : val;
+            if (field === "email") {
+              result = (result || "").replace(/\s+/g, "").toLowerCase().replace(/at/gi, "@").replace(/dot/gi, ".");
+            }
+            if (result) {
+              setForm((f) => ({ ...f, [field]: result }));
+            }
+            resolve(result || "");
           }
-          setForm((f) => ({ ...f, [field]: result }));
-          resolve(result);
         },
-        { fieldId: field, lang: field === "email" ? "en" : lang }
+        { fieldId: field, lang: "en", silenceDelay: 2200, initialWaitDelay: 8000 }
       );
     });
 
@@ -191,14 +206,18 @@ export default function Login() {
     try {
       setGuidedStep("email");
       await playTTS(t("guidedStart") || "Please say your email address now.", lang);
+      await new Promise(r => setTimeout(r, 600));
       await listenOnce("email");
 
       setGuidedStep("password");
       await playTTS(t("guidedPass") || "Now please say your password.", lang);
+      await new Promise(r => setTimeout(r, 600));
       await listenOnce("password");
 
       setGuidedStep("done");
       await playTTS(t("guidedDone") || "All set! You can now tap login.", lang);
+    } catch (err) {
+      console.warn("Login assistant warning:", err);
     } finally {
       setGuidedStep(null);
       setGuidedRunning(false);
@@ -211,7 +230,7 @@ export default function Login() {
         {/* Logo */}
         <div className="text-center mb-4">
           <span style={{ fontSize: "3.8rem", display: "block", animation: "floatUp 3s ease infinite" }}>🌾</span>
-          <h1 className="page-title" style={{ fontSize: "2rem" }}>{t("appName") || "Rythu Jana Sethu"}</h1>
+          <h1 className="page-title notranslate" translate="no">{t("appName") || "Rythu Jana Sethu"}</h1>
           <p style={{ color: "var(--text-mid)", fontSize: "0.9rem", marginTop: "0.3rem" }}>{t("tagline") || "Empowering Farmers & Buyers Directly"}</p>
         </div>
 

@@ -12,7 +12,7 @@ import {
   playTTS, stopTTS, parseVoiceToFormMultilingual, 
   CROPS_MAP, CATEGORIES_MAP, UNITS_MAP, parseSpokenNumber 
 } from '../../utils/voiceParser';
-import { LANG_MAP } from '../../utils/useVoiceInput';
+import { useVoiceInput, LANG_MAP } from '../../utils/useVoiceInput';
 
 // Gentle audio chimes synthesized directly with Web Audio API
 const playChime = (type = 'start') => {
@@ -170,6 +170,98 @@ export default function AddCrop() {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  // Direct Per-Field Speech Recognition (Low-literacy one-tap voice fill)
+  const { 
+    listening: fieldListening, 
+    activeField: activeVoiceField, 
+    interim: fieldInterim, 
+    startListening: startFieldListening, 
+    stopListening: stopFieldListening 
+  } = useVoiceInput(lang);
+
+  const speakField = (field) => {
+    if (fieldListening && activeVoiceField === field) {
+      stopFieldListening(true);
+      return;
+    }
+    // Stop guided wizard if running
+    if (wizardStep !== 'IDLE') stopWizard();
+
+    startFieldListening((transcript) => {
+      if (!transcript) return;
+      const lower = transcript.toLowerCase().trim();
+
+      if (field === "name") {
+        let extractedName = "";
+        let extractedCat = "";
+        for (const [slang, stdName] of Object.entries(CROPS_MAP)) {
+          const sLower = slang.toLowerCase();
+          if (lower.includes(sLower) || lower.split(/\s+/).includes(sLower)) {
+            extractedName = stdName;
+            extractedCat = CATEGORIES_MAP[stdName] || "vegetable";
+            break;
+          }
+        }
+        if (!extractedName && transcript.length > 1) {
+          extractedName = transcript.charAt(0).toUpperCase() + transcript.slice(1);
+        }
+        if (extractedName) {
+          playChime('success');
+          setFormData(prev => ({
+            ...prev,
+            name: extractedName,
+            category: extractedCat || prev.category
+          }));
+          formDataRef.current.name = extractedName;
+          setFilledFields(prev => ({ ...prev, name: true }));
+        }
+      } else if (field === "quantity") {
+        let qty = null;
+        let unit = formData.unit || "kg";
+        const numMatch = transcript.match(/\d+(?:\.\d+)?/);
+        if (numMatch) {
+          qty = parseFloat(numMatch[0]);
+        } else {
+          const spoken = parseSpokenNumber(transcript);
+          if (spoken && !isNaN(spoken)) qty = parseFloat(spoken);
+        }
+        for (const [unitKey, aliases] of Object.entries(UNITS_MAP)) {
+          if (aliases.some(a => lower.includes(a.toLowerCase()))) {
+            unit = unitKey === 'ton' ? 'tonne' : unitKey;
+            break;
+          }
+        }
+        if (qty !== null && !isNaN(qty)) {
+          playChime('success');
+          setFormData(prev => ({ ...prev, quantity: qty, unit }));
+          formDataRef.current.quantity = qty;
+          setFilledFields(prev => ({ ...prev, quantity: true, unit: true }));
+        }
+      } else if (field === "price") {
+        let price = null;
+        const numMatch = transcript.match(/\d+(?:\.\d+)?/);
+        if (numMatch) {
+          price = parseFloat(numMatch[0]);
+        } else {
+          const spoken = parseSpokenNumber(transcript);
+          if (spoken && !isNaN(spoken)) price = parseFloat(spoken);
+        }
+        if (price !== null && !isNaN(price)) {
+          playChime('success');
+          setFormData(prev => ({ ...prev, price }));
+          formDataRef.current.price = price;
+          setFilledFields(prev => ({ ...prev, price: true }));
+        }
+      } else if (field === "description" || field === "farmLocation") {
+        playChime('success');
+        setFormData(prev => ({ ...prev, [field]: transcript }));
+        if (field === "farmLocation") {
+          setFormData(prev => ({ ...prev, location: transcript }));
+        }
+      }
+    }, { fieldId: field, lang, silenceDelay: 2200, initialWaitDelay: 8000 });
   };
 
   // Safe Speech Recognition Cleanup
@@ -456,17 +548,26 @@ export default function AddCrop() {
     }
   };
 
-  // ─── Handle No Speech Detected: Acknowledge & Ask Again ───
+  // ─── Handle No Speech Detected: Acknowledge & Ask Again (Max 2 retries) ───
   const handleNoSpeechDetected = (step) => {
     stopRecognition();
     playChime('retry');
-    setRetryCount(prev => prev + 1);
 
-    const retryMsg = getSilenceRetryAck(step);
-    setWizardMsg(retryMsg);
-    
-    // Speak acknowledgment and re-prompt the farmer
-    askStep(step, retryMsg);
+    setRetryCount(prev => {
+      const next = prev + 1;
+      if (next > 2) {
+        const pauseMsg = lang === "te" 
+          ? "మైక్ పాజ్ చేయబడింది. మీకు కావలసినప్పుడు మైక్ బటన్ నొక్కండి లేదా వివరాలు నమోదు చేయండి." 
+          : "Microphone paused. Tap the mic button or fill fields below when ready.";
+        setWizardMsg(pauseMsg);
+        setIsListening(false);
+        return 0;
+      }
+      const retryMsg = getSilenceRetryAck(step);
+      setWizardMsg(retryMsg);
+      askStep(step, retryMsg);
+      return next;
+    });
   };
 
   // ─── Manual Controls ───
@@ -502,6 +603,7 @@ export default function AddCrop() {
     }
 
     setIsProcessing(true);
+    isProcessingRef.current = true;
     setLastHeard(transcript);
     setInterim("");
     stopRecognition();
@@ -699,6 +801,7 @@ export default function AddCrop() {
       handleNoSpeechDetected(step);
     } finally {
       setIsProcessing(false);
+      isProcessingRef.current = false;
     }
   };
 
@@ -1134,16 +1237,42 @@ export default function AddCrop() {
                 </span>
               )}
             </div>
-            <input 
-              type="text" 
-              name="name" 
-              value={formData.name} 
-              onChange={handleChange} 
-              placeholder="e.g. Tomato, Rice, Cotton, Hay Bales, Cow Dung Slurry" 
-              className="form-input" 
-              required 
-              style={{ width: '100%', fontSize: '1rem' }}
-            />
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <input 
+                type="text" 
+                name="name" 
+                value={formData.name} 
+                onChange={handleChange} 
+                placeholder="e.g. Tomato, Rice, Cotton, Hay Bales, Cow Dung Slurry" 
+                className="form-input" 
+                required 
+                style={{ flex: 1, fontSize: '1rem' }}
+              />
+              <button
+                type="button"
+                onClick={() => speakField('name')}
+                title="Speak Crop Name (any language)"
+                style={{
+                  background: fieldListening && activeVoiceField === 'name' ? "#ef4444" : "#f0fdf4",
+                  color: fieldListening && activeVoiceField === 'name' ? "white" : "#16a34a",
+                  border: "1.5px solid " + (fieldListening && activeVoiceField === 'name' ? "#ef4444" : "#86efac"),
+                  borderRadius: "8px",
+                  padding: "0.6rem 0.8rem",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.2s"
+                }}
+              >
+                <Mic size={18} />
+              </button>
+            </div>
+            {fieldListening && activeVoiceField === 'name' && (
+              <p style={{ margin: "0.3rem 0 0", fontSize: "0.8rem", color: "#16a34a", fontStyle: "italic" }}>
+                🎙️ {fieldInterim || "Listening... speak crop name now"}
+              </p>
+            )}
           </div>
 
           {/* Category & Unit */}
@@ -1200,17 +1329,42 @@ export default function AddCrop() {
                   </span>
                 )}
               </div>
-              <input 
-                type="number" 
-                name="quantity" 
-                value={formData.quantity} 
-                onChange={handleChange} 
-                placeholder={`e.g. 50 ${formData.unit}`} 
-                className="form-input" 
-                required 
-                min="1" 
-                style={{ width: '100%' }}
-              />
+              <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                <input 
+                  type="number" 
+                  name="quantity" 
+                  value={formData.quantity} 
+                  onChange={handleChange} 
+                  placeholder={`e.g. 50 ${formData.unit}`} 
+                  className="form-input" 
+                  required 
+                  min="1" 
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => speakField('quantity')}
+                  title="Speak Quantity"
+                  style={{
+                    background: fieldListening && activeVoiceField === 'quantity' ? "#ef4444" : "#f0fdf4",
+                    color: fieldListening && activeVoiceField === 'quantity' ? "white" : "#16a34a",
+                    border: "1.5px solid " + (fieldListening && activeVoiceField === 'quantity' ? "#ef4444" : "#86efac"),
+                    borderRadius: "8px",
+                    padding: "0.6rem 0.7rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                >
+                  <Mic size={18} />
+                </button>
+              </div>
+              {fieldListening && activeVoiceField === 'quantity' && (
+                <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "#16a34a", fontStyle: "italic" }}>
+                  🎙️ {fieldInterim || "Listening... speak quantity"}
+                </p>
+              )}
             </div>
 
             <div style={{
@@ -1229,23 +1383,70 @@ export default function AddCrop() {
                   </span>
                 )}
               </div>
-              <input 
-                type="number" 
-                name="price" 
-                value={formData.price} 
-                onChange={handleChange} 
-                placeholder="e.g. 40" 
-                className="form-input" 
-                required 
-                min="1" 
-                style={{ width: '100%' }}
-              />
+              <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                <input 
+                  type="number" 
+                  name="price" 
+                  value={formData.price} 
+                  onChange={handleChange} 
+                  placeholder="e.g. 40" 
+                  className="form-input" 
+                  required 
+                  min="1" 
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => speakField('price')}
+                  title="Speak Price"
+                  style={{
+                    background: fieldListening && activeVoiceField === 'price' ? "#ef4444" : "#f0fdf4",
+                    color: fieldListening && activeVoiceField === 'price' ? "white" : "#16a34a",
+                    border: "1.5px solid " + (fieldListening && activeVoiceField === 'price' ? "#ef4444" : "#86efac"),
+                    borderRadius: "8px",
+                    padding: "0.6rem 0.7rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                >
+                  <Mic size={18} />
+                </button>
+              </div>
+              {fieldListening && activeVoiceField === 'price' && (
+                <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "#16a34a", fontStyle: "italic" }}>
+                  🎙️ {fieldInterim || "Listening... speak price"}
+                </p>
+              )}
             </div>
           </div>
 
           {/* Description */}
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Description</label>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: '0.5rem' }}>
+              <label style={{ fontWeight: 600 }}>Description</label>
+              <button
+                type="button"
+                onClick={() => speakField('description')}
+                title="Speak Description"
+                style={{
+                  background: fieldListening && activeVoiceField === 'description' ? "#ef4444" : "#f0fdf4",
+                  color: fieldListening && activeVoiceField === 'description' ? "white" : "#16a34a",
+                  border: "1px solid " + (fieldListening && activeVoiceField === 'description' ? "#ef4444" : "#86efac"),
+                  borderRadius: "6px",
+                  padding: "0.25rem 0.6rem",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.3rem",
+                  fontSize: "0.78rem",
+                  fontWeight: 600
+                }}
+              >
+                <Mic size={14} /> Speak
+              </button>
+            </div>
             <textarea 
               name="description" 
               value={formData.description} 
@@ -1254,6 +1455,11 @@ export default function AddCrop() {
               className="form-input" 
               style={{ minHeight: '80px', resize: 'vertical', width: '100%' }}
             ></textarea>
+            {fieldListening && activeVoiceField === 'description' && (
+              <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "#16a34a", fontStyle: "italic" }}>
+                🎙️ {fieldInterim || "Listening... speak description"}
+              </p>
+            )}
           </div>
 
           {/* Organic / Pesticide Free */}
@@ -1290,18 +1496,43 @@ export default function AddCrop() {
               )}
             </div>
 
-            <input
-              type="text"
-              name="farmLocation"
-              value={formData.farmLocation || formData.location}
-              onChange={(e) => {
-                const val = e.target.value;
-                setFormData(prev => ({ ...prev, farmLocation: val, location: val }));
-              }}
-              placeholder="e.g. Gollapalli Village, Jagtial District, Telangana"
-              className="form-input"
-              style={{ width: "100%", fontSize: "0.95rem" }}
-            />
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <input
+                type="text"
+                name="farmLocation"
+                value={formData.farmLocation || formData.location}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData(prev => ({ ...prev, farmLocation: val, location: val }));
+                }}
+                placeholder="e.g. Gollapalli Village, Jagtial District, Telangana"
+                className="form-input"
+                style={{ flex: 1, fontSize: "0.95rem" }}
+              />
+              <button
+                type="button"
+                onClick={() => speakField('farmLocation')}
+                title="Speak Farm Location"
+                style={{
+                  background: fieldListening && activeVoiceField === 'farmLocation' ? "#ef4444" : "#f0fdf4",
+                  color: fieldListening && activeVoiceField === 'farmLocation' ? "white" : "#16a34a",
+                  border: "1.5px solid " + (fieldListening && activeVoiceField === 'farmLocation' ? "#ef4444" : "#86efac"),
+                  borderRadius: "8px",
+                  padding: "0.6rem 0.8rem",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                <Mic size={18} />
+              </button>
+            </div>
+            {fieldListening && activeVoiceField === 'farmLocation' && (
+              <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "#16a34a", fontStyle: "italic" }}>
+                🎙️ {fieldInterim || "Listening... speak village or location"}
+              </p>
+            )}
 
             <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
               <button

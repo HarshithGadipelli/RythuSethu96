@@ -44,6 +44,9 @@ const translations = {
     soilType: "Soil Type",
     experience: "Experience (years)",
     address: "Delivery Address",
+    place: "Place / Village",
+    personalAddress: "Personal Address",
+    agentAddress: "Agent's Address",
     state: "State",
     city: "City",
     pincode: "Pincode",
@@ -199,8 +202,11 @@ const translations = {
     soilType: "నేల రకం",
     experience: "అనుభవం (సంవత్సరాలు)",
     address: "డెలివరీ చిరునామా",
+    place: "స్థలం / గ్రామం",
+    personalAddress: "వ్యక్తిగత చిరునామా / స్థలం",
+    agentAddress: "ఏజెంట్ చిరునామా / స్థలం",
     state: "రాష్ట్రం",
-    city: "నగరం",
+    city: "నగరం / పట్టణం",
     pincode: "పిన్‌కోడ్",
     buy: "కొనుగోలు చేయి",
     outOfStock: "స్టాక్ లేదు",
@@ -356,6 +362,9 @@ const translations = {
     soilType: "मिट्टी का प्रकार",
     experience: "अनुभव (वर्ष)",
     address: "डिलीवरी पता",
+    place: "स्थान / गाँव",
+    personalAddress: "व्यक्तिगत पता",
+    agentAddress: "एजेंट का पता",
     buy: "अभी खरीदें",
     outOfStock: "स्टॉक में नहीं",
     status: "स्थिति",
@@ -511,6 +520,9 @@ const translations = {
     soilType: "ಮಣ್ಣಿನ ವಿಧ",
     experience: "ಅನ್ಯುಭವ (ವರ್ಷಗಳು)",
     address: "ವಿತರಣಾ ವಿಳಾಸ",
+    place: "ಸ್ಥಳ / ಗ್ರಾಮ",
+    personalAddress: "ವೈಯಕ್ತಿಕ ವಿಳಾಸ",
+    agentAddress: "ಏಜೆಂಟ್ ವಿಳಾಸ",
     buy: "ಖರೀದಿಸಿ",
     outOfStock: "ದಾಸ್ತಾನು ಇಲ್ಲ",
     status: "ಸ್ಥಿತಿ",
@@ -666,6 +678,9 @@ const translations = {
     soilType: "மண் வகை",
     experience: "அனுபவம் (ஆண்டுகள்)",
     address: "டெலிவரி முகவரி",
+    place: "இடம் / ஊர்",
+    personalAddress: "தனிப்பட்ட முகவரி",
+    agentAddress: "முகவர் முகவரி",
     buy: "இப்போதே வாங்கு",
     outOfStock: "இருப்பு இல்லை",
     status: "நிலை",
@@ -790,6 +805,10 @@ export function LangProvider({ children }) {
   useEffect(() => {
     const triggerTranslation = () => {
       try {
+        if (lang === "en") {
+          document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+          document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=" + window.location.hostname + "; path=/;";
+        }
         const gtCombo = document.querySelector(".goog-te-combo");
         if (gtCombo) {
           gtCombo.value = lang;

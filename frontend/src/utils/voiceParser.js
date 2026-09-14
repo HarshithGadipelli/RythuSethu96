@@ -186,22 +186,26 @@ export const CROP_BENCHMARKS = {
   BitterGourd: { min: 25, max: 48, avg: 36, unit: "kg", trend: "Stable", advice: "High medicinal and diabetic dietary demand." }
 };
 
-// Convert spoken number (word or digit string) to numerical string
+// Convert spoken number (word or digit string) to numerical string (always positive)
 export function parseSpokenNumber(text) {
   if (!text) return "";
-  const cleaned = text.trim().toLowerCase().replace(/\s+/g, '');
+  const cleaned = text.trim().toLowerCase().replace(/\s+/g, '').replace(/^-+/, '');
   if (NUMBERS_MAP[cleaned] !== undefined) {
-    return String(NUMBERS_MAP[cleaned]);
+    return String(Math.abs(NUMBERS_MAP[cleaned]));
   }
   const words = text.toLowerCase().trim().split(/[\s,]+/);
   for (const w of words) {
-    if (NUMBERS_MAP[w] !== undefined) {
-      return String(NUMBERS_MAP[w]);
+    const cleanWord = w.replace(/^-+/, '');
+    if (NUMBERS_MAP[cleanWord] !== undefined) {
+      return String(Math.abs(NUMBERS_MAP[cleanWord]));
     }
   }
   const digits = text.match(/\d+(?:\.\d+)?/);
-  if (digits) return digits[0];
-  return text.trim();
+  if (digits) {
+    const num = Math.abs(parseFloat(digits[0]));
+    return isNaN(num) ? "" : String(num);
+  }
+  return text.trim().replace(/^-+/, '');
 }
 
 // Convert spoken digit sequence (e.g. for phone numbers, OTPs, pincodes) to digits
