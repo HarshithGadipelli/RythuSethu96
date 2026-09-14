@@ -464,19 +464,15 @@ export default function AddCrop() {
     setIsSpeaking(false);
     isSpeakingRef.current = false;
 
-    // After AI finishes speaking, add a small delay then open the mic for the farmer
+    // Play a gentle chime after TTS to indicate it's listening
     if (step !== 'COMPLETED' && wizardStepRef.current === step) {
-      // Small 150ms delay keeps the user gesture active in most modern browsers.
-      setTimeout(() => {
-        if (wizardStepRef.current === step) {
-          startListeningForStep(step);
-        }
-      }, 150);
+       playChime('start');
+       setInterim("Listening... Please speak now 🎙️");
     }
   };
 
-  // ─── Start Listening for Farmer's Response ───
-  const startListeningForStep = (step, silentRetryCount = 0) => {
+  // ─── Start Continuous Listening for Farmer's Response ───
+  const startContinuousListening = () => {
     stopRecognition();
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -485,34 +481,27 @@ export default function AddCrop() {
       return;
     }
 
-    // Gentle pleasant chime to signal the farmer that mic is listening
-    if (silentRetryCount === 0) playChime('start');
-
     const recognition = new SpeechRecognition();
-    recognition.continuous = true; // Use robust manual silence detection instead of native VAD
+    recognition.continuous = true; 
     recognition.interimResults = true;
     recognition.lang = LANG_MAP[lang] || "en-IN";
 
     capturedTextRef.current = "";
     hasUserSpokenRef.current = false;
     setInterim("");
-    setIsListening(true);
     let micStarted = Date.now();
 
     recognition.onstart = () => {
       setIsListening(true);
-      setInterim("Listening... Please speak now 🎙️");
+      if (!isSpeakingRef.current) {
+        setInterim("Listening... Please speak now 🎙️");
+      }
       micStarted = Date.now();
-      
-      if (initialSilenceTimerRef.current) clearTimeout(initialSilenceTimerRef.current);
-      initialSilenceTimerRef.current = setTimeout(() => {
-          if (!hasUserSpokenRef.current && recognitionRef.current) {
-              try { recognitionRef.current.stop(); } catch(e) {}
-          }
-      }, 6000); // 6 seconds initial wait
     };
 
     recognition.onresult = (event) => {
+      if (isSpeakingRef.current) return; // Ignore AI's own voice echo
+      
       hasUserSpokenRef.current = true;
       let currentText = "";
       for (let i = 0; i < event.results.length; i++) {
@@ -524,10 +513,13 @@ export default function AddCrop() {
 
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
-         if (recognitionRef.current) {
-             try { recognitionRef.current.stop(); } catch(e) {}
+         // Auto-submit step on silence if we have text
+         const textToProcess = capturedTextRef.current.trim();
+         if (textToProcess && !isProcessingRef.current && wizardStepRef.current !== 'COMPLETED') {
+            capturedTextRef.current = ""; // Clear immediately so it doesn't fire twice
+            processStepInput(wizardStepRef.current, textToProcess);
          }
-      }, 2500); // Stop after 2.5s of silence (increased for slower speakers)
+      }, 2500); // Stop after 2.5s of silence
     };
 
     recognition.onerror = (event) => {
@@ -540,33 +532,15 @@ export default function AddCrop() {
 
     recognition.onend = () => {
       setIsListening(false);
-      if (initialSilenceTimerRef.current) clearTimeout(initialSilenceTimerRef.current);
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-      
-      const textToProcess = capturedTextRef.current.trim();
-      
-      if (textToProcess && wizardStepRef.current === step && !isProcessingRef.current) {
-        processStepInput(step, textToProcess);
-      } else if (!textToProcess && wizardStepRef.current === step && !isSpeakingRef.current && !isProcessingRef.current) {
-        // Prevent instant loop if recognition fails to start or dies immediately
-        const elapsed = Date.now() - micStarted;
-        if (elapsed < 1500 && silentRetryCount < 3) {
-           console.warn("Recognition ended too quickly, retrying silently...");
-           setTimeout(() => {
-              if (wizardStepRef.current === step && !isProcessingRef.current && !isSpeakingRef.current) {
-                 startListeningForStep(step, silentRetryCount + 1);
-              }
-           }, 500);
-        } else if (elapsed >= 1500) {
-           handleNoSpeechDetected(step);
-        } else {
-           setWizardMsg("Microphone access failed continuously. Please tap 'Tap to Speak' to try manually.");
-        }
+      // Restart if we haven't completed or stopped the wizard
+      if (wizardStepRef.current !== 'IDLE' && wizardStepRef.current !== 'COMPLETED') {
+         setTimeout(() => {
+            try { recognition.start(); } catch(e) {}
+         }, 300);
       }
     };
 
     recognitionRef.current = recognition;
-
     try {
       recognition.start();
     } catch (e) {
@@ -862,6 +836,7 @@ export default function AddCrop() {
 
     setFilledFields({});
     setRetryCount(0);
+    startContinuousListening();
     askStep('NAME');
   };
 
