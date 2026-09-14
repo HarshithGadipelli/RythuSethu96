@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { 
   Sprout, CheckCircle, PackagePlus, Mic, MicOff, PlayCircle, 
   Loader2, Volume2, RotateCcw, ArrowRight, Check, AlertCircle,
-  MapPin, LocateFixed, Compass, X
+  MapPin, LocateFixed, Compass
 } from 'lucide-react';
 import API, { BASE_URL } from '../../api/api';
 import LocationUpdateModal from '../../components/LocationUpdateModal';
@@ -12,7 +12,7 @@ import {
   playTTS, stopTTS, parseVoiceToFormMultilingual, 
   CROPS_MAP, CATEGORIES_MAP, UNITS_MAP, parseSpokenNumber 
 } from '../../utils/voiceParser';
-import { useVoiceInput, LANG_MAP } from '../../utils/useVoiceInput';
+import { LANG_MAP } from '../../utils/useVoiceInput';
 
 // Gentle audio chimes synthesized directly with Web Audio API
 const playChime = (type = 'start') => {
@@ -58,7 +58,7 @@ const playChime = (type = 'start') => {
 
 export default function AddCrop() {
   const { user } = useAuth();
-  const { lang, t } = useLang();
+  const { lang } = useLang();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -123,7 +123,7 @@ export default function AddCrop() {
   };
 
   // Wizard States
-  const [wizardStep, setWizardStep] = useState('IDLE'); // 'IDLE' | 'NAME' | 'QUANTITY' | 'PRICE' | 'CONFIRM_SUBMIT' | 'COMPLETED'
+  const [wizardStep, setWizardStep] = useState('IDLE'); // 'IDLE' | 'NAME' | 'QUANTITY' | 'PRICE' | 'COMPLETED'
   const [wizardMsg, setWizardMsg] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -172,98 +172,6 @@ export default function AddCrop() {
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  // Direct Per-Field Speech Recognition (Low-literacy one-tap voice fill)
-  const { 
-    listening: fieldListening, 
-    activeField: activeVoiceField, 
-    interim: fieldInterim, 
-    startListening: startFieldListening, 
-    stopListening: stopFieldListening 
-  } = useVoiceInput(lang);
-
-  const speakField = (field) => {
-    if (fieldListening && activeVoiceField === field) {
-      stopFieldListening(true);
-      return;
-    }
-    // Stop guided wizard if running
-    if (wizardStep !== 'IDLE') stopWizard();
-
-    startFieldListening((transcript) => {
-      if (!transcript) return;
-      const lower = transcript.toLowerCase().trim();
-
-      if (field === "name") {
-        let extractedName = "";
-        let extractedCat = "";
-        for (const [slang, stdName] of Object.entries(CROPS_MAP)) {
-          const sLower = slang.toLowerCase();
-          if (lower.includes(sLower) || lower.split(/\s+/).includes(sLower)) {
-            extractedName = stdName;
-            extractedCat = CATEGORIES_MAP[stdName] || "vegetable";
-            break;
-          }
-        }
-        if (!extractedName && transcript.length > 1) {
-          extractedName = transcript.charAt(0).toUpperCase() + transcript.slice(1);
-        }
-        if (extractedName) {
-          playChime('success');
-          setFormData(prev => ({
-            ...prev,
-            name: extractedName,
-            category: extractedCat || prev.category
-          }));
-          formDataRef.current.name = extractedName;
-          setFilledFields(prev => ({ ...prev, name: true }));
-        }
-      } else if (field === "quantity") {
-        let qty = null;
-        let unit = formData.unit || "kg";
-        const numMatch = transcript.match(/\d+(?:\.\d+)?/);
-        if (numMatch) {
-          qty = parseFloat(numMatch[0]);
-        } else {
-          const spoken = parseSpokenNumber(transcript);
-          if (spoken && !isNaN(spoken)) qty = parseFloat(spoken);
-        }
-        for (const [unitKey, aliases] of Object.entries(UNITS_MAP)) {
-          if (aliases.some(a => lower.includes(a.toLowerCase()))) {
-            unit = unitKey === 'ton' ? 'tonne' : unitKey;
-            break;
-          }
-        }
-        if (qty !== null && !isNaN(qty)) {
-          playChime('success');
-          setFormData(prev => ({ ...prev, quantity: qty, unit }));
-          formDataRef.current.quantity = qty;
-          setFilledFields(prev => ({ ...prev, quantity: true, unit: true }));
-        }
-      } else if (field === "price") {
-        let price = null;
-        const numMatch = transcript.match(/\d+(?:\.\d+)?/);
-        if (numMatch) {
-          price = parseFloat(numMatch[0]);
-        } else {
-          const spoken = parseSpokenNumber(transcript);
-          if (spoken && !isNaN(spoken)) price = parseFloat(spoken);
-        }
-        if (price !== null && !isNaN(price)) {
-          playChime('success');
-          setFormData(prev => ({ ...prev, price }));
-          formDataRef.current.price = price;
-          setFilledFields(prev => ({ ...prev, price: true }));
-        }
-      } else if (field === "description" || field === "farmLocation") {
-        playChime('success');
-        setFormData(prev => ({ ...prev, [field]: transcript }));
-        if (field === "farmLocation") {
-          setFormData(prev => ({ ...prev, location: transcript }));
-        }
-      }
-    }, { fieldId: field, lang, silenceDelay: 2200, initialWaitDelay: 8000 });
-  };
-
   // Safe Speech Recognition Cleanup
   const stopRecognition = () => {
     if (silenceTimerRef.current) {
@@ -286,43 +194,36 @@ export default function AddCrop() {
     setIsListening(false);
   };
 
-  // ─── Conversational Prompts & Acknowledgments in Indian Languages ───
+  // ΓöÇΓöÇΓöÇ Conversational Prompts & Acknowledgments in Indian Languages ΓöÇΓöÇΓöÇ
   const getPromptForStep = (step, currentCrop = "", currentQty = "", currentUnit = "kg") => {
     const prompts = {
       NAME: {
         en: "What crop or produce do you want to sell? Please speak after the chime.",
-        te: "మీరు ఏ పంటను అమ్మాలనుకుంటున్నారు? బీప్ శబ్దం తర్వాత పంట పేరు చెప్పండి.",
-        hi: "आप कौन सी फसल या उत्पाद बेचना चाहते हैं? बीप के बाद बोलें।",
-        ta: "நீங்கள் என்ன பயிரை விற்க விரும்புகிறீர்கள்? பீப் ஒலிக்குப் பிறகு சொல்லுங்கள்.",
-        kn: "ನೀವು ಯಾವ ಬೆಳೆಯನ್ನು ಮಾರಾಟ ಮಾಡಲು ಬಯಸುತ್ತೀರಿ? ಧ್ವನಿಯ ನಂತರ ಹೇಳಿ."
+        te: "α░«α▒Çα░░α▒ü α░Å α░¬α░éα░ƒα░¿α▒ü α░àα░«α▒ìα░«α░╛α░▓α░¿α▒üα░òα▒üα░éα░ƒα▒üα░¿α▒ìα░¿α░╛α░░α▒ü? α░¼α▒Çα░¬α▒ì α░╢α░¼α▒ìα░ªα░é α░ñα░░α▒ìα░╡α░╛α░ñ α░¬α░éα░ƒ α░¬α▒çα░░α▒ü α░Üα▒åα░¬α▒ìα░¬α░éα░íα░┐.",
+        hi: "αñåαñ¬ αñòαÑîαñ¿ αñ╕αÑÇ αñ½αñ╕αñ▓ αñ»αñ╛ αñëαññαÑìαñ¬αñ╛αñª αñ¼αÑçαñÜαñ¿αñ╛ αñÜαñ╛αñ╣αññαÑç αñ╣αÑêαñé? αñ¼αÑÇαñ¬ αñòαÑç αñ¼αñ╛αñª αñ¼αÑïαñ▓αÑçαñéαÑñ",
+        ta: "α«¿α»Çα«Öα»ìα«òα«│α»ì α«Äα«⌐α»ìα«⌐ α«¬α«»α«┐α«░α»ê α«╡α«┐α«▒α»ìα«ò α«╡α«┐α«░α»üα««α»ìα«¬α»üα«òα«┐α«▒α»Çα«░α»ìα«òα«│α»ì? α«¬α»Çα«¬α»ì α«Æα«▓α«┐α«òα»ìα«òα»üα«¬α»ì α«¬α«┐α«▒α«òα»ü α«Üα»èα«▓α»ìα«▓α»üα«Öα»ìα«òα«│α»ì.",
+        kn: "α▓¿α│Çα▓╡α│ü α▓»α▓╛α▓╡ α▓¼α│åα▓│α│åα▓»α▓¿α│ìα▓¿α│ü α▓«α▓╛α▓░α▓╛α▓ƒ α▓«α▓╛α▓íα▓▓α│ü α▓¼α▓»α▓╕α│üα▓ñα│ìα▓ñα│Çα▓░α▓┐? α▓ºα│ìα▓╡α▓¿α▓┐α▓» α▓¿α▓éα▓ñα▓░ α▓╣α│çα▓│α▓┐."
       },
       QUANTITY: {
         en: `How much quantity of ${currentCrop || 'produce'} do you have? For example, 50 kg or 10 bags.`,
-        te: `మీ వద్ద ఎంత పరిమాణంలో ${currentCrop || 'పంట'} ఉంది? ఉదాహరణకు 50 కేజీలు లేదా 10 బస్తాలు.`,
-        hi: `आपके पास ${currentCrop || 'फसल'} की कितनी मात्रा है? जैसे 50 किलो या 10 बोरी।`,
-        ta: `உங்களிடம் எவ்வளவு அளவு ${currentCrop || 'பயிர்'} உள்ளது? உதாரணத்திற்கு 50 கிலோ அல்லது 10 மூட்டை.`,
-        kn: `ನಿಮ್ಮ ಬಳಿ ಎಷ್ಟು ಪ್ರಮಾಣದ ${currentCrop || 'ಬೆಳೆ'} ಇದೆ? ಉದಾಹರಣೆಗೆ 50 ಕೆಜಿ.`
+        te: `α░«α▒Ç α░╡α░ªα▒ìα░ª α░Äα░éα░ñ α░¬α░░α░┐α░«α░╛α░úα░éα░▓α▒ï ${currentCrop || 'α░¬α░éα░ƒ'} α░ëα░éα░ªα░┐? α░ëα░ªα░╛α░╣α░░α░úα░òα▒ü 50 α░òα▒çα░£α▒Çα░▓α▒ü α░▓α▒çα░ªα░╛ 10 α░¼α░╕α▒ìα░ñα░╛α░▓α▒ü.`,
+        hi: `αñåαñ¬αñòαÑç αñ¬αñ╛αñ╕ ${currentCrop || 'αñ½αñ╕αñ▓'} αñòαÑÇ αñòαñ┐αññαñ¿αÑÇ αñ«αñ╛αññαÑìαñ░αñ╛ αñ╣αÑê? αñ£αÑêαñ╕αÑç 50 αñòαñ┐αñ▓αÑï αñ»αñ╛ 10 αñ¼αÑïαñ░αÑÇαÑñ`,
+        ta: `α«ëα«Öα»ìα«òα«│α«┐α«ƒα««α»ì α«Äα«╡α»ìα«╡α«│α«╡α»ü α«àα«│α«╡α»ü ${currentCrop || 'α«¬α«»α«┐α«░α»ì'} α«ëα«│α»ìα«│α«ñα»ü? α«ëα«ñα«╛α«░α«úα«ñα»ìα«ñα«┐α«▒α»ìα«òα»ü 50 α«òα«┐α«▓α»ï α«àα«▓α»ìα«▓α«ñα»ü 10 α««α»éα«ƒα»ìα«ƒα»ê.`,
+        kn: `α▓¿α▓┐α▓«α│ìα▓« α▓¼α▓│α▓┐ α▓Äα▓╖α│ìα▓ƒα│ü α▓¬α│ìα▓░α▓«α▓╛α▓úα▓ª ${currentCrop || 'α▓¼α│åα▓│α│å'} α▓çα▓ªα│å? α▓ëα▓ªα▓╛α▓╣α▓░α▓úα│åα▓ùα│å 50 α▓òα│åα▓£α▓┐.`
       },
       PRICE: {
         en: `What is your selling price per ${currentUnit} in rupees? For example, 40 rupees.`,
-        te: `ఒక ${currentUnit} అమ్మకపు ధర ఎన్ని రూపాయలు? ఉదాహరణకు 40 రూపాయలు.`,
-        hi: `प्रति ${currentUnit} आपकी बिक्री कीमत कितने रुपये है? जैसे 40 रुपये।`,
-        ta: `ஒரு ${currentUnit} விற்பனை விலை எத்தனை ரூபாய்? உதாரணத்திற்கு 40 ரூபாய்.`,
-        kn: `ಪ್ರತಿ ${currentUnit} ಗೆ ನಿಮ್ಮ ಮಾರಾಟದ ಬೆಲೆ ಎಷ್ಟು ರೂಪಾಯಿ? ಉದಾಹರಣೆಗೆ 40 ರೂಪಾಯಿ.`
-      },
-      CONFIRM_SUBMIT: {
-        en: "Do you want to submit this listing? Please say Yes or No.",
-        te: "మీరు ఈ వివరాలను సమర్పించాలనుకుంటున్నారా? దయచేసి అవును లేదా కాదు అని చెప్పండి.",
-        hi: "क्या आप इस लिस्टिंग को सबमिट करना चाहते हैं? कृपया हाँ या ना कहें।",
-        ta: "இந்த பட்டியலைச் சமர்ப்பிக்க விரும்புகிறீர்களா? ஆம் அல்லது இல்லை என்று சொல்லுங்கள்.",
-        kn: "ನೀವು ಇದನ್ನು ಸಲ್ಲಿಸಲು ಬಯಸುವಿರಾ? ದಯವಿಟ್ಟು ಹೌದು ಅಥವಾ ಇಲ್ಲ ಎಂದು ಹೇಳಿ."
+        te: `α░Æα░ò ${currentUnit} α░àα░«α▒ìα░«α░òα░¬α▒ü α░ºα░░ α░Äα░¿α▒ìα░¿α░┐ α░░α▒éα░¬α░╛α░»α░▓α▒ü? α░ëα░ªα░╛α░╣α░░α░úα░òα▒ü 40 α░░α▒éα░¬α░╛α░»α░▓α▒ü.`,
+        hi: `αñ¬αÑìαñ░αññαñ┐ ${currentUnit} αñåαñ¬αñòαÑÇ αñ¼αñ┐αñòαÑìαñ░αÑÇ αñòαÑÇαñ«αññ αñòαñ┐αññαñ¿αÑç αñ░αÑüαñ¬αñ»αÑç αñ╣αÑê? αñ£αÑêαñ╕αÑç 40 αñ░αÑüαñ¬αñ»αÑçαÑñ`,
+        ta: `α«Æα«░α»ü ${currentUnit} α«╡α«┐α«▒α»ìα«¬α«⌐α»ê α«╡α«┐α«▓α»ê α«Äα«ñα»ìα«ñα«⌐α»ê α«░α»éα«¬α«╛α«»α»ì? α«ëα«ñα«╛α«░α«úα«ñα»ìα«ñα«┐α«▒α»ìα«òα»ü 40 α«░α»éα«¬α«╛α«»α»ì.`,
+        kn: `α▓¬α│ìα▓░α▓ñα▓┐ ${currentUnit} α▓ùα│å α▓¿α▓┐α▓«α│ìα▓« α▓«α▓╛α▓░α▓╛α▓ƒα▓ª α▓¼α│åα▓▓α│å α▓Äα▓╖α│ìα▓ƒα│ü α▓░α│éα▓¬α▓╛α▓»α▓┐? α▓ëα▓ªα▓╛α▓╣α▓░α▓úα│åα▓ùα│å 40 α▓░α│éα▓¬α▓╛α▓»α▓┐.`
       },
       COMPLETED: {
         en: "All details filled! Please review the form and click List Item to publish.",
-        te: "అన్ని వివరాలు నింపబడ్డాయి! ఫారమ్‌ను సరిచూసి లిస్ట్ ఐటెం బటన్ నొక్కండి.",
-        hi: "सभी विवरण भर दिए गए हैं! फॉर्म की समीक्षा करें और सबमिट करें।",
-        ta: "எல்லா விவரங்களும் நிரப்பப்பட்டுள்ளன! சரிபார்த்து சமர்ப்பிக்கவும்.",
-        kn: "ಎಲ್ಲಾ ವಿವರಗಳು ಭರ್ತಿಯಾಗಿವೆ! ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಸಬ್ಮಿಟ್ ಮಾಡಿ."
+        te: "α░àα░¿α▒ìα░¿α░┐ α░╡α░┐α░╡α░░α░╛α░▓α▒ü α░¿α░┐α░éα░¬α░¼α░íα▒ìα░íα░╛α░»α░┐! α░½α░╛α░░α░«α▒ìΓÇîα░¿α▒ü α░╕α░░α░┐α░Üα▒éα░╕α░┐ α░▓α░┐α░╕α▒ìα░ƒα▒ì α░Éα░ƒα▒åα░é α░¼α░ƒα░¿α▒ì α░¿α▒èα░òα▒ìα░òα░éα░íα░┐.",
+        hi: "αñ╕αñ¡αÑÇ αñ╡αñ┐αñ╡αñ░αñú αñ¡αñ░ αñªαñ┐αñÅ αñùαñÅ αñ╣αÑêαñé! αñ½αÑëαñ░αÑìαñ« αñòαÑÇ αñ╕αñ«αÑÇαñòαÑìαñ╖αñ╛ αñòαñ░αÑçαñé αñöαñ░ αñ╕αñ¼αñ«αñ┐αñƒ αñòαñ░αÑçαñéαÑñ",
+        ta: "α«Äα«▓α»ìα«▓α«╛ α«╡α«┐α«╡α«░α«Öα»ìα«òα«│α»üα««α»ì α«¿α«┐α«░α«¬α»ìα«¬α«¬α»ìα«¬α«ƒα»ìα«ƒα»üα«│α»ìα«│α«⌐! α«Üα«░α«┐α«¬α«╛α«░α»ìα«ñα»ìα«ñα»ü α«Üα««α«░α»ìα«¬α»ìα«¬α«┐α«òα»ìα«òα«╡α»üα««α»ì.",
+        kn: "α▓Äα▓▓α│ìα▓▓α▓╛ α▓╡α▓┐α▓╡α▓░α▓ùα▓│α│ü α▓¡α▓░α│ìα▓ñα▓┐α▓»α▓╛α▓ùα▓┐α▓╡α│å! α▓¬α▓░α▓┐α▓╢α│Çα▓▓α▓┐α▓╕α▓┐ α▓«α▓ñα│ìα▓ñα│ü α▓╕α▓¼α│ìα▓«α▓┐α▓ƒα│ì α▓«α▓╛α▓íα▓┐."
       }
     };
     return prompts[step]?.[lang] || prompts[step]?.en || "";
@@ -332,24 +233,24 @@ export default function AddCrop() {
     const acks = {
       NAME: {
         en: `Got it! Added ${val1} to your listing.`,
-        te: `సరే! ${val1} అని తీసుకున్నాను.`,
-        hi: `समझ गया! ${val1} जोड़ दिया गया है।`,
-        ta: `புரிந்தது! ${val1} சேர்க்கப்பட்டது.`,
-        kn: `ಅರ್ಥವಾಯಿತು! ${val1} ಸೇರಿಸಲಾಗಿದೆ.`
+        te: `α░╕α░░α▒ç! ${val1} α░àα░¿α░┐ α░ñα▒Çα░╕α▒üα░òα▒üα░¿α▒ìα░¿α░╛α░¿α▒ü.`,
+        hi: `αñ╕αñ«αñ¥ αñùαñ»αñ╛! ${val1} αñ£αÑïαñíαñ╝ αñªαñ┐αñ»αñ╛ αñùαñ»αñ╛ αñ╣αÑêαÑñ`,
+        ta: `α«¬α»üα«░α«┐α«¿α»ìα«ñα«ñα»ü! ${val1} α«Üα»çα«░α»ìα«òα»ìα«òα«¬α»ìα«¬α«ƒα»ìα«ƒα«ñα»ü.`,
+        kn: `α▓àα▓░α│ìα▓Ñα▓╡α▓╛α▓»α▓┐α▓ñα│ü! ${val1} α▓╕α│çα▓░α▓┐α▓╕α▓▓α▓╛α▓ùα▓┐α▓ªα│å.`
       },
       QUANTITY: {
         en: `Understood! Added ${val1} ${val2}.`,
-        te: `సరే! ${val1} ${val2} నమోదు చేశాను.`,
-        hi: `बढ़िया! ${val1} ${val2} दर्ज कर दिया गया।`,
-        ta: `அருமை! ${val1} ${val2} சேர்க்கப்பட்டது.`,
-        kn: `ಉತ್ತಮ! ${val1} ${val2} ಸೇರಿಸಲಾಗಿದೆ.`
+        te: `α░╕α░░α▒ç! ${val1} ${val2} α░¿α░«α▒ïα░ªα▒ü α░Üα▒çα░╢α░╛α░¿α▒ü.`,
+        hi: `αñ¼αñóαñ╝αñ┐αñ»αñ╛! ${val1} ${val2} αñªαñ░αÑìαñ£ αñòαñ░ αñªαñ┐αñ»αñ╛ αñùαñ»αñ╛αÑñ`,
+        ta: `α«àα«░α»üα««α»ê! ${val1} ${val2} α«Üα»çα«░α»ìα«òα»ìα«òα«¬α»ìα«¬α«ƒα»ìα«ƒα«ñα»ü.`,
+        kn: `α▓ëα▓ñα│ìα▓ñα▓«! ${val1} ${val2} α▓╕α│çα▓░α▓┐α▓╕α▓▓α▓╛α▓ùα▓┐α▓ªα│å.`
       },
       PRICE: {
-        en: `Perfect! Selling price set to ₹${val1} per ${val2}.`,
-        te: `అద్భుతం! ధర ఒక ${val2}కి ₹${val1}గా నిర్ణయించాను.`,
-        hi: `शानदार! प्रति ${val2} कीमत ₹${val1} तय कर दी गई।`,
-        ta: `மிக நன்று! விலை ஒரு ${val2}க்கு ₹${val1} என அமைக்கப்பட்டது.`,
-        kn: `ಅದ್ಭುತ! ಪ್ರತಿ ${val2} ಗೆ ₹${val1} ಬೆಲೆ ನಿಗದಿಪಡಿಸಲಾಗಿದೆ.`
+        en: `Perfect! Selling price set to Γé╣${val1} per ${val2}.`,
+        te: `α░àα░ªα▒ìα░¡α▒üα░ñα░é! α░ºα░░ α░Æα░ò ${val2}α░òα░┐ Γé╣${val1}α░ùα░╛ α░¿α░┐α░░α▒ìα░úα░»α░┐α░éα░Üα░╛α░¿α▒ü.`,
+        hi: `αñ╢αñ╛αñ¿αñªαñ╛αñ░! αñ¬αÑìαñ░αññαñ┐ ${val2} αñòαÑÇαñ«αññ Γé╣${val1} αññαñ» αñòαñ░ αñªαÑÇ αñùαñêαÑñ`,
+        ta: `α««α«┐α«ò α«¿α«⌐α»ìα«▒α»ü! α«╡α«┐α«▓α»ê α«Æα«░α»ü ${val2}α«òα»ìα«òα»ü Γé╣${val1} α«Äα«⌐ α«àα««α»êα«òα»ìα«òα«¬α»ìα«¬α«ƒα»ìα«ƒα«ñα»ü.`,
+        kn: `α▓àα▓ªα│ìα▓¡α│üα▓ñ! α▓¬α│ìα▓░α▓ñα▓┐ ${val2} α▓ùα│å Γé╣${val1} α▓¼α│åα▓▓α│å α▓¿α▓┐α▓ùα▓ªα▓┐α▓¬α▓íα▓┐α▓╕α▓▓α▓╛α▓ùα▓┐α▓ªα│å.`
       }
     };
     return acks[step]?.[lang] || acks[step]?.en || "";
@@ -359,31 +260,24 @@ export default function AddCrop() {
     const retryAcks = {
       NAME: {
         en: "I didn't hear you. What crop do you want to sell? Please speak now.",
-        te: "మీరు చెప్పింది వినపడలేదు. మీరు ఏ పంటను అమ్మాలనుకుంటున్నారు? దయచేసి మళ్లీ చెప్పండి.",
-        hi: "आपकी आवाज़ नहीं आई। आप कौन सी फसल बेचना चाहते हैं? कृपया फिर से बोलें।",
-        ta: "நீங்கள் பேசியது கேட்கவில்லை. என்ன பயிரை விற்க விரும்புகிறீர்கள்? மீண்டும் சொல்லுங்கள்.",
-        kn: "ನಿಮ್ಮ ಧ್ವನಿ ಕೇಳಿಸಲಿಲ್ಲ. ಯಾವ ಬೆಳೆಯನ್ನು ಮಾರಾಟ ಮಾಡಲು ಬಯಸುತ್ತೀರಿ? ದಯವಿಟ್ಟು ಮತ್ತೆ ಹೇಳಿ."
+        te: "α░«α▒Çα░░α▒ü α░Üα▒åα░¬α▒ìα░¬α░┐α░éα░ªα░┐ α░╡α░┐α░¿α░¬α░íα░▓α▒çα░ªα▒ü. α░«α▒Çα░░α▒ü α░Å α░¬α░éα░ƒα░¿α▒ü α░àα░«α▒ìα░«α░╛α░▓α░¿α▒üα░òα▒üα░éα░ƒα▒üα░¿α▒ìα░¿α░╛α░░α▒ü? α░ªα░»α░Üα▒çα░╕α░┐ α░«α░│α▒ìα░▓α▒Ç α░Üα▒åα░¬α▒ìα░¬α░éα░íα░┐.",
+        hi: "αñåαñ¬αñòαÑÇ αñåαñ╡αñ╛αñ£αñ╝ αñ¿αñ╣αÑÇαñé αñåαñêαÑñ αñåαñ¬ αñòαÑîαñ¿ αñ╕αÑÇ αñ½αñ╕αñ▓ αñ¼αÑçαñÜαñ¿αñ╛ αñÜαñ╛αñ╣αññαÑç αñ╣αÑêαñé? αñòαÑâαñ¬αñ»αñ╛ αñ½αñ┐αñ░ αñ╕αÑç αñ¼αÑïαñ▓αÑçαñéαÑñ",
+        ta: "α«¿α»Çα«Öα»ìα«òα«│α»ì α«¬α»çα«Üα«┐α«»α«ñα»ü α«òα»çα«ƒα»ìα«òα«╡α«┐α«▓α»ìα«▓α»ê. α«Äα«⌐α»ìα«⌐ α«¬α«»α«┐α«░α»ê α«╡α«┐α«▒α»ìα«ò α«╡α«┐α«░α»üα««α»ìα«¬α»üα«òα«┐α«▒α»Çα«░α»ìα«òα«│α»ì? α««α»Çα«úα»ìα«ƒα»üα««α»ì α«Üα»èα«▓α»ìα«▓α»üα«Öα»ìα«òα«│α»ì.",
+        kn: "α▓¿α▓┐α▓«α│ìα▓« α▓ºα│ìα▓╡α▓¿α▓┐ α▓òα│çα▓│α▓┐α▓╕α▓▓α▓┐α▓▓α│ìα▓▓. α▓»α▓╛α▓╡ α▓¼α│åα▓│α│åα▓»α▓¿α│ìα▓¿α│ü α▓«α▓╛α▓░α▓╛α▓ƒ α▓«α▓╛α▓íα▓▓α│ü α▓¼α▓»α▓╕α│üα▓ñα│ìα▓ñα│Çα▓░α▓┐? α▓ªα▓»α▓╡α▓┐α▓ƒα│ìα▓ƒα│ü α▓«α▓ñα│ìα▓ñα│å α▓╣α│çα▓│α▓┐."
       },
       QUANTITY: {
         en: "I didn't hear the quantity. How much quantity do you have? For example, 50 kg.",
-        te: "పరిమాణం వినపడలేదు. మీ వద్ద ఎంత పరిమాణం ఉంది? ఉదాహరణకు 50 కేజీలు అని చెప్పండి.",
-        hi: "मात्रा सुनाई नहीं दी। आपके पास कितनी फसल है? जैसे 50 किलो बोलें।",
-        ta: "அளவு கேட்கவில்லை. எவ்வளவு அளவு உள்ளது? உதாரணத்திற்கு 50 கிலோ என்று சொல்லுங்கள்.",
-        kn: "ಪ್ರಮಾಣ ಕೇಳಿಸಲಿಲ್ಲ. ಎಷ್ಟು ಪ್ರಮಾಣವಿದೆ? ಉದಾಹರಣೆಗೆ 50 ಕೆಜಿ ಎಂದು ಹೇಳಿ."
+        te: "α░¬α░░α░┐α░«α░╛α░úα░é α░╡α░┐α░¿α░¬α░íα░▓α▒çα░ªα▒ü. α░«α▒Ç α░╡α░ªα▒ìα░ª α░Äα░éα░ñ α░¬α░░α░┐α░«α░╛α░úα░é α░ëα░éα░ªα░┐? α░ëα░ªα░╛α░╣α░░α░úα░òα▒ü 50 α░òα▒çα░£α▒Çα░▓α▒ü α░àα░¿α░┐ α░Üα▒åα░¬α▒ìα░¬α░éα░íα░┐.",
+        hi: "αñ«αñ╛αññαÑìαñ░αñ╛ αñ╕αÑüαñ¿αñ╛αñê αñ¿αñ╣αÑÇαñé αñªαÑÇαÑñ αñåαñ¬αñòαÑç αñ¬αñ╛αñ╕ αñòαñ┐αññαñ¿αÑÇ αñ½αñ╕αñ▓ αñ╣αÑê? αñ£αÑêαñ╕αÑç 50 αñòαñ┐αñ▓αÑï αñ¼αÑïαñ▓αÑçαñéαÑñ",
+        ta: "α«àα«│α«╡α»ü α«òα»çα«ƒα»ìα«òα«╡α«┐α«▓α»ìα«▓α»ê. α«Äα«╡α»ìα«╡α«│α«╡α»ü α«àα«│α«╡α»ü α«ëα«│α»ìα«│α«ñα»ü? α«ëα«ñα«╛α«░α«úα«ñα»ìα«ñα«┐α«▒α»ìα«òα»ü 50 α«òα«┐α«▓α»ï α«Äα«⌐α»ìα«▒α»ü α«Üα»èα«▓α»ìα«▓α»üα«Öα»ìα«òα«│α»ì.",
+        kn: "α▓¬α│ìα▓░α▓«α▓╛α▓ú α▓òα│çα▓│α▓┐α▓╕α▓▓α▓┐α▓▓α│ìα▓▓. α▓Äα▓╖α│ìα▓ƒα│ü α▓¬α│ìα▓░α▓«α▓╛α▓úα▓╡α▓┐α▓ªα│å? α▓ëα▓ªα▓╛α▓╣α▓░α▓úα│åα▓ùα│å 50 α▓òα│åα▓£α▓┐ α▓Äα▓éα▓ªα│ü α▓╣α│çα▓│α▓┐."
       },
       PRICE: {
         en: "I didn't hear the price. What is the selling price in rupees? For example, 40.",
-        te: "ధర వినపడలేదు. ఒక కేజీ ధర ఎన్ని రూపాయలు? ఉదాహరణకు 40 అని చెప్పండి.",
-        hi: "कीमत सुनाई नहीं दी। कितने रुपये में बेचना चाहते हैं? जैसे 40 बोलें।",
-        ta: "விலை கேட்கவில்லை. எத்தனை ரூபாய்க்கு விற்க விரும்புகிறீர்கள்? உதாரணத்திற்கு 40.",
-        kn: "ಬೆಲೆ ಕೇಳಿಸಲಿಲ್ಲ. ಎಷ್ಟು ರೂಪಾಯಿಗೆ ಮಾರಾಟ ಮಾಡಲು ಬಯಸುತ್ತೀರಿ? ಉದಾಹರಣೆಗೆ 40."
-      },
-      CONFIRM_SUBMIT: {
-        en: "I didn't hear you. Please say Yes to submit or No to cancel.",
-        te: "వినపడలేదు. దయచేసి సమర్పించడానికి అవును లేదా కాదు అని చెప్పండి.",
-        hi: "मुझे सुनाई नहीं दिया। कृपया हाँ या ना कहें।",
-        ta: "கேட்கவில்லை. ஆம் அல்லது இல்லை என்று சொல்லுங்கள்.",
-        kn: "ಕೇಳಿಸಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಹೌದು ಅಥವಾ ಇಲ್ಲ ಎಂದು ಹೇಳಿ."
+        te: "α░ºα░░ α░╡α░┐α░¿α░¬α░íα░▓α▒çα░ªα▒ü. α░Æα░ò α░òα▒çα░£α▒Ç α░ºα░░ α░Äα░¿α▒ìα░¿α░┐ α░░α▒éα░¬α░╛α░»α░▓α▒ü? α░ëα░ªα░╛α░╣α░░α░úα░òα▒ü 40 α░àα░¿α░┐ α░Üα▒åα░¬α▒ìα░¬α░éα░íα░┐.",
+        hi: "αñòαÑÇαñ«αññ αñ╕αÑüαñ¿αñ╛αñê αñ¿αñ╣αÑÇαñé αñªαÑÇαÑñ αñòαñ┐αññαñ¿αÑç αñ░αÑüαñ¬αñ»αÑç αñ«αÑçαñé αñ¼αÑçαñÜαñ¿αñ╛ αñÜαñ╛αñ╣αññαÑç αñ╣αÑêαñé? αñ£αÑêαñ╕αÑç 40 αñ¼αÑïαñ▓αÑçαñéαÑñ",
+        ta: "α«╡α«┐α«▓α»ê α«òα»çα«ƒα»ìα«òα«╡α«┐α«▓α»ìα«▓α»ê. α«Äα«ñα»ìα«ñα«⌐α»ê α«░α»éα«¬α«╛α«»α»ìα«òα»ìα«òα»ü α«╡α«┐α«▒α»ìα«ò α«╡α«┐α«░α»üα««α»ìα«¬α»üα«òα«┐α«▒α»Çα«░α»ìα«òα«│α»ì? α«ëα«ñα«╛α«░α«úα«ñα»ìα«ñα«┐α«▒α»ìα«òα»ü 40.",
+        kn: "α▓¼α│åα▓▓α│å α▓òα│çα▓│α▓┐α▓╕α▓▓α▓┐α▓▓α│ìα▓▓. α▓Äα▓╖α│ìα▓ƒα│ü α▓░α│éα▓¬α▓╛α▓»α▓┐α▓ùα│å α▓«α▓╛α▓░α▓╛α▓ƒ α▓«α▓╛α▓íα▓▓α│ü α▓¼α▓»α▓╕α│üα▓ñα│ìα▓ñα│Çα▓░α▓┐? α▓ëα▓ªα▓╛α▓╣α▓░α▓úα│åα▓ùα│å 40."
       }
     };
     return retryAcks[step]?.[lang] || retryAcks[step]?.en || "";
@@ -393,46 +287,37 @@ export default function AddCrop() {
     const unrecAcks = {
       NAME: {
         en: `I heard "${heard}", but didn't catch the crop. Please speak a crop name like Tomato, Rice, or Onion.`,
-        te: `మీరు చెప్పిన "${heard}" పంట పేరు అర్థంకాలేదు. దయచేసి టమోటా, వరి లేదా ఉల్లిపాయ లాంటి పంట పేరు చెప్పండి.`,
-        hi: `मुझे "${heard}" सुनाई दिया, लेकिन फसल समझ नहीं आई। कृपया टमाटर या चावल जैसी फसल बोलें।`,
-        ta: `"${heard}" என்று கேட்டது, ஆனால் பயிர் புரியவில்லை. தயவுசெய்து தக்காளி போன்ற பயிர் பெயரைச் சொல்லுங்கள்.`,
-        kn: `"${heard}" ಕೇಳಿಸಿತು, ಆದರೆ ಬೆಳೆ ಅರ್ಥವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಬೆಳೆಯ ಹೆಸರನ್ನು ಸ್ಪಷ್ಟವಾಗಿ ಹೇಳಿ.`
+        te: `α░«α▒Çα░░α▒ü α░Üα▒åα░¬α▒ìα░¬α░┐α░¿ "${heard}" α░¬α░éα░ƒ α░¬α▒çα░░α▒ü α░àα░░α▒ìα░Ñα░éα░òα░╛α░▓α▒çα░ªα▒ü. α░ªα░»α░Üα▒çα░╕α░┐ α░ƒα░«α▒ïα░ƒα░╛, α░╡α░░α░┐ α░▓α▒çα░ªα░╛ α░ëα░▓α▒ìα░▓α░┐α░¬α░╛α░» α░▓α░╛α░éα░ƒα░┐ α░¬α░éα░ƒ α░¬α▒çα░░α▒ü α░Üα▒åα░¬α▒ìα░¬α░éα░íα░┐.`,
+        hi: `αñ«αÑüαñ¥αÑç "${heard}" αñ╕αÑüαñ¿αñ╛αñê αñªαñ┐αñ»αñ╛, αñ▓αÑçαñòαñ┐αñ¿ αñ½αñ╕αñ▓ αñ╕αñ«αñ¥ αñ¿αñ╣αÑÇαñé αñåαñêαÑñ αñòαÑâαñ¬αñ»αñ╛ αñƒαñ«αñ╛αñƒαñ░ αñ»αñ╛ αñÜαñ╛αñ╡αñ▓ αñ£αÑêαñ╕αÑÇ αñ½αñ╕αñ▓ αñ¼αÑïαñ▓αÑçαñéαÑñ`,
+        ta: `"${heard}" α«Äα«⌐α»ìα«▒α»ü α«òα»çα«ƒα»ìα«ƒα«ñα»ü, α«åα«⌐α«╛α«▓α»ì α«¬α«»α«┐α«░α»ì α«¬α»üα«░α«┐α«»α«╡α«┐α«▓α»ìα«▓α»ê. α«ñα«»α«╡α»üα«Üα»åα«»α»ìα«ñα»ü α«ñα«òα»ìα«òα«╛α«│α«┐ α«¬α»ïα«⌐α»ìα«▒ α«¬α«»α«┐α«░α»ì α«¬α»åα«»α«░α»êα«Üα»ì α«Üα»èα«▓α»ìα«▓α»üα«Öα»ìα«òα«│α»ì.`,
+        kn: `"${heard}" α▓òα│çα▓│α▓┐α▓╕α▓┐α▓ñα│ü, α▓åα▓ªα▓░α│å α▓¼α│åα▓│α│å α▓àα▓░α│ìα▓Ñα▓╡α▓╛α▓ùα▓▓α▓┐α▓▓α│ìα▓▓. α▓ªα▓»α▓╡α▓┐α▓ƒα│ìα▓ƒα│ü α▓¼α│åα▓│α│åα▓» α▓╣α│åα▓╕α▓░α▓¿α│ìα▓¿α│ü α▓╕α│ìα▓¬α▓╖α│ìα▓ƒα▓╡α▓╛α▓ùα▓┐ α▓╣α│çα▓│α▓┐.`
       },
       QUANTITY: {
         en: `I heard "${heard}". Please speak a quantity number, like 50 kg or 10 bags.`,
-        te: `మీరు చెప్పిన "${heard}" పరిమాణం అర్థం కాలేదు. దయచేసి 50 కేజీలు లేదా 10 బస్తాలు అని చెప్పండి.`,
-        hi: `कृपया मात्रा का नंबर स्पष्ट बोलें, जैसे 50 किलो या 10 बोरी।`,
-        ta: `தயவுசெய்து அளவை தெளிவாகச் சொல்லுங்கள், உதாரணத்திற்கு 50 கிலோ.`,
-        kn: `ದಯವಿಟ್ಟು ಪ್ರಮಾಣವನ್ನು ಸ್ಪಷ್ಟವಾಗಿ ಹೇಳಿ, ಉದಾಹರಣೆಗೆ 50 ಕೆಜಿ.`
+        te: `α░«α▒Çα░░α▒ü α░Üα▒åα░¬α▒ìα░¬α░┐α░¿ "${heard}" α░¬α░░α░┐α░«α░╛α░úα░é α░àα░░α▒ìα░Ñα░é α░òα░╛α░▓α▒çα░ªα▒ü. α░ªα░»α░Üα▒çα░╕α░┐ 50 α░òα▒çα░£α▒Çα░▓α▒ü α░▓α▒çα░ªα░╛ 10 α░¼α░╕α▒ìα░ñα░╛α░▓α▒ü α░àα░¿α░┐ α░Üα▒åα░¬α▒ìα░¬α░éα░íα░┐.`,
+        hi: `αñòαÑâαñ¬αñ»αñ╛ αñ«αñ╛αññαÑìαñ░αñ╛ αñòαñ╛ αñ¿αñéαñ¼αñ░ αñ╕αÑìαñ¬αñ╖αÑìαñƒ αñ¼αÑïαñ▓αÑçαñé, αñ£αÑêαñ╕αÑç 50 αñòαñ┐αñ▓αÑï αñ»αñ╛ 10 αñ¼αÑïαñ░αÑÇαÑñ`,
+        ta: `α«ñα«»α«╡α»üα«Üα»åα«»α»ìα«ñα»ü α«àα«│α«╡α»ê α«ñα»åα«│α«┐α«╡α«╛α«òα«Üα»ì α«Üα»èα«▓α»ìα«▓α»üα«Öα»ìα«òα«│α»ì, α«ëα«ñα«╛α«░α«úα«ñα»ìα«ñα«┐α«▒α»ìα«òα»ü 50 α«òα«┐α«▓α»ï.`,
+        kn: `α▓ªα▓»α▓╡α▓┐α▓ƒα│ìα▓ƒα│ü α▓¬α│ìα▓░α▓«α▓╛α▓úα▓╡α▓¿α│ìα▓¿α│ü α▓╕α│ìα▓¬α▓╖α│ìα▓ƒα▓╡α▓╛α▓ùα▓┐ α▓╣α│çα▓│α▓┐, α▓ëα▓ªα▓╛α▓╣α▓░α▓úα│åα▓ùα│å 50 α▓òα│åα▓£α▓┐.`
       },
       PRICE: {
         en: `I heard "${heard}". Please speak the price in rupees, like 40 or 50 rupees.`,
-        te: `మీరు చెప్పిన "${heard}" ధర అర్థం కాలేదు. దయచేసి 40 రూపాయలు లేదా 30 రూపాయలు అని చెప్పండి.`,
-        hi: `कृपया कीमत का नंबर बोलें, जैसे 40 रुपये।`,
-        ta: `தயவுசெய்து விலையைச் சொல்லுங்கள், உதாரணத்திற்கு 40 ரூபாய்.`,
-        kn: `ದಯವಿಟ್ಟು ಬೆಲೆಯನ್ನು ರೂಪಾಯಿಗಳಲ್ಲಿ ಹೇಳಿ, ಉದಾಹರಣೆಗೆ 40 ರೂಪಾಯಿ.`
-      },
-      CONFIRM_SUBMIT: {
-        en: `I heard "${heard}". Please just say Yes or No.`,
-        te: `అర్థం కాలేదు. దయచేసి అవును లేదా కాదు అని మాత్రమే చెప్పండి.`,
-        hi: `कृपया केवल हाँ या ना कहें।`,
-        ta: `ஆம் அல்லது இல்லை என்று மட்டுமே சொல்லுங்கள்.`,
-        kn: `ದಯವಿಟ್ಟು ಹೌದು ಅಥವಾ ಇಲ್ಲ ಎಂದು ಮಾತ್ರ ಹೇಳಿ.`
+        te: `α░«α▒Çα░░α▒ü α░Üα▒åα░¬α▒ìα░¬α░┐α░¿ "${heard}" α░ºα░░ α░àα░░α▒ìα░Ñα░é α░òα░╛α░▓α▒çα░ªα▒ü. α░ªα░»α░Üα▒çα░╕α░┐ 40 α░░α▒éα░¬α░╛α░»α░▓α▒ü α░▓α▒çα░ªα░╛ 30 α░░α▒éα░¬α░╛α░»α░▓α▒ü α░àα░¿α░┐ α░Üα▒åα░¬α▒ìα░¬α░éα░íα░┐.`,
+        hi: `αñòαÑâαñ¬αñ»αñ╛ αñòαÑÇαñ«αññ αñòαñ╛ αñ¿αñéαñ¼αñ░ αñ¼αÑïαñ▓αÑçαñé, αñ£αÑêαñ╕αÑç 40 αñ░αÑüαñ¬αñ»αÑçαÑñ`,
+        ta: `α«ñα«»α«╡α»üα«Üα»åα«»α»ìα«ñα»ü α«╡α«┐α«▓α»êα«»α»êα«Üα»ì α«Üα»èα«▓α»ìα«▓α»üα«Öα»ìα«òα«│α»ì, α«ëα«ñα«╛α«░α«úα«ñα»ìα«ñα«┐α«▒α»ìα«òα»ü 40 α«░α»éα«¬α«╛α«»α»ì.`,
+        kn: `α▓ªα▓»α▓╡α▓┐α▓ƒα│ìα▓ƒα│ü α▓¼α│åα▓▓α│åα▓»α▓¿α│ìα▓¿α│ü α▓░α│éα▓¬α▓╛α▓»α▓┐α▓ùα▓│α▓▓α│ìα▓▓α▓┐ α▓╣α│çα▓│α▓┐, α▓ëα▓ªα▓╛α▓╣α▓░α▓úα│åα▓ùα│å 40 α▓░α│éα▓¬α▓╛α▓»α▓┐.`
       }
     };
     return unrecAcks[step]?.[lang] || unrecAcks[step]?.en || "";
   };
 
-  // ─── Step Transition: Speak Prompt & Open Mic ───
+  // ΓöÇΓöÇΓöÇ Step Transition: Speak Prompt & Open Mic ΓöÇΓöÇΓöÇ
   const askStep = async (step, customPrefix = "") => {
     stopRecognition();
     stopTTS();
 
     setWizardStep(step);
-    wizardStepRef.current = step; // Immediate ref update to fix race condition
     setInterim("");
     setIsProcessing(false);
-    isProcessingRef.current = false;
 
     let promptText = getPromptForStep(
       step, 
@@ -447,7 +332,6 @@ export default function AddCrop() {
 
     setWizardMsg(promptText);
     setIsSpeaking(true);
-    isSpeakingRef.current = true;
 
     // Speak prompt aloud
     try {
@@ -457,19 +341,14 @@ export default function AddCrop() {
     }
 
     setIsSpeaking(false);
-    isSpeakingRef.current = false;
 
-    // After AI finishes speaking, add a small delay then open the mic for the farmer
+    // After AI finishes speaking, open the mic for the farmer
     if (step !== 'COMPLETED' && wizardStepRef.current === step) {
-      // Delay prevents echo from TTS playing into the mic
-      await new Promise(resolve => setTimeout(resolve, 600));
-      if (wizardStepRef.current === step) {
-        startListeningForStep(step);
-      }
+      startListeningForStep(step);
     }
   };
 
-  // ─── Start Listening for Farmer's Response ───
+  // ΓöÇΓöÇΓöÇ Start Listening for Farmer's Response ΓöÇΓöÇΓöÇ
   const startListeningForStep = (step, silentRetryCount = 0) => {
     stopRecognition();
 
@@ -483,7 +362,7 @@ export default function AddCrop() {
     if (silentRetryCount === 0) playChime('start');
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = true; // Use robust manual silence detection instead of native VAD
+    recognition.continuous = false; // Native VAD: stops automatically when user pauses
     recognition.interimResults = true;
     recognition.lang = LANG_MAP[lang] || "en-IN";
 
@@ -495,15 +374,8 @@ export default function AddCrop() {
 
     recognition.onstart = () => {
       setIsListening(true);
-      setInterim("Listening... Please speak now 🎙️");
+      setInterim("Listening... Please speak now ≡ƒÄÖ∩╕Å");
       micStarted = Date.now();
-      
-      if (initialSilenceTimerRef.current) clearTimeout(initialSilenceTimerRef.current);
-      initialSilenceTimerRef.current = setTimeout(() => {
-          if (!hasUserSpokenRef.current && recognitionRef.current) {
-              try { recognitionRef.current.stop(); } catch(e) {}
-          }
-      }, 6000); // 6 seconds initial wait
     };
 
     recognition.onresult = (event) => {
@@ -515,13 +387,6 @@ export default function AddCrop() {
       currentText = currentText.trim();
       capturedTextRef.current = currentText;
       setInterim(currentText);
-
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = setTimeout(() => {
-         if (recognitionRef.current) {
-             try { recognitionRef.current.stop(); } catch(e) {}
-         }
-      }, 2500); // Stop after 2.5s of silence (increased for slower speakers)
     };
 
     recognition.onerror = (event) => {
@@ -534,9 +399,6 @@ export default function AddCrop() {
 
     recognition.onend = () => {
       setIsListening(false);
-      if (initialSilenceTimerRef.current) clearTimeout(initialSilenceTimerRef.current);
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-      
       const textToProcess = capturedTextRef.current.trim();
       
       if (textToProcess && wizardStepRef.current === step && !isProcessingRef.current) {
@@ -569,29 +431,20 @@ export default function AddCrop() {
     }
   };
 
-  // ─── Handle No Speech Detected: Acknowledge & Ask Again (Max 2 retries) ───
+  // ΓöÇΓöÇΓöÇ Handle No Speech Detected: Acknowledge & Ask Again ΓöÇΓöÇΓöÇ
   const handleNoSpeechDetected = (step) => {
     stopRecognition();
     playChime('retry');
+    setRetryCount(prev => prev + 1);
 
-    setRetryCount(prev => {
-      const next = prev + 1;
-      if (next > 2) {
-        const pauseMsg = lang === "te" 
-          ? "మైక్ పాజ్ చేయబడింది. మీకు కావలసినప్పుడు మైక్ బటన్ నొక్కండి లేదా వివరాలు నమోదు చేయండి." 
-          : "Microphone paused. Tap the mic button or fill fields below when ready.";
-        setWizardMsg(pauseMsg);
-        setIsListening(false);
-        return 0;
-      }
-      const retryMsg = getSilenceRetryAck(step);
-      setWizardMsg(retryMsg);
-      askStep(step, retryMsg);
-      return next;
-    });
+    const retryMsg = getSilenceRetryAck(step);
+    setWizardMsg(retryMsg);
+    
+    // Speak acknowledgment and re-prompt the farmer
+    askStep(step, retryMsg);
   };
 
-  // ─── Manual Controls ───
+  // ΓöÇΓöÇΓöÇ Manual Controls ΓöÇΓöÇΓöÇ
   const handleManualDoneSpeaking = () => {
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch(e) {}
@@ -613,11 +466,10 @@ export default function AddCrop() {
   const handleSkipStep = () => {
     if (wizardStep === 'NAME') askStep('QUANTITY');
     else if (wizardStep === 'QUANTITY') askStep('PRICE');
-    else if (wizardStep === 'PRICE') askStep('CONFIRM_SUBMIT');
-    else if (wizardStep === 'CONFIRM_SUBMIT') askStep('COMPLETED');
+    else if (wizardStep === 'PRICE') askStep('COMPLETED');
   };
 
-  // ─── Process Input: Sense, Acknowledge, Add to Form, or Ask Again ───
+  // ΓöÇΓöÇΓöÇ Process Input: Sense, Acknowledge, Add to Form, or Ask Again ΓöÇΓöÇΓöÇ
   const processStepInput = async (step, transcript) => {
     if (!transcript) {
       handleNoSpeechDetected(step);
@@ -625,7 +477,6 @@ export default function AddCrop() {
     }
 
     setIsProcessing(true);
-    isProcessingRef.current = true;
     setLastHeard(transcript);
     setInterim("");
     stopRecognition();
@@ -633,9 +484,9 @@ export default function AddCrop() {
     try {
       const lower = transcript.toLowerCase().trim();
 
-      // ────────────────────────────────
+      // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
       // STEP 1: CROP NAME
-      // ────────────────────────────────
+      // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
       if (step === 'NAME') {
         let extractedName = "";
         let extractedCategory = "";
@@ -699,9 +550,9 @@ export default function AddCrop() {
         askStep('QUANTITY', ackMsg);
       }
 
-      // ────────────────────────────────
+      // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
       // STEP 2: QUANTITY
-      // ────────────────────────────────
+      // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
       else if (step === 'QUANTITY') {
         let extractedQty = null;
         let extractedUnit = "kg";
@@ -765,9 +616,9 @@ export default function AddCrop() {
         askStep('PRICE', ackMsg);
       }
 
-      // ────────────────────────────────
+      // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
       // STEP 3: PRICE
-      // ────────────────────────────────
+      // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
       else if (step === 'PRICE') {
         let extractedPrice = null;
 
@@ -815,31 +666,14 @@ export default function AddCrop() {
         setFilledFields(prev => ({ ...prev, price: true }));
 
         const ackMsg = getSuccessAck('PRICE', extractedPrice, formDataRef.current.unit || 'kg');
-        // Move to CONFIRM_SUBMIT step with acknowledgment
-        askStep('CONFIRM_SUBMIT', ackMsg);
-      } else if (step === 'CONFIRM_SUBMIT') {
-        const isYes = lower.includes("yes") || lower.includes("avunu") || lower.includes("haan") || lower.includes("sare") || lower.includes("ok") || lower.includes("submit") || lower.includes("list") || lower.includes("am");
-        const isNo = lower.includes("no") || lower.includes("kadu") || lower.includes("nahi") || lower.includes("vaddhu") || lower.includes("cancel") || lower.includes("illai");
-
-        if (isYes) {
-          playChime('success');
-          handleSubmit({ preventDefault: () => {} });
-          stopWizard();
-        } else if (isNo) {
-          playChime('retry');
-          askStep('NAME', "Okay, let's start over.");
-        } else {
-          playChime('retry');
-          const retryMsg = getUnrecognizedAck('CONFIRM_SUBMIT', transcript);
-          askStep('CONFIRM_SUBMIT', retryMsg);
-        }
+        // Move to COMPLETED step with acknowledgment
+        askStep('COMPLETED', ackMsg);
       }
     } catch (err) {
       console.error("Step processing error:", err);
       handleNoSpeechDetected(step);
     } finally {
       setIsProcessing(false);
-      isProcessingRef.current = false;
     }
   };
 
@@ -890,8 +724,8 @@ export default function AddCrop() {
       
       const successMsg = {
         en: `Successfully listed ${formData.name} for sale!`,
-        te: `${formData.name} అమ్మకానికి విజయవంతంగా ఉంచబడింది!`,
-        hi: `${formData.name} को बिक्री के लिए सफलतापूर्वक सूचीबद्ध किया गया!`
+        te: `${formData.name} α░àα░«α▒ìα░«α░òα░╛α░¿α░┐α░òα░┐ α░╡α░┐α░£α░»α░╡α░éα░ñα░éα░ùα░╛ α░ëα░éα░Üα░¼α░íα░┐α░éα░ªα░┐!`,
+        hi: `${formData.name} αñòαÑï αñ¼αñ┐αñòαÑìαñ░αÑÇ αñòαÑç αñ▓αñ┐αñÅ αñ╕αñ½αñ▓αññαñ╛αñ¬αÑéαñ░αÑìαñ╡αñò αñ╕αÑéαñÜαÑÇαñ¼αñªαÑìαñº αñòαñ┐αñ»αñ╛ αñùαñ»αñ╛!`
       };
       playTTS(successMsg[lang] || successMsg.en, lang);
     } catch (err) {
@@ -904,13 +738,13 @@ export default function AddCrop() {
     <div className="page-wrapper fade-in" style={{ padding: '2rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
         <PackagePlus size={32} color="#16a34a" />
-        <h1 className="page-title" style={{ margin: 0 }}>{t('addCrop')}</h1>
+        <h1 className="page-title" style={{ margin: 0 }}>List Produce or Byproducts</h1>
       </div>
       <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
         You can list your harvest, vegetables, fruits, grains, or farm byproducts like Hay Bales and Slurry.
       </p>
 
-      {/* ─── AI GUIDED VOICE ASSISTANT WIZARD BANNER ─── */}
+      {/* ΓöÇΓöÇΓöÇ AI GUIDED VOICE ASSISTANT WIZARD BANNER ΓöÇΓöÇΓöÇ */}
       <div 
         style={{
           background: wizardStep === 'IDLE' 
@@ -929,7 +763,7 @@ export default function AddCrop() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
           <div>
             <h3 style={{ margin: 0, color: "#166534", display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.25rem" }}>
-              <Mic size={26} color="#16a34a" /> Guided Voice Assistant (స్మార్ట్ వాయిస్ అసిస్టెంట్)
+              <Mic size={26} color="#16a34a" /> Guided Voice Assistant (α░╕α▒ìα░«α░╛α░░α▒ìα░ƒα▒ì α░╡α░╛α░»α░┐α░╕α▒ì α░àα░╕α░┐α░╕α▒ìα░ƒα▒åα░éα░ƒα▒ì)
             </h3>
             <p style={{ margin: "0.25rem 0 0 0", color: "#374151", fontSize: "0.95rem" }}>
               Illiterate or non-technical? Speak in Telugu, Hindi, Tamil, Kannada, or English. The assistant auto-fills and acknowledges your input!
@@ -971,17 +805,17 @@ export default function AddCrop() {
         {wizardStep !== 'IDLE' && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative", margin: "0.5rem 0" }}>
             {[
-              { id: 'NAME', label: '1. Crop Name 🌾' },
-              { id: 'QUANTITY', label: '2. Quantity ⚖️' },
-              { id: 'PRICE', label: '3. Price 💰' },
-              { id: 'CONFIRM_SUBMIT', label: '4. Ready ?' }
+              { id: 'NAME', label: '1. Crop Name ≡ƒî╛' },
+              { id: 'QUANTITY', label: '2. Quantity ΓÜû∩╕Å' },
+              { id: 'PRICE', label: '3. Price ≡ƒÆ░' },
+              { id: 'COMPLETED', label: '4. Ready Γ£à' }
             ].map((s) => {
               const isCurrent = wizardStep === s.id;
               const isDone = 
-                (s.id === 'NAME' && (wizardStep === 'QUANTITY' || wizardStep === 'PRICE' || wizardStep === 'CONFIRM_SUBMIT' || wizardStep === 'COMPLETED')) ||
-                (s.id === 'QUANTITY' && (wizardStep === 'PRICE' || wizardStep === 'CONFIRM_SUBMIT' || wizardStep === 'COMPLETED')) ||
-                (s.id === 'PRICE' && (wizardStep === 'CONFIRM_SUBMIT' || wizardStep === 'COMPLETED')) ||
-                (s.id === 'CONFIRM_SUBMIT' && wizardStep === 'COMPLETED');
+                (s.id === 'NAME' && (wizardStep === 'QUANTITY' || wizardStep === 'PRICE' || wizardStep === 'COMPLETED')) ||
+                (s.id === 'QUANTITY' && (wizardStep === 'PRICE' || wizardStep === 'COMPLETED')) ||
+                (s.id === 'PRICE' && wizardStep === 'COMPLETED') ||
+                (s.id === 'COMPLETED' && wizardStep === 'COMPLETED');
 
               return (
                 <div 
@@ -1011,7 +845,7 @@ export default function AddCrop() {
           }}>
             {/* Assistant's Spoken Message & Acknowledgment */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem" }}>
-              <span style={{ fontSize: "1.4rem" }}>🤖</span>
+              <span style={{ fontSize: "1.4rem" }}>≡ƒñû</span>
               <div>
                 <p style={{ margin: 0, fontWeight: 700, color: "#1f2937", fontSize: "1.05rem", lineHeight: "1.5" }}>
                   {wizardMsg}
@@ -1070,108 +904,62 @@ export default function AddCrop() {
             {/* Interactive Control Buttons for Farmers */}
             {wizardStep !== 'IDLE' && wizardStep !== 'COMPLETED' && !isSpeaking && !isProcessing && (
               <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", marginTop: "0.3rem", paddingTop: "0.6rem", borderTop: "1px solid #f3f4f6" }}>
-                {wizardStep === 'CONFIRM_SUBMIT' ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        playChime('success');
-                        handleSubmit(new Event('submit'));
-                        stopWizard();
-                      }}
-                      style={{
-                        background: "#16a34a", color: "white", border: "none", padding: "0.6rem 1.2rem",
-                        borderRadius: "8px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.95rem"
-                      }}
-                    >
-                      <Check size={18} /> Yes, Submit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        playChime('retry');
-                        askStep('NAME', "Okay, let's start over.");
-                      }}
-                      style={{
-                        background: "#ef4444", color: "white", border: "none", padding: "0.6rem 1.2rem",
-                        borderRadius: "8px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.95rem"
-                      }}
-                    >
-                      <X size={18} /> No, Start Over
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={handleRepeatQuestion}
-                      style={{
-                        background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", padding: "0.5rem 0.8rem",
-                        borderRadius: "8px", fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.85rem",
-                        marginLeft: "auto"
-                      }}
-                    >
-                      <RotateCcw size={14} /> Repeat
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    {!isListening && (
-                      <button
-                        type="button"
-                        onClick={handleManualTapToSpeak}
-                        style={{
-                          background: "#16a34a", color: "white", border: "none", padding: "0.5rem 1.1rem",
-                          borderRadius: "8px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem",
-                          boxShadow: "0 2px 8px rgba(22,163,74,0.3)"
-                        }}
-                      >
-                        <Mic size={16} /> Tap to Speak
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={handleRepeatQuestion}
-                      style={{
-                        background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", padding: "0.5rem 0.8rem",
-                        borderRadius: "8px", fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.85rem"
-                      }}
-                    >
-                      <RotateCcw size={14} /> Repeat Question
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleSkipStep}
-                      style={{
-                        background: "#f9fafb", color: "#6b7280", border: "1px solid #e5e7eb", padding: "0.5rem 0.8rem",
-                        borderRadius: "8px", fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.85rem"
-                      }}
-                    >
-                      Skip Step <ArrowRight size={14} />
-                    </button>
-                  </>
+                {!isListening && (
+                  <button
+                    type="button"
+                    onClick={handleManualTapToSpeak}
+                    style={{
+                      background: "#16a34a", color: "white", border: "none", padding: "0.5rem 1.1rem",
+                      borderRadius: "8px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem",
+                      boxShadow: "0 2px 8px rgba(22,163,74,0.3)"
+                    }}
+                  >
+                    <Mic size={16} /> Tap to Speak
+                  </button>
                 )}
+
+                <button
+                  type="button"
+                  onClick={handleRepeatQuestion}
+                  style={{
+                    background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", padding: "0.5rem 0.8rem",
+                    borderRadius: "8px", fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.85rem"
+                  }}
+                >
+                  <RotateCcw size={14} /> Repeat Question
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSkipStep}
+                  style={{
+                    background: "#f9fafb", color: "#6b7280", border: "1px solid #e5e7eb", padding: "0.5rem 0.8rem",
+                    borderRadius: "8px", fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.85rem"
+                  }}
+                >
+                  Skip Step <ArrowRight size={14} />
+                </button>
               </div>
             )}
 
-            {/* ─── 1-CLICK QUICK CHOICE CHIPS FOR FARMERS ─── */}
+            {/* ΓöÇΓöÇΓöÇ 1-CLICK QUICK CHOICE CHIPS FOR FARMERS ΓöÇΓöÇΓöÇ */}
             {wizardStep === 'NAME' && !isSpeaking && (
               <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px dashed #cbd5e1" }}>
                 <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.78rem", fontWeight: 700, color: "#475569" }}>
-                  💡 Or Tap 1-Click Popular Produce Chips:
+                  ≡ƒÆí Or Tap 1-Click Popular Produce Chips:
                 </p>
                 <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
                   {[
-                    { name: "Tomato", label: "🍅 Tomato (టమోటా)", cat: "vegetable" },
-                    { name: "Rice", label: "🌾 Paddy / Rice (వరి)", cat: "grain" },
-                    { name: "Onion", label: "🧅 Onion (ఉల్లిపాయ)", cat: "vegetable" },
-                    { name: "Potato", label: "🥔 Potato (బంగాళదుంప)", cat: "vegetable" },
-                    { name: "Chili", label: "🌶️ Chilli (మిర్చి)", cat: "spice" },
-                    { name: "Mango", label: "🥭 Mango (మామిడి)", cat: "fruit" },
-                    { name: "Maize", label: "🌽 Maize (మొక్కజొన్న)", cat: "grain" },
-                    { name: "Groundnut", label: "🥜 Groundnut (పల్లీలు)", cat: "pulse" },
-                    { name: "Banana", label: "🍌 Banana (అరటి)", cat: "fruit" },
-                    { name: "Bio Waste", label: "🌿 Organic Waste (వ్యర్థాలు)", cat: "other" }
+                    { name: "Tomato", label: "≡ƒìà Tomato (α░ƒα░«α▒ïα░ƒα░╛)", cat: "vegetable" },
+                    { name: "Rice", label: "≡ƒî╛ Paddy / Rice (α░╡α░░α░┐)", cat: "grain" },
+                    { name: "Onion", label: "≡ƒºà Onion (α░ëα░▓α▒ìα░▓α░┐α░¬α░╛α░»)", cat: "vegetable" },
+                    { name: "Potato", label: "≡ƒÑö Potato (α░¼α░éα░ùα░╛α░│α░ªα▒üα░éα░¬)", cat: "vegetable" },
+                    { name: "Chili", label: "≡ƒî╢∩╕Å Chilli (α░«α░┐α░░α▒ìα░Üα░┐)", cat: "spice" },
+                    { name: "Mango", label: "≡ƒÑ¡ Mango (α░«α░╛α░«α░┐α░íα░┐)", cat: "fruit" },
+                    { name: "Maize", label: "≡ƒî╜ Maize (α░«α▒èα░òα▒ìα░òα░£α▒èα░¿α▒ìα░¿)", cat: "grain" },
+                    { name: "Groundnut", label: "≡ƒÑ£ Groundnut (α░¬α░▓α▒ìα░▓α▒Çα░▓α▒ü)", cat: "pulse" },
+                    { name: "Banana", label: "≡ƒìî Banana (α░àα░░α░ƒα░┐)", cat: "fruit" },
+                    { name: "Bio Waste", label: "≡ƒî┐ Organic Waste (α░╡α▒ìα░»α░░α▒ìα░Ñα░╛α░▓α▒ü)", cat: "other" }
                   ].map((item) => (
                     <button
                       key={item.name}
@@ -1201,7 +989,7 @@ export default function AddCrop() {
             {wizardStep === 'QUANTITY' && !isSpeaking && (
               <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px dashed #cbd5e1" }}>
                 <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.78rem", fontWeight: 700, color: "#475569" }}>
-                  ⚖️ Tap Quick Quantity Chip:
+                  ΓÜû∩╕Å Tap Quick Quantity Chip:
                 </p>
                 <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
                   {[
@@ -1241,17 +1029,17 @@ export default function AddCrop() {
             {wizardStep === 'PRICE' && !isSpeaking && (
               <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px dashed #cbd5e1" }}>
                 <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.78rem", fontWeight: 700, color: "#475569" }}>
-                  💰 Tap Quick Price Chip:
+                  ≡ƒÆ░ Tap Quick Price Chip:
                 </p>
                 <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
                   {[
-                    { price: 20, label: "₹20 / unit" },
-                    { price: 30, label: "₹30 / unit" },
-                    { price: 40, label: "₹40 / unit" },
-                    { price: 50, label: "₹50 / unit" },
-                    { price: 80, label: "₹80 / unit" },
-                    { price: 100, label: "₹100 / unit" },
-                    { price: 2500, label: "₹2,500 / quintal" }
+                    { price: 20, label: "Γé╣20 / unit" },
+                    { price: 30, label: "Γé╣30 / unit" },
+                    { price: 40, label: "Γé╣40 / unit" },
+                    { price: 50, label: "Γé╣50 / unit" },
+                    { price: 80, label: "Γé╣80 / unit" },
+                    { price: 100, label: "Γé╣100 / unit" },
+                    { price: 2500, label: "Γé╣2,500 / quintal" }
                   ].map((item) => (
                     <button
                       key={item.label}
@@ -1300,7 +1088,7 @@ export default function AddCrop() {
         </div>
       )}
 
-      {/* ─── ADD CROP FORM (AUTO-FILLED LIVE) ─── */}
+      {/* ΓöÇΓöÇΓöÇ ADD CROP FORM (AUTO-FILLED LIVE) ΓöÇΓöÇΓöÇ */}
       <div className="glass-card mt-4" style={{ maxWidth: '650px', margin: '0 auto', transition: "all 0.3s" }}>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
           
@@ -1321,42 +1109,16 @@ export default function AddCrop() {
                 </span>
               )}
             </div>
-            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-              <input 
-                type="text" 
-                name="name" 
-                value={formData.name} 
-                onChange={handleChange} 
-                placeholder="e.g. Tomato, Rice, Cotton, Hay Bales, Cow Dung Slurry" 
-                className="form-input" 
-                required 
-                style={{ flex: 1, fontSize: '1rem' }}
-              />
-              <button
-                type="button"
-                onClick={() => speakField('name')}
-                title="Speak Crop Name (any language)"
-                style={{
-                  background: fieldListening && activeVoiceField === 'name' ? "#ef4444" : "#f0fdf4",
-                  color: fieldListening && activeVoiceField === 'name' ? "white" : "#16a34a",
-                  border: "1.5px solid " + (fieldListening && activeVoiceField === 'name' ? "#ef4444" : "#86efac"),
-                  borderRadius: "8px",
-                  padding: "0.6rem 0.8rem",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transition: "all 0.2s"
-                }}
-              >
-                <Mic size={18} />
-              </button>
-            </div>
-            {fieldListening && activeVoiceField === 'name' && (
-              <p style={{ margin: "0.3rem 0 0", fontSize: "0.8rem", color: "#16a34a", fontStyle: "italic" }}>
-                🎙️ {fieldInterim || "Listening... speak crop name now"}
-              </p>
-            )}
+            <input 
+              type="text" 
+              name="name" 
+              value={formData.name} 
+              onChange={handleChange} 
+              placeholder="e.g. Tomato, Rice, Cotton, Hay Bales, Cow Dung Slurry" 
+              className="form-input" 
+              required 
+              style={{ width: '100%', fontSize: '1rem' }}
+            />
           </div>
 
           {/* Category & Unit */}
@@ -1413,42 +1175,17 @@ export default function AddCrop() {
                   </span>
                 )}
               </div>
-              <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                <input 
-                  type="number" 
-                  name="quantity" 
-                  value={formData.quantity} 
-                  onChange={handleChange} 
-                  placeholder={`e.g. 50 ${formData.unit}`} 
-                  className="form-input" 
-                  required 
-                  min="1" 
-                  style={{ flex: 1 }}
-                />
-                <button
-                  type="button"
-                  onClick={() => speakField('quantity')}
-                  title="Speak Quantity"
-                  style={{
-                    background: fieldListening && activeVoiceField === 'quantity' ? "#ef4444" : "#f0fdf4",
-                    color: fieldListening && activeVoiceField === 'quantity' ? "white" : "#16a34a",
-                    border: "1.5px solid " + (fieldListening && activeVoiceField === 'quantity' ? "#ef4444" : "#86efac"),
-                    borderRadius: "8px",
-                    padding: "0.6rem 0.7rem",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center"
-                  }}
-                >
-                  <Mic size={18} />
-                </button>
-              </div>
-              {fieldListening && activeVoiceField === 'quantity' && (
-                <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "#16a34a", fontStyle: "italic" }}>
-                  🎙️ {fieldInterim || "Listening... speak quantity"}
-                </p>
-              )}
+              <input 
+                type="number" 
+                name="quantity" 
+                value={formData.quantity} 
+                onChange={handleChange} 
+                placeholder={`e.g. 50 ${formData.unit}`} 
+                className="form-input" 
+                required 
+                min="1" 
+                style={{ width: '100%' }}
+              />
             </div>
 
             <div style={{
@@ -1459,78 +1196,31 @@ export default function AddCrop() {
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: '0.5rem' }}>
                 <label style={{ fontWeight: 600, color: wizardStep === 'PRICE' ? '#166534' : 'var(--text-dark)' }}>
-                  Price (₹ per {formData.unit}) *
+                  Price (Γé╣ per {formData.unit}) *
                 </label>
                 {filledFields.price && (
                   <span style={{ fontSize: "0.75rem", background: "#dcfce7", color: "#166534", padding: "0.2rem 0.5rem", borderRadius: "4px", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.2rem" }}>
-                    <Check size={12} /> Added: ₹{formData.price}
+                    <Check size={12} /> Added: Γé╣{formData.price}
                   </span>
                 )}
               </div>
-              <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                <input 
-                  type="number" 
-                  name="price" 
-                  value={formData.price} 
-                  onChange={handleChange} 
-                  placeholder="e.g. 40" 
-                  className="form-input" 
-                  required 
-                  min="1" 
-                  style={{ flex: 1 }}
-                />
-                <button
-                  type="button"
-                  onClick={() => speakField('price')}
-                  title="Speak Price"
-                  style={{
-                    background: fieldListening && activeVoiceField === 'price' ? "#ef4444" : "#f0fdf4",
-                    color: fieldListening && activeVoiceField === 'price' ? "white" : "#16a34a",
-                    border: "1.5px solid " + (fieldListening && activeVoiceField === 'price' ? "#ef4444" : "#86efac"),
-                    borderRadius: "8px",
-                    padding: "0.6rem 0.7rem",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center"
-                  }}
-                >
-                  <Mic size={18} />
-                </button>
-              </div>
-              {fieldListening && activeVoiceField === 'price' && (
-                <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "#16a34a", fontStyle: "italic" }}>
-                  🎙️ {fieldInterim || "Listening... speak price"}
-                </p>
-              )}
+              <input 
+                type="number" 
+                name="price" 
+                value={formData.price} 
+                onChange={handleChange} 
+                placeholder="e.g. 40" 
+                className="form-input" 
+                required 
+                min="1" 
+                style={{ width: '100%' }}
+              />
             </div>
           </div>
 
           {/* Description */}
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: '0.5rem' }}>
-              <label style={{ fontWeight: 600 }}>Description</label>
-              <button
-                type="button"
-                onClick={() => speakField('description')}
-                title="Speak Description"
-                style={{
-                  background: fieldListening && activeVoiceField === 'description' ? "#ef4444" : "#f0fdf4",
-                  color: fieldListening && activeVoiceField === 'description' ? "white" : "#16a34a",
-                  border: "1px solid " + (fieldListening && activeVoiceField === 'description' ? "#ef4444" : "#86efac"),
-                  borderRadius: "6px",
-                  padding: "0.25rem 0.6rem",
-                  cursor: "pointer",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.3rem",
-                  fontSize: "0.78rem",
-                  fontWeight: 600
-                }}
-              >
-                <Mic size={14} /> Speak
-              </button>
-            </div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Description</label>
             <textarea 
               name="description" 
               value={formData.description} 
@@ -1539,17 +1229,12 @@ export default function AddCrop() {
               className="form-input" 
               style={{ minHeight: '80px', resize: 'vertical', width: '100%' }}
             ></textarea>
-            {fieldListening && activeVoiceField === 'description' && (
-              <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "#16a34a", fontStyle: "italic" }}>
-                🎙️ {fieldInterim || "Listening... speak description"}
-              </p>
-            )}
           </div>
 
           {/* Organic / Pesticide Free */}
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'var(--green-pale)', padding: '1rem', borderRadius: '10px', cursor: 'pointer' }}>
             <input type="checkbox" name="isOrganic" checked={formData.isOrganic} onChange={handleChange} style={{ width: '20px', height: '20px' }} /> 
-            <span style={{ fontWeight: 600, color: 'var(--green-deep)' }}>This product is Certified Organic / Pesticide-Free (సేంద్రీయ పంట)</span>
+            <span style={{ fontWeight: 600, color: 'var(--green-deep)' }}>This product is Certified Organic / Pesticide-Free (α░╕α▒çα░éα░ªα▒ìα░░α▒Çα░» α░¬α░éα░ƒ)</span>
           </label>
 
           {/* Farm Location & GPS Coordinates */}
@@ -1564,59 +1249,34 @@ export default function AddCrop() {
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
               <label style={{ fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.95rem" }}>
-                <MapPin size={18} color="#16a34a" /> Farm / Harvest Location (పంట ఉండే ఖచ్చితమైన స్థలం)
+                <MapPin size={18} color="#16a34a" /> Farm / Harvest Location (α░¬α░éα░ƒ α░ëα░éα░íα▒ç α░ûα░Üα▒ìα░Üα░┐α░ñα░«α▒êα░¿ α░╕α▒ìα░Ñα░▓α░é)
               </label>
               {formData.latitude && formData.longitude ? (
                 <span style={{
                   background: "#dcfce7", color: "#166534", padding: "3px 8px", borderRadius: "100px",
                   fontSize: "0.75rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "4px"
                 }}>
-                  <Compass size={13} /> GPS: {Number(formData.latitude).toFixed(4)}°, {Number(formData.longitude).toFixed(4)}°
+                  <Compass size={13} /> GPS: {Number(formData.latitude).toFixed(4)}┬░, {Number(formData.longitude).toFixed(4)}┬░
                 </span>
               ) : (
                 <span style={{ color: "#d97706", fontSize: "0.75rem", fontWeight: 600 }}>
-                  ⚠️ GPS not detected
+                  ΓÜá∩╕Å GPS not detected
                 </span>
               )}
             </div>
 
-            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-              <input
-                type="text"
-                name="farmLocation"
-                value={formData.farmLocation || formData.location}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setFormData(prev => ({ ...prev, farmLocation: val, location: val }));
-                }}
-                placeholder="e.g. Gollapalli Village, Jagtial District, Telangana"
-                className="form-input"
-                style={{ flex: 1, fontSize: "0.95rem" }}
-              />
-              <button
-                type="button"
-                onClick={() => speakField('farmLocation')}
-                title="Speak Farm Location"
-                style={{
-                  background: fieldListening && activeVoiceField === 'farmLocation' ? "#ef4444" : "#f0fdf4",
-                  color: fieldListening && activeVoiceField === 'farmLocation' ? "white" : "#16a34a",
-                  border: "1.5px solid " + (fieldListening && activeVoiceField === 'farmLocation' ? "#ef4444" : "#86efac"),
-                  borderRadius: "8px",
-                  padding: "0.6rem 0.8rem",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}
-              >
-                <Mic size={18} />
-              </button>
-            </div>
-            {fieldListening && activeVoiceField === 'farmLocation' && (
-              <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "#16a34a", fontStyle: "italic" }}>
-                🎙️ {fieldInterim || "Listening... speak village or location"}
-              </p>
-            )}
+            <input
+              type="text"
+              name="farmLocation"
+              value={formData.farmLocation || formData.location}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFormData(prev => ({ ...prev, farmLocation: val, location: val }));
+              }}
+              placeholder="e.g. Gollapalli Village, Jagtial District, Telangana"
+              className="form-input"
+              style={{ width: "100%", fontSize: "0.95rem" }}
+            />
 
             <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
               <button

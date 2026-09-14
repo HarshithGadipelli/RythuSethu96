@@ -414,7 +414,7 @@ export default function CustomerOrders({ orders, fetchOrders }) {
       </AnimatePresence>
 
       {trackingOrder && (
-        <LiveMapModal order={trackingOrder} onClose={() => setTrackingOrder(null)} />
+        <LiveMapModal order={trackingOrder} onClose={() => setTrackingOrder(null)} viewerRole="customer" />
       )}
 
       {certificateOrder && (

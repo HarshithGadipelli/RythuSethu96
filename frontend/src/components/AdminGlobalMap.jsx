@@ -52,25 +52,20 @@ const adminIcon = L.divIcon({
 });
 
 const TILE_LAYERS = {
-  carto: {
-    label: "🌍 Clean View",
-    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    attribution: "© CARTO, © OpenStreetMap",
-  },
-  satellite: {
-    label: "🛰️ Google Satellite",
-    url: "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
-    attribution: "© Google Maps",
-  },
   street: {
     label: "🗺️ OpenStreetMap",
     url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     attribution: "© OpenStreetMap contributors",
   },
-  google: {
-    label: "🚗 Google Roads",
-    url: "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
-    attribution: "© Google Maps",
+  satellite: {
+    label: "🛰️ Satellite HD",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: "© Esri, Maxar, Earthstar Geographics",
+  },
+  osmHot: {
+    label: "🌍 Clean Streets",
+    url: "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+    attribution: "© OpenStreetMap contributors, Humanitarian Team",
   },
   terrain: {
     label: "🏔️ Topo Terrain",
@@ -102,7 +97,7 @@ export default function AdminGlobalMap({ activeDeliveries = [], tierFilter = "al
   const [liveAgents, setLiveAgents] = useState({});
   const [dispatchingAgentId, setDispatchingAgentId] = useState(null);
   const [dispatchMsg, setDispatchMsg] = useState("");
-  const [tileKey, setTileKey] = useState("carto");
+  const [tileKey, setTileKey] = useState("street");
   const [adminLat, setAdminLat] = useState(null);
   const [adminLng, setAdminLng] = useState(null);
   const [isLocating, setIsLocating] = useState(false);

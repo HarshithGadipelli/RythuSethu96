@@ -194,8 +194,39 @@ const AgentTips = ({ user }) => {
 };
 
 export default function AgentDashboard() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { t, lang } = useLang();
+
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [statusMsg, setStatusMsg] = useState(null);
+
+  // Live Check Status handler that polls MongoDB via /api/auth/profile
+  const handleCheckStatus = async () => {
+    setCheckingStatus(true);
+    setStatusMsg(null);
+    try {
+      const updated = await refreshUser();
+      if (updated?.isVerified) {
+        setStatusMsg({ type: "success", text: "🎉 Congratulations! Your agent profile is verified. Loading your dashboard..." });
+      } else {
+        setStatusMsg({ type: "info", text: "⏳ Application under review. Admin has received your documents and will approve shortly." });
+      }
+    } catch (err) {
+      setStatusMsg({ type: "error", text: "⚠️ Could not contact server. Please verify your connection." });
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
+
+  // Auto-poll approval status every 15 seconds while verification is pending
+  useEffect(() => {
+    if (user && !user.isVerified) {
+      const timer = setInterval(() => {
+        refreshUser();
+      }, 15000);
+      return () => clearInterval(timer);
+    }
+  }, [user?.isVerified]);
 
   const [tab, setTab] = useState("my");
   const [deliveries, setDeliveries] = useState([]);
@@ -841,14 +872,53 @@ export default function AgentDashboard() {
   return (
     <div className="page-wrapper">
       {!user?.isVerified ? (
-        <div className="glass-card text-center" style={{ padding: "4rem 2rem", maxWidth: 600, margin: "2rem auto", background: "var(--blue-pale)", border: "1px solid var(--blue-light)" }}>
-          <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>⏳</div>
-          <h2 style={{ color: "var(--blue-deep)", marginBottom: "1rem" }}>Verification Pending</h2>
-          <p style={{ color: "var(--text-muted)", fontSize: "1.1rem", marginBottom: "1.5rem" }}>
-            Your agent account is currently under review. Our admin team is verifying your Aadhaar and Profile photo. 
-            Once verified, you will be able to access the delivery dashboard and start earning!
+        <div className="glass-card text-center" style={{ padding: "3.5rem 2rem", maxWidth: 620, margin: "2rem auto", background: "linear-gradient(135deg, rgba(239,246,255,0.95), rgba(240,253,244,0.95))", border: "1.5px solid #93c5fd", borderRadius: "18px", boxShadow: "0 10px 30px rgba(37,99,235,0.12)" }}>
+          <div style={{ fontSize: "3.8rem", marginBottom: "1rem" }}>⏳</div>
+          <h2 style={{ color: "#1e3a8a", marginBottom: "0.8rem", fontSize: "1.6rem" }}>Agent Verification in Progress</h2>
+          <p style={{ color: "#475569", fontSize: "1rem", lineHeight: 1.6, marginBottom: "1.5rem" }}>
+            Your agent application is currently under review by our administration team. 
+            Once verified, you will immediately gain full access to the live delivery dashboard, route navigation, and instant payouts!
           </p>
-          <button className="btn-secondary" onClick={() => window.location.reload()}>🔄 Check Status</button>
+
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.8)", padding: "6px 14px", borderRadius: "100px", fontSize: "0.82rem", color: "#334155", marginBottom: "1.5rem", fontWeight: 600, border: "1px solid #cbd5e1" }}>
+            <span>Auto-checking live approval status every 15s</span>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block" }}></span>
+          </div>
+
+          {statusMsg && (
+            <div style={{
+              margin: "0 auto 1.5rem",
+              padding: "10px 16px",
+              borderRadius: "10px",
+              fontSize: "0.88rem",
+              fontWeight: 600,
+              maxWidth: "500px",
+              background: statusMsg.type === "success" ? "#dcfce7" : statusMsg.type === "error" ? "#fee2e2" : "#e0f2fe",
+              color: statusMsg.type === "success" ? "#166534" : statusMsg.type === "error" ? "#991b1b" : "#075985",
+              border: `1px solid ${statusMsg.type === "success" ? "#86efac" : statusMsg.type === "error" ? "#fca5a5" : "#7dd3fc"}`
+            }}>
+              {statusMsg.text}
+            </div>
+          )}
+
+          <div style={{ display: "flex", justifyContent: "center", gap: "1rem", flexWrap: "wrap" }}>
+            <button 
+              className="btn-primary" 
+              onClick={handleCheckStatus}
+              disabled={checkingStatus}
+              style={{ padding: "0.75rem 1.8rem", fontSize: "0.95rem", fontWeight: 700, borderRadius: "100px", display: "inline-flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              {checkingStatus ? <Loader2 size={18} className="spin-anim" /> : "🔄"} 
+              {checkingStatus ? "Checking Database..." : "Check Approval Status"}
+            </button>
+            <button 
+              className="btn-secondary" 
+              onClick={() => window.location.reload()}
+              style={{ padding: "0.75rem 1.4rem", fontSize: "0.92rem", borderRadius: "100px" }}
+            >
+              Refresh Page
+            </button>
+          </div>
         </div>
       ) : (
         <>

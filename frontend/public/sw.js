@@ -1,4 +1,4 @@
-const CACHE_NAME = "rythu-sethu-v4";
+const CACHE_NAME = "rythu-sethu-v5";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -6,9 +6,9 @@ const STATIC_ASSETS = [
   "/logo.png"
 ];
 
-// Install: pre-cache critical shell assets
+// Install: pre-cache critical shell assets and skip waiting
 self.addEventListener("install", (event) => {
-  self.skipWaiting(); // Activate immediately
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS);
@@ -16,7 +16,7 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// Activate: clean old caches and take control immediately
+// Activate: purge old caches and claim clients immediately
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -25,11 +25,11 @@ self.addEventListener("activate", (event) => {
           .filter((name) => name !== CACHE_NAME)
           .map((name) => caches.delete(name))
       );
-    }).then(() => self.clients.claim()) // Take control of all pages immediately
+    }).then(() => self.clients.claim())
   );
 });
 
-// Fetch: Network-first for API, Stale-while-revalidate for assets
+// Fetch: Strategy dispatch
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
@@ -58,19 +58,18 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) {
     event.respondWith(
       fetch(request).catch(() => {
-        // External resource unavailable offline — return empty response to avoid crash
         return new Response("", { status: 200, headers: { "Content-Type": "text/plain" } });
       })
     );
     return;
   }
 
-  // --- Strategy 3: Stale-while-revalidate for app shell & assets ---
-  event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request)
+  // --- Strategy 3: Network-First for HTML navigations (ensures Vercel updates load immediately) ---
+  const isNavigate = request.mode === "navigate" || (request.headers.get("accept") && request.headers.get("accept").includes("text/html"));
+  if (isNavigate) {
+    event.respondWith(
+      fetch(request)
         .then((networkResponse) => {
-          // Cache successful same-origin responses dynamically
           if (networkResponse && networkResponse.status === 200) {
             const responseClone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
@@ -80,16 +79,30 @@ self.addEventListener("fetch", (event) => {
           return networkResponse;
         })
         .catch(() => {
-          // Network completely unavailable — return nothing (cachedResponse is used if available)
-          return undefined;
-        });
+          // Offline fallback
+          return caches.match(request).then((cached) => cached || caches.match("/index.html"));
+        })
+    );
+    return;
+  }
 
-      // Return cached version immediately, update cache in background
+  // --- Strategy 4: Stale-while-revalidate for static assets ---
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      const fetchPromise = fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => undefined);
+
       return cachedResponse || fetchPromise;
     }).then((response) => {
-      // Final fallback: if both cache and network fail, serve the cached index.html
-      // This is critical for SPA navigation — any route like /farmer, /marketplace etc.
-      // needs to resolve to index.html so React Router can handle it client-side.
       if (!response || response.status === 404) {
         return caches.match("/index.html");
       }

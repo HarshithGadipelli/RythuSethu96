@@ -62,7 +62,7 @@ function MapUpdater({ position }) {
   return null;
 }
 
-export default function LiveMapModal({ order, onClose }) {
+export default function LiveMapModal({ order, onClose, viewerRole = "admin" }) {
   const [orderData, setOrderData] = useState(typeof order === "object" ? order : null);
 
   useEffect(() => {
@@ -120,6 +120,13 @@ export default function LiveMapModal({ order, onClose }) {
     };
   }, [activeOrder?.agent]);
 
+  const isCustomer = viewerRole === "customer";
+  const hasAgentPickedUp = ["picked_up", "in_transit", "delivered"].includes(activeOrder.status);
+  const showAgentTracking = isCustomer ? hasAgentPickedUp : true;
+
+  const showAgentMarker = showAgentTracking && agentPos;
+  const showPolyline = showAgentTracking && pickupPos && deliveryPos;
+
   return (
     <div className="modal-overlay" style={{
       position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
@@ -146,14 +153,14 @@ export default function LiveMapModal({ order, onClose }) {
           {mapCenter ? (
             <MapContainer center={mapCenter} zoom={15} style={{ height: "100%", width: "100%" }}>
               <TileLayer 
-                url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" 
-                attribution="Map data &copy; Google" 
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" 
+                attribution="Tiles &copy; Esri" 
                 maxZoom={20}
               />
               <MapUpdater position={mapCenter} />
               
               {/* Draw Route Polyline */}
-              {pickupPos && deliveryPos && (
+              {showPolyline && (
                 <Polyline 
                   positions={[
                     pickupPos,
@@ -170,11 +177,11 @@ export default function LiveMapModal({ order, onClose }) {
               {/* Farmer Marker */}
               {pickupPos && (
                 <Marker position={pickupPos} icon={farmerIcon}>
-                  <Popup>Pickup Location (Farmer)</Popup>
+                  <Popup>{isCustomer ? "Farm Location (Verified)" : "Pickup Location (Farmer)"}</Popup>
                 </Marker>
               )}
 
-              {agentPos && (
+              {showAgentMarker && (
                 <Marker position={agentPos} icon={agentIcon}>
                   <Popup>Delivery Agent is here</Popup>
                 </Marker>

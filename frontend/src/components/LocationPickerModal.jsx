@@ -145,8 +145,8 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
           <div style={{ position: "relative", flex: 1, minHeight: 0, width: "100%", background: "#f8fafc" }}>
             <MapContainer center={position} zoom={15} style={{ height: "100%", width: "100%", zIndex: 1 }} zoomControl={false}>
               <TileLayer
-                url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-                attribution="© Google Maps"
+                url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution="&copy; OpenStreetMap contributors"
               />
               <MapCentrator center={position} />
               <Marker

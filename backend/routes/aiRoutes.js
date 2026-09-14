@@ -743,9 +743,9 @@ router.post("/parse-wizard-step", async (req, res) => {
       }
     }
 
+    let foundUnit = "kg";
     // Fast heuristic extraction
     if (step === "QUANTITY") {
-      let foundUnit = "kg";
       if (/(quintal|క్వింటాల్|క్వింటాళ్లు|क्विंटल|qntl|kintal|kintallu)/i.test(lower)) foundUnit = "quintal";
       else if (/(bag|bori|బస్తా|బస్తాలు|బోరీ|మూటే|basta|bastalu|boriyan)/i.test(lower)) foundUnit = "bag";
       else if (/(ton|tonne|టన్|టన్నులు|टन|tannulu)/i.test(lower)) foundUnit = "tonne";
@@ -766,7 +766,7 @@ router.post("/parse-wizard-step", async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey.trim().length < 10) {
       if (step === "NAME") return res.json({ name: transcript.trim() });
-      if (step === "QUANTITY") return res.json({ quantity: extractedNum || 10, unit: "kg" });
+      if (step === "QUANTITY") return res.json({ quantity: extractedNum || 10, unit: foundUnit });
       if (step === "PRICE") return res.json({ price: extractedNum || 30 });
     }
 
@@ -792,19 +792,31 @@ router.post("/parse-wizard-step", async (req, res) => {
     }
 
     if (step === "NAME") return res.json({ name: transcript.trim() });
-    if (step === "QUANTITY") return res.json({ quantity: extractedNum || 10, unit: "kg" });
+    if (step === "QUANTITY") return res.json({ quantity: extractedNum || 10, unit: foundUnit });
     if (step === "PRICE") return res.json({ price: extractedNum || 30 });
   } catch (err) {
     console.warn("Parse Wizard Step Fallback for", req.body?.step, err.message);
     const { step, transcript } = req.body || {};
+    
+    let extractedNum = null;
+    const numMatch = (transcript || "").match(/\d+(?:\.\d+)?/);
+    if (numMatch) extractedNum = parseFloat(numMatch[0]);
+    let foundUnit = "kg";
+    const lower = (transcript || "").toLowerCase();
+    if (/(quintal|క్వింటాల్|క్వింటాళ్లు|क्विंटल|qntl|kintal|kintallu)/i.test(lower)) foundUnit = "quintal";
+    else if (/(bag|bori|బస్తా|బస్తాలు|బోరీ|మూటే|basta|bastalu|boriyan)/i.test(lower)) foundUnit = "bag";
+    else if (/(ton|tonne|టన్|టన్నులు|टन|tannulu)/i.test(lower)) foundUnit = "tonne";
+    else if (/(litre|liter|లీటర్|लीटर)/i.test(lower)) foundUnit = "litre";
+    else if (/(bale|బేల్)/i.test(lower)) foundUnit = "bale";
+    else if (/(piece|పీస్|पीस|nos)/i.test(lower)) foundUnit = "piece";
+    else if (/(dozen|డజన్|दर्जन)/i.test(lower)) foundUnit = "dozen";
+
     if (step === "NAME") {
       res.json({ name: transcript ? transcript.trim() : "Farm Produce" });
     } else if (step === "QUANTITY") {
-      const match = (transcript || "").match(/\d+/);
-      res.json({ quantity: match ? parseInt(match[0]) : 50, unit: "kg" });
+      res.json({ quantity: extractedNum || 50, unit: foundUnit });
     } else if (step === "PRICE") {
-      const match = (transcript || "").match(/\d+/);
-      res.json({ price: match ? parseInt(match[0]) : 40 });
+      res.json({ price: extractedNum || 40 });
     } else {
       res.json({});
     }

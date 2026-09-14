@@ -389,8 +389,8 @@ export default function LocationUpdateModal({ isOpen, onClose, onLocationSaved }
             >
               {mapLayer === "satellite" ? (
                 <TileLayer
-                  url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-                  attribution="© Google Maps"
+                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                  attribution="&copy; Esri, Maxar"
                 />
               ) : (
                 <TileLayer

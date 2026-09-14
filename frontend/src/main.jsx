@@ -14,6 +14,14 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 if ("serviceWorker" in navigator) {
   if (import.meta.env.PROD) {
     window.addEventListener("load", () => {
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
+
       navigator.serviceWorker.register("/sw.js").then(reg => {
         console.log("✅ PWA Service Worker registered (scope:", reg.scope + ")");
         // Check for updates every 60 seconds

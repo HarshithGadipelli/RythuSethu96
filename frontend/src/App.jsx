@@ -148,6 +148,11 @@ function AppRoutes() {
             <FarmerDashboard />
           </Protected>
         } />
+        <Route path="/farmer/add-crop" element={
+          <Protected roles={["farmer", "admin"]}>
+            <FarmerDashboard initialTab="add" />
+          </Protected>
+        } />
 
         <Route path="/agent" element={
           <Protected roles={["agent", "admin"]}>

@@ -671,12 +671,20 @@ const YieldPredictor = () => {
   );
 };
 
-export default function FarmerDashboard() {
+export default function FarmerDashboard({ initialTab }) {
   const { t, lang, changeLang } = useLang();
   const { user } = useAuth();
   const { listening, activeField, interim, startListening, stopListening } = useVoiceInput(lang);
 
-  const [tab, setTab] = useState("crops");
+  const getInitialTab = () => {
+    if (initialTab) return initialTab;
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    if (tabParam) return tabParam;
+    if (window.location.pathname.includes("add-crop")) return "add";
+    return "crops";
+  };
+  const [tab, setTab] = useState(getInitialTab);
   const [crops, setCrops] = useState([]);
   const [orders, setOrders] = useState([]);
   const [auctions, setAuctions] = useState([]);
@@ -1539,10 +1547,8 @@ export default function FarmerDashboard() {
               background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
               boxShadow: "0 4px 12px rgba(22, 163, 74, 0.3)",
               fontWeight: 600,
-              opacity: isVerified ? 1 : 0.5 
-            }} 
-            onClick={() => isVerified ? setTab("add") : setMsg({ type:"error", text:"Your account must be verified before listing crops." })} 
-            disabled={!isVerified}
+              }} 
+            onClick={() => setTab("add")}
           >
             ➕ {t("addCrop")}
           </button>
@@ -1663,13 +1669,7 @@ export default function FarmerDashboard() {
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
           <button
             type="button"
-            onClick={() => {
-              if (!isVerified) {
-                setMsg({ type: "error", text: "Your account must be verified by an admin or agent before adding crops." });
-                return;
-              }
-              setTab("add");
-            }}
+            onClick={() => setTab("add")}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -1925,7 +1925,7 @@ export default function FarmerDashboard() {
               <p style={{ color: "var(--text-muted)", marginTop:"1rem" }}>
                 {isVerified ? "No crops listed yet. Add your first crop!" : "Get verified to start listing crops."}
               </p>
-              {isVerified && <button className="btn-primary mt-2" style={{ width:"auto" }} onClick={() => setTab("add")}>+ Add Crop</button>}
+              <button className="btn-primary mt-2" style={{ width:"auto" }} onClick={() => setTab("add")}>+ Add Crop</button>
             </div>
           ) : (
             <>
@@ -2113,8 +2113,31 @@ export default function FarmerDashboard() {
       )}
 
       {/* ── ADD CROP TAB ── */}
-      {tab === "add" && isVerified && (
+      {tab === "add" && (
         <div style={{ marginTop: "1rem" }}>
+          {!isVerified && (
+            <div style={{
+              background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
+              border: "1.5px solid #60a5fa",
+              borderRadius: "14px",
+              padding: "1rem 1.25rem",
+              marginBottom: "1.2rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.85rem",
+              boxShadow: "0 4px 12px rgba(37,99,235,0.08)"
+            }}>
+              <span style={{ fontSize: "1.6rem" }}>🌾</span>
+              <div>
+                <strong style={{ color: "#1e40af", display: "block", fontSize: "0.95rem" }}>
+                  Preview & Drafting Mode (Account Verification in Progress)
+                </strong>
+                <span style={{ color: "#2563eb", fontSize: "0.82rem", lineHeight: 1.4, display: "block" }}>
+                  You can explore all AI features, smart speech-to-text, photo diagnosis, and test adding crops. Once our admin team approves your farm account, your listings will automatically become live for marketplace buyers!
+                </span>
+              </div>
+            </div>
+          )}
           <AddCrop />
         </div>
       )}
@@ -2687,7 +2710,7 @@ export default function FarmerDashboard() {
       )}
 
       {trackingOrder && (
-        <LiveMapModal order={trackingOrder} onClose={() => setTrackingOrder(null)} />
+        <LiveMapModal order={trackingOrder} onClose={() => setTrackingOrder(null)} viewerRole="farmer" />
       )}
       
       {/* Order Details Modal */}

@@ -1350,8 +1350,11 @@ export default function AdminDashboard() {
                   </select>
                 </div>
               </div>
-              <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "1rem" }}>Showing active deliveries {mapRegionFilter !== "All" ? `in ${mapRegionFilter}` : "globally"}.</p>
-              <AdminGlobalMap activeDeliveries={deliveries.filter(d => mapRegionFilter === "All" || d.deliveryLocation?.toLowerCase().includes(mapRegionFilter.toLowerCase()) || d.pickupLocation?.toLowerCase().includes(mapRegionFilter.toLowerCase()))} />
+              <AdminGlobalMap 
+                activeDeliveries={deliveries.filter(d => mapRegionFilter === "All" || d.deliveryLocation?.toLowerCase().includes(mapRegionFilter.toLowerCase()) || d.pickupLocation?.toLowerCase().includes(mapRegionFilter.toLowerCase()))} 
+                hubs={fleetData?.hubs || []}
+                onReassignClick={openReassignModal}
+              />
             </div>
           )}
 

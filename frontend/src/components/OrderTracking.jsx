@@ -232,7 +232,10 @@ export default function OrderTracking({ orderId, onClose }) {
                   style={{ height: "100%", width: "100%", minHeight: "350px" }}
                   zoomControl={true}
                 >
-                  <TileLayer url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" />
+                  <TileLayer 
+                    url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution="&copy; OpenStreetMap contributors"
+                  />
                   <Marker position={[deliveryLat, deliveryLng]} icon={homeIcon} />
                   <Marker position={[agentLat, agentLng]} icon={vehicleIcon} />
                   <Polyline positions={[[agentLat, agentLng], [deliveryLat, deliveryLng]]} color="#3b82f6" weight={4} dashArray="10, 10" />

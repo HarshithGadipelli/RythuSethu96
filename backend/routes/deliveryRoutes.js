@@ -368,8 +368,17 @@ router.post("/accept/:orderId", async (req, res) => {
     }
 
     // Calculate ETA based on distance & vehicle
-    const pickupLat = order.farmer?.latitude || order.crop?.latitude;
-    const pickupLng = order.farmer?.longitude || order.crop?.longitude;
+    let pickupLat = order.farmer?.latitude || order.crop?.latitude;
+    let pickupLng = order.farmer?.longitude || order.crop?.longitude;
+    let pickupLoc = order.farmer?.location || order.crop?.location || "";
+
+    // Dynamic origin check (Farm vs Cold Storage)
+    if (order.crop?.isAdminStock || order.crop?.realSalePlace?.hubType === "cold_storage_hub") {
+      pickupLat = order.crop?.realSalePlace?.latitude || pickupLat;
+      pickupLng = order.crop?.realSalePlace?.longitude || pickupLng;
+      pickupLoc = order.crop?.realSalePlace?.hubLocation || order.crop?.coldStorageLocation || pickupLoc;
+    }
+
     const deliveryLat = order.deliveryLatitude;
     const deliveryLng = order.deliveryLongitude;
     const distance = haversineDistance(pickupLat, pickupLng, deliveryLat, deliveryLng);
@@ -388,7 +397,7 @@ router.post("/accept/:orderId", async (req, res) => {
     const delivery = await Delivery.create({
       order: order._id,
       agent: agentId,
-      pickupLocation: order.farmer?.location || order.crop?.location || "",
+      pickupLocation: pickupLoc,
       pickupLatitude: pickupLat,
       pickupLongitude: pickupLng,
       deliveryLocation: order.deliveryAddress || "",
@@ -467,8 +476,16 @@ router.post("/auto-assign/:orderId", async (req, res) => {
     const agents = await User.find({ role: "agent", isActive: true });
     if (agents.length === 0) return res.status(400).json({ error: "No delivery agents available right now." });
 
-    const pickupLat = order.farmer?.latitude || order.crop?.latitude || 0;
-    const pickupLng = order.farmer?.longitude || order.crop?.longitude || 0;
+    let pickupLat = order.farmer?.latitude || order.crop?.latitude || 0;
+    let pickupLng = order.farmer?.longitude || order.crop?.longitude || 0;
+    let pickupLoc = order.farmer?.location || order.crop?.location || "";
+
+    // Dynamic origin check (Farm vs Cold Storage)
+    if (order.crop?.isAdminStock || order.crop?.realSalePlace?.hubType === "cold_storage_hub") {
+      pickupLat = order.crop?.realSalePlace?.latitude || pickupLat;
+      pickupLng = order.crop?.realSalePlace?.longitude || pickupLng;
+      pickupLoc = order.crop?.realSalePlace?.hubLocation || order.crop?.coldStorageLocation || pickupLoc;
+    }
 
     // 2. Score agents - Check ridealong agents matching route first
     const dropLat = order.deliveryLatitude || 0;
@@ -549,7 +566,7 @@ router.post("/auto-assign/:orderId", async (req, res) => {
     const delivery = await Delivery.create({
       order: order._id,
       agent: bestAgent._id,
-      pickupLocation: order.farmer?.location || order.crop?.location || "",
+      pickupLocation: pickupLoc,
       pickupLatitude: pickupLat,
       pickupLongitude: pickupLng,
       deliveryLocation: order.deliveryAddress || "",
