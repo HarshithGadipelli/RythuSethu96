@@ -508,12 +508,22 @@ export default function AddCrop() {
         setInterim("Listening... Please speak now 🎙️");
       }
       micStarted = Date.now();
+      
+      // Silence detector: If user doesn't speak for 10 seconds, prompt them
+      if (initialSilenceTimerRef.current) clearTimeout(initialSilenceTimerRef.current);
+      initialSilenceTimerRef.current = setTimeout(() => {
+        if (!hasUserSpokenRef.current && !isSpeakingRef.current && wizardStepRef.current !== 'COMPLETED' && wizardStepRef.current !== 'IDLE') {
+          handleNoSpeechDetected(wizardStepRef.current);
+        }
+      }, 10000); // 10 seconds silence
     };
 
     recognition.onresult = (event) => {
       if (isSpeakingRef.current) return; // Ignore AI's own voice echo
       
       hasUserSpokenRef.current = true;
+      if (initialSilenceTimerRef.current) clearTimeout(initialSilenceTimerRef.current);
+      
       let currentText = "";
       for (let i = 0; i < event.results.length; i++) {
         currentText += event.results[i][0].transcript + " ";
@@ -562,19 +572,20 @@ export default function AddCrop() {
 
   // ─── Handle No Speech Detected: Acknowledge & Ask Again (Max 2 retries) ───
   const handleNoSpeechDetected = (step) => {
-    stopRecognition();
     playChime('retry');
+    hasUserSpokenRef.current = false; // Reset so the detector can fire again
 
     setRetryCount(prev => {
       const next = prev + 1;
       if (next > 2) {
         const pauseMsg = lang === "te" 
           ? "మైక్ పాజ్ చేయబడింది. మీకు కావలసినప్పుడు మైక్ బటన్ నొక్కండి లేదా వివరాలు నమోదు చేయండి." 
-          : "Microphone paused. Tap the mic button or fill fields below when ready.";
+          : "Are you still there? Please tap 'Tap to Speak' or type manually.";
         setWizardMsg(pauseMsg);
-        setIsListening(false);
+        stopRecognition(); // Only stop completely on 3rd failure
         return 0;
       }
+      
       const retryMsg = getSilenceRetryAck(step);
       setWizardMsg(retryMsg);
       askStep(step, retryMsg);
@@ -591,7 +602,7 @@ export default function AddCrop() {
 
   const handleManualTapToSpeak = () => {
     if (wizardStep !== 'IDLE' && wizardStep !== 'COMPLETED') {
-      startListeningForStep(wizardStep);
+      startContinuousListening();
     }
   };
 
