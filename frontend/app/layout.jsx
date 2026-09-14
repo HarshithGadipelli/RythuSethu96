@@ -77,6 +77,15 @@ export default function RootLayout({ children }) {
           src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"
           strategy="lazyOnload"
         />
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              for(let registration of registrations) {
+                registration.unregister();
+              }
+            });
+          }
+        `}} />
         <ErrorBoundary>
           <div id="root">
             {children}
