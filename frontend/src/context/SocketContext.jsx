@@ -12,8 +12,8 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const backendUrl = BASE_URL;
-    const newSocket = io(backendUrl, {
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || BASE_URL;
+    const newSocket = io(socketUrl, {
       autoConnect: true,
       reconnection: true
     });
