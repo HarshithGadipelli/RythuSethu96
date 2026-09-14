@@ -26,6 +26,12 @@ const cropSchema = new mongoose.Schema({
   farmTourUrl: { type: String, default: "" },
   farmTourVideo: { type: String, default: "" },
   harvestDate: { type: Date },
+  allowPrebooking: { type: Boolean, default: false },
+  growingStage: { 
+    type: String, 
+    enum: ["nursery", "vegetative", "flowering", "fruiting", "harvested"], 
+    default: "harvested" 
+  },
   expiryDate: { type: Date },
   season: { type: String, enum: ["kharif", "rabi", "zaid", "perennial"], default: "kharif" },
   waterAvailability: { type: String, enum: ["abundant", "moderate", "scarce"], default: "moderate" },

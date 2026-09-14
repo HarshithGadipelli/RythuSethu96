@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Sprout, CheckCircle, PackagePlus, Mic, MicOff, PlayCircle, 
   Loader2, Volume2, RotateCcw, ArrowRight, Check, AlertCircle,
-  MapPin, LocateFixed, Compass, X
+  MapPin, LocateFixed, Compass, X, Calendar, Bell
 } from 'lucide-react';
+import CropVisualPicker from '../../components/CropVisualPicker';
 import API, { BASE_URL } from '../../api/api';
 import LocationUpdateModal from '../../components/LocationUpdateModal';
 import { useAuth } from '../../context/AuthContext';
@@ -71,7 +72,11 @@ export default function AddCrop() {
     location: user?.location || '',
     farmLocation: user?.farmName || user?.location || '',
     latitude: user?.latitude || '',
-    longitude: user?.longitude || ''
+    longitude: user?.longitude || '',
+    growingStage: 'harvested',
+    notifyAdmin: false,
+    allowPrebooking: false,
+    expectedHarvestDate: ''
   });
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
@@ -461,11 +466,12 @@ export default function AddCrop() {
 
     // After AI finishes speaking, add a small delay then open the mic for the farmer
     if (step !== 'COMPLETED' && wizardStepRef.current === step) {
-      // Delay prevents echo from TTS playing into the mic
-      await new Promise(resolve => setTimeout(resolve, 600));
-      if (wizardStepRef.current === step) {
-        startListeningForStep(step);
-      }
+      // Small 150ms delay keeps the user gesture active in most modern browsers.
+      setTimeout(() => {
+        if (wizardStepRef.current === step) {
+          startListeningForStep(step);
+        }
+      }, 150);
     }
   };
 
@@ -884,7 +890,8 @@ export default function AddCrop() {
       setFormData({
         name: '', category: 'vegetable', price: '', quantity: '', unit: 'kg', description: '', isOrganic: false,
         location: user?.location || '', farmLocation: user?.farmName || user?.location || '',
-        latitude: user?.latitude || '', longitude: user?.longitude || ''
+        latitude: user?.latitude || '', longitude: user?.longitude || '',
+        growingStage: 'harvested', notifyAdmin: false, allowPrebooking: false, expectedHarvestDate: ''
       });
       setFilledFields({});
       
@@ -1302,6 +1309,20 @@ export default function AddCrop() {
 
       {/* ─── ADD CROP FORM (AUTO-FILLED LIVE) ─── */}
       <div className="glass-card mt-4" style={{ maxWidth: '650px', margin: '0 auto', transition: "all 0.3s" }}>
+        {/* ─── VISUAL CROP PICKER ─── */}
+        <div style={{ marginBottom: "1.5rem" }}>
+           <CropVisualPicker 
+              selectedCrop={formData.name} 
+              onSelectCrop={(crop) => {
+                const cropName = crop.names.en;
+                setFormData(prev => ({ ...prev, name: cropName, category: crop.category }));
+                formDataRef.current.name = cropName;
+                formDataRef.current.category = crop.category;
+                setFilledFields(prev => ({ ...prev, name: true, category: true }));
+              }}
+           />
+        </div>
+
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
           
           {/* Crop Name */}
@@ -1551,6 +1572,106 @@ export default function AddCrop() {
             <input type="checkbox" name="isOrganic" checked={formData.isOrganic} onChange={handleChange} style={{ width: '20px', height: '20px' }} /> 
             <span style={{ fontWeight: 600, color: 'var(--green-deep)' }}>This product is Certified Organic / Pesticide-Free (సేంద్రీయ పంట)</span>
           </label>
+
+          {/* Stage-Wise Growing & Pre-Booking Panel */}
+          <div style={{
+            background: "linear-gradient(145deg, #f8fafc, #f1f5f9)",
+            border: "1px solid #e2e8f0",
+            borderRadius: "12px",
+            padding: "1.2rem",
+            display: "flex",
+            flexDirection: "column",
+            gap: "1.2rem"
+          }}>
+            <h4 style={{ margin: 0, color: "#1e293b", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Sprout size={18} color="#16a34a" /> Stage-Wise Growing & Pre-Booking
+            </h4>
+            
+            {/* Growing Stage Stepper */}
+            <div>
+              <label style={{ fontWeight: 600, display: "block", marginBottom: "0.8rem", color: "#475569", fontSize: "0.9rem" }}>Current Crop Stage</label>
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                {["nursery", "vegetative", "flowering", "fruiting", "harvested"].map((stage) => (
+                  <button
+                    key={stage}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, growingStage: stage }))}
+                    style={{
+                      padding: "0.5rem 1rem",
+                      borderRadius: "100px",
+                      border: formData.growingStage === stage ? "1.5px solid #16a34a" : "1px solid #cbd5e1",
+                      background: formData.growingStage === stage ? "#dcfce7" : "white",
+                      color: formData.growingStage === stage ? "#166534" : "#64748b",
+                      fontWeight: formData.growingStage === stage ? 700 : 500,
+                      cursor: "pointer",
+                      textTransform: "capitalize",
+                      fontSize: "0.85rem",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    {stage}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Notify Admin */}
+            {formData.growingStage !== 'harvested' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: '#fffbeb', padding: '0.8rem 1rem', borderRadius: '10px', cursor: 'pointer', border: '1px solid #fde68a' }}>
+                <input type="checkbox" name="notifyAdmin" checked={formData.notifyAdmin} onChange={handleChange} style={{ width: '18px', height: '18px', accentColor: '#d97706' }} /> 
+                <span style={{ fontWeight: 600, color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem' }}>
+                  <Bell size={16} /> Request Admin Visit / Advisory
+                </span>
+              </label>
+            )}
+
+            {/* Pre-Booking Toggle */}
+            <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: "1rem" }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', marginBottom: formData.allowPrebooking ? '1rem' : '0' }}>
+                <div style={{
+                  position: "relative",
+                  width: "44px",
+                  height: "24px",
+                  background: formData.allowPrebooking ? "#3b82f6" : "#cbd5e1",
+                  borderRadius: "100px",
+                  transition: "background 0.3s"
+                }}>
+                  <div style={{
+                    position: "absolute",
+                    top: "2px",
+                    left: formData.allowPrebooking ? "22px" : "2px",
+                    width: "20px",
+                    height: "20px",
+                    background: "white",
+                    borderRadius: "50%",
+                    transition: "left 0.3s",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                  }} />
+                </div>
+                <input type="checkbox" name="allowPrebooking" checked={formData.allowPrebooking} onChange={handleChange} style={{ display: 'none' }} />
+                <span style={{ fontWeight: 600, color: "#334155" }}>Allow Pre-Booking by Customers</span>
+              </label>
+
+              {formData.allowPrebooking && (
+                <div style={{ display: "flex", gap: "0.8rem", alignItems: "center", background: "white", padding: "1rem", borderRadius: "8px", border: "1px solid #bfdbfe" }}>
+                  <Calendar color="#3b82f6" size={20} />
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.2rem', fontWeight: 600 }}>Expected Harvest Date</label>
+                    <input 
+                      type="date" 
+                      name="expectedHarvestDate" 
+                      value={formData.expectedHarvestDate} 
+                      onChange={handleChange} 
+                      required={formData.allowPrebooking}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="form-input" 
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #93c5fd' }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Farm Location & GPS Coordinates */}
           <div style={{
