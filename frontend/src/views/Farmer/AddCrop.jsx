@@ -852,6 +852,13 @@ export default function AddCrop() {
   };
 
   const startWizard = async () => {
+    // SYNC AUDIO UNLOCK: Play a silent utterance immediately on click to unlock TTS
+    try {
+       const unlockUtterance = new SpeechSynthesisUtterance("");
+       unlockUtterance.volume = 0;
+       window.speechSynthesis.speak(unlockUtterance);
+    } catch (e) {}
+
     // Request microphone permission on click
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -864,7 +871,7 @@ export default function AddCrop() {
 
     setFilledFields({});
     setRetryCount(0);
-    startContinuousListening();
+    setWizardStep('NAME');
     askStep('NAME');
   };
 
