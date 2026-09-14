@@ -50,6 +50,7 @@ export default function Register() {
   });
   
   const [locationAudio, setLocationAudio] = useState(null);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   const set = (k) => (val) => {
     if (typeof val === "function") {
@@ -696,8 +697,7 @@ export default function Register() {
                     <option value="bike">🛵 Two-Wheeler Bike Agent (Local Express Delivery)</option>
                     <option value="auto">🛺 Auto / Mini-Van Agent (Mid-Volume Logistics)</option>
                     <option value="truck">🚚 Heavy Truck Transport Agent (Long Distance & Bulk Load)</option>
-                    <option value="freelance_commuter">🎒 Freelance Commuter Agent (Daily Route Share / Ride-Along)</option>
-                    <option value="ridealong">🎒 Freelance Ride-Along Agent (On-the-way Delivery)</option>
+                    <option value="ridealong">🎒 Freelance Ride-Along Agent (On-the-way Delivery / Daily Route Share)</option>
                     <option value="cold_storage">❄️ Cold Storage Warehouse Agent (Temperature Controlled Vault)</option>
                   </select>
                 </div>
@@ -706,7 +706,17 @@ export default function Register() {
               {form.role !== "farmer" && (
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
                   <input type="checkbox" id="terms" checked={form.acceptedTerms} onChange={(e) => setForm(f => ({ ...f, acceptedTerms: e.target.checked }))} style={{ width:18, height:18, cursor:"pointer" }} />
-                  <label htmlFor="terms" style={{ fontSize: "0.85rem", color: "var(--text-muted)", cursor:"pointer" }}>I agree to the Platform Rules, Conditions, and Security Policies.</label>
+                  <label htmlFor="terms" style={{ fontSize: "0.85rem", color: "var(--text-muted)", cursor:"pointer" }}>
+                    I agree to the{" "}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTermsModal(true); }}
+                      style={{ background: "none", border: "none", color: "var(--green-mid)", fontWeight: 700, textDecoration: "underline", cursor: "pointer", padding: 0, fontSize: "inherit" }}
+                    >
+                      Terms & Conditions
+                    </button>{" "}
+                    and Security Policies.
+                  </label>
                 </div>
               )}
 
@@ -947,7 +957,16 @@ export default function Register() {
 
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "1rem", marginBottom: "0.5rem" }}>
                 <input type="checkbox" id="terms-farmer" checked={form.acceptedTerms} onChange={(e) => setForm(f => ({ ...f, acceptedTerms: e.target.checked }))} style={{ width:18, height:18, cursor:"pointer" }} />
-                <label htmlFor="terms-farmer" style={{ fontSize: "0.85rem", color: "var(--text-muted)", cursor:"pointer" }}>I agree to the Farmer Rules, Conditions, and Quality Guidelines.</label>
+                <label htmlFor="terms-farmer" style={{ fontSize: "0.85rem", color: "var(--text-muted)", cursor:"pointer" }}>
+                  I agree to the{" "}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTermsModal(true); }}
+                    style={{ background: "none", border: "none", color: "var(--green-mid)", fontWeight: 700, textDecoration: "underline", cursor: "pointer", padding: 0, fontSize: "inherit" }}
+                  >
+                    Farmer Terms & Quality Guidelines
+                  </button>.
+                </label>
               </div>
 
               <div style={{ display: "flex", gap: "0.75rem", marginTop: "1rem" }}>
@@ -1034,7 +1053,16 @@ export default function Register() {
 
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "1rem", marginBottom: "0.5rem" }}>
                 <input type="checkbox" id="terms-agent" checked={form.acceptedTerms} onChange={(e) => setForm(f => ({ ...f, acceptedTerms: e.target.checked }))} style={{ width:18, height:18, cursor:"pointer" }} />
-                <label htmlFor="terms-agent" style={{ fontSize: "0.85rem", color: "var(--text-muted)", cursor:"pointer" }}>I agree to the Agent Rules, Delivery Conditions, and Security Policies.</label>
+                <label htmlFor="terms-agent" style={{ fontSize: "0.85rem", color: "var(--text-muted)", cursor:"pointer" }}>
+                  I agree to the{" "}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTermsModal(true); }}
+                    style={{ background: "none", border: "none", color: "var(--green-mid)", fontWeight: 700, textDecoration: "underline", cursor: "pointer", padding: 0, fontSize: "inherit" }}
+                  >
+                    Agent Terms & Delivery Policies
+                  </button>.
+                </label>
               </div>
 
               <div style={{ display: "flex", gap: "0.75rem", marginTop: "1rem" }}>
@@ -1053,6 +1081,117 @@ export default function Register() {
             {t("login")} →
           </Link>
         </p>
+
+        {/* ── Terms and Conditions Modal ── */}
+        {showTermsModal && (
+          <div style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            backdropFilter: "blur(6px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 99999,
+            padding: "1rem"
+          }}>
+            <div style={{
+              background: "linear-gradient(145deg, #0f172a, #1e293b)",
+              border: "2px solid rgba(34, 197, 94, 0.4)",
+              borderRadius: "16px",
+              maxWidth: "580px",
+              width: "100%",
+              maxHeight: "85vh",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 25px 70px rgba(0,0,0,0.6), 0 0 25px rgba(34, 197, 94, 0.2)",
+              overflow: "hidden"
+            }}>
+              {/* Header */}
+              <div style={{
+                padding: "1rem 1.25rem",
+                borderBottom: "1px solid rgba(34, 197, 94, 0.25)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                background: "rgba(22, 163, 74, 0.2)"
+              }}>
+                <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#4ade80", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  📜 Rythu Jana Sethu Terms & Conditions
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowTermsModal(false)}
+                  style={{ background: "none", border: "none", fontSize: "1.3rem", cursor: "pointer", color: "#94a3b8" }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Scrollable Terms Content */}
+              <div style={{ padding: "1.25rem", overflowY: "auto", fontSize: "0.86rem", lineHeight: 1.6, color: "#e2e8f0" }}>
+                <p style={{ fontWeight: 600, color: "#86efac", marginBottom: "0.8rem" }}>
+                  Welcome to Rythu Jana Sethu — bridging farmers and consumers across India. Please review our platform code of conduct:
+                </p>
+
+                <h4 style={{ margin: "0.8rem 0 0.25rem", color: "#4ade80", fontSize: "0.95rem" }}>1. Direct Farmer-to-Consumer Integrity</h4>
+                <p style={{ margin: 0, color: "#cbd5e1" }}>
+                  Farmers list produce harvested directly from their fields. The platform enforces 0% hidden middleman commissions so growers receive their full asking rate.
+                </p>
+
+                <h4 style={{ margin: "0.8rem 0 0.25rem", color: "#4ade80", fontSize: "0.95rem" }}>2. Quality & Chemical-Free Standards</h4>
+                <p style={{ margin: 0, color: "#cbd5e1" }}>
+                  Crops labeled as Organic or Pesticide-Free must genuinely adhere to chemical-free farming. Platform spectrometer scans and soil tests help verify trust scores.
+                </p>
+
+                <h4 style={{ margin: "0.8rem 0 0.25rem", color: "#4ade80", fontSize: "0.95rem" }}>3. Logistics & Ride-Along Delivery Responsibility</h4>
+                <p style={{ margin: 0, color: "#cbd5e1" }}>
+                  Delivery agents and Ride-Along commuters pledge safe, hygienic, and prompt transit. Cold-storage goods are prioritized for climate preservation.
+                </p>
+
+                <h4 style={{ margin: "0.8rem 0 0.25rem", color: "#4ade80", fontSize: "0.95rem" }}>4. Transparent Settlements & Refund Safety</h4>
+                <p style={{ margin: 0, color: "#cbd5e1" }}>
+                  All orders support automated digital invoices. Online payments and COD are reconciled automatically with instant payouts to farmer wallets.
+                </p>
+
+                <h4 style={{ margin: "0.8rem 0 0.25rem", color: "#4ade80", fontSize: "0.95rem" }}>5. Privacy & Data Security</h4>
+                <p style={{ margin: 0, color: "#cbd5e1" }}>
+                  Your phone number, GPS coordinates, and Aadhaar verification files are encrypted in compliance with data privacy standards and never sold to third parties.
+                </p>
+              </div>
+
+              {/* Footer */}
+              <div style={{
+                padding: "0.9rem 1.25rem",
+                borderTop: "1px solid rgba(255,255,255,0.1)",
+                display: "flex",
+                gap: "0.75rem",
+                justifyContent: "flex-end",
+                background: "rgba(0,0,0,0.3)"
+              }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowTermsModal(false)}
+                  style={{ padding: "0.45rem 1rem", fontSize: "0.82rem" }}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => {
+                    setForm(f => ({ ...f, acceptedTerms: true }));
+                    setShowTermsModal(false);
+                  }}
+                  style={{ padding: "0.45rem 1.2rem", fontSize: "0.82rem", background: "linear-gradient(135deg, #16a34a, #15803d)", color: "white", border: "none" }}
+                >
+                  ✅ I Read & Accept Terms
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
