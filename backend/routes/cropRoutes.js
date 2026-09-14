@@ -67,7 +67,19 @@ router.put("/:id/sell-to-admin", optionalAuth, async (req, res) => {
 //                   &minPrice=10&maxPrice=100&maxDistance=25&lat=17.385&lng=78.487
 //                   &sortBy=price_asc&page=1&limit=20
 // ──────────────────────────────────────────────
+// Simple In-Memory Cache for faster public reads
+const cache = new Map();
+const CACHE_TTL = 30000; // 30 seconds
+
 router.get("/search", async (req, res) => {
+  const cacheKey = JSON.stringify(req.query);
+  if (cache.has(cacheKey)) {
+    const cached = cache.get(cacheKey);
+    if (Date.now() - cached.timestamp < CACHE_TTL) {
+      return res.json(cached.data);
+    }
+    cache.delete(cacheKey);
+  }
   try {
     const {
       q,
@@ -254,12 +266,14 @@ router.get("/search", async (req, res) => {
       return cropObj;
     });
 
-    res.json({
+    const result = {
       crops: enrichedCrops,
       total: maxDistance ? enrichedCrops.length : total,
       page: Number(page),
       totalPages: Math.ceil((maxDistance ? enrichedCrops.length : total) / Number(limit))
-    });
+    };
+    cache.set(cacheKey, { timestamp: Date.now(), data: result });
+    res.json(result);
 
   } catch (err) {
     res.status(500).json({ error: err.message });

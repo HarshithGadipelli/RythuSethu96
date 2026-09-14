@@ -12,6 +12,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import mongoSanitize from "express-mongo-sanitize";
 import sanitizeMiddleware from "./middleware/sanitizeMiddleware.js";
+import compression from "compression";
 
 import authRoutes from "./routes/authRoutes.js";
 import farmerRoutes from "./routes/farmerRoutes.js";
@@ -103,6 +104,7 @@ app.use(cors({
   },
   credentials: true 
 }));
+app.use(compression());
 
 // Security Middlewares
 app.use(helmet({ crossOriginResourcePolicy: false }));
