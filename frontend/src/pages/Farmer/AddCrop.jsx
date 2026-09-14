@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Sprout, CheckCircle, PackagePlus, Mic, MicOff, PlayCircle, 
   Loader2, Volume2, RotateCcw, ArrowRight, Check, AlertCircle,
-  MapPin, LocateFixed, Compass, X, Calendar, Bell
+  MapPin, LocateFixed, Compass, X, Calendar, Bell, ShieldCheck, Camera
 } from 'lucide-react';
 import CropVisualPicker from '../../components/CropVisualPicker';
 import API, { BASE_URL } from '../../api/api';
@@ -126,6 +126,17 @@ export default function AddCrop() {
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
+
+  // Organic Verification States
+  const [organicVerificationType, setOrganicVerificationType] = useState('5-step'); // 'official' | '5-step'
+  const [certificationDocument, setCertificationDocument] = useState('');
+  const [organicSteps, setOrganicSteps] = useState({
+    step1_soil_bio: { photoUrl: "" },
+    step2_natural_seed: { photoUrl: "" },
+    step3_corn_border_catch_crop: { photoUrl: "" },
+    step4_botanical_spray: { photoUrl: "" },
+    step5_clean_harvest: { photoUrl: "" }
+  });
 
   // Wizard States
   const [wizardStep, setWizardStep] = useState('IDLE'); // 'IDLE' | 'NAME' | 'QUANTITY' | 'PRICE' | 'CONFIRM_SUBMIT' | 'COMPLETED'
@@ -860,6 +871,20 @@ export default function AddCrop() {
     setLoading(true);
     try {
       const payload = { ...formData, farmer: user._id };
+      
+      // Inject Organic Verification Payload
+      if (formData.isOrganic) {
+        if (organicVerificationType === 'official') {
+          payload.certificationDocument = certificationDocument;
+          payload.certificationStatus = 'pending';
+        } else if (organicVerificationType === '5-step') {
+          payload.organicVerification = {
+            status: 'pending_inspection',
+            stepPhotos: { ...organicSteps }
+          };
+        }
+      }
+
       await API.post('/crops/add', payload);
       setMsg(`Successfully listed ${formData.name} for sale!`);
       setFormData({
@@ -869,6 +894,15 @@ export default function AddCrop() {
         growingStage: 'harvested', notifyAdmin: false, allowPrebooking: false, expectedHarvestDate: ''
       });
       setFilledFields({});
+      setOrganicVerificationType('5-step');
+      setCertificationDocument('');
+      setOrganicSteps({
+        step1_soil_bio: { photoUrl: "" },
+        step2_natural_seed: { photoUrl: "" },
+        step3_corn_border_catch_crop: { photoUrl: "" },
+        step4_botanical_spray: { photoUrl: "" },
+        step5_clean_harvest: { photoUrl: "" }
+      });
       
       const successMsg = {
         en: `Successfully listed ${formData.name} for sale!`,
@@ -1543,10 +1577,89 @@ export default function AddCrop() {
           </div>
 
           {/* Organic / Pesticide Free */}
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'var(--green-pale)', padding: '1rem', borderRadius: '10px', cursor: 'pointer' }}>
-            <input type="checkbox" name="isOrganic" checked={formData.isOrganic} onChange={handleChange} style={{ width: '20px', height: '20px' }} /> 
-            <span style={{ fontWeight: 600, color: 'var(--green-deep)' }}>This product is Certified Organic / Pesticide-Free (సేంద్రీయ పంట)</span>
-          </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'var(--green-pale)', padding: '1rem', borderRadius: '10px', cursor: 'pointer' }}>
+              <input type="checkbox" name="isOrganic" checked={formData.isOrganic} onChange={handleChange} style={{ width: '20px', height: '20px' }} /> 
+              <span style={{ fontWeight: 600, color: 'var(--green-deep)' }}>This product is Certified Organic / Pesticide-Free (సేంద్రీయ పంట)</span>
+            </label>
+
+            {formData.isOrganic && (
+              <div style={{
+                background: "linear-gradient(to right, #f0fdf4, #ffffff)",
+                border: "2px solid #22c55e",
+                borderRadius: "12px",
+                padding: "1.5rem",
+                boxShadow: "0 4px 15px rgba(34,197,94,0.1)",
+                display: "flex", flexDirection: "column", gap: "1.5rem",
+                animation: "fadeIn 0.4s ease"
+              }}>
+                <h4 style={{ margin: 0, color: "#166534", fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <ShieldCheck size={22} /> Food Safety & Anti-Fake Organic Certification
+                </h4>
+                
+                <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                  <label style={{ flex: 1, display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.8rem", border: organicVerificationType === 'official' ? "2px solid #16a34a" : "1px solid #cbd5e1", borderRadius: "8px", background: organicVerificationType === 'official' ? "#dcfce7" : "#f8fafc", cursor: "pointer" }}>
+                    <input type="radio" name="orgType" checked={organicVerificationType === 'official'} onChange={() => setOrganicVerificationType('official')} style={{ accentColor: "#16a34a" }} />
+                    <span style={{ fontWeight: 600, color: "#334155" }}>I have an Official Certificate</span>
+                  </label>
+                  <label style={{ flex: 1, display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.8rem", border: organicVerificationType === '5-step' ? "2px solid #16a34a" : "1px solid #cbd5e1", borderRadius: "8px", background: organicVerificationType === '5-step' ? "#dcfce7" : "#f8fafc", cursor: "pointer" }}>
+                    <input type="radio" name="orgType" checked={organicVerificationType === '5-step'} onChange={() => setOrganicVerificationType('5-step')} style={{ accentColor: "#16a34a" }} />
+                    <span style={{ fontWeight: 600, color: "#334155" }}>Apply for 5-Step RS Verification</span>
+                  </label>
+                </div>
+
+                {organicVerificationType === 'official' && (
+                  <div style={{ background: "white", padding: "1.2rem", borderRadius: "8px", border: "1px dashed #22c55e" }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#475569' }}>Upload Official Certificate (PDF/Image)</label>
+                    <input type="file" onChange={(e) => {
+                       // Simulated file upload for now
+                       setCertificationDocument("uploaded_cert.pdf");
+                    }} className="form-input" style={{ width: '100%' }} />
+                    {certificationDocument && <p style={{ color: "#16a34a", fontSize: "0.85rem", marginTop: "0.5rem" }}>✅ Document Attached: {certificationDocument}</p>}
+                  </div>
+                )}
+
+                {organicVerificationType === '5-step' && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    <p style={{ margin: 0, fontSize: "0.9rem", color: "#475569" }}>Complete these 5 geotagged steps to verify your organic crop. RythuSethu Testing Agents will audit your submission.</p>
+                    
+                    {[
+                      { id: 'step1_soil_bio', label: '1. Soil Prep (Jeevamrutham/Green Manure)' },
+                      { id: 'step2_natural_seed', label: '2. Seed Treatment (Bijamrutham/Untreated)' },
+                      { id: 'step3_corn_border_catch_crop', label: '3. Catch Crop (Corn Border/Marigold)' },
+                      { id: 'step4_botanical_spray', label: '4. Pest Management (NSKE/Agniastra)' },
+                      { id: 'step5_clean_harvest', label: '5. Clean Harvest & Storage' }
+                    ].map(step => (
+                      <div key={step.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "white", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                        <div style={{ flex: 1 }}>
+                           <strong style={{ display: "block", color: "#1e293b", fontSize: "0.95rem" }}>{step.label}</strong>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                             // Simulated camera capture
+                             setOrganicSteps(prev => ({
+                               ...prev,
+                               [step.id]: { photoUrl: `simulated_photo_${step.id}.jpg` }
+                             }));
+                          }}
+                          style={{
+                            background: organicSteps[step.id].photoUrl ? "#f0fdf4" : "#f1f5f9",
+                            color: organicSteps[step.id].photoUrl ? "#16a34a" : "#475569",
+                            border: organicSteps[step.id].photoUrl ? "1px solid #86efac" : "1px solid #cbd5e1",
+                            padding: "0.5rem 1rem", borderRadius: "8px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer",
+                            display: "flex", alignItems: "center", gap: "0.4rem"
+                          }}
+                        >
+                          {organicSteps[step.id].photoUrl ? <><CheckCircle size={14}/> Verified</> : <><Camera size={14} /> Take Photo</>}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Stage-Wise Growing & Pre-Booking Panel */}
           <div style={{
