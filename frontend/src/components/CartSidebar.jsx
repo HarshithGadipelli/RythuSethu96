@@ -4,7 +4,7 @@ import { X, Trash2, ShoppingCart, Plus, Minus, CreditCard, CheckCircle2, Smartph
 import { useLang } from "../context/LangContext";
 import API from "../api/api";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import PaymentModal from "./PaymentModal";
 import OrderInvoiceModal from "./OrderInvoiceModal";
 import { getImgSrc } from "../views/Marketplace/Marketplace";

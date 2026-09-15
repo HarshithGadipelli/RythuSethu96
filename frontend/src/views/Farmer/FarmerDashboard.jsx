@@ -12,7 +12,6 @@ import VoiceField from "../../components/VoiceField";
 import GuidedInput from "../../components/GuidedInput";
 import SoilTestingPanel from "../../components/SoilTestingPanel";
 import PestDetectionPanel from "../../components/PestDetectionPanel";
-import { useNavigate } from "react-router-dom";
 import API from "../../api/api";
 import { io } from "socket.io-client";
 import { parseSpokenNumber, parseVoiceToFormMultilingual, playTTS, VOICE_PROMPTS, stopTTS, isTTSPlaying, CROP_BENCHMARKS } from "../../utils/voiceParser";

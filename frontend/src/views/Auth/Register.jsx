@@ -1,7 +1,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useNavigate } from "react-router-dom";
 import API from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { useLang } from "../../context/LangContext";

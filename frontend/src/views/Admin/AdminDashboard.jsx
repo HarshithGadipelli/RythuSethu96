@@ -1,7 +1,7 @@
 import { BASE_URL } from '../../api/api';
 import { getImgSrc } from '../Marketplace/Marketplace';
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { useLang } from "../../context/LangContext";
 import { useVoiceInput } from "../../utils/useVoiceInput";

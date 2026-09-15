@@ -1,7 +1,6 @@
 import { BASE_URL } from '../api/api';
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLang } from "../context/LangContext";
 import { useLayout } from "../context/LayoutContext";
