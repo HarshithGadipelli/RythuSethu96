@@ -1,12 +1,25 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-const CartContext = createContext();
+const defaultCartValue = {
+  cart: [],
+  isCartOpen: false,
+  setIsCartOpen: () => {},
+  addToCart: () => {},
+  removeFromCart: () => {},
+  updateQuantity: () => {},
+  clearCart: () => {},
+  cartTotal: 0,
+  cartCount: 0,
+};
 
-export const useCart = () => useContext(CartContext);
+const CartContext = createContext(defaultCartValue);
+
+export const useCart = () => useContext(CartContext) || defaultCartValue;
 
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState(() => {
     try {
+      if (typeof window === "undefined" || !window.localStorage) return [];
       const stored = localStorage.getItem("rythujanasethu_cart") || localStorage.getItem("rythusethu_cart");
       if (!stored) return [];
       const parsed = JSON.parse(stored);

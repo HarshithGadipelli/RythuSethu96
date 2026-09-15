@@ -1,10 +1,24 @@
 import { createContext, useContext, useState, useEffect } from "react";
 
-const LayoutContext = createContext();
+const defaultLayoutValue = {
+  layoutMode: "auto",
+  setLayoutMode: () => {},
+  deviceMode: "auto",
+  setDeviceMode: () => {},
+};
+
+const LayoutContext = createContext(defaultLayoutValue);
 
 export function LayoutProvider({ children }) {
   const [layoutMode, setLayoutModeState] = useState(() => {
-    return localStorage.getItem("rs_device_layout_mode") || "auto";
+    if (typeof window !== "undefined" && window.localStorage) {
+      try {
+        return localStorage.getItem("rs_device_layout_mode") || "auto";
+      } catch (e) {
+        return "auto";
+      }
+    }
+    return "auto";
   });
 
   const setLayoutMode = (mode) => {
@@ -50,6 +64,6 @@ export function LayoutProvider({ children }) {
 }
 
 export function useLayout() {
-  return useContext(LayoutContext);
+  return useContext(LayoutContext) || defaultLayoutValue;
 }
 

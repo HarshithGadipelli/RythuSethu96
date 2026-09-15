@@ -792,19 +792,39 @@ const translations = {
   },
 };
 
-const LangContext = createContext();
+const defaultLangValue = {
+  lang: "en",
+  changeLang: () => {},
+  t: (key) => translations["en"]?.[key] || key,
+};
+
+const LangContext = createContext(defaultLangValue);
 
 export function LangProvider({ children }) {
-  const [lang, setLang] = useState(() => localStorage.getItem("lang") || "en");
+  const [lang, setLang] = useState(() => {
+    if (typeof window !== "undefined" && window.localStorage) {
+      try {
+        return localStorage.getItem("lang") || "en";
+      } catch (e) {
+        return "en";
+      }
+    }
+    return "en";
+  });
 
   const changeLang = (l) => {
     setLang(l);
-    localStorage.setItem("lang", l);
+    if (typeof window !== "undefined" && window.localStorage) {
+      try {
+        localStorage.setItem("lang", l);
+      } catch (e) {}
+    }
   };
 
   useEffect(() => {
     const triggerTranslation = () => {
       try {
+        if (typeof document === "undefined") return false;
         if (lang === "en") {
           document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
           document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=" + window.location.hostname + "; path=/;";
@@ -840,5 +860,5 @@ export function LangProvider({ children }) {
   );
 }
 
-export const useLang = () => useContext(LangContext);
+export const useLang = () => useContext(LangContext) || defaultLangValue;
 export { LangContext };

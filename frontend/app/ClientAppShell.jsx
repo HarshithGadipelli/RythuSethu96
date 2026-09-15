@@ -140,19 +140,21 @@ export default function Providers({ children }) {
     setMounted(true);
   }, []);
 
-  if (!mounted) {
-    return <>{children}</>;
-  }
-
   return (
     <SocketProvider>
       <LangProvider>
         <AuthProvider>
           <CartProvider>
             <LayoutProvider>
-              <AppShell>
-                {children}
-              </AppShell>
+              {mounted ? (
+                <AppShell>
+                  {children}
+                </AppShell>
+              ) : (
+                <div id="root" style={{ minHeight: "100vh" }}>
+                  {children}
+                </div>
+              )}
             </LayoutProvider>
           </CartProvider>
         </AuthProvider>
