@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, X, Sparkles, Send, Loader2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { useLang } from "../context/LangContext";
 import { useVoiceInput, LANG_MAP } from "../utils/useVoiceInput";

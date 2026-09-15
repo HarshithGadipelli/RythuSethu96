@@ -1,6 +1,7 @@
 import { BASE_URL } from '../../api/api';
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -659,7 +660,9 @@ export default function Marketplace() {
   const { t, lang } = useLang();
   const { addToCart, setIsCartOpen } = useCart();
   const { listening, activeField, interim, startListening, stopListening } = useVoiceInput(lang);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const initialTab = searchParams.get("tab") || "shop";
   const [mainTab, setMainTab] = useState(initialTab);
@@ -674,7 +677,9 @@ export default function Marketplace() {
 
   const switchMainTab = (tabName) => {
     setMainTab(tabName);
-    setSearchParams({ tab: tabName });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", tabName);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     if (tabName === "orders" && user) {
       fetchMyOrders();
     }

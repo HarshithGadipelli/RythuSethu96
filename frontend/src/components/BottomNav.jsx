@@ -1,13 +1,12 @@
 import React from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-
 import { Home, ShoppingBag, User, Bot, Package } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import "./BottomNav.css";
 
 export default function BottomNav() {
-  const { pathname } = useLocation();
+  const pathname = usePathname();
   const { user } = useAuth();
 
   // Determine role-based links
