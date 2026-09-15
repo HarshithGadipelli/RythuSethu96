@@ -57,15 +57,15 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Production Vite Build
+      - name: Production Next.js Build
         run: npm run build
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://rythu-backend.onrender.com' }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'https://rythu-backend.onrender.com' }}
+          NEXT_PUBLIC_SOCKET_URL: ${{ secrets.NEXT_PUBLIC_SOCKET_URL || 'https://rythu-backend.onrender.com' }}
 
       - name: Verify Build Artifacts
         run: |
-          test -d dist || { echo "dist directory not found"; exit 1; }
-          test -f dist/index.html || { echo "index.html not found"; exit 1; }
+          test -d .next || { echo ".next directory not found"; exit 1; }
           echo "Frontend build successfully verified!"
 
   deployment-notice:

@@ -94,28 +94,26 @@ Go to the **Environment** tab in your Render service and add:
 
 ## 3. ▲ Vercel (Frontend Deployment & Auto CI/CD)
 
-Vercel hosts the React + Vite frontend on high-speed global edge networks.
+Vercel hosts the Next.js 16 (App Router) frontend on high-speed global edge networks.
 
 ### Initial Setup Steps
 1. Log in to [Vercel Dashboard](https://vercel.com).
 2. Click **Add New...** > **Project**.
 3. Import `HarshithGadipelli/RythuSethu96`.
 4. Configure the project:
-   * **Framework Preset:** `Vite`
+   * **Framework Preset:** `Next.js`
    * **Root Directory:** Click **Edit** and choose `frontend`
-   * **Build Command:** `npm run build`
-   * **Output Directory:** `dist`
-   * **Install Command:** Ensure `.npmrc` with `legacy-peer-deps=true` is used, or override with:
-     ```bash
-     npm install --legacy-peer-deps
-     ```
+   * **Build Command:** `next build` (or leave default)
+   * **Output Directory:** Default (`.next`)
+   * **Install Command:** Default (`npm install`)
 
 ### Environment Variables on Vercel
 Go to **Settings** > **Environment Variables** and add:
 
 | Key | Value | Purpose |
 |---|---|---|
-| `VITE_API_URL` | `https://<YOUR-RENDER-BACKEND-URL>.onrender.com` | Live backend API & Socket connection |
+| `NEXT_PUBLIC_API_URL` | `https://<YOUR-RENDER-BACKEND-URL>.onrender.com` | Live backend API connection |
+| `NEXT_PUBLIC_SOCKET_URL` | `https://<YOUR-RENDER-BACKEND-URL>.onrender.com` | Live Socket.io connection |
 
 *(Make sure there is no trailing slash `/` at the end of the URL).*
 
