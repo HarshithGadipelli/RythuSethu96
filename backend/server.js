@@ -13,6 +13,7 @@ import rateLimit from "express-rate-limit";
 import mongoSanitize from "express-mongo-sanitize";
 import sanitizeMiddleware from "./middleware/sanitizeMiddleware.js";
 import compression from "compression";
+import cookieParser from "cookie-parser";
 
 import authRoutes from "./routes/authRoutes.js";
 import farmerRoutes from "./routes/farmerRoutes.js";
@@ -46,8 +47,13 @@ const __dirname = path.dirname(__filename);
 // Initialize unified Google Gen AI instance
 export const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
+let activeMaintenanceAlert = null;
+
 const app = express();
 app.locals.ai = ai;
+app.set("getMaintenanceAlert", () => activeMaintenanceAlert);
+app.set("setMaintenanceAlert", (val) => { activeMaintenanceAlert = val; });
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
@@ -59,6 +65,24 @@ app.set("io", io);
 
 io.on("connection", (socket) => {
   console.log("🟢 Realtime client connected:", socket.id);
+
+  // Send current active maintenance alert to newly connected client immediately
+  if (activeMaintenanceAlert) {
+    socket.emit("system_maintenance_alert", activeMaintenanceAlert);
+  }
+
+  // User and Role room subscriptions
+  socket.on("join_user", (userId) => {
+    if (userId) {
+      socket.join(`user_${userId}`);
+    }
+  });
+
+  socket.on("join_role", (role) => {
+    if (role) {
+      socket.join(`role_${role}`);
+    }
+  });
 
   socket.on("join_agent_room", (agentId) => {
     socket.join(`agent_${agentId}`);
@@ -91,6 +115,17 @@ io.on("connection", (socket) => {
     io.emit("admin_broadcast_received", data);
   });
 
+  // Maintenance Alerts
+  socket.on("admin_maintenance_alert", (alertData) => {
+    activeMaintenanceAlert = alertData;
+    io.emit("system_maintenance_alert", alertData);
+  });
+
+  socket.on("admin_maintenance_clear", () => {
+    activeMaintenanceAlert = null;
+    io.emit("system_maintenance_cleared");
+  });
+
   socket.on("disconnect", () => {
     console.log("🔴 Realtime client disconnected:", socket.id);
   });
@@ -105,6 +140,7 @@ app.use(cors({
   credentials: true 
 }));
 app.use(compression());
+app.use(cookieParser());
 
 // Security Middlewares
 app.use(helmet({ crossOriginResourcePolicy: false }));
@@ -164,6 +200,37 @@ app.use("/api/trust-score", trustScoreRoutes);
 app.get("/", (req, res) => {
   res.send("Rythu Jana Sethu Backend Running");
 });
+
+// ─── Health Check Endpoint (for UptimeRobot / cron-job.org) ───
+app.get("/health", async (req, res) => {
+  try {
+    const mongoose = (await import("mongoose")).default;
+    res.json({
+      status: "ok",
+      uptime: Math.round(process.uptime()),
+      timestamp: new Date().toISOString(),
+      memory: {
+        rss: `${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`,
+        heap: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
+      },
+      db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    });
+  } catch (err) {
+    res.status(500).json({ status: "error", error: err.message });
+  }
+});
+
+// ─── Self-Ping Keep-Alive (prevents Render free tier from sleeping) ───
+const SELF_PING_INTERVAL = 14 * 60 * 1000; // 14 minutes
+setInterval(async () => {
+  try {
+    const url = process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 5000}`;
+    await fetch(`${url}/health`);
+    console.log("🏓 Self-ping successful — keeping server alive");
+  } catch (err) {
+    // Silently ignore — server might still be starting
+  }
+}, SELF_PING_INTERVAL);
 
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, "0.0.0.0", () => {

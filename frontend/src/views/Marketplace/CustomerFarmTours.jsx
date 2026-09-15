@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
+
 import API, { BASE_URL } from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { Play, ArrowLeft, ShieldCheck, MapPin } from "lucide-react";
@@ -30,7 +31,7 @@ export default function CustomerFarmTours() {
   return (
     <div className="container" style={{ padding: "2rem 1rem", minHeight: "80vh" }}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: "2rem", gap: "1rem" }}>
-        <Link to="/marketplace" className="btn-secondary" style={{ padding: "0.5rem", borderRadius: "50%" }}>
+        <Link href="/marketplace" className="btn-secondary" style={{ padding: "0.5rem", borderRadius: "50%" }}>
           <ArrowLeft size={20} />
         </Link>
         <div>
@@ -97,7 +98,7 @@ export default function CustomerFarmTours() {
                   <div style={{ fontSize: "0.85rem" }}>
                     <span style={{ color: "var(--text-muted)" }}>Farmer:</span> <strong>{c.farmer?.name || "Verified Farmer"}</strong>
                   </div>
-                  <Link to={`/marketplace?crop=${c._id}`} className="btn-primary" style={{ padding: "0.4rem 1rem", fontSize: "0.85rem" }}>
+                  <Link href={`/marketplace?crop=${c._id}`} className="btn-primary" style={{ padding: "0.4rem 1rem", fontSize: "0.85rem" }}>
                     Buy Now
                   </Link>
                 </div>

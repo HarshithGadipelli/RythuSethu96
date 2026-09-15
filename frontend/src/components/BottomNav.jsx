@@ -1,5 +1,7 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import Link from "next/link";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+
 import { Home, ShoppingBag, User, Bot, Package } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import "./BottomNav.css";
@@ -71,7 +73,7 @@ export default function BottomNav() {
 
         const isActive = pathname === link.path || (link.path !== "/" && pathname.startsWith(link.path));
         return (
-          <Link key={link.path} to={link.path} className={`bottom-nav-item ${isActive ? "active" : ""}`}>
+          <Link key={link.path} href={link.path} className={`bottom-nav-item ${isActive ? "active" : ""}`}>
             <div className="bottom-nav-icon">{link.icon}</div>
             <span className="bottom-nav-label">{link.label}</span>
           </Link>

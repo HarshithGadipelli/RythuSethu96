@@ -1,5 +1,7 @@
 import { BASE_URL } from '../api/api';
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import Link from "next/link";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLang } from "../context/LangContext";
 import { useLayout } from "../context/LayoutContext";
@@ -20,8 +22,10 @@ export default function Navbar() {
   const { lang, changeLang, t } = useLang();
   const { layoutMode, setLayoutMode } = useLayout();
   const { getCartCount, setIsCartOpen } = useCart();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const location = { pathname, search: searchParams?.toString() || "" };
   const [scrolled, setScrolled] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -211,14 +215,14 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    router.push("/login");
   };
 
   const active = (path) => location.pathname === path ? "navbar-link active" : "navbar-link";
 
   return (
     <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
-      <Link to="/" className="navbar-brand">
+      <Link href="/" className="navbar-brand">
         <motion.img whileHover={{ scale: 1.05 }} src="/logo.png?v=2" alt="Rythu Jana Sethu Logo" style={{ height: "42px", width: "auto", borderRadius: "12px" }} />
         <div>
           <span className="navbar-title notranslate" translate="no">{t("appName")}</span>
@@ -227,19 +231,19 @@ export default function Navbar() {
       </Link>
 
       <ul className="navbar-links">
-        <li><Link to="/" className={active("/")}><Home size={18} /> {t("home")}</Link></li>
-        <li><Link to="/marketplace" className={active("/marketplace")}><ShoppingBag size={18} /> {t("marketplace")}</Link></li>
+        <li><Link href="/" className={active("/")}><Home size={18} /> {t("home")}</Link></li>
+        <li><Link href="/marketplace" className={active("/marketplace")}><ShoppingBag size={18} /> {t("marketplace")}</Link></li>
         {user?.role === "farmer" && (
-          <li><Link to="/farmer" className={active("/farmer")}><Leaf size={18} /> {t("dashboard")}</Link></li>
+          <li><Link href="/farmer" className={active("/farmer")}><Leaf size={18} /> {t("dashboard")}</Link></li>
         )}
         {user?.role === "agent" && (
-          <li><Link to="/agent" className={active("/agent")}><Truck size={18} /> {t("deliveries")}</Link></li>
+          <li><Link href="/agent" className={active("/agent")}><Truck size={18} /> {t("deliveries")}</Link></li>
         )}
         {user?.role === "admin" && (
-          <li><Link to="/admin" className={active("/admin")}><Shield size={18} /> {t("adminPanel")}</Link></li>
+          <li><Link href="/admin" className={active("/admin")}><Shield size={18} /> {t("adminPanel")}</Link></li>
         )}
         {user && (
-          <li><Link to="/support" className={active("/support")}><Headphones size={18} /> Support</Link></li>
+          <li><Link href="/support" className={active("/support")}><Headphones size={18} /> Support</Link></li>
         )}
         <li>
           <select className="lang-select" value={lang} onChange={(e) => changeLang(e.target.value)}>
@@ -477,7 +481,7 @@ export default function Navbar() {
 
             {user.role === 'customer' && (
               <li>
-                <Link to="/my-orders" style={{ textDecoration: 'none' }}>
+                <Link href="/my-orders" style={{ textDecoration: 'none' }}>
                   <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-secondary" style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem", color: "var(--green-deep)", borderColor: "var(--green-pale)", background: "rgba(34,197,94,0.05)" }}>
                     <Package size={16} /> Orders & Boxes
                   </motion.button>
@@ -498,12 +502,12 @@ export default function Navbar() {
         ) : (
           <>
             <li>
-              <Link to="/login" style={{ textDecoration: "none" }}>
+              <Link href="/login" style={{ textDecoration: "none" }}>
                 <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-secondary" style={{ padding: "0.5rem 1.25rem", fontSize: "0.9rem", display: "inline-block", borderRadius: "100px", color: "var(--text-dark)", borderColor: "#e2e8f0" }}>{t("login")}</motion.span>
               </Link>
             </li>
             <li>
-              <Link to="/register" style={{ textDecoration: "none" }}>
+              <Link href="/register" style={{ textDecoration: "none" }}>
                 <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-primary" style={{ padding: "0.5rem 1.25rem", fontSize: "0.9rem", display: "inline-block", width: "auto", borderRadius: "100px" }}>{t("register")}</motion.span>
               </Link>
             </li>

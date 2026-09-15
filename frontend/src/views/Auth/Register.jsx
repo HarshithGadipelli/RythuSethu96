@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import Link from "next/link";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import API from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { useLang } from "../../context/LangContext";
@@ -21,7 +23,7 @@ const LANGUAGES = [{ v: "en", l: "English" }, { v: "te", l: "తెలుగు"
 export default function Register() {
   const { login } = useAuth();
   const { t, lang } = useLang();
-  const navigate = useNavigate();
+  const router = useRouter();
   const { listening, activeField, interim, startListening, stopListening } = useVoiceInput(lang);
 
   const [step, setStep] = useState(1);
@@ -373,10 +375,10 @@ export default function Register() {
       } catch (e) {}
       login(res.data.user, res.data.token);
       const role = res.data.user.role;
-      if (role === "farmer") navigate("/farmer");
-      else if (role === "agent") navigate("/agent");
-      else if (role === "admin") navigate("/admin");
-      else navigate("/marketplace");
+      if (role === "farmer") router.push("/farmer");
+      else if (role === "agent") router.push("/agent");
+      else if (role === "admin") router.push("/admin");
+      else router.push("/marketplace");
     } catch (err) {
       setError(err.response?.data?.error || "Registration failed. Try again.");
     } finally { setLoading(false); }
@@ -1077,7 +1079,7 @@ export default function Register() {
 
         <p className="text-center mt-3" style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
           Already have an account?{" "}
-          <Link to="/login" style={{ color: "var(--yellow-wheat)", fontWeight: 600, textDecoration: "none" }}>
+          <Link href="/login" style={{ color: "var(--yellow-wheat)", fontWeight: 600, textDecoration: "none" }}>
             {t("login")} →
           </Link>
         </p>

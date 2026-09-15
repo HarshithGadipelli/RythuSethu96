@@ -111,6 +111,13 @@ const orderSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
+// High-Performance Query Indexes
+orderSchema.index({ customer: 1, createdAt: -1 });
+orderSchema.index({ farmer: 1, createdAt: -1 });
+orderSchema.index({ agent: 1, status: 1 });
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ billNumber: 1 });
+
 // Auto-generate bill number
 orderSchema.pre("save", function(next) {
   if (!this.billNumber) {

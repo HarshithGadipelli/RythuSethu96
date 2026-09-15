@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { X, Trash2, ShoppingCart, Plus, Minus, CreditCard, CheckCircle2, Smartphone, Wallet, Banknote } from "lucide-react";
 import { useLang } from "../context/LangContext";
@@ -10,10 +10,10 @@ import OrderInvoiceModal from "./OrderInvoiceModal";
 import { getImgSrc } from "../views/Marketplace/Marketplace";
 
 export default function CartSidebar() {
-  const { cart, isCartOpen, setIsCartOpen, removeFromCart, updateQuantity, getCartTotal, getCartCount, clearCart } = useCart();
+  const { cart, isCartOpen, setIsCartOpen, removeFromCart, updateQuantity, getCartTotal, getCartCount, clearCart, addToCart } = useCart();
   const { t } = useLang();
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const [checkingOut, setCheckingOut] = useState(false);
   const [error, setError] = useState("");
@@ -27,12 +27,50 @@ export default function CartSidebar() {
   const [hasWetWasteDonation, setHasWetWasteDonation] = useState(false);
   const [wetWasteEstKg, setWetWasteEstKg] = useState(2);
   const [viewportHeight, setViewportHeight] = React.useState(window.innerHeight);
+  const [aprioriSuggestions, setAprioriSuggestions] = useState([]);
+  const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
 
   React.useEffect(() => {
     const handleResize = () => setViewportHeight(window.innerHeight);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  React.useEffect(() => {
+    if (isCartOpen && cart.length > 0) {
+      const primaryItem = cart[0]?.crop?.name;
+      if (!primaryItem) return;
+
+      const fetchSuggestions = async () => {
+        setIsFetchingSuggestions(true);
+        try {
+          const mlRes = await API.post("/ml/market-basket", { crop: primaryItem, customerId: user?._id });
+          const categoryNames = (mlRes.data?.suggestions || []).map(s => s.crop);
+          
+          if (categoryNames.length === 0) return;
+
+          const marketRes = await API.get("/crops");
+          const allCrops = marketRes.data || [];
+          
+          const matchedCrops = [];
+          for (const category of categoryNames) {
+            const found = allCrops.find(c => c.name.toLowerCase().includes(category.toLowerCase()) && c.quantity > 0);
+            if (found && !cart.some(cartItem => cartItem.crop._id === found._id)) {
+              matchedCrops.push({ ...found, matchReason: category });
+            }
+          }
+          setAprioriSuggestions(matchedCrops);
+        } catch (err) {
+          console.error("Failed to fetch market basket suggestions", err);
+        } finally {
+          setIsFetchingSuggestions(false);
+        }
+      };
+      fetchSuggestions();
+    } else {
+      setAprioriSuggestions([]);
+    }
+  }, [cart, isCartOpen, user]);
 
   // Helper to calculate simple distance if coordinates exist
   const calcDist = (lat1, lon1, lat2, lon2) => {
@@ -47,7 +85,7 @@ export default function CartSidebar() {
   const executeOrderPlacement = async (payMethod = "cod") => {
     if (!user) {
       setIsCartOpen(false);
-      navigate("/login");
+      router.push("/login");
       return;
     }
     
@@ -276,6 +314,53 @@ export default function CartSidebar() {
                   })}
                 </div>
               )}
+
+              {/* Apriori Suggestions Section */}
+              {aprioriSuggestions.length > 0 && (
+                <div style={{ marginTop: "2rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "1rem" }}>
+                    <div style={{ background: "linear-gradient(135deg, #fbbf24, #d97706)", padding: "4px", borderRadius: "50%", color: "white" }}>
+                      <ShoppingCart size={14} />
+                    </div>
+                    <h3 style={{ fontSize: "0.95rem", fontWeight: 800, margin: 0, color: "var(--text-dark)" }}>Frequently Bought Together</h3>
+                  </div>
+                  
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+                    {aprioriSuggestions.map((crop, idx) => {
+                      const imgSrc = getImgSrc(crop.image, crop.name, crop.category);
+                      return (
+                        <div key={idx} style={{ 
+                          display: "flex", padding: "0.8rem", borderRadius: "12px", 
+                          background: "#f8fafc", border: "1px dashed #cbd5e1",
+                          alignItems: "center", gap: "0.8rem"
+                        }}>
+                          <div style={{ width: "45px", height: "45px", borderRadius: "8px", overflow: "hidden", background: "white", flexShrink: 0 }}>
+                            {imgSrc ? (
+                              <img src={imgSrc} alt={crop.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            ) : (
+                              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>🌾</div>
+                            )}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "var(--text-dark)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{crop.name}</div>
+                            <div style={{ fontSize: "0.75rem", color: "var(--green-deep)", fontWeight: 600 }}>₹{crop.price}/{crop.unit}</div>
+                          </div>
+                          <button 
+                            onClick={() => addToCart(crop, 1, false, false)}
+                            style={{ 
+                              background: "var(--green-main)", color: "white", border: "none", 
+                              padding: "6px 12px", borderRadius: "6px", fontSize: "0.75rem", 
+                              fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px"
+                            }}
+                          >
+                            <Plus size={12} /> Add
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Premium Footer */}
@@ -463,7 +548,7 @@ export default function CartSidebar() {
                   onClick={() => {
                     setPlacedOrderDetails(null);
                     setIsCartOpen(false);
-                    navigate("/marketplace?tab=orders");
+                    router.push("/marketplace?tab=orders");
                   }}
                   className="btn-primary hover-scale"
                   style={{ flex: "1 1 250px", padding: "1.1rem", fontSize: "1rem", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.6rem", boxShadow: "0 10px 25px rgba(22,163,74,0.3)" }}

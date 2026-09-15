@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, X, Sparkles, Send, Loader2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { useLocation } from "react-router-dom";
+
 import { useLang } from "../context/LangContext";
 import { useVoiceInput, LANG_MAP } from "../utils/useVoiceInput";
 import { playTTS } from "../utils/voiceParser";
@@ -11,7 +11,9 @@ import { playTTS } from "../utils/voiceParser";
 export default function AIAssistant() {
   const { user } = useAuth();
   const { lang, t } = useLang();
-  const location = useLocation();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const location = { pathname, search: searchParams?.toString() || "" };
   const { listening: isListening, interim: sttInterim, startListening, stopListening } = useVoiceInput(lang);
   const [isOpen, setIsOpen] = useState(false);
   const [transcript, setTranscript] = useState("");

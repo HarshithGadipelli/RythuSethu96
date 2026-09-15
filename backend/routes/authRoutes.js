@@ -1,5 +1,5 @@
 import express from "express";
-import { register, login, getProfile, updateProfile, updateLocation, acceptTerms } from "../controllers/authController.js";
+import { register, login, getProfile, updateProfile, updateLocation, acceptTerms, refreshAccessToken, logoutUser } from "../controllers/authController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import upload from "../middleware/upload.js";
 
@@ -20,5 +20,7 @@ router.get("/profile", protect, getProfile);
 router.put("/profile", protect, updateProfile);
 router.put("/update-location", protect, updateLocation);
 router.put("/accept-terms", protect, acceptTerms);
+router.post("/refresh", refreshAccessToken);
+router.post("/logout", logoutUser);
 
 export default router;

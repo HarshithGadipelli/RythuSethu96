@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RythuJanaSethu — Offline</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Poppins', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #bbf7d0 100%);
+      padding: 1rem;
+    }
+    .container {
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      background: white;
+      border-radius: 20px;
+      padding: 3rem 2rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+    }
+    .icon { font-size: 4rem; margin-bottom: 1rem; }
+    h1 { font-size: 1.5rem; color: #1a4a2e; margin-bottom: 0.5rem; }
+    p { color: #64748b; line-height: 1.6; margin-bottom: 1.5rem; }
+    button {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: white;
+      border: none;
+      padding: 0.85rem 2rem;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    button:hover { transform: scale(1.05); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🌾📡</div>
+    <h1>You're Offline</h1>
+    <p>It looks like you've lost your internet connection. Don't worry — your data is safe! Please check your Wi-Fi or mobile data and try again.</p>
+    <button onclick="window.location.reload()">🔄 Try Again</button>
+  </div>
+</body>
+</html>

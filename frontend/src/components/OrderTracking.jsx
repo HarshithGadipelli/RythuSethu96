@@ -28,6 +28,13 @@ const homeIcon = new L.Icon({
   iconAnchor: [14, 28]
 });
 
+const farmerIcon = new L.divIcon({
+  className: "custom-farmer-icon",
+  html: `<div style="display:flex;justify-content:center;align-items:center;width:32px;height:32px;background:linear-gradient(135deg, #16a34a, #15803d);border-radius:50%;border:2px solid white;box-shadow:0 4px 6px rgba(0,0,0,0.3);font-size:16px;">🌾</div>`,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16]
+});
+
 export default function OrderTracking({ orderId, onClose }) {
   const actualOrderId = typeof orderId === "object" ? (orderId?._id || orderId?.id) : orderId;
   const [order, setOrder] = useState(typeof orderId === "object" && orderId?.billNumber ? orderId : null);
@@ -220,15 +227,17 @@ export default function OrderTracking({ orderId, onClose }) {
           <div style={{ flex: 1, position: "relative", background: "#e2e8f0" }}>
             {/* Real Map */}
             {(() => {
-              const deliveryLat = order.deliveryLatitude || order.customer?.latitude || (order.farmer?.latitude ? order.farmer.latitude + 0.04 : 17.385);
-              const deliveryLng = order.deliveryLongitude || order.customer?.longitude || (order.farmer?.longitude ? order.farmer.longitude + 0.04 : 78.486);
-              const agentLat = order.agentLatitude || (deliveryLat - 0.015);
-              const agentLng = order.agentLongitude || (deliveryLng - 0.015);
+              const pickupLat = order.pickupLatitude || order.farmer?.latitude || 17.385;
+              const pickupLng = order.pickupLongitude || order.farmer?.longitude || 78.486;
+              const deliveryLat = order.deliveryLatitude || order.customer?.latitude || (pickupLat + 0.04);
+              const deliveryLng = order.deliveryLongitude || order.customer?.longitude || (pickupLng + 0.04);
+              const agentLat = order.agentCurrentLatitude || order.agentLatitude || (pickupLat + (deliveryLat - pickupLat) / 2);
+              const agentLng = order.agentCurrentLongitude || order.agentLongitude || (pickupLng + (deliveryLng - pickupLng) / 2);
               
               return (
                 <MapContainer 
-                  center={[order.agentLatitude || agentLat, order.agentLongitude || agentLng]} 
-                  zoom={13} 
+                  center={[agentLat, agentLng]} 
+                  zoom={12} 
                   style={{ height: "100%", width: "100%", minHeight: "350px" }}
                   zoomControl={true}
                 >
@@ -236,8 +245,10 @@ export default function OrderTracking({ orderId, onClose }) {
                     url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution="&copy; OpenStreetMap contributors"
                   />
+                  <Marker position={[pickupLat, pickupLng]} icon={farmerIcon} />
                   <Marker position={[deliveryLat, deliveryLng]} icon={homeIcon} />
                   <Marker position={[agentLat, agentLng]} icon={vehicleIcon} />
+                  <Polyline positions={[[pickupLat, pickupLng], [agentLat, agentLng]]} color="#16a34a" weight={4} dashArray="5, 10" />
                   <Polyline positions={[[agentLat, agentLng], [deliveryLat, deliveryLng]]} color="#3b82f6" weight={4} dashArray="10, 10" />
                 </MapContainer>
               );

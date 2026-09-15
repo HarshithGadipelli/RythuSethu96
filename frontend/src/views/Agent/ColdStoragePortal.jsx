@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
+
 import { Snowflake, Thermometer, Droplets, ShieldCheck, Box, AlertTriangle, ArrowLeft, RefreshCw, Plus, CheckCircle } from "lucide-react";
 import API from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
@@ -39,7 +40,7 @@ export default function ColdStoragePortal() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
-            <Link to="/agent" style={{ color: "#2563eb", textDecoration: "none", fontSize: "0.85rem", fontWeight: 700 }}>
+            <Link href="/agent" style={{ color: "#2563eb", textDecoration: "none", fontSize: "0.85rem", fontWeight: 700 }}>
               ← Return to Agent Dashboard
             </Link>
             <span style={{ color: "#94a3b8" }}>/</span>

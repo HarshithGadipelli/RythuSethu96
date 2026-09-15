@@ -159,6 +159,7 @@ const cropSchema = new mongoose.Schema({
     stage: { type: String, enum: ["sowing", "vegetative", "flowering", "harvesting", "post_harvest", "ready"] },
     imageUrl: { type: String, default: "" },
     notes: { type: String, default: "" },
+    aiSuggestion: { type: String, default: "" },
     timestamp: { type: Date, default: Date.now }
   }],
   nutritionInfo: {
@@ -176,5 +177,12 @@ const cropSchema = new mongoose.Schema({
   clearanceDiscount: { type: Number, default: 0 },
   coldStorageLocation: { type: String, default: "" }
 }, { timestamps: true });
+
+// High-Performance Query Indexes
+cropSchema.index({ isAvailable: 1, isLive: 1, createdAt: -1 });
+cropSchema.index({ farmer: 1, createdAt: -1 });
+cropSchema.index({ category: 1, isLive: 1 });
+cropSchema.index({ "realFarmDetails.latitude": 1, "realFarmDetails.longitude": 1 });
+cropSchema.index({ name: "text", description: "text" });
 
 export default mongoose.model("Crop", cropSchema);

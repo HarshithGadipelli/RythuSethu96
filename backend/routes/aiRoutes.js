@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 import multer from "multer";
 import * as googleTTS from "google-tts-api";
 import { callGeminiWithFallback, getGenAI } from "../services/geminiService.js";
+import { getMarketplaceRecipes, RECIPE_KNOWLEDGE_BASE } from "../services/recipeService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -299,19 +300,87 @@ router.post("/verify-delivery", async (req, res) => {
   }
 });
 
-// AI Recipe Suggestions
+// GET Marketplace Curated Millet & Produce Recipes with live farmer inventory
+router.get("/marketplace-recipes", async (req, res) => {
+  try {
+    const data = await getMarketplaceRecipes();
+    res.json({ success: true, ...data });
+  } catch (error) {
+    console.error("Marketplace Recipes Error:", error);
+    res.status(500).json({ success: false, error: "Failed to fetch recipes" });
+  }
+});
+
+// AI Recipe Suggestions for Millets and Healthy Produce
 router.post("/recipe-suggest", async (req, res) => {
   try {
-    const { ingredients } = req.body;
-    if (!ingredients || ingredients.length === 0) {
+    const { ingredients, healthGoal, milletType, targetLang } = req.body;
+    if (!ingredients || (Array.isArray(ingredients) && ingredients.length === 0)) {
       return res.status(400).json({ error: "No ingredients provided" });
     }
 
-    const recipeText = await callGeminiWithFallback(prompt);
-    if (!recipeText) {
-      return res.status(503).json({ error: "Failed to generate recipe suggestions." });
+    const ingredientList = Array.isArray(ingredients) ? ingredients.join(", ") : String(ingredients);
+
+    const prompt = `You are an expert Ayurvedic & traditional South Indian chef and millet revivalist (Siridhanya advocate) for the farm-to-table platform RythuJanaSethu.
+A customer wants to cook a healthy, authentic, and delicious meal using these available ingredients:
+Ingredients: ${ingredientList}
+${healthGoal ? `Customer Health Goal: ${healthGoal}` : ""}
+${milletType ? `Preferred Millet / Grain: ${milletType}` : ""}
+
+Provide an authentic, highly nutritious recipe that prioritizes traditional millets (like Korralu/Foxtail, Arikelu/Kodo, Samalu/Little, Oodalu/Barnyard, Andu Korralu/Browntop, Ragi, or Jowar) to revive millet consumption instead of white polished rice.
+
+Format your response in clean markdown with the following clear sections:
+1. 🍲 **Recipe Name** (include both English and Telugu names if applicable)
+2. 🌾 **Why Choose This Over White Rice?** (Highlight low Glycemic Index ~45-54 vs white rice ~78, high fiber, slow glucose release, nutrient density, and climate resilience)
+3. ⚠️ **The Sacred Millet Preparation Rule** (Explain mandatory 6 to 8 hours soaking to neutralize phytic acid and unleash bioavailable minerals, plus exact water-to-grain ratio like 1:3 for fluffy grain or 1:3.5 for khichdi)
+4. 🛒 **Ingredients & Proportions** (Specify which of their provided ingredients are used, plus traditional pantry staples like cumin, mustard, curry leaves, cold-pressed oil or pure cow ghee)
+5. 👨‍🍳 **Step-by-Step Cooking Instructions** (Authentic clay pot or heavy steel pan cooking method)
+6. 🌿 **Ayurvedic / Health Benefits** (Digestive ease, diabetes management, heart health)
+
+Keep the tone encouraging, warm, and deeply authentic to traditional Indian culinary wisdom.`;
+
+    let recipeText = null;
+    try {
+      recipeText = await callGeminiWithFallback(prompt);
+    } catch (genErr) {
+      console.warn("Gemini call error in recipe-suggest, will use curated fallback:", genErr.message);
     }
-    res.json({ recipe: recipeText });
+
+    // Fallback if AI call returns empty or fails
+    if (!recipeText) {
+      // Find best matching recipe from RECIPE_KNOWLEDGE_BASE
+      const lowerIngs = ingredientList.toLowerCase();
+      const matched = RECIPE_KNOWLEDGE_BASE.find(r => 
+        r.name.toLowerCase().includes(lowerIngs) ||
+        r.milletType.toLowerCase().includes(lowerIngs) ||
+        r.ingredients.some(i => lowerIngs.includes(i.name.toLowerCase()))
+      ) || RECIPE_KNOWLEDGE_BASE[0];
+
+      recipeText = `### 🍲 ${matched.name} (${matched.teluguName})
+**Millet Type:** ${matched.milletType} | **Prep Time:** ${matched.prepTime} | **Cook Time:** ${matched.cookTime}
+
+#### 🌾 Why Choose This Over White Rice?
+${matched.whyReviveMillet}
+- **Glycemic Index:** ${matched.glycemicIndex} (vs White Rice: ${matched.whiteRiceGlycemicIndex})
+- **Fiber:** ${matched.fiberGrams}g (vs White Rice: ${matched.whiteRiceFiberGrams}g)
+
+#### ⚠️ The Sacred Millet Preparation Rule
+- **Mandatory Soaking:** ${matched.essentialMilletRule.soakingHours} hours. ${matched.essentialMilletRule.soakingReason}
+- **Water Ratio:** ${matched.essentialMilletRule.waterRatio}
+- **Vessel Advice:** ${matched.essentialMilletRule.vesselAdvice}
+
+#### 🛒 Ingredients
+${matched.ingredients.map(ing => `- ${ing.name}: ${ing.quantity}`).join("\n")}
+${matched.pantryStaples.map(p => `- ${p}`).join("\n")}
+
+#### 👨‍🍳 Step-by-Step Cooking Instructions
+${matched.instructions.map((step, idx) => `${idx + 1}. ${step}`).join("\n")}
+
+#### 🌿 Key Health Benefit
+${matched.targetHealthBenefit}`;
+    }
+
+    res.json({ success: true, recipe: recipeText });
   } catch (error) {
     console.error("AI Recipe Suggest Error:", error);
     res.status(500).json({ error: "Failed to generate recipe suggestions." });

@@ -522,12 +522,61 @@ router.put("/:id/stage", upload.single("image"), async (req, res) => {
     if (!crop) return res.status(404).json({ error: "Crop not found" });
 
     crop.lifecycleStage = lifecycleStage;
+
+    // Harmonize with growingStage
+    const lifecycleToGrowing = {
+      sowing: "nursery",
+      vegetative: "vegetative",
+      flowering: "flowering",
+      harvesting: "fruiting",
+      post_harvest: "harvested",
+      ready: "harvested"
+    };
+    if (lifecycleToGrowing[lifecycleStage]) {
+      crop.growingStage = lifecycleToGrowing[lifecycleStage];
+    }
+    if (lifecycleStage === "ready") {
+      crop.isPrebooking = false;
+      crop.allowPrebooking = false;
+    }
     
-    // Add to lifecycleUpdates array with optional image proof
+    // Resolve Image URL (Cloudinary vs Local Disk)
+    let imgUrl = "";
+    if (req.file) {
+      if (req.file.path && req.file.path.startsWith("http")) {
+        imgUrl = req.file.path;
+      } else if (req.file.filename) {
+        imgUrl = `/uploads/${req.file.filename}`;
+      } else if (req.file.path) {
+        imgUrl = `/uploads/${path.basename(req.file.path)}`;
+      }
+    }
+
+    // AI Suggestion
+    let aiSuggestion = "";
+    const prompt = `A farmer is growing ${crop.name} and the crop has just entered the "${lifecycleStage}" stage. Give a one sentence specific farming suggestion for this stage. If it is "harvesting" or "post_harvest", suggest eco-friendly alternatives to stubble burning like turning it into hay bales.`;
+    try {
+      const resText = await callGeminiWithFallback(prompt);
+      if (resText) {
+        aiSuggestion = resText.trim();
+      }
+    } catch (aiErr) {
+      console.error("AI suggestion error:", aiErr.message);
+    }
+    if (!aiSuggestion) {
+      if (lifecycleStage === "post_harvest") aiSuggestion = "Instead of burning stubble, consider turning it into hay bales to prevent pollution.";
+      else if (lifecycleStage === "vegetative") aiSuggestion = "Apply nitrogen-rich fertilizer to support rapid vegetative growth.";
+      else if (lifecycleStage === "flowering") aiSuggestion = "Maintain consistent soil moisture and avoid excessive chemical sprays during pollination.";
+      else if (lifecycleStage === "harvesting") aiSuggestion = "Harvest in early morning hours to preserve freshness and reduce post-harvest moisture loss.";
+      else aiSuggestion = "Monitor for pests regularly and ensure adequate balanced irrigation.";
+    }
+
+    // Add to lifecycleUpdates array with proof and AI advice
     const updateEntry = {
       stage: lifecycleStage,
       notes: notes || "",
-      imageUrl: req.file ? `/uploads/${req.file.filename}` : "",
+      imageUrl: imgUrl,
+      aiSuggestion: aiSuggestion,
       timestamp: new Date()
     };
     if (!crop.lifecycleUpdates) crop.lifecycleUpdates = [];
@@ -548,18 +597,6 @@ router.put("/:id/stage", upload.single("image"), async (req, res) => {
         message: `Farmer ${crop.farmer?.name || "Unknown"} updated their ${crop.name} crop to stage: ${lifecycleStage}.`,
         type: "system"
       });
-    }
-
-    // AI Suggestion
-    let aiSuggestion = "";
-    const prompt = `A farmer is growing ${crop.name} and the crop has just entered the "${lifecycleStage}" stage. Give a one sentence specific farming suggestion for this stage. If it is "harvesting" or "post_harvest", suggest eco-friendly alternatives to stubble burning like turning it into hay bales.`;
-    const resText = await callGeminiWithFallback(prompt);
-    if (resText) {
-      aiSuggestion = resText.trim();
-    } else {
-      if (lifecycleStage === "post_harvest") aiSuggestion = "Instead of burning stubble, consider turning it into hay bales to prevent pollution.";
-      else if (lifecycleStage === "vegetative") aiSuggestion = "Apply nitrogen-rich fertilizer to support rapid growth.";
-      else aiSuggestion = "Monitor for pests and ensure adequate watering.";
     }
 
     res.json({ crop, aiSuggestion });

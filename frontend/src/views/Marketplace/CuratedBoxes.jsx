@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
+
 import API from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { Package, ArrowLeft, CheckCircle, Leaf, Truck, Star, Sparkles } from "lucide-react";
@@ -123,7 +124,7 @@ export default function CuratedBoxes() {
   return (
     <div className="container" style={{ padding: "2rem 1rem", minHeight: "80vh" }}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: "2rem", gap: "1rem" }}>
-        <Link to="/marketplace" className="btn-secondary" style={{ padding: "0.5rem", borderRadius: "50%" }}>
+        <Link href="/marketplace" className="btn-secondary" style={{ padding: "0.5rem", borderRadius: "50%" }}>
           <ArrowLeft size={20} />
         </Link>
         <div>

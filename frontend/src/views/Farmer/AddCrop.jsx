@@ -148,6 +148,38 @@ export default function AddCrop() {
   const [lastHeard, setLastHeard] = useState("");
   const [filledFields, setFilledFields] = useState({});
   const [retryCount, setRetryCount] = useState(0);
+  const [manualWizardText, setManualWizardText] = useState("");
+
+  const STEP_CHIPS = {
+    NAME: [
+      { label: "🍅 Tomato", val: "Tomato" },
+      { label: "🥔 Potato", val: "Potato" },
+      { label: "🧅 Onion", val: "Onion" },
+      { label: "🌾 Rice", val: "Rice" },
+      { label: "🌶️ Chili", val: "Chili" },
+      { label: "🥭 Mango", val: "Mango" },
+      { label: "🍌 Banana", val: "Banana" },
+      { label: "🥕 Carrot", val: "Carrot" }
+    ],
+    QUANTITY: [
+      { label: "10 kg", val: "10 kg" },
+      { label: "25 kg", val: "25 kg" },
+      { label: "50 kg", val: "50 kg" },
+      { label: "100 kg", val: "100 kg" },
+      { label: "500 kg", val: "500 kg" },
+      { label: "1 Quintal", val: "1 quintal" },
+      { label: "10 Bags", val: "10 bags" }
+    ],
+    PRICE: [
+      { label: "₹20 /kg", val: "20" },
+      { label: "₹30 /kg", val: "30" },
+      { label: "₹40 /kg", val: "40" },
+      { label: "₹50 /kg", val: "50" },
+      { label: "₹60 /kg", val: "60" },
+      { label: "₹80 /kg", val: "80" },
+      { label: "₹100 /kg", val: "100" }
+    ]
+  };
 
   const recognitionRef = useRef(null);
   const silenceTimerRef = useRef(null);
@@ -535,30 +567,32 @@ export default function AddCrop() {
 
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
-         // Auto-submit step on silence if we have text
-         const textToProcess = capturedTextRef.current.trim();
+         // Auto-submit step on natural silence pause
+         const textToProcess = (capturedTextRef.current || currentText || "").trim();
          if (textToProcess && !isProcessingRef.current && wizardStepRef.current !== 'COMPLETED') {
             capturedTextRef.current = ""; // Clear immediately so it doesn't fire twice
             processStepInput(wizardStepRef.current, textToProcess);
          }
-      }, 5000); // Stop after 5s of silence
+      }, 1800); // Natural 1.8s conversational silence pause
     };
 
     recognition.onerror = (event) => {
       console.warn("Speech recognition error:", event.error);
       if (event.error === 'not-allowed') {
-        alert("Microphone permission was denied. Please allow microphone access.");
+        setWizardMsg("Microphone permission was not granted. You can tap the quick crop buttons below or type manually.");
         stopWizard();
       }
     };
 
     recognition.onend = () => {
       setIsListening(false);
-      // Restart if we haven't completed or stopped the wizard
-      if (wizardStepRef.current !== 'IDLE' && wizardStepRef.current !== 'COMPLETED') {
+      // Restart cleanly only if idle & not speaking/processing
+      if (wizardStepRef.current !== 'IDLE' && wizardStepRef.current !== 'COMPLETED' && !isSpeakingRef.current && !isProcessingRef.current) {
          setTimeout(() => {
-            try { recognition.start(); } catch(e) {}
-         }, 300);
+            if (wizardStepRef.current !== 'IDLE' && wizardStepRef.current !== 'COMPLETED' && !isSpeakingRef.current && !isProcessingRef.current) {
+              try { recognition.start(); } catch(e) {}
+            }
+         }, 350);
       }
     };
 
@@ -581,7 +615,7 @@ export default function AddCrop() {
       if (next > 2) {
         const pauseMsg = lang === "te" 
           ? "మైక్ పాజ్ చేయబడింది. మీకు కావలసినప్పుడు మైక్ బటన్ నొక్కండి లేదా వివరాలు నమోదు చేయండి." 
-          : "Are you still there? Please tap 'Tap to Speak' or type manually.";
+          : "Are you still there? Please tap 'Tap to Speak' or select a suggestion below.";
         setWizardMsg(pauseMsg);
         stopRecognition(); // Only stop completely on 3rd failure
         return 0;
@@ -596,8 +630,17 @@ export default function AddCrop() {
 
   // ─── Manual Controls ───
   const handleManualDoneSpeaking = () => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+    const textToProcess = (capturedTextRef.current || interim || "").trim();
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch(e) {}
+    }
+    if (textToProcess && !isProcessingRef.current && wizardStepRef.current !== 'COMPLETED') {
+      capturedTextRef.current = "";
+      processStepInput(wizardStepRef.current, textToProcess);
     }
   };
 
@@ -701,6 +744,44 @@ export default function AddCrop() {
         formDataRef.current.name = extractedName;
         formDataRef.current.category = extractedCategory || formDataRef.current.category;
         setFilledFields(prev => ({ ...prev, name: true, category: true }));
+
+        // Check if quantity and/or price were also spoken in this sentence
+        let alsoQty = null;
+        let alsoUnit = "kg";
+        const qtyMatch = transcript.match(/(\d+(?:\.\d+)?)\s*(kg|kilo|kilos|bag|bags|quintal|ton|tonne|litre|piece)?/i);
+        if (qtyMatch && qtyMatch[1]) {
+          alsoQty = parseFloat(qtyMatch[1]);
+          if (qtyMatch[2]) {
+            const u = qtyMatch[2].toLowerCase();
+            if (u.includes("bag")) alsoUnit = "bag";
+            else if (u.includes("quintal")) alsoUnit = "quintal";
+            else if (u.includes("ton")) alsoUnit = "tonne";
+            else if (u.includes("litre")) alsoUnit = "litre";
+          }
+        }
+
+        let alsoPrice = null;
+        const priceMatch = transcript.match(/(?:₹|rs|rupees?|ధర|రూపాయలు|रुपये|ರೂಪಾಯಿ)\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*(?:₹|rs|rupees?|ధర|రూపాయలు|रुपये|ರೂపಾಯಿ)/i);
+        if (priceMatch) {
+          alsoPrice = parseFloat(priceMatch[1] || priceMatch[2]);
+        }
+
+        if (alsoQty !== null && alsoPrice !== null) {
+          formDataRef.current.quantity = alsoQty;
+          formDataRef.current.unit = alsoUnit;
+          formDataRef.current.price = alsoPrice;
+          setFormData(prev => ({ ...prev, quantity: alsoQty, unit: alsoUnit, price: alsoPrice }));
+          setFilledFields(prev => ({ ...prev, quantity: true, unit: true, price: true }));
+          askStep('CONFIRM_SUBMIT', `Added ${extractedName}, ${alsoQty} ${alsoUnit} at ₹${alsoPrice}.`);
+          return;
+        } else if (alsoQty !== null) {
+          formDataRef.current.quantity = alsoQty;
+          formDataRef.current.unit = alsoUnit;
+          setFormData(prev => ({ ...prev, quantity: alsoQty, unit: alsoUnit }));
+          setFilledFields(prev => ({ ...prev, quantity: true, unit: true }));
+          askStep('PRICE', `Got ${extractedName}, ${alsoQty} ${alsoUnit}.`);
+          return;
+        }
 
         const ackMsg = getSuccessAck('NAME', extractedName);
         // Move to QUANTITY step with acknowledgment
@@ -894,7 +975,23 @@ export default function AddCrop() {
     }
     setLoading(true);
     try {
-      const payload = { ...formData, farmer: user._id };
+      const growingToLifecycle = {
+        nursery: "sowing",
+        vegetative: "vegetative",
+        flowering: "flowering",
+        fruiting: "flowering",
+        harvested: "ready"
+      };
+      const isGrowing = formData.growingStage && formData.growingStage !== 'harvested';
+      const isPrebook = Boolean(formData.allowPrebooking || isGrowing);
+
+      const payload = {
+        ...formData,
+        farmer: user._id,
+        isPrebooking: isPrebook,
+        allowPrebooking: isPrebook,
+        lifecycleStage: growingToLifecycle[formData.growingStage] || (isGrowing ? "sowing" : "ready")
+      };
       
       // Inject Organic Verification Payload
       if (formData.isOrganic) {
@@ -1063,6 +1160,84 @@ export default function AddCrop() {
                 )}
               </div>
             </div>
+
+            {/* Quick Suggestion Chips for Fast 1-Tap Advance */}
+            {STEP_CHIPS[wizardStep] && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginTop: "0.2rem" }}>
+                <span style={{ fontSize: "0.78rem", color: "#6b7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  💡 Quick 1-Tap Suggestions:
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+                  {STEP_CHIPS[wizardStep].map((chip) => (
+                    <button
+                      key={chip.val}
+                      type="button"
+                      onClick={() => processStepInput(wizardStep, chip.val)}
+                      style={{
+                        background: "#f0fdf4",
+                        border: "1.5px solid #86efac",
+                        color: "#166534",
+                        padding: "0.35rem 0.8rem",
+                        borderRadius: "100px",
+                        fontSize: "0.85rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "#dcfce7"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "#f0fdf4"; e.currentTarget.style.transform = "translateY(0)"; }}
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Manual Type Fallback (For noisy environments or if mic permission blocked) */}
+            {wizardStep !== 'IDLE' && wizardStep !== 'COMPLETED' && wizardStep !== 'CONFIRM_SUBMIT' && (
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (manualWizardText.trim()) {
+                    processStepInput(wizardStep, manualWizardText.trim());
+                    setManualWizardText("");
+                  }
+                }}
+                style={{ display: "flex", gap: "0.4rem", marginTop: "0.2rem" }}
+              >
+                <input
+                  type="text"
+                  placeholder={wizardStep === "NAME" ? "Or type crop name (e.g. Tomato)..." : wizardStep === "QUANTITY" ? "Or type quantity (e.g. 50 kg)..." : "Or type price in ₹ (e.g. 40)..."}
+                  value={manualWizardText}
+                  onChange={(e) => setManualWizardText(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: "0.45rem 0.85rem",
+                    borderRadius: "8px",
+                    border: "1.5px solid #d1d5db",
+                    fontSize: "0.88rem",
+                    outline: "none"
+                  }}
+                />
+                <button 
+                  type="submit" 
+                  style={{
+                    background: "#16a34a",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "0.45rem 1rem",
+                    fontSize: "0.85rem",
+                    fontWeight: 600,
+                    cursor: "pointer"
+                  }}
+                >
+                  Send
+                </button>
+              </form>
+            )}
 
             {/* Farmer Voice Listening & Live Transcript Status */}
             {isListening && (

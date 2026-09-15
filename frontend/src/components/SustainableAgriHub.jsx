@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
+
 import { 
   Sparkles, Leaf, ShieldAlert, ShieldCheck, Droplets, Sun, 
   Heart, AlertTriangle, ArrowRight, BookOpen, Award, CheckCircle2, 
@@ -1310,8 +1311,7 @@ export default function SustainableAgriHub({ user, onSelectTool, onAddMillet }) 
 
             {/* Direct Marketplace Actions */}
             <div style={{ marginTop: "1.5rem", display: "flex", justifyContent: "flex-end", gap: "0.75rem", flexWrap: "wrap" }}>
-              <Link
-                to="/marketplace?category=byproduct"
+              <Link href="/marketplace?category=byproduct"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",

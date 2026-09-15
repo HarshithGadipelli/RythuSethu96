@@ -23,6 +23,7 @@ export default function CustomerOrders({ orders, fetchOrders }) {
   const [cancelModal, setCancelModal] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [subscriptions, setSubscriptions] = useState([]);
+  const [stageModalOrder, setStageModalOrder] = useState(null);
 
   useEffect(() => {
     fetchSubscriptions();
@@ -195,10 +196,23 @@ export default function CustomerOrders({ orders, fetchOrders }) {
                       </span>
                     )}
 
-                    {o.crop && o.crop.lifecycleStage && (
-                      <span className="badge" style={{ background: "#fef3c7", color: "#d97706", marginLeft: "0.5rem", textTransform: "capitalize" }}>
-                        🌱 Stage: {o.crop.lifecycleStage.replace("_", " ")}
-                      </span>
+                    {o.crop && (o.crop.lifecycleStage || o.crop.growingStage) && (
+                      <button 
+                        onClick={() => setStageModalOrder(o)}
+                        style={{
+                          background: "#fef3c7", color: "#b45309", border: "1px solid #fde68a",
+                          borderRadius: "100px", padding: "2px 10px", fontSize: "0.78rem", fontWeight: 700,
+                          cursor: "pointer", marginLeft: "0.5rem", display: "inline-flex", alignItems: "center", gap: "4px"
+                        }}
+                        title="Click to see farmer's stage-wise updates and field photos"
+                      >
+                        🌱 Stage: {(o.crop.lifecycleStage || o.crop.growingStage).replace("_", " ")}
+                        {o.crop.lifecycleUpdates?.length > 0 && (
+                          <span style={{ background: "#d97706", color: "white", padding: "1px 5px", borderRadius: "100px", fontSize: "0.65rem" }}>
+                            {o.crop.lifecycleUpdates.length}
+                          </span>
+                        )}
+                      </button>
                     )}
                   </div>
                 </div>
@@ -424,6 +438,117 @@ export default function CustomerOrders({ orders, fetchOrders }) {
       {invoiceOrder && (
         <OrderInvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} />
       )}
+
+      {/* Farmer Stage Updates & Growth Proofs Modal for Customer */}
+      <AnimatePresence>
+        {stageModalOrder && (
+          <div className="modal-overlay" onClick={() => setStageModalOrder(null)}>
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="modal-content"
+              onClick={e => e.stopPropagation()}
+              style={{ maxWidth: "520px", maxHeight: "85vh", overflowY: "auto" }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+                <div>
+                  <h3 style={{ margin: 0, color: "var(--text-dark)", fontSize: "1.15rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    🌱 {stageModalOrder.crop?.name || "Crop"} Live Growth Updates
+                  </h3>
+                  <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "2px" }}>
+                    Farmer: <strong>{stageModalOrder.farmer?.name || stageModalOrder.crop?.farmer?.name || "Direct Producer"}</strong>
+                    {stageModalOrder.crop?.farmLocation && ` • 📍 ${stageModalOrder.crop.farmLocation}`}
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setStageModalOrder(null)}
+                  style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "1.2rem", padding: "0.2rem" }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Visual Stepper */}
+              <div style={{ background: "#f8fafc", padding: "0.8rem", borderRadius: "10px", border: "1px solid #e2e8f0", marginBottom: "1rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  {["sowing", "vegetative", "flowering", "harvesting", "ready"].map((st, idx) => {
+                    const STAGES = ["sowing", "vegetative", "flowering", "harvesting", "ready"];
+                    const curr = (stageModalOrder.crop?.lifecycleStage || "ready").toLowerCase();
+                    const currIdx = STAGES.indexOf(curr);
+                    const isDone = currIdx >= idx;
+                    const isCurrent = curr === st;
+
+                    return (
+                      <div key={st} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, textAlign: "center" }}>
+                        <div style={{
+                          width: "26px", height: "26px", borderRadius: "50%",
+                          background: isCurrent ? "#16a34a" : isDone ? "#86efac" : "#e2e8f0",
+                          color: isCurrent ? "white" : isDone ? "#166534" : "#94a3b8",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: "0.75rem", fontWeight: 800,
+                          boxShadow: isCurrent ? "0 0 0 3px rgba(22, 163, 74, 0.25)" : "none"
+                        }}>
+                          {isDone ? "✓" : idx + 1}
+                        </div>
+                        <span style={{
+                          fontSize: "0.65rem", marginTop: "4px", textTransform: "capitalize",
+                          color: isCurrent ? "#15803d" : "#64748b", fontWeight: isCurrent ? 800 : 500
+                        }}>
+                          {st}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Updates List */}
+              {stageModalOrder.crop?.lifecycleUpdates && stageModalOrder.crop.lifecycleUpdates.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+                  {[...stageModalOrder.crop.lifecycleUpdates].reverse().map((up, i) => (
+                    <div key={i} style={{ background: "white", borderRadius: "10px", border: "1px solid #e2e8f0", padding: "0.85rem", display: "flex", gap: "0.8rem", alignItems: "flex-start", flexWrap: "wrap" }}>
+                      {up.imageUrl && (
+                        <img 
+                          src={up.imageUrl.startsWith("http") || up.imageUrl.startsWith("data:") ? up.imageUrl : `${BASE_URL}/${up.imageUrl.replace(/^\/+/, "")}`}
+                          alt="Stage proof" 
+                          style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "8px", border: "1px solid #e2e8f0", flexShrink: 0 }} 
+                        />
+                      )}
+                      <div style={{ flex: 1, minWidth: "180px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem" }}>
+                          <span style={{ background: "#dcfce7", color: "#166534", padding: "2px 8px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 700, textTransform: "capitalize" }}>
+                            🌱 {up.stage?.replace("_", " ")}
+                          </span>
+                          <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>{new Date(up.timestamp).toLocaleDateString()}</span>
+                        </div>
+                        {up.notes && <p style={{ margin: "0.25rem 0", fontSize: "0.82rem", color: "#334155", lineHeight: 1.4 }}>{up.notes}</p>}
+                        {up.aiSuggestion && (
+                          <div style={{ fontSize: "0.73rem", color: "#15803d", marginTop: "0.3rem", background: "#f0fdf4", padding: "4px 8px", borderRadius: "6px" }}>
+                            💡 <em>{up.aiSuggestion}</em>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ textAlign: "center", padding: "1.5rem", background: "#f8fafc", borderRadius: "10px", color: "#64748b", fontSize: "0.85rem" }}>
+                  Your pre-ordered crop is safely growing on the farm in <strong>{stageModalOrder.crop?.lifecycleStage || "sowing"}</strong> stage. New field photos will appear as the farmer submits stage updates.
+                </div>
+              )}
+
+              <button 
+                className="btn-secondary" 
+                style={{ width: "100%", marginTop: "1.2rem", padding: "0.6rem" }}
+                onClick={() => setStageModalOrder(null)}
+              >
+                Close
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

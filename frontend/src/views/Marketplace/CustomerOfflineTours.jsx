@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
+
 import { motion, AnimatePresence } from "framer-motion";
 import API, { BASE_URL } from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
@@ -129,7 +130,7 @@ export default function CustomerOfflineTours({ isEmbedded = false }) {
       }}>
         <div style={{ position: "relative", zIndex: 2, maxWidth: "650px" }}>
           {!isEmbedded && (
-            <Link to="/marketplace" style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", color: "#bbf7d0", textDecoration: "none", fontSize: "0.85rem", marginBottom: "0.75rem", fontWeight: 600 }}>
+            <Link href="/marketplace" style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", color: "#bbf7d0", textDecoration: "none", fontSize: "0.85rem", marginBottom: "0.75rem", fontWeight: 600 }}>
               <ArrowLeft size={16} /> Back to Marketplace
             </Link>
           )}
@@ -403,7 +404,7 @@ export default function CustomerOfflineTours({ isEmbedded = false }) {
                   <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.3rem", marginBottom: "1rem" }}>
                     <MapPin size={14} /> {c.location || "Organic Field, Telangana"}
                   </div>
-                  <Link to={`/marketplace?tab=shop`} className="btn-secondary" style={{ textAlign: "center", marginTop: "auto", fontSize: "0.85rem" }}>
+                  <Link href={`/marketplace?tab=shop`} className="btn-secondary" style={{ textAlign: "center", marginTop: "auto", fontSize: "0.85rem" }}>
                     View in Marketplace
                   </Link>
                 </div>

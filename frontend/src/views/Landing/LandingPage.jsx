@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import Link from "next/link";
+
 import { useLang } from "../../context/LangContext";
 import { useAuth } from "../../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1356,12 +1357,12 @@ export default function LandingPage() {
         {/* CTA Buttons */}
         {!user ? (
           <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", justifyContent: "center", marginTop: "2rem" }}>
-            <Link to="/register">
+            <Link href="/register">
               <button className="btn-primary" style={{ width: "auto", padding: "1rem 2.5rem", fontSize: "1.05rem" }}>
                 🌱 {t("getStarted")}
               </button>
             </Link>
-            <Link to="/marketplace">
+            <Link href="/marketplace">
               <button className="btn-secondary" style={{ width: "auto", padding: "1rem 2.5rem", fontSize: "1.05rem" }}>
                 🛒 {t("shopNow")}
               </button>
@@ -1377,7 +1378,7 @@ export default function LandingPage() {
             <p style={{ color: "var(--text-muted)", marginBottom: "1rem" }}>
               👋 Welcome back, <strong style={{ color: "var(--yellow-wheat)" }}>{user.name}</strong>!
             </p>
-            <Link to={user.role === "farmer" ? "/farmer" : user.role === "agent" ? "/agent" : "/marketplace"}>
+            <Link href={user.role === "farmer" ? "/farmer" : user.role === "agent" ? "/agent" : "/marketplace"}>
               <button className="btn-primary" style={{ width: "auto", padding: "1rem 2.5rem" }}>
                 Go to Dashboard →
               </button>
@@ -1590,7 +1591,7 @@ export default function LandingPage() {
             { to: "/agent", imgSrc: "/node_delivery.png", title: t('agentPortal'), desc: t('agentPortalDesc'), color: "var(--yellow-wheat)" },
             { to: "/admin", imgSrc: "/role_admin.png", title: t('adminPanel'), desc: t('adminPortalDesc'), color: "var(--saffron-main)" }
           ].map((r, i) => (
-            <Link to={r.to} className="role-card" key={i}>
+            <Link href={r.to} className="role-card" key={i}>
               <div className="role-card-inner" style={{ borderColor: `${r.color}33` }}>
                 <div style={{ width: "80px", height: "80px", margin: "0 auto 1rem", borderRadius: "50%", overflow: "hidden", border: `2px solid ${r.color}`, boxShadow: "0 8px 16px rgba(0,0,0,0.1)" }}>
                   <img src={r.imgSrc} alt={r.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />

@@ -56,7 +56,7 @@ const AdminTips = ({ stats }) => {
 };
 
 export default function AdminDashboard() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { user } = useAuth();
   const { t, lang } = useLang();
 
@@ -143,6 +143,19 @@ export default function AdminDashboard() {
   const [sysTermsUpdatedAt, setSysTermsUpdatedAt] = useState("");
   const [savingSysTerms, setSavingSysTerms] = useState(false);
 
+  // System Maintenance Alert Management State (Socket.io)
+  const [activeMaintAlert, setActiveMaintAlert] = useState(null);
+  const [maintLoading, setMaintLoading] = useState(false);
+  const [maintForm, setMaintForm] = useState({
+    title: "Scheduled System Maintenance & Cloud Optimization",
+    message: "We are optimizing marketplace caching and payment gateway pipelines. Services may experience intermittent slowness.",
+    severity: "warning",
+    targetRole: "all",
+    scheduledAt: "",
+    estimatedDuration: "45 minutes",
+    affectedServicesText: "Marketplace Order Placement, Payment Gateway"
+  });
+
   useEffect(() => {
     API.get("/public/system-terms").then(res => {
       if (res.data) {
@@ -210,6 +223,9 @@ export default function AdminDashboard() {
     if (tab === "clearance") {
       API.get("/admin/clearance").then(res => setClearanceStock(res.data)).catch(console.error);
     }
+    if (tab === "broadcasts") {
+      loadActiveMaintenance();
+    }
   }, [tab]);
 
   const handleFleetReassign = async (e) => {
@@ -274,6 +290,57 @@ export default function AdminDashboard() {
       setMsg({ type: "success", text: "Educational broadcast sent to all farmers!" });
     } catch (e) {
       setMsg({ type: "error", text: "Failed to send broadcast." });
+    }
+  };
+
+  const loadActiveMaintenance = async () => {
+    try {
+      const res = await API.get("/notifications/system-alert/active");
+      if (res.data?.active) {
+        setActiveMaintAlert(res.data);
+      } else {
+        setActiveMaintAlert(null);
+      }
+    } catch (err) {
+      console.error("Failed to load active maintenance alert", err);
+    }
+  };
+
+  const handleBroadcastMaintenance = async (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    try {
+      setMaintLoading(true);
+      const affectedServices = maintForm.affectedServicesText
+        ? maintForm.affectedServicesText.split(",").map(s => s.trim()).filter(Boolean)
+        : [];
+      
+      const res = await API.post("/notifications/system-alert", {
+        ...maintForm,
+        affectedServices
+      });
+      if (res.data.success) {
+        setActiveMaintAlert(res.data.alert);
+        setMsg({ type: "success", text: "🚨 Real-time maintenance alert broadcasted to all connected users via Socket.io!" });
+      }
+    } catch (err) {
+      setMsg({ type: "error", text: err.response?.data?.message || "Failed to broadcast maintenance alert." });
+    } finally {
+      setMaintLoading(false);
+    }
+  };
+
+  const handleClearMaintenance = async () => {
+    try {
+      setMaintLoading(true);
+      const res = await API.delete("/notifications/system-alert/active");
+      if (res.data.success) {
+        setActiveMaintAlert(null);
+        setMsg({ type: "success", text: "✅ System maintenance ended and alert cleared for all users!" });
+      }
+    } catch (err) {
+      setMsg({ type: "error", text: err.response?.data?.message || "Failed to clear maintenance alert." });
+    } finally {
+      setMaintLoading(false);
     }
   };
 
@@ -963,7 +1030,7 @@ export default function AdminDashboard() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => navigate("/agent/cold-storage")}
+                      onClick={() => router.push("/agent/cold-storage")}
                       style={{ background: "#0284c7", color: "white", border: "none", padding: "0.45rem 0.85rem", borderRadius: "8px", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}
                     >
                       Open Cold Storage Portal ➔
@@ -982,7 +1049,7 @@ export default function AdminDashboard() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => navigate("/agent/biogas")}
+                      onClick={() => router.push("/agent/biogas")}
                       style={{ background: "#059669", color: "white", border: "none", padding: "0.45rem 0.85rem", borderRadius: "8px", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}
                     >
                       Open Bio-Gas Portal ➔
@@ -1001,7 +1068,7 @@ export default function AdminDashboard() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => navigate("/agent/soil-test")}
+                      onClick={() => router.push("/agent/soil-test")}
                       style={{ background: "#d97706", color: "white", border: "none", padding: "0.45rem 0.85rem", borderRadius: "8px", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}
                     >
                       Open Soil Test Portal ➔
@@ -2858,33 +2925,247 @@ export default function AdminDashboard() {
           )}
 
           {tab === "broadcasts" && (
-            <div className="glass-card mt-3">
-              <h3 className="section-title">📢 Educational & Promotional Broadcasts</h3>
-              <p style={{ color:"var(--text-muted)", fontSize:"0.85rem", marginBottom:"1rem" }}>
-                Send push notifications directly to farmers to influence crop production and eco-friendly practices.
-              </p>
-              
-              <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginBottom: "1.5rem" }}>
-                <button className="btn-secondary" onClick={() => handleEducationalBroadcast("🌱 Promote Millets", "High demand predicted for Millets. Reduce Rice cultivation and switch to Millets for higher profits and better soil health!")}>
-                  🌾 Send "Grow Millets" Promo
-                </button>
-                <button className="btn-secondary" onClick={() => handleEducationalBroadcast("🔥 Stop Crop Burning", "Warning: Burning leftover crop waste causes severe air pollution. Use our Biogas agents to collect waste for reward points instead!")}>
-                  🚫 Send "Stop Crop Burning" Alert
-                </button>
-                <button className="btn-secondary" onClick={() => handleEducationalBroadcast("☔ Rain Alert", "Heavy rainfall expected this week. Ensure your crops are protected and delay sowing if necessary.")}>
-                  ☔ Send Rain Alert
-                </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              {/* ── REAL-TIME SYSTEM MAINTENANCE CONTROLLER ── */}
+              <div className="glass-card mt-3" style={{ borderLeft: "5px solid #ea580c" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
+                  <div>
+                    <h3 className="section-title" style={{ margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span>🛠️</span> Real-Time System Maintenance & Socket.io Alerts
+                    </h3>
+                    <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: "4px 0 0 0" }}>
+                      Broadcast emergency maintenance banners to all online web clients, mobile users, and dashboards instantaneously.
+                    </p>
+                  </div>
+
+                  {activeMaintAlert ? (
+                    <button
+                      onClick={handleClearMaintenance}
+                      disabled={maintLoading}
+                      style={{
+                        background: "linear-gradient(135deg, #16a34a, #22c55e)",
+                        color: "#fff",
+                        border: "none",
+                        padding: "8px 16px",
+                        borderRadius: "8px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        boxShadow: "0 4px 12px rgba(34, 197, 94, 0.3)"
+                      }}
+                    >
+                      <span>✅</span> End Maintenance & Clear Alert
+                    </button>
+                  ) : (
+                    <span
+                      style={{
+                        background: "rgba(34, 197, 94, 0.15)",
+                        color: "#16a34a",
+                        border: "1px solid rgba(34, 197, 94, 0.3)",
+                        padding: "4px 12px",
+                        borderRadius: "20px",
+                        fontSize: "0.82rem",
+                        fontWeight: 700,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px"
+                      }}
+                    >
+                      🟢 System Operational (No Active Alert)
+                    </span>
+                  )}
+                </div>
+
+                {/* Active Alert Status Card */}
+                {activeMaintAlert && (
+                  <div
+                    style={{
+                      background: "rgba(234, 88, 12, 0.1)",
+                      border: "1px solid rgba(234, 88, 12, 0.3)",
+                      borderRadius: "12px",
+                      padding: "16px",
+                      marginBottom: "1.5rem"
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                      <span
+                        style={{
+                          background: "#ea580c",
+                          color: "#fff",
+                          padding: "2px 8px",
+                          borderRadius: "4px",
+                          fontSize: "0.75rem",
+                          fontWeight: 800,
+                          textTransform: "uppercase"
+                        }}
+                      >
+                        {activeMaintAlert.severity} ACTIVE
+                      </span>
+                      <strong style={{ fontSize: "1rem", color: "var(--text-dark)" }}>
+                        {activeMaintAlert.title}
+                      </strong>
+                    </div>
+                    <p style={{ margin: "4px 0 8px 0", fontSize: "0.9rem", color: "var(--text-mid)" }}>
+                      {activeMaintAlert.message}
+                    </p>
+                    <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                      <span>Target Role: <strong>{activeMaintAlert.targetRole || "All"}</strong></span>
+                      <span>Duration: <strong>{activeMaintAlert.estimatedDuration || "TBD"}</strong></span>
+                      <span>Affected: <strong>{(activeMaintAlert.affectedServices || []).join(", ") || "General Platform"}</strong></span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Broadcast Maintenance Form */}
+                <form onSubmit={handleBroadcastMaintenance} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1rem" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: "4px" }}>
+                        Alert Title:
+                      </label>
+                      <input
+                        type="text"
+                        className="rs-input"
+                        value={maintForm.title}
+                        onChange={(e) => setMaintForm({ ...maintForm, title: e.target.value })}
+                        required
+                        placeholder="e.g. Scheduled Cloud Database Upgrade"
+                        style={{ width: "100%" }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: "4px" }}>
+                        Severity Level:
+                      </label>
+                      <select
+                        className="rs-input"
+                        value={maintForm.severity}
+                        onChange={(e) => setMaintForm({ ...maintForm, severity: e.target.value })}
+                        style={{ width: "100%" }}
+                      >
+                        <option value="warning">⚠️ Warning (Yellow / Amber)</option>
+                        <option value="critical">🚨 Critical (Orange / Red)</option>
+                        <option value="emergency">🛑 Emergency (Red High Alert)</option>
+                        <option value="info">ℹ️ Info (Blue Notification)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: "4px" }}>
+                        Target Audience:
+                      </label>
+                      <select
+                        className="rs-input"
+                        value={maintForm.targetRole}
+                        onChange={(e) => setMaintForm({ ...maintForm, targetRole: e.target.value })}
+                        style={{ width: "100%" }}
+                      >
+                        <option value="all">👥 All Users & Guests</option>
+                        <option value="customer">🛒 Customers Only</option>
+                        <option value="farmer">🧑‍🌾 Farmers Only</option>
+                        <option value="agent">🚚 Delivery & Storage Agents Only</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: "4px" }}>
+                        Estimated Duration:
+                      </label>
+                      <input
+                        type="text"
+                        className="rs-input"
+                        value={maintForm.estimatedDuration}
+                        onChange={(e) => setMaintForm({ ...maintForm, estimatedDuration: e.target.value })}
+                        placeholder="e.g. 30 mins, 1 hour"
+                        style={{ width: "100%" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: "4px" }}>
+                      Affected Services (Comma separated):
+                    </label>
+                    <input
+                      type="text"
+                      className="rs-input"
+                      value={maintForm.affectedServicesText}
+                      onChange={(e) => setMaintForm({ ...maintForm, affectedServicesText: e.target.value })}
+                      placeholder="e.g. Marketplace Checkout, Payment Gateway, Live Tracking"
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, marginBottom: "4px" }}>
+                      Detailed Maintenance Message:
+                    </label>
+                    <textarea
+                      rows={3}
+                      className="rs-input"
+                      value={maintForm.message}
+                      onChange={(e) => setMaintForm({ ...maintForm, message: e.target.value })}
+                      required
+                      placeholder="Explain to users what is being upgraded and expected behavior..."
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={maintLoading}
+                    style={{
+                      alignSelf: "flex-start",
+                      background: "linear-gradient(135deg, #ea580c, #c2410c)",
+                      color: "#fff",
+                      border: "none",
+                      padding: "10px 20px",
+                      borderRadius: "10px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      boxShadow: "0 4px 14px rgba(234, 88, 12, 0.35)"
+                    }}
+                  >
+                    <span>🚨</span> Broadcast Live Maintenance Alert via Socket.io
+                  </button>
+                </form>
               </div>
 
-              <div style={{ background: "rgba(59, 130, 246, 0.05)", padding: "1rem", borderRadius: "8px", border: "1px solid rgba(59, 130, 246, 0.2)" }}>
-                <h4 style={{ marginBottom: "0.5rem" }}>Custom Broadcast</h4>
-                <input type="text" className="rs-input mb-2" placeholder="Broadcast Title" id="broadcastTitle" />
-                <textarea className="rs-input mb-2" placeholder="Write your educational message here..." rows={3} id="broadcastMessage"></textarea>
-                <button className="btn-primary" onClick={() => {
-                  const t = document.getElementById("broadcastTitle").value;
-                  const m = document.getElementById("broadcastMessage").value;
-                  if (t && m) handleEducationalBroadcast(t, m);
-                }}>Send Custom Broadcast 🚀</button>
+              {/* ── EDUCATIONAL & PROMOTIONAL BROADCASTS ── */}
+              <div className="glass-card">
+                <h3 className="section-title">📢 Educational & Promotional Broadcasts</h3>
+                <p style={{ color:"var(--text-muted)", fontSize:"0.85rem", marginBottom:"1rem" }}>
+                  Send push notifications directly to farmers to influence crop production and eco-friendly practices.
+                </p>
+                
+                <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginBottom: "1.5rem" }}>
+                  <button className="btn-secondary" onClick={() => handleEducationalBroadcast("🌱 Promote Millets", "High demand predicted for Millets. Reduce Rice cultivation and switch to Millets for higher profits and better soil health!")}>
+                    🌾 Send "Grow Millets" Promo
+                  </button>
+                  <button className="btn-secondary" onClick={() => handleEducationalBroadcast("🔥 Stop Crop Burning", "Warning: Burning leftover crop waste causes severe air pollution. Use our Biogas agents to collect waste for reward points instead!")}>
+                    🚫 Send "Stop Crop Burning" Alert
+                  </button>
+                  <button className="btn-secondary" onClick={() => handleEducationalBroadcast("☔ Rain Alert", "Heavy rainfall expected this week. Ensure your crops are protected and delay sowing if necessary.")}>
+                    ☔ Send Rain Alert
+                  </button>
+                </div>
+
+                <div style={{ background: "rgba(59, 130, 246, 0.05)", padding: "1rem", borderRadius: "8px", border: "1px solid rgba(59, 130, 246, 0.2)" }}>
+                  <h4 style={{ marginBottom: "0.5rem" }}>Custom Broadcast</h4>
+                  <input type="text" className="rs-input mb-2" placeholder="Broadcast Title" id="broadcastTitle" />
+                  <textarea className="rs-input mb-2" placeholder="Write your educational message here..." rows={3} id="broadcastMessage"></textarea>
+                  <button className="btn-primary" onClick={() => {
+                    const t = document.getElementById("broadcastTitle").value;
+                    const m = document.getElementById("broadcastMessage").value;
+                    if (t && m) handleEducationalBroadcast(t, m);
+                  }}>Send Custom Broadcast 🚀</button>
+                </div>
               </div>
             </div>
           )}

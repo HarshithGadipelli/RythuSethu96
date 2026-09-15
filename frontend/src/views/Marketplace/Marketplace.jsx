@@ -1,6 +1,7 @@
 import { BASE_URL } from '../../api/api';
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import Link from "next/link";
+
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import API from "../../api/api";
@@ -28,6 +29,7 @@ import RythuSethuAnimation from "../../components/RythuSethuAnimation";
 import FarmTourModal from "../../components/FarmTourModal";
 import SmartCuratedBasket from "../../components/SmartCuratedBasket";
 import APMCMandiExplorer from "../../components/APMCMandiExplorer";
+import HealthyRecipeHub from "../../components/HealthyRecipeHub";
 
 // Fix leaflet default icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -713,6 +715,7 @@ export default function Marketplace() {
   const [showFarmTour, setShowFarmTour] = useState(null);
   const [festivalConfig, setFestivalConfig] = useState(null);
   const [show3DView, setShow3DView] = useState(false);
+  const [showRecipeHub, setShowRecipeHub] = useState(false);
 
   // ─── Advanced Search & New Features State ───
   const [showFilters, setShowFilters] = useState(false);
@@ -1645,10 +1648,31 @@ export default function Marketplace() {
             >
               <Sparkles size={15} /> ⚡ Voice/Text List & Catering AI {showSmartBasket ? "▲" : "▼"}
             </button>
-            <Link to="/farm-tours" className="btn-secondary" style={{ padding: "0.3rem 0.8rem", fontSize: "0.85rem", textDecoration: "none", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+            <button 
+              type="button"
+              onClick={() => setShowRecipeHub(true)} 
+              className="btn-primary" 
+              style={{ 
+                padding: "0.35rem 0.9rem", 
+                fontSize: "0.85rem", 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "0.4rem", 
+                background: "linear-gradient(135deg, #059669, #10b981)",
+                boxShadow: "0 4px 12px rgba(16,185,129,0.3)",
+                border: "none",
+                cursor: "pointer",
+                borderRadius: "100px",
+                color: "white",
+                fontWeight: 600
+              }}
+            >
+              <span>🍲</span> Healthy Millet Recipes
+            </button>
+            <Link href="/farm-tours" className="btn-secondary" style={{ padding: "0.3rem 0.8rem", fontSize: "0.85rem", textDecoration: "none", display: "flex", alignItems: "center", gap: "0.3rem" }}>
               🎥 Farm Tours
             </Link>
-            <Link to="/curated-boxes" className="btn-secondary" style={{ padding: "0.3rem 0.8rem", fontSize: "0.85rem", textDecoration: "none", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+            <Link href="/curated-boxes" className="btn-secondary" style={{ padding: "0.3rem 0.8rem", fontSize: "0.85rem", textDecoration: "none", display: "flex", alignItems: "center", gap: "0.3rem" }}>
               📦 Curated Boxes
             </Link>
           </div>
@@ -2069,8 +2093,7 @@ export default function Marketplace() {
               <span>🌴</span>
               <span>{search.toLowerCase().includes("bellam") ? "✓ Thaati Bellam Active" : "Thaati Bellam"}</span>
             </button>
-            <Link
-              to="/farmer/dashboard"
+            <Link href="/farmer/dashboard"
               style={{
                 padding: "0.45rem 0.85rem",
                 borderRadius: "100px",
@@ -3130,6 +3153,107 @@ export default function Marketplace() {
                     )}
                   </div>
                 </div>
+
+                {/* ── REAL-TIME CROP GROWTH STAGES & FARMER PROOFS TIMELINE ── */}
+                <div style={{
+                  marginBottom: "1.5rem",
+                  background: "linear-gradient(135deg, #fefce8 0%, #f0fdf4 100%)",
+                  borderRadius: "16px",
+                  border: "1.5px solid #fef08a",
+                  padding: "1.25rem",
+                  boxShadow: "0 4px 15px rgba(234, 179, 8, 0.08)"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.8rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ fontSize: "1.3rem" }}>🌱</span>
+                      <h4 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#713f12" }}>
+                        Crop Growth Stage & Farmer Field Updates
+                      </h4>
+                    </div>
+                    <span style={{
+                      background: "#fef3c7", color: "#b45309", border: "1px solid #fde68a",
+                      padding: "3px 10px", borderRadius: "100px", fontSize: "0.78rem", fontWeight: 800,
+                      textTransform: "capitalize"
+                    }}>
+                      Current: {selected.lifecycleStage || selected.growingStage || "Ready"}
+                    </span>
+                  </div>
+
+                  {/* Visual Lifecycle Stepper */}
+                  <div style={{ background: "white", padding: "0.85rem", borderRadius: "12px", border: "1px solid #fef08a", marginBottom: "1rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      {["sowing", "vegetative", "flowering", "harvesting", "ready"].map((st, idx) => {
+                        const STAGES = ["sowing", "vegetative", "flowering", "harvesting", "ready"];
+                        const curr = (selected.lifecycleStage || "ready").toLowerCase();
+                        const currIdx = STAGES.indexOf(curr);
+                        const isDone = currIdx >= idx;
+                        const isCurrent = curr === st;
+
+                        return (
+                          <div key={st} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, textAlign: "center" }}>
+                            <div style={{
+                              width: "28px", height: "28px", borderRadius: "50%",
+                              background: isCurrent ? "#16a34a" : isDone ? "#86efac" : "#f1f5f9",
+                              color: isCurrent ? "white" : isDone ? "#166534" : "#94a3b8",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontSize: "0.75rem", fontWeight: 800,
+                              boxShadow: isCurrent ? "0 0 0 3px rgba(22, 163, 74, 0.25)" : "none"
+                            }}>
+                              {isDone ? "✓" : idx + 1}
+                            </div>
+                            <span style={{
+                              fontSize: "0.68rem", marginTop: "4px", textTransform: "capitalize",
+                              color: isCurrent ? "#15803d" : "#64748b", fontWeight: isCurrent ? 800 : 500
+                            }}>
+                              {st}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {selected.expectedHarvestDate && (
+                    <div style={{ marginBottom: "0.8rem", fontSize: "0.8rem", color: "#1e40af", background: "#eff6ff", padding: "0.5rem 0.8rem", borderRadius: "8px", border: "1px solid #bfdbfe", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>📅</span> <strong>Estimated Harvest & Dispatch Date:</strong> {new Date(selected.expectedHarvestDate).toLocaleDateString()}
+                    </div>
+                  )}
+
+                  {/* Proofs / Updates List */}
+                  {selected.lifecycleUpdates && selected.lifecycleUpdates.length > 0 ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+                      {[...selected.lifecycleUpdates].reverse().slice(0, 3).map((up, i) => (
+                        <div key={i} style={{ background: "white", borderRadius: "10px", border: "1px solid #e2e8f0", padding: "0.85rem", display: "flex", gap: "1rem", alignItems: "flex-start", flexWrap: "wrap" }}>
+                          {up.imageUrl && (
+                            <img 
+                              src={up.imageUrl.startsWith("http") || up.imageUrl.startsWith("data:") ? up.imageUrl : `${BASE_URL}/${up.imageUrl.replace(/^\/+/, "")}`}
+                              alt="Stage proof" 
+                              style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "8px", border: "1px solid #e2e8f0", flexShrink: 0 }} 
+                            />
+                          )}
+                          <div style={{ flex: 1, minWidth: "200px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.3rem" }}>
+                              <span style={{ background: "#dcfce7", color: "#166534", padding: "2px 8px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 700, textTransform: "capitalize" }}>
+                                🌱 {up.stage?.replace("_", " ")}
+                              </span>
+                              <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>{new Date(up.timestamp).toLocaleDateString()}</span>
+                            </div>
+                            {up.notes && <p style={{ margin: 0, fontSize: "0.82rem", color: "#334155" }}>{up.notes}</p>}
+                            {up.aiSuggestion && (
+                              <div style={{ fontSize: "0.74rem", color: "#15803d", marginTop: "0.4rem", background: "#f0fdf4", padding: "4px 8px", borderRadius: "6px" }}>
+                                💡 <em>{up.aiSuggestion}</em>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ background: "white", padding: "0.8rem", borderRadius: "10px", border: "1px dashed #cbd5e1", textAlign: "center", fontSize: "0.8rem", color: "#64748b" }}>
+                      Farmer confirmed this listing is healthy and in <strong>{selected.lifecycleStage || "ready"}</strong> stage.
+                    </div>
+                  )}
+                </div>
                 {/* Price Trends & Analytics Chart */}
                 {/* Price Trends & Analytics Chart */}
                 {priceTrends && priceTrends.globalPrediction && priceTrends.localPrediction && (
@@ -3774,6 +3898,11 @@ export default function Marketplace() {
         }}
       />
       
+      {/* ─── Healthy Millet Recipe Hub Modal ─── */}
+      {showRecipeHub && (
+        <HealthyRecipeHub onClose={() => setShowRecipeHub(false)} />
+      )}
+
       {/* ─── Order Tracking Portal ─── */}
       {trackingOrder && (
         <OrderTracking 

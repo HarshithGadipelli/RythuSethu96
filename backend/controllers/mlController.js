@@ -1,4 +1,6 @@
 import { getGeminiCropSuggestion, getGeminiFarmerTips } from "../services/geminiService.js";
+import Crop from "../models/Crop.js";
+import Order from "../models/Order.js";
 import { suggestAdvancedCrop } from "../services/cropSuggestionService.js";
 import { predictAdvancedDemand } from "../services/demandPredictionService.js";
 import { getNutritionAnalysis } from "../services/nutritionAnalysisService.js";

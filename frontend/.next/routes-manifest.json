@@ -21,17 +21,14 @@
     "afterFiles": [],
     "fallback": []
   },
-  "dynamicRoutes": [
-    {
-      "page": "/[[...slug]]",
-      "regex": "^(?:/(.+?))?(?:/)?$",
-      "routeKeys": {
-        "nxtPslug": "nxtPslug"
-      },
-      "namedRegex": "^(?:/(?<nxtPslug>.+?))?(?:/)?$"
-    }
-  ],
+  "dynamicRoutes": [],
   "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
     {
       "page": "/_global-error",
       "regex": "^/_global\\-error(?:/)?$",
@@ -43,6 +40,96 @@
       "regex": "^/_not\\-found(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/admin",
+      "regex": "^/admin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin(?:/)?$"
+    },
+    {
+      "page": "/agent",
+      "regex": "^/agent(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/agent(?:/)?$"
+    },
+    {
+      "page": "/agent/biogas",
+      "regex": "^/agent/biogas(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/agent/biogas(?:/)?$"
+    },
+    {
+      "page": "/agent/cold-storage",
+      "regex": "^/agent/cold\\-storage(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/agent/cold\\-storage(?:/)?$"
+    },
+    {
+      "page": "/agent/soil-test",
+      "regex": "^/agent/soil\\-test(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/agent/soil\\-test(?:/)?$"
+    },
+    {
+      "page": "/curated-boxes",
+      "regex": "^/curated\\-boxes(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/curated\\-boxes(?:/)?$"
+    },
+    {
+      "page": "/farm-tours",
+      "regex": "^/farm\\-tours(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/farm\\-tours(?:/)?$"
+    },
+    {
+      "page": "/farmer",
+      "regex": "^/farmer(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/farmer(?:/)?$"
+    },
+    {
+      "page": "/farmer/add-crop",
+      "regex": "^/farmer/add\\-crop(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/farmer/add\\-crop(?:/)?$"
+    },
+    {
+      "page": "/login",
+      "regex": "^/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/login(?:/)?$"
+    },
+    {
+      "page": "/marketplace",
+      "regex": "^/marketplace(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/marketplace(?:/)?$"
+    },
+    {
+      "page": "/my-orders",
+      "regex": "^/my\\-orders(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/my\\-orders(?:/)?$"
+    },
+    {
+      "page": "/offline-tours",
+      "regex": "^/offline\\-tours(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/offline\\-tours(?:/)?$"
+    },
+    {
+      "page": "/register",
+      "regex": "^/register(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/register(?:/)?$"
+    },
+    {
+      "page": "/support",
+      "regex": "^/support(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/support(?:/)?$"
     }
   ],
   "dataRoutes": [],

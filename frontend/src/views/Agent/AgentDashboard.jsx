@@ -10,7 +10,8 @@ import AgentLiveMap from "../../components/AgentLiveMap";
 import AgentFinancialLedger from "./AgentFinancialLedger";
 import TrustScoreModal from "../../components/TrustScoreModal";
 import { Volume2, MapPin, LocateFixed, Compass, Radio, Camera, CheckCircle2, ShieldCheck, KeyRound, Coins, Sparkles, UploadCloud, Loader2, Check, X, ArrowUpRight, ShieldAlert, Star, Car, Sliders, ChevronRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
+
 import LocationUpdateModal from "../../components/LocationUpdateModal";
 import ColdStorageAgentPanel from "../../components/ColdStorageAgentPanel";
 import FoodSafetyOrganicAgentPanel from "../../components/FoodSafetyOrganicAgentPanel";
@@ -1312,8 +1313,7 @@ export default function AgentDashboard() {
                 </p>
               </div>
               <div style={{ marginTop: "1.25rem" }}>
-                <Link
-                  to="/agent/cold-storage"
+                <Link href="/agent/cold-storage"
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -1350,8 +1350,7 @@ export default function AgentDashboard() {
                 </p>
               </div>
               <div style={{ marginTop: "1.25rem" }}>
-                <Link
-                  to="/agent/biogas"
+                <Link href="/agent/biogas"
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -1388,8 +1387,7 @@ export default function AgentDashboard() {
                 </p>
               </div>
               <div style={{ marginTop: "1.25rem" }}>
-                <Link
-                  to="/agent/soil-test"
+                <Link href="/agent/soil-test"
                   style={{
                     display: "inline-flex",
                     alignItems: "center",

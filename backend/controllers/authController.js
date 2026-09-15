@@ -2,8 +2,41 @@ import User from "../models/User.js";
 import Farmer from "../models/Farmer.js";
 import Customer from "../models/Customer.js";
 import Agent from "../models/Agent.js";
+import RefreshToken from "../models/RefreshToken.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+
+// ─── Token Helpers ───
+const ACCESS_TOKEN_EXPIRY = "15m";
+const REFRESH_TOKEN_EXPIRY_DAYS = 7;
+
+const generateAccessToken = (userId) => {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
+};
+
+const generateRefreshToken = async (userId, req) => {
+  const token = crypto.randomBytes(40).toString("hex");
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+  await RefreshToken.create({
+    token,
+    user: userId,
+    expiresAt,
+    userAgent: req.headers["user-agent"] || "",
+    ipAddress: req.ip || "",
+  });
+  return { token, expiresAt };
+};
+
+const setRefreshCookie = (res, token, expiresAt) => {
+  res.cookie("refreshToken", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production" || true,
+    sameSite: "None",
+    expires: expiresAt,
+    path: "/",
+  });
+};
 
 // Helper to format user payload consistently
 const formatUserPayload = (user) => ({
@@ -163,7 +196,9 @@ export const register = async (req, res) => {
       });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+    const token = generateAccessToken(user._id);
+    const refresh = await generateRefreshToken(user._id, req);
+    setRefreshCookie(res, refresh.token, refresh.expiresAt);
 
     res.json({
       token,
@@ -249,7 +284,9 @@ export const login = async (req, res) => {
 
     if (!match) return res.status(400).json({ error: "Incorrect password. Please try again." });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+    const token = generateAccessToken(user._id);
+    const refresh = await generateRefreshToken(user._id, req);
+    setRefreshCookie(res, refresh.token, refresh.expiresAt);
 
     // Fetch or safely auto-ensure role profile
     let profile = null;
@@ -452,6 +489,61 @@ export const acceptTerms = async (req, res) => {
       { new: true }
     );
     res.json(user ? formatUserPayload(user) : null);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ─── Refresh Access Token ───
+export const refreshAccessToken = async (req, res) => {
+  try {
+    const refreshTokenStr = req.cookies?.refreshToken || req.body?.refreshToken;
+    if (!refreshTokenStr) {
+      return res.status(401).json({ error: "No refresh token provided" });
+    }
+
+    const storedToken = await RefreshToken.findOne({
+      token: refreshTokenStr,
+      isRevoked: false,
+    });
+
+    if (!storedToken || storedToken.expiresAt < new Date()) {
+      if (storedToken) await RefreshToken.deleteOne({ _id: storedToken._id });
+      return res.status(401).json({ error: "Refresh token expired. Please login again." });
+    }
+
+    const user = await User.findById(storedToken.user).select("-password");
+    if (!user) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // Issue new access token
+    const newAccessToken = generateAccessToken(user._id);
+
+    // Rotate refresh token (issue new one, revoke old)
+    await RefreshToken.deleteOne({ _id: storedToken._id });
+    const newRefresh = await generateRefreshToken(user._id, req);
+    setRefreshCookie(res, newRefresh.token, newRefresh.expiresAt);
+
+    res.json({
+      token: newAccessToken,
+      user: formatUserPayload(user),
+    });
+  } catch (error) {
+    console.error("Refresh token error:", error);
+    res.status(500).json({ error: "Token refresh failed" });
+  }
+};
+
+// ─── Logout: Revoke Refresh Token ───
+export const logoutUser = async (req, res) => {
+  try {
+    const refreshTokenStr = req.cookies?.refreshToken;
+    if (refreshTokenStr) {
+      await RefreshToken.deleteMany({ token: refreshTokenStr });
+    }
+    res.clearCookie("refreshToken", { httpOnly: true, secure: true, sameSite: "None", path: "/" });
+    res.json({ success: true, message: "Logged out successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

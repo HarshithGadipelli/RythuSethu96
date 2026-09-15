@@ -1,5 +1,20 @@
 {
-  "/[[...slug]]/page": "app/[[...slug]]/page.js",
   "/_global-error/page": "app/_global-error/page.js",
-  "/_not-found/page": "app/_not-found/page.js"
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/agent/biogas/page": "app/agent/biogas/page.js",
+  "/agent/cold-storage/page": "app/agent/cold-storage/page.js",
+  "/agent/page": "app/agent/page.js",
+  "/agent/soil-test/page": "app/agent/soil-test/page.js",
+  "/curated-boxes/page": "app/curated-boxes/page.js",
+  "/farm-tours/page": "app/farm-tours/page.js",
+  "/farmer/add-crop/page": "app/farmer/add-crop/page.js",
+  "/farmer/page": "app/farmer/page.js",
+  "/login/page": "app/login/page.js",
+  "/marketplace/page": "app/marketplace/page.js",
+  "/my-orders/page": "app/my-orders/page.js",
+  "/offline-tours/page": "app/offline-tours/page.js",
+  "/page": "app/page.js",
+  "/register/page": "app/register/page.js",
+  "/support/page": "app/support/page.js"
 }

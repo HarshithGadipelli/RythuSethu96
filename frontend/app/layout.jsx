@@ -2,19 +2,60 @@ import "../src/styles/global.css";
 import "../src/styles/layout.css";
 import Script from "next/script";
 import ErrorBoundary from "../src/components/ErrorBoundary";
+import { Providers } from "./providers";
 
 export const metadata = {
-  title: "RythuJanaSethu",
-  description: "Bridging farmers and customers with marketplace for fresh farm produce.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://rythujanasethu.vercel.app"),
+  title: "RythuJanaSethu — Fresh Farm Produce Marketplace",
+  description: "India's trusted farm based website marketplace. Buy fresh organic vegetables, fruits, grains directly from verified farmers. Voice-powered, multilingual, GPS-enabled.",
   manifest: "/manifest.json",
+  keywords: ["farm produce", "organic vegetables", "farmers marketplace", "RythuSethu", "fresh fruits", "Telangana farming", "direct from farm"],
+  authors: [{ name: "RythuJanaSethu Team" }],
+  creator: "RythuJanaSethu",
+  publisher: "RythuJanaSethu",
+  applicationName: "RythuJanaSethu",
   appleWebApp: {
     title: "RythuJanaSethu",
     statusBarStyle: "black-translucent",
-  }
+    capable: true,
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_IN",
+    url: "https://rythujanasethu.vercel.app",
+    siteName: "RythuJanaSethu",
+    title: "RythuJanaSethu",
+    description: "Buy fresh organic produce directly from verified farmers. Voice-powered, multilingual marketplace.",
+    images: [
+      {
+        url: "/icons/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "RythuJanaSethu Logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RythuJanaSethu — Fresh Farm Produce",
+    description: "Buy fresh organic produce directly from verified farmers.",
+    images: ["/icons/icon-512.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
 };
 
 export const viewport = {
   themeColor: "#1a4a2e",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({ children }) {
@@ -23,13 +64,15 @@ export default function RootLayout({ children }) {
       <head>
         <meta name="google" content="notranslate" />
         <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌾</text></svg>" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Poppins:wght@300;400;500;600;700;800&family=Quicksand:wght@400;600;700&display=swap"
           rel="stylesheet"
         />
-        <style dangerouslySetInnerHTML={{ __html: `
+        <style dangerouslySetInnerHTML={{
+          __html: `
           body { top: 0 !important; position: static !important; }
           .skiptranslate, .skiptranslate iframe, iframe.skiptranslate, .goog-te-banner-frame, iframe.goog-te-banner-frame {
             display: none !important; visibility: hidden !important; height: 0 !important; width: 0 !important; opacity: 0 !important; pointer-events: none !important;
@@ -41,7 +84,8 @@ export default function RootLayout({ children }) {
           #goog-gt-tt, .goog-te-balloon-frame, .goog-tooltip, .goog-tooltip:hover, .goog-text-highlight { display: none !important; box-shadow: none !important; border: none !important; background: transparent !important; }
           .VIpgJd-ZVi9od-aOH6Bb-sdDASd, .VIpgJd-ZVi9od-ORHb-OEVmcd, .VIpgJd-ZVi9od-vH1Gmf, .VIpgJd-y6EKle { display: none !important; visibility: hidden !important; }
         `}} />
-        <script dangerouslySetInnerHTML={{ __html: `
+        <script dangerouslySetInnerHTML={{
+          __html: `
           if (typeof Node === 'function' && Node.prototype) {
             const originalRemoveChild = Node.prototype.removeChild;
             Node.prototype.removeChild = function (child) {
@@ -77,18 +121,22 @@ export default function RootLayout({ children }) {
           src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"
           strategy="lazyOnload"
         />
-        <script dangerouslySetInnerHTML={{ __html: `
+        {/* Register Service Worker for PWA */}
+        <script dangerouslySetInnerHTML={{
+          __html: `
           if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-              for(let registration of registrations) {
-                registration.unregister();
-              }
+            window.addEventListener('load', function() {
+              navigator.serviceWorker.register('/sw.js')
+                .then(function(reg) { console.log('🟢 SW registered:', reg.scope); })
+                .catch(function(err) { console.warn('SW registration failed:', err); });
             });
           }
         `}} />
         <ErrorBoundary>
           <div id="root">
-            {children}
+            <Providers>
+              {children}
+            </Providers>
           </div>
         </ErrorBoundary>
       </body>

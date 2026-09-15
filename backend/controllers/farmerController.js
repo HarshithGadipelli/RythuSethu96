@@ -2,6 +2,7 @@ import fs from "fs";
 import Crop from "../models/Crop.js";
 import User from "../models/User.js";
 import Farmer from "../models/Farmer.js";
+import Notification from "../models/Notification.js";
 
 export const addCrop = async (req, res) => {
   try {
@@ -129,9 +130,67 @@ export const addCrop = async (req, res) => {
       }
     }
     
-    // Parse booleans from FormData
-    if (cropData.isPrebooking === 'true' || cropData.isPrebooking === true) cropData.isPrebooking = true;
-    else cropData.isPrebooking = false;
+    // Harmonize Pre-booking and Growing Stage flags
+    const isGrowingStage = cropData.growingStage && cropData.growingStage !== "harvested";
+    const wantsPrebooking = 
+      cropData.isPrebooking === "true" || cropData.isPrebooking === true ||
+      cropData.allowPrebooking === "true" || cropData.allowPrebooking === true ||
+      isGrowingStage;
+
+    cropData.isPrebooking = !!wantsPrebooking;
+    cropData.allowPrebooking = !!wantsPrebooking;
+
+    // Harmonize growingStage <-> lifecycleStage
+    const growingToLifecycleMap = {
+      nursery: "sowing",
+      vegetative: "vegetative",
+      flowering: "flowering",
+      fruiting: "flowering",
+      harvested: "ready"
+    };
+    const lifecycleToGrowingMap = {
+      sowing: "nursery",
+      vegetative: "vegetative",
+      flowering: "flowering",
+      harvesting: "fruiting",
+      post_harvest: "harvested",
+      ready: "harvested"
+    };
+
+    if (cropData.growingStage && (!cropData.lifecycleStage || cropData.lifecycleStage === "sowing")) {
+      cropData.lifecycleStage = growingToLifecycleMap[cropData.growingStage] || "sowing";
+    } else if (cropData.lifecycleStage && !cropData.growingStage) {
+      cropData.growingStage = lifecycleToGrowingMap[cropData.lifecycleStage] || "harvested";
+    }
+    if (!cropData.lifecycleStage) cropData.lifecycleStage = "sowing";
+    if (!cropData.growingStage) cropData.growingStage = lifecycleToGrowingMap[cropData.lifecycleStage] || "nursery";
+
+    // Initialize initial lifecycle update entry so stage-wise progress appears immediately
+    if (!cropData.lifecycleUpdates || cropData.lifecycleUpdates.length === 0) {
+      cropData.lifecycleUpdates = [{
+        stage: cropData.lifecycleStage,
+        notes: cropData.description ? cropData.description : `Initial stage: ${cropData.growingStage || cropData.lifecycleStage}`,
+        imageUrl: cropData.image || "",
+        timestamp: new Date()
+      }];
+    }
+
+    // Optional Admin Visit/Advisory Notification
+    if (cropData.notifyAdmin === "true" || cropData.notifyAdmin === true) {
+      try {
+        const admin = await User.findOne({ role: "admin" });
+        if (admin) {
+          await Notification.create({
+            user: admin._id,
+            title: "Farmer Advisory / Stage Visit Requested",
+            message: `Farmer requested an advisory visit for crop "${cropData.name}" currently in "${cropData.growingStage || cropData.lifecycleStage}" stage.`,
+            type: "system"
+          });
+        }
+      } catch (adminErr) {
+        console.error("Advisory notification error:", adminErr.message);
+      }
+    }
 
     if (cropData.isOrganic === 'true' || cropData.isOrganic === true) cropData.isOrganic = true;
     else cropData.isOrganic = false;

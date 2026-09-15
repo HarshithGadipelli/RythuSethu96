@@ -700,10 +700,12 @@ export default function FarmerDashboard({ initialTab }) {
   const [stageModal, setStageModal] = useState({
     isOpen: false,
     cropId: null,
+    crop: null,
     stage: "sowing",
     notes: "",
     imageFile: null,
-    imagePreview: ""
+    imagePreview: "",
+    activeTab: "timeline"
   });
   const [locLoading, setLocLoading] = useState(false);
   const [focusField, setFocusField] = useState("name");
@@ -1376,7 +1378,29 @@ export default function FarmerDashboard({ initialTab }) {
     });
   };
 
+  const isCropGrowing = (c) => {
+    if (!c) return false;
+    if (c.isPrebooking || c.allowPrebooking) return true;
+    if (c.growingStage && c.growingStage !== "harvested") return true;
+    if (c.lifecycleStage && !["ready", "post_harvest"].includes(c.lifecycleStage)) return true;
+    return false;
+  };
+
+  const openStageTimelineModal = (crop) => {
+    setStageModal({
+      isOpen: true,
+      cropId: crop._id,
+      crop: crop,
+      stage: crop.lifecycleStage || "sowing",
+      notes: "",
+      imageFile: null,
+      imagePreview: "",
+      activeTab: (crop.lifecycleUpdates && crop.lifecycleUpdates.length > 0) ? "timeline" : "update"
+    });
+  };
+
   const submitCropStage = async () => {
+    if (!stageModal.cropId) return;
     try {
       setMsg({ type: "", text: "Uploading stage updates..." });
       const formData = new FormData();
@@ -1390,10 +1414,34 @@ export default function FarmerDashboard({ initialTab }) {
         headers: { "Content-Type": "multipart/form-data" }
       });
       fetchCrops();
-      setStageModal({ isOpen: false, cropId: null, stage: "sowing", notes: "", imageFile: null, imagePreview: "" });
-      setMsg({ type: "success", text: `🌱 Stage Updated! AI Suggestion: ${res.data.aiSuggestion}` });
+
+      const updatedCrop = res.data.crop || {
+        ...stageModal.crop,
+        lifecycleStage: stageModal.stage,
+        lifecycleUpdates: [
+          ...(stageModal.crop?.lifecycleUpdates || []),
+          {
+            stage: stageModal.stage,
+            notes: stageModal.notes,
+            imageUrl: stageModal.imagePreview || "",
+            aiSuggestion: res.data.aiSuggestion || "",
+            timestamp: new Date()
+          }
+        ]
+      };
+
+      setStageModal(prev => ({
+        ...prev,
+        crop: updatedCrop,
+        stage: updatedCrop.lifecycleStage || prev.stage,
+        notes: "",
+        imageFile: null,
+        imagePreview: "",
+        activeTab: "timeline"
+      }));
+      setMsg({ type: "success", text: `🌱 Stage Updated to "${stageModal.stage}"! AI Tip: ${res.data.aiSuggestion || "Great job maintaining crop health!"}` });
     } catch (err) {
-      setMsg({ type: "error", text: "Failed to update stage" });
+      setMsg({ type: "error", text: "Failed to update stage. Please check network." });
     }
   };
 
@@ -1931,30 +1979,53 @@ export default function FarmerDashboard({ initialTab }) {
             <>
               {/* Growing (Pre-booking) Section */}
               <div className="glass-card mb-3" style={{ background: "rgba(234, 179, 8, 0.05)", border: "1px solid rgba(234, 179, 8, 0.2)" }}>
-                <h3 className="section-title" style={{ color: "var(--yellow-wheat)" }}>🌱 Growing Stage (Pre-booking)</h3>
-                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1rem" }}>Crops still growing. Customers can pre-book them. Once harvested, transfer them to Live Sale.</p>
-                {crops.filter(c => c.isPrebooking).length === 0 ? (
-                  <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>No crops in growing stage.</p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <h3 className="section-title" style={{ color: "var(--yellow-wheat)", margin: 0 }}>🌱 Growing Stage & Pre-Booking ({crops.filter(c => isCropGrowing(c)).length})</h3>
+                  <span style={{ fontSize: "0.8rem", background: "rgba(234, 179, 8, 0.15)", color: "#b45309", padding: "3px 10px", borderRadius: "100px", fontWeight: 700 }}>
+                    Real-time Growth Tracking
+                  </span>
+                </div>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1rem" }}>
+                  Crops currently in nursery, vegetative, flowering, or harvesting stages. Customers can pre-book them. Update your crop's stages and photo proofs regularly to build customer trust.
+                </p>
+                {crops.filter(c => isCropGrowing(c)).length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "1.5rem", color: "var(--text-muted)", background: "rgba(255,255,255,0.03)", borderRadius: "8px" }}>
+                    <p style={{ margin: 0, fontSize: "0.9rem" }}>No crops in growing stage currently.</p>
+                    <button className="btn-secondary mt-2" style={{ padding: "0.3rem 0.8rem", fontSize: "0.8rem" }} onClick={() => setTab("add")}>+ List Growing Crop</button>
+                  </div>
                 ) : (
                   <div style={{ overflowX: "auto" }}>
                     <table className="rs-table">
                       <thead>
-                        <tr><th>{t("crop")}</th><th>Available to Pre-book</th><th>{t("price")}</th><th>{t("category")}</th><th>Lifecycle</th><th>Actions</th></tr>
+                        <tr><th>{t("crop")}</th><th>Available to Pre-book</th><th>{t("price")}</th><th>{t("category")}</th><th>Growth Stage & Proofs</th><th>Actions</th></tr>
                       </thead>
                       <tbody>
-                        {crops.filter(c => c.isPrebooking).map(c => (
+                        {crops.filter(c => isCropGrowing(c)).map(c => (
                           <tr key={c._id}>
-                            <td><strong style={{ color: "var(--text-dark)" }}>{c.name}</strong></td>
+                            <td>
+                              <strong style={{ color: "var(--text-dark)" }}>{c.name}</strong>
+                              {c.expectedHarvestDate && (
+                                <div style={{ fontSize: "0.72rem", color: "#64748b" }}>
+                                  Harvest: {new Date(c.expectedHarvestDate).toLocaleDateString()}
+                                </div>
+                              )}
+                            </td>
                             <td><span className={`badge ${statusColor(c.quantity)}`}>{c.quantity} {c.unit}</span></td>
                             <td style={{ color:"var(--yellow-wheat)" }}>₹{c.price}/{c.unit}</td>
                             <td style={{ textTransform:"capitalize", color: "var(--text-muted)", fontSize:"0.85rem" }}>{c.category}</td>
                             <td>
                               <button 
                                 className="btn-secondary" 
-                                style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem", background: "rgba(0,0,0,0.5)", color: "var(--text-dark)", border: "1px solid var(--green-pale)", borderRadius: "4px" }}
-                                onClick={() => setStageModal({ isOpen: true, cropId: c._id, stage: c.lifecycleStage || "sowing", notes: "", imageFile: null, imagePreview: "" })}
+                                style={{ padding: "0.3rem 0.6rem", fontSize: "0.78rem", background: "#fef3c7", color: "#b45309", border: "1px solid #fde68a", borderRadius: "6px", display: "inline-flex", alignItems: "center", gap: "4px", fontWeight: 700 }}
+                                onClick={() => openStageTimelineModal(c)}
+                                title="Click to view stage history or upload new stage update"
                               >
-                                🔄 {c.lifecycleStage || "sowing"}
+                                🔄 <span style={{ textTransform: "capitalize" }}>{c.lifecycleStage || c.growingStage || "sowing"}</span>
+                                {c.lifecycleUpdates?.length > 0 && (
+                                  <span style={{ background: "#d97706", color: "white", padding: "1px 5px", borderRadius: "100px", fontSize: "0.68rem" }}>
+                                    {c.lifecycleUpdates.length}
+                                  </span>
+                                )}
                               </button>
                             </td>
                             <td style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
@@ -1978,23 +2049,43 @@ export default function FarmerDashboard({ initialTab }) {
 
               {/* Harvested (Live Sale) Section */}
               <div className="glass-card mb-3" style={{ background: "rgba(34, 197, 94, 0.05)", border: "1px solid rgba(34, 197, 94, 0.2)" }}>
-                <h3 className="section-title" style={{ color: "var(--green-primary)" }}>✅ Harvested (Live Sale)</h3>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <h3 className="section-title" style={{ color: "var(--green-primary)", margin: 0 }}>✅ Harvested (Live Sale) ({crops.filter(c => !isCropGrowing(c) && !c.isAdminStock).length})</h3>
+                  <span style={{ fontSize: "0.8rem", background: "rgba(34, 197, 94, 0.15)", color: "#166534", padding: "3px 10px", borderRadius: "100px", fontWeight: 700 }}>
+                    Instant Marketplace Buy
+                  </span>
+                </div>
                 <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1rem" }}>Crops ready for immediate purchase and delivery.</p>
-                {crops.filter(c => !c.isPrebooking).length === 0 ? (
+                {crops.filter(c => !isCropGrowing(c) && !c.isAdminStock).length === 0 ? (
                   <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>No crops currently on Live Sale.</p>
                 ) : (
                   <div style={{ overflowX: "auto" }}>
                     <table className="rs-table">
                       <thead>
-                        <tr><th>{t("crop")}</th><th>Available {t("quantity")}</th><th>{t("price")}</th><th>{t("category")}</th><th>Live Visibility</th><th>Actions</th></tr>
+                        <tr><th>{t("crop")}</th><th>Available {t("quantity")}</th><th>{t("price")}</th><th>{t("category")}</th><th>Stage & Proofs</th><th>Live Visibility</th><th>Actions</th></tr>
                       </thead>
                       <tbody>
-                        {crops.filter(c => !c.isPrebooking && !c.isAdminStock).map(c => (
+                        {crops.filter(c => !isCropGrowing(c) && !c.isAdminStock).map(c => (
                           <tr key={c._id}>
                             <td><strong style={{ color: "var(--text-dark)" }}>{c.name}</strong></td>
                             <td><span className={`badge ${statusColor(c.quantity)}`}>{c.quantity} {c.unit}</span></td>
                             <td style={{ color:"var(--yellow-wheat)" }}>₹{c.price}/{c.unit}</td>
                             <td style={{ textTransform:"capitalize", color: "var(--text-muted)", fontSize:"0.85rem" }}>{c.category}</td>
+                            <td>
+                              <button 
+                                className="btn-secondary" 
+                                style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem", background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0", borderRadius: "6px", display: "inline-flex", alignItems: "center", gap: "4px", fontWeight: 600 }}
+                                onClick={() => openStageTimelineModal(c)}
+                                title="Click to view stage history or post proof"
+                              >
+                                🌿 <span style={{ textTransform: "capitalize" }}>{c.lifecycleStage || "ready"}</span>
+                                {c.lifecycleUpdates?.length > 0 && (
+                                  <span style={{ background: "#16a34a", color: "white", padding: "1px 5px", borderRadius: "100px", fontSize: "0.68rem" }}>
+                                    {c.lifecycleUpdates.length}
+                                  </span>
+                                )}
+                              </button>
+                            </td>
                             <td>
                               <label className="switch" style={{ position:"relative", display:"inline-block", width:"40px", height:"20px" }}>
                                 <input type="checkbox" checked={c.isLive !== false} onChange={() => toggleLiveStatus(c._id, c.isLive !== false)} style={{ opacity:0, width:0, height:0 }} />
@@ -2735,62 +2826,224 @@ export default function FarmerDashboard({ initialTab }) {
           </div>
         </div>
       )}
-      {/* Crop Stage Update Modal */}
+      {/* Crop Stage Updates Timeline & Update Modal */}
       {stageModal.isOpen && (
         <div className="modal-overlay" onClick={() => setStageModal(m => ({ ...m, isOpen: false }))}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: "400px" }}>
-            <h3 style={{ marginBottom: "1rem", color: "var(--text-dark)" }}>Update Crop Stage</h3>
-            
-            <div className="form-group mb-3">
-              <label className="field-label">Current Stage</label>
-              <select 
-                className="rs-select"
-                value={stageModal.stage}
-                onChange={e => setStageModal(m => ({ ...m, stage: e.target.value }))}
-                style={{ width: "100%", padding: "0.5rem", borderRadius: "8px" }}
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: "560px", maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+              <div>
+                <h3 style={{ margin: 0, color: "var(--text-dark)", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  🌱 {stageModal.crop?.name || "Crop"} Growth Stages
+                </h3>
+                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                  Current Status: <strong style={{ color: "var(--green-deep)", textTransform: "capitalize" }}>{stageModal.crop?.lifecycleStage || stageModal.stage || "sowing"}</strong>
+                </span>
+              </div>
+              <button 
+                onClick={() => setStageModal(m => ({ ...m, isOpen: false }))}
+                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "1.2rem", padding: "0.2rem" }}
               >
-                <option value="sowing">Sowing</option>
-                <option value="vegetative">Vegetative</option>
-                <option value="flowering">Flowering</option>
-                <option value="harvesting">Harvesting</option>
-                <option value="ready">Ready to Sell</option>
-                <option value="post_harvest">Post-Harvest</option>
-              </select>
+                ✕
+              </button>
             </div>
 
-            <div className="form-group mb-3">
-              <label className="field-label">Stage Notes</label>
-              <textarea 
-                className="rs-input"
-                placeholder="E.g., Added natural compost today..."
-                value={stageModal.notes}
-                onChange={e => setStageModal(m => ({ ...m, notes: e.target.value }))}
-                rows={2}
-              />
-            </div>
-
-            <div className="form-group mb-4">
-              <label className="field-label">Photo Proof (Required by Admin)</label>
-              <input 
-                type="file" 
-                accept="image/*"
-                onChange={e => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    setStageModal(m => ({ ...m, imageFile: file, imagePreview: URL.createObjectURL(file) }));
-                  }
+            {/* Sub-Tabs: Timeline vs Post Update */}
+            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.2rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "0.5rem" }}>
+              <button
+                type="button"
+                onClick={() => setStageModal(m => ({ ...m, activeTab: "timeline" }))}
+                style={{
+                  flex: 1, padding: "0.5rem", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: 700, fontSize: "0.85rem",
+                  background: stageModal.activeTab === "timeline" ? "var(--green-pale)" : "transparent",
+                  color: stageModal.activeTab === "timeline" ? "var(--green-deep)" : "#64748b"
                 }}
-                style={{ display: "block", width: "100%", fontSize: "0.85rem" }}
-              />
-              {stageModal.imagePreview && (
-                <img src={stageModal.imagePreview} alt="Preview" style={{ width: "100%", height: "150px", objectFit: "cover", marginTop: "1rem", borderRadius: "8px" }} />
-              )}
+              >
+                📜 Stage History ({stageModal.crop?.lifecycleUpdates?.length || 0})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStageModal(m => ({ ...m, activeTab: "update" }))}
+                style={{
+                  flex: 1, padding: "0.5rem", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: 700, fontSize: "0.85rem",
+                  background: stageModal.activeTab === "update" ? "var(--green-pale)" : "transparent",
+                  color: stageModal.activeTab === "update" ? "var(--green-deep)" : "#64748b"
+                }}
+              >
+                ➕ Post Stage Update
+              </button>
             </div>
 
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setStageModal(m => ({ ...m, isOpen: false }))}>Cancel</button>
-              <button className="btn-primary" style={{ flex: 1 }} onClick={submitCropStage}>Update Stage</button>
-            </div>
+            {/* TAB 1: Stage Timeline */}
+            {stageModal.activeTab === "timeline" && (
+              <div>
+                {/* Visual Lifecycle Stepper */}
+                <div style={{ background: "#f8fafc", padding: "0.8rem", borderRadius: "10px", border: "1px solid #e2e8f0", marginBottom: "1.2rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
+                    {["sowing", "vegetative", "flowering", "harvesting", "ready"].map((st, idx) => {
+                      const STAGES_ORDER = ["sowing", "vegetative", "flowering", "harvesting", "ready"];
+                      const currentIdx = STAGES_ORDER.indexOf(stageModal.crop?.lifecycleStage || "sowing");
+                      const isCompleted = currentIdx >= idx;
+                      const isCurrent = (stageModal.crop?.lifecycleStage || "sowing") === st;
+
+                      return (
+                        <div key={st} style={{ display: "flex", flexDirection: "column", alignItems: "center", zIndex: 1 }}>
+                          <div style={{
+                            width: "26px", height: "26px", borderRadius: "50%",
+                            background: isCurrent ? "#16a34a" : isCompleted ? "#86efac" : "#e2e8f0",
+                            color: isCurrent ? "white" : isCompleted ? "#166534" : "#94a3b8",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: "0.75rem", fontWeight: 700,
+                            boxShadow: isCurrent ? "0 0 0 3px rgba(22, 163, 74, 0.2)" : "none"
+                          }}>
+                            {isCompleted ? "✓" : idx + 1}
+                          </div>
+                          <span style={{
+                            fontSize: "0.68rem", marginTop: "4px", textTransform: "capitalize",
+                            color: isCurrent ? "#16a34a" : "#64748b", fontWeight: isCurrent ? 700 : 500
+                          }}>
+                            {st}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Timeline Items List */}
+                {(!stageModal.crop?.lifecycleUpdates || stageModal.crop.lifecycleUpdates.length === 0) ? (
+                  <div style={{ textAlign: "center", padding: "2rem 1rem", background: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>
+                    <p style={{ margin: "0 0 1rem 0", color: "#64748b", fontSize: "0.9rem" }}>
+                      No stage updates recorded yet for this crop.
+                    </p>
+                    <button 
+                      className="btn-primary" 
+                      style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
+                      onClick={() => setStageModal(m => ({ ...m, activeTab: "update" }))}
+                    >
+                      🌱 Post First Stage Update
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    {[...stageModal.crop.lifecycleUpdates].reverse().map((up, i) => (
+                      <div key={i} style={{
+                        background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1rem",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column", gap: "0.5rem"
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{
+                            background: "#dcfce7", color: "#166534", padding: "3px 10px", borderRadius: "100px",
+                            fontSize: "0.78rem", fontWeight: 800, textTransform: "capitalize"
+                          }}>
+                            🌱 {up.stage?.replace("_", " ")}
+                          </span>
+                          <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
+                            {new Date(up.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+
+                        {up.notes && (
+                          <p style={{ margin: 0, fontSize: "0.86rem", color: "#334155", lineHeight: 1.5 }}>
+                            {up.notes}
+                          </p>
+                        )}
+
+                        {up.imageUrl && (
+                          <div style={{ marginTop: "0.3rem" }}>
+                            <img 
+                              src={up.imageUrl.startsWith("http") || up.imageUrl.startsWith("data:") ? up.imageUrl : `${BASE_URL}/${up.imageUrl.replace(/^\/+/, "")}`}
+                              alt="Stage Proof" 
+                              style={{ width: "100%", maxHeight: "200px", objectFit: "cover", borderRadius: "8px", border: "1px solid #e2e8f0" }} 
+                            />
+                          </div>
+                        )}
+
+                        {up.aiSuggestion && (
+                          <div style={{
+                            background: "linear-gradient(135deg, #f0fdf4, #eff6ff)",
+                            border: "1px solid #bbf7d0", borderRadius: "8px", padding: "0.6rem 0.8rem",
+                            fontSize: "0.78rem", color: "#15803d", display: "flex", alignItems: "center", gap: "6px"
+                          }}>
+                            <span>💡</span> <span><strong>AI Smart Tip:</strong> {up.aiSuggestion}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ marginTop: "1.2rem", display: "flex", justifyContent: "flex-end" }}>
+                  <button 
+                    className="btn-primary" 
+                    style={{ padding: "0.5rem 1.2rem", fontSize: "0.85rem" }}
+                    onClick={() => setStageModal(m => ({ ...m, activeTab: "update" }))}
+                  >
+                    + Add New Update
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: Post Stage Update Form */}
+            {stageModal.activeTab === "update" && (
+              <div>
+                <div className="form-group mb-3">
+                  <label className="field-label" style={{ fontWeight: 700, color: "#1e293b", marginBottom: "0.4rem", display: "block" }}>Select New Crop Stage</label>
+                  <select 
+                    className="rs-select"
+                    value={stageModal.stage}
+                    onChange={e => setStageModal(m => ({ ...m, stage: e.target.value }))}
+                    style={{ width: "100%", padding: "0.6rem", borderRadius: "8px", border: "1.5px solid #cbd5e1" }}
+                  >
+                    <option value="sowing">Sowing (విత్తనం నాటడం)</option>
+                    <option value="vegetative">Vegetative Growth (శాఖాభివృద్ధి)</option>
+                    <option value="flowering">Flowering (పూత దశ)</option>
+                    <option value="harvesting">Harvesting (కోత దశ)</option>
+                    <option value="ready">Ready to Sell (విక్రయానికి సిద్ధం)</option>
+                    <option value="post_harvest">Post-Harvest (కోత అనంతర నిర్వహణ)</option>
+                  </select>
+                </div>
+
+                <div className="form-group mb-3">
+                  <label className="field-label" style={{ fontWeight: 700, color: "#1e293b", marginBottom: "0.4rem", display: "block" }}>Stage Notes & Practices</label>
+                  <textarea 
+                    className="rs-input"
+                    placeholder="E.g., Applied organic neem spray, flowers blooming healthy, regular drip irrigation..."
+                    value={stageModal.notes}
+                    onChange={e => setStageModal(m => ({ ...m, notes: e.target.value }))}
+                    rows={3}
+                    style={{ width: "100%", padding: "0.6rem", borderRadius: "8px", border: "1.5px solid #cbd5e1" }}
+                  />
+                </div>
+
+                <div className="form-group mb-4">
+                  <label className="field-label" style={{ fontWeight: 700, color: "#1e293b", marginBottom: "0.4rem", display: "block" }}>Upload Photo Proof (Field Picture)</label>
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={e => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        setStageModal(m => ({ ...m, imageFile: file, imagePreview: URL.createObjectURL(file) }));
+                      }
+                    }}
+                    style={{ display: "block", width: "100%", fontSize: "0.85rem", padding: "0.4rem" }}
+                  />
+                  {stageModal.imagePreview && (
+                    <img src={stageModal.imagePreview} alt="Preview" style={{ width: "100%", maxHeight: "180px", objectFit: "cover", marginTop: "0.8rem", borderRadius: "8px", border: "1.5px solid #86efac" }} />
+                  )}
+                </div>
+
+                <div style={{ display: "flex", gap: "1rem" }}>
+                  <button className="btn-secondary" style={{ flex: 1, padding: "0.6rem" }} onClick={() => setStageModal(m => ({ ...m, activeTab: "timeline" }))}>
+                    Back to Timeline
+                  </button>
+                  <button className="btn-primary" style={{ flex: 1, padding: "0.6rem" }} onClick={submitCropStage}>
+                    🌱 Submit Update
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

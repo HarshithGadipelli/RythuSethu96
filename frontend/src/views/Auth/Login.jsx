@@ -1,5 +1,7 @@
 import { useState, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import Link from "next/link";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import API from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { useLang } from "../../context/LangContext";
@@ -18,7 +20,7 @@ const getSafeAvatarUrl = (url) => {
 export default function Login() {
   const { login } = useAuth();
   const { t, lang } = useLang();
-  const navigate = useNavigate();
+  const router = useRouter();
   const passwordInputRef = useRef(null);
   const { listening, activeField, interim, startListening, stopListening } = useVoiceInput(lang);
   const [form, setForm] = useState({ email: "", password: "" });
@@ -105,10 +107,10 @@ export default function Login() {
       login(res.data.user, res.data.token);
       
       const role = res.data.user.role;
-      if (role === "farmer") navigate("/farmer");
-      else if (role === "agent") navigate("/agent");
-      else if (role === "admin") navigate("/admin");
-      else navigate("/marketplace");
+      if (role === "farmer") router.push("/farmer");
+      else if (role === "agent") router.push("/agent");
+      else if (role === "admin") router.push("/admin");
+      else router.push("/marketplace");
     } catch (err) {
       setError(err.response?.data?.message || "Invalid email or password. Please try again.");
     } finally {
@@ -451,7 +453,7 @@ export default function Login() {
 
           <p className="text-center mt-4" style={{ fontSize: "0.88rem", color: "var(--text-muted)", marginBottom: 0 }}>
             New to Rythu Jana Sethu?{" "}
-            <Link to="/register" style={{ color: "var(--green-deep)", fontWeight: 600, textDecoration: "none" }}>
+            <Link href="/register" style={{ color: "var(--green-deep)", fontWeight: 600, textDecoration: "none" }}>
               {t("register") || "Register"} →
             </Link>
           </p>

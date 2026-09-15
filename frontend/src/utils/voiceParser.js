@@ -548,8 +548,17 @@ export function playTTS(text, lang = "en", options = {}) {
     };
     currentTTSResolver = safeResolve;
 
-    const timeoutMs = Math.max(8000, text.length * 85);
-    const safetyTimer = setTimeout(() => safeResolve(true), timeoutMs);
+    // Fast-fallback timeout: If backend TTS takes > 1400ms (e.g. Render waking up),
+    // immediately speak via browser's built-in Web Speech API so farmer never waits!
+    const fetchTimeoutId = setTimeout(async () => {
+      if (!resolved && thisRequestId === ttsRequestId) {
+        try { abortCtrl.abort(); } catch(e) {}
+        await fallbackSpeechSynthesis(text, gttsLang, options);
+        safeResolve(true);
+      }
+    }, 1400);
+
+    const safetyTimer = setTimeout(() => safeResolve(true), Math.max(6000, text.length * 75));
     
     try {
       const res = await fetch(`${BASE_URL}/api/ai/tts`, {
@@ -558,6 +567,8 @@ export function playTTS(text, lang = "en", options = {}) {
         body: JSON.stringify({ text, lang: gttsLang }),
         signal: abortCtrl.signal
       });
+
+      clearTimeout(fetchTimeoutId);
 
       // If a newer request was dispatched while fetching, discard this one
       if (thisRequestId !== ttsRequestId || abortCtrl.signal.aborted) {
