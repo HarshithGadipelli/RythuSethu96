@@ -33,7 +33,6 @@ import CustomerOfflineTours from "./CustomerOfflineTours";
 import RythuSethuAnimation from "../../components/RythuSethuAnimation";
 import FarmTourModal from "../../components/FarmTourModal";
 import SmartCuratedBasket from "../../components/SmartCuratedBasket";
-import CustomerOfflineTours from "./CustomerOfflineTours";
 import HealthyRecipeHub from "../../components/HealthyRecipeHub";
 
 // Fix leaflet default icons
