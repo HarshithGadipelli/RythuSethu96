@@ -2254,11 +2254,11 @@ img, video, canvas, svg, iframe {
   }
 
   /* Modals & Overlays */
-  .modal-overlay, [style*="position: fixed"], [style*="position: 'fixed'"] {
+  .modal-overlay {
     padding: 0.5rem !important;
     box-sizing: border-box !important;
   }
-  .modal-overlay > div, [style*="position: fixed"] > div {
+  .modal-overlay > .modal-content {
     max-width: 96vw !important;
     max-height: 90vh !important;
     overflow-y: auto !important;
@@ -2323,5 +2323,24 @@ img, video, canvas, svg, iframe {
     font-size: 1.4rem !important;
   }
 }
+
+/* ─── FLOATING CART BAR (Viewport Fixed & Mobile Safe) ─── */
+.rs-floating-cart-bar {
+  position: fixed !important;
+  bottom: 30px !important;
+  right: 30px !important;
+  z-index: 9990 !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+@media (max-width: 768px) {
+  .rs-floating-cart-bar {
+    bottom: 85px !important;
+    right: 16px !important;
+    padding: 10px 18px !important;
+    border-radius: 40px !important;
+  }
+}
+
 
 

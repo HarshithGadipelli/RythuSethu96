@@ -734,13 +734,19 @@ export default function Navbar() {
         )}
 
         <CartSidebar />
-        <LocationUpdateModal isOpen={showLocationModal} onClose={() => setShowLocationModal(false)} />
-        <TrustScoreModal
-          userId={user?._id}
-          userRole={user?.role}
-          isOpen={showTrustModal}
-          onClose={() => setShowTrustModal(false)}
-        />
+        {showLocationModal && createPortal(
+          <LocationUpdateModal isOpen={showLocationModal} onClose={() => setShowLocationModal(false)} />,
+          document.body
+        )}
+        {showTrustModal && createPortal(
+          <TrustScoreModal
+            userId={user?._id}
+            userRole={user?.role}
+            isOpen={showTrustModal}
+            onClose={() => setShowTrustModal(false)}
+          />,
+          document.body
+        )}
       </nav>
       <APMCTicker />
     </>

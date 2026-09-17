@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useCart } from "../context/CartContext";
 import { 
   X, Trash2, ShoppingCart, Plus, Minus, CreditCard, CheckCircle2, 
@@ -17,6 +18,11 @@ import OrderTracking from "./OrderTracking";
 import { getImgSrc } from "../views/Marketplace/Marketplace";
 
 export default function CartSidebar() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const { cart, isCartOpen, setIsCartOpen, removeFromCart, updateQuantity, getCartTotal, getCartCount, clearCart, addToCart } = useCart();
   const { t } = useLang();
   const { user } = useAuth();
@@ -326,22 +332,23 @@ export default function CartSidebar() {
     }
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       {/* ── STICKY FLOATING CART BAR (Always visible when items in cart) ── */}
       {cart.length > 0 && !isCartOpen && !placedOrderDetails && (
         <div 
           onClick={() => setIsCartOpen(true)}
           style={{
-            position: "fixed", bottom: "30px", right: "30px", zIndex: 9990,
             background: "linear-gradient(135deg, #16a34a, #15803d)", color: "white",
             borderRadius: "50px", padding: "14px 24px",
             display: "flex", alignItems: "center", gap: "12px",
             boxShadow: "0 12px 30px rgba(21,128,61,0.4)", cursor: "pointer",
-            border: "1px solid rgba(255,255,255,0.2)", transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+            border: "1px solid rgba(255,255,255,0.2)",
             backdropFilter: "blur(8px)"
           }}
-          className="hover-scale"
+          className="rs-floating-cart-bar hover-scale"
           onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)'}
           onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1) translateY(0)'}
           title="Click to view cart & checkout"
@@ -378,7 +385,7 @@ export default function CartSidebar() {
 
           <div style={{
             position: "fixed", top: 0, right: 0, width: "100%", maxWidth: "480px",
-            height: `${viewportHeight}px`,
+            height: "100dvh", maxHeight: "100%",
             background: "#ffffff", zIndex: 99999, 
             boxShadow: "-12px 0 40px rgba(0,0,0,0.15)",
             display: "flex", flexDirection: "column",
@@ -809,6 +816,7 @@ export default function CartSidebar() {
             {cart.length > 0 && (
               <div style={{
                 padding: "1rem 1.25rem",
+                paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
                 background: "#ffffff",
                 borderTop: "1px solid #e2e8f0",
                 boxShadow: "0 -8px 25px rgba(0,0,0,0.06)"
@@ -1194,6 +1202,7 @@ export default function CartSidebar() {
           onClose={() => setSelectedInvoiceOrder(null)}
         />
       )}
-    </>
+    </>,
+    document.body
   );
 }
