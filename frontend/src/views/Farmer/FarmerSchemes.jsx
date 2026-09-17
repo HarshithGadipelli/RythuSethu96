@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Landmark, CheckCircle2, ArrowRight, Building2, MapPin, Search } from "lucide-react";

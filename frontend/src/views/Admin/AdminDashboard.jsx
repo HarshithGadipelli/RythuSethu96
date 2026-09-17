@@ -1,3 +1,5 @@
+"use client";
+
 import { BASE_URL } from '../../api/api';
 import { getImgSrc } from '../Marketplace/Marketplace';
 import { useState, useEffect } from "react";
@@ -14,6 +16,13 @@ import AdminWasteManagement from "../../components/AdminWasteManagement";
 import AdminStockAdvisory from "../../components/AdminStockAdvisory";
 
 const TABS = ["overview","users","verification","orders","deliveries","profit","security","support", "tips", "demand", "stock", "mlops", "waste", "soiltests", "clearance", "broadcasts"];
+
+export const getAdminMediaUrl = (path) => {
+  if (!path) return "";
+  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) return path;
+  const clean = path.replace(/^\/+/, "");
+  return clean.startsWith("uploads/") ? `${BASE_URL}/${clean}` : `${BASE_URL}/uploads/${clean}`;
+};
 
 const AdminTips = ({ stats }) => {
   const tips = [
@@ -1480,7 +1489,7 @@ export default function AdminDashboard() {
                                 width: 36, height: 36, borderRadius: "50%", background: "var(--green-pale)", 
                                 color: "var(--green-deep)", display: "flex", alignItems: "center", justifyContent: "center", 
                                 fontWeight: "bold", fontSize: "0.9rem", flexShrink: 0,
-                                backgroundImage: u.avatar ? `url(${u.avatar.startsWith("http") || u.avatar.startsWith("data:") ? u.avatar : `${BASE_URL}/${u.avatar.replace(/^\/+/, "")}`})` : "none",
+                                backgroundImage: u.avatar ? `url(${getAdminMediaUrl(u.avatar)})` : "none",
                                 backgroundSize: "cover", backgroundPosition: "center"
                               }}>
                                 {!u.avatar && (u.name ? u.name.charAt(0).toUpperCase() : "U")}
@@ -3664,7 +3673,7 @@ export default function AdminDashboard() {
                 width: 60, height: 60, borderRadius: "50%", background: "var(--green-pale)",
                 color: "var(--green-deep)", display: "flex", alignItems: "center", justifyContent: "center",
                 fontWeight: "bold", fontSize: "1.5rem", flexShrink: 0,
-                backgroundImage: selectedUserModal.avatar ? `url(${selectedUserModal.avatar.startsWith("http") || selectedUserModal.avatar.startsWith("data:") ? selectedUserModal.avatar : `${BASE_URL}/${selectedUserModal.avatar.replace(/^\/+/, "")}`})` : "none",
+                backgroundImage: selectedUserModal.avatar ? `url(${getAdminMediaUrl(selectedUserModal.avatar)})` : "none",
                 backgroundSize: "cover", backgroundPosition: "center"
               }}>
                 {!selectedUserModal.avatar && (selectedUserModal.name ? selectedUserModal.name.charAt(0).toUpperCase() : "U")}
@@ -3770,13 +3779,14 @@ export default function AdminDashboard() {
                   { label: "Farm Photo", path: selectedUserModal.farmerProfile?.farmPhoto },
                   { label: "Product Photo", path: selectedUserModal.farmerProfile?.productPhoto }
                 ].filter(p => p.path).map((photo, i) => {
-                  const url = photo.path.startsWith("http") || photo.path.startsWith("data:") ? photo.path : `${BASE_URL}/${photo.path.replace(/^\/+/, "")}`;
+                  const url = getAdminMediaUrl(photo.path);
                   return (
                     <div key={i} style={{ textAlign: "center" }}>
                       <a href={url} target="_blank" rel="noreferrer" title="Click to view full image">
                         <img 
                           src={url} 
                           alt={photo.label} 
+                          onError={(e) => { e.currentTarget.src = "/logo.png"; }}
                           style={{ width: 100, height: 100, objectFit: "cover", borderRadius: "10px", border: "2px solid #cbd5e1", display: "block" }} 
                         />
                       </a>

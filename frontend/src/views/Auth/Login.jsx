@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
@@ -10,10 +12,15 @@ import { playTTS, stopTTS, VOICE_PROMPTS } from "../../utils/voiceParser";
 const BASE_URL = API.defaults?.baseURL || "http://localhost:5000";
 const getSafeAvatarUrl = (url) => {
   if (!url) return null;
-  if (url.includes("localhost:5000") || url.includes("127.0.0.1:5000")) {
-    return url.replace(/http:\/\/(localhost|127\.0\.0\.1):5000/, BASE_URL);
+  if (url.startsWith("data:")) return url;
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    if (url.includes("localhost:5000") || url.includes("127.0.0.1:5000")) {
+      return url.replace(/http:\/\/(localhost|127\.0\.0\.1):5000/, BASE_URL);
+    }
+    return url;
   }
-  return url;
+  const clean = url.replace(/^\/+/, "");
+  return clean.startsWith("uploads/") ? `${BASE_URL}/${clean}` : `${BASE_URL}/uploads/${clean}`;
 };
 
 export default function Login() {
@@ -34,25 +41,28 @@ export default function Login() {
     { name: "Ram Sharma", email: "ram@test.com", role: "farmer", password: "password123", title: "Fruit Orchards" },
     { name: "Anand Verma", email: "customer@test.com", role: "customer", password: "password123", title: "Verified Consumer" },
     { name: "Raju Delivery", email: "agent@test.com", role: "agent", password: "password123", title: "APMC Delivery Fleet" },
-    { name: "APMC Administrator", email: "admin@test.com", role: "admin", password: "password123", title: "APMC Central Control" }
+    { name: "APMC Administrator", email: "admin@test.com", role: "admin", password: "password123", title: "APMC Central Control" },
+    { name: "Rajesh Kumar (Raj)", email: "raj@test.com", role: "admin", password: "password123", title: "APMC Field Officer" }
   ];
 
   const [savedAccounts, setSavedAccounts] = useState(() => {
     try {
       const raw = localStorage.getItem("rs_saved_accounts");
       const list = raw ? JSON.parse(raw) : [];
-      if (!list || list.length === 0) return DEFAULT_PROFILES;
+      if (!list || list.length < 6) return DEFAULT_PROFILES;
       // Auto-sanitize existing profiles so legacy records never fail
       return list.map(acc => {
         let email = acc.email;
         if (!email || email === "undefined") {
           const lowerName = (acc.name || "").toLowerCase();
-          email = lowerName.includes("ram") ? "ram@test.com" : lowerName.includes("raj") ? "admin@test.com" : "farmer@test.com";
+          email = lowerName.includes("ram") ? "ram@test.com" : lowerName.includes("raj") ? "raj@test.com" : lowerName.includes("anand") ? "customer@test.com" : lowerName.includes("raju") ? "agent@test.com" : lowerName.includes("admin") ? "admin@test.com" : "farmer@test.com";
         }
         let role = acc.role || "customer";
-        if (email.includes("admin") || acc.name?.toLowerCase().includes("raj")) role = "admin";
+        if (email.includes("admin") || email.includes("raj") || acc.name?.toLowerCase().includes("raj")) role = "admin";
+        else if (email.includes("agent") || acc.name?.toLowerCase().includes("raju")) role = "agent";
+        else if (email.includes("farmer") || email.includes("ram")) role = "farmer";
         return {
-          name: acc.name || (email.includes("farmer") || email.includes("ram") ? "Farmer" : email.includes("admin") ? "Admin" : "User"),
+          name: acc.name || (role === "farmer" ? "Farmer" : role === "admin" ? "Admin" : role === "agent" ? "Agent" : "User"),
           email,
           role,
           avatar: acc.avatar || "",
@@ -74,7 +84,7 @@ export default function Login() {
       role: user.role || "customer", 
       avatar: user.avatar || user.profilePic || "" 
     });
-    const limited = accs.slice(0, 4); // Keep last 4
+    const limited = accs.slice(0, 6); // Keep 6 profiles
     setSavedAccounts(limited);
     localStorage.setItem("rs_saved_accounts", JSON.stringify(limited));
   };
@@ -90,7 +100,7 @@ export default function Login() {
     e.preventDefault();
     setSavedAccounts(DEFAULT_PROFILES);
     localStorage.setItem("rs_saved_accounts", JSON.stringify(DEFAULT_PROFILES));
-    setInfoMsg("Saved profiles refreshed to verified operational accounts.");
+    setInfoMsg("Saved profiles refreshed to all 6 verified operational accounts.");
   };
 
   const performLogin = async (email, password) => {

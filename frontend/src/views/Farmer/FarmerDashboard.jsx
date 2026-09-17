@@ -1,3 +1,5 @@
+"use client";
+
 import { BASE_URL } from '../../api/api';
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -677,10 +679,21 @@ export default function FarmerDashboard({ initialTab }) {
 
   const getInitialTab = () => {
     if (initialTab) return initialTab;
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get("tab");
-    if (tabParam) return tabParam;
-    if (window.location.pathname.includes("add-crop")) return "add";
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam) return tabParam;
+      const path = window.location.pathname;
+      if (path.includes("add-crop")) return "add";
+      if (path.includes("financial-ledger") || path.includes("ledger")) return "ledger";
+      if (path.includes("crop-history")) return "cropHistory";
+      if (path.includes("groups")) return "groups";
+      if (path.includes("leaderboard")) return "leaderboard";
+      if (path.includes("profit-calculator")) return "profit";
+      if (path.includes("schemes")) return "schemes";
+      if (path.includes("tours")) return "tours";
+      if (path.includes("analytics")) return "profit";
+    }
     return "crops";
   };
   const [tab, setTab] = useState(getInitialTab);

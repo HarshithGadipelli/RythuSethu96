@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { Wallet, TrendingUp, Package, Clock, MapPin, CheckCircle, Calendar, ShieldCheck, AlertCircle, ArrowUpRight, DollarSign } from "lucide-react";
 import { useLang } from "../../context/LangContext";
@@ -10,10 +12,21 @@ export default function AgentFinancialLedger({ deliveries = [], onOpenRemit, onO
   const [settlementData, setSettlementData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [effectiveDeliveries, setEffectiveDeliveries] = useState(deliveries || []);
 
   useEffect(() => {
     fetchSettlements();
   }, [user]);
+
+  useEffect(() => {
+    if (deliveries && deliveries.length > 0) {
+      setEffectiveDeliveries(deliveries);
+    } else if (user?._id) {
+      API.get(`/delivery/my-deliveries`)
+        .then(res => setEffectiveDeliveries(res.data || []))
+        .catch(() => {});
+    }
+  }, [deliveries, user]);
 
   const fetchSettlements = async () => {
     if (!user?._id) return;
@@ -198,7 +211,7 @@ export default function AgentFinancialLedger({ deliveries = [], onOpenRemit, onO
             </div>
           </div>
           <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "#166534" }}>
-            {deliveries.filter(d => d.status === "delivered").length}
+            {effectiveDeliveries.filter(d => d.status === "delivered").length}
           </div>
           <div style={{ fontSize: "0.75rem", color: "#16a34a", marginTop: "4px", fontWeight: 600 }}>
             100% Verified OTP Deliveries

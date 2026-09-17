@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 
 import { useLang } from "../../context/LangContext";
@@ -50,7 +52,7 @@ export default function LandingPage() {
   return (
     <div onMouseMove={handleMouseMove}>
       {/* ─── HERO ─── */}
-      <section className="landing-hero" style={{ 
+      <section className="landing-hero" style={{
         backgroundImage: `linear-gradient(rgba(250, 249, 246, 0.4), rgba(250, 249, 246, 0.75)), url(/indian_farm_landscape.png)`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
@@ -59,15 +61,15 @@ export default function LandingPage() {
         <div className="hero-emblem" style={{ width: "120px", height: "120px", borderRadius: "50%", overflow: "hidden", marginBottom: "1.5rem", display: "inline-block", filter: "drop-shadow(0 10px 20px rgba(0,0,0,0.15))" }}>
           <img src="/indian_farmer_emblem.png" alt="Indian Farmer Emblem" style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.2)" }} />
         </div>
-        <motion.h1 
+        <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="page-title notranslate" 
+          className="page-title notranslate"
           translate="no"
-          style={{ 
-            background: "linear-gradient(135deg, var(--green-deep) 0%, var(--green-light) 100%)", 
-            WebkitBackgroundClip: "text", 
+          style={{
+            background: "linear-gradient(135deg, var(--green-deep) 0%, var(--green-light) 100%)",
+            WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.1))",
             fontSize: "clamp(3rem, 6vw, 5.5rem)"
@@ -75,20 +77,20 @@ export default function LandingPage() {
         >
           {t("appName")}
         </motion.h1>
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="hero-tagline" 
-          style={{ 
-            color: "var(--text-dark)", 
-            background: "rgba(255,255,255,0.85)", 
-            padding: "0.75rem 1.75rem", 
-            borderRadius: "100px", 
-            backdropFilter: "blur(15px)", 
-            fontWeight: 700, 
-            maxWidth: "650px", 
-            margin: "1rem auto 0", 
+          className="hero-tagline"
+          style={{
+            color: "var(--text-dark)",
+            background: "rgba(255,255,255,0.85)",
+            padding: "0.75rem 1.75rem",
+            borderRadius: "100px",
+            backdropFilter: "blur(15px)",
+            fontWeight: 700,
+            maxWidth: "650px",
+            margin: "1rem auto 0",
             fontSize: "1.2rem",
             boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
             border: "1px solid rgba(255,255,255,0.6)"
@@ -98,36 +100,34 @@ export default function LandingPage() {
         </motion.p>
 
 
-
         {/* Photorealistic Ramsethu Storytelling Animation */}
-        {/* Photorealistic Ramsethu Storytelling Animation */}
-        <div style={{ 
-          width: "100%", 
-          maxWidth: "1400px", 
-          margin: "3rem auto 4rem", 
-          position: "relative", 
+        <div style={{
+          width: "100%",
+          maxWidth: "1400px",
+          margin: "3rem auto 4rem",
+          position: "relative",
           aspectRatio: "1 / 1", /* EXACT mathematical match for the 1024x1024 image */
           maxHeight: "80vh", /* Prevents vertical overflow */
-          borderRadius: "24px", 
-          overflow: "hidden", 
-          boxShadow: "0 30px 60px rgba(0,0,0,0.3)", 
+          borderRadius: "24px",
+          overflow: "hidden",
+          boxShadow: "0 30px 60px rgba(0,0,0,0.3)",
           backgroundImage: "url('/ramsethu_two_lands.png')",
           backgroundSize: "100% 100%", /* Ensures exact coordinate mapping with zero cropping */
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
           imageRendering: "high-quality",
-          border: "2px solid rgba(255,255,255,0.4)" 
+          border: "2px solid rgba(255,255,255,0.4)"
         }}>
           {/* Dark Overlay for better contrast */}
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.6) 100%)" }} />
 
           {/* Admin Hanuman Animation (Flies down, builds bridge, flies back) */}
-          <motion.div 
-            animate={{ 
-              bottom: ["34%", "30%", "35%", "36%", "37%", "38%", "39%", "40%", "42%", "43%", "45%", "46%", "47%", "48%", "50%", "51%", "51%", "52%", "53%", "51%", "54%", "55%", "56%", "57%", "58%", "59%", "60%", "64%", "34%"], 
-              left:   ["51%", "50%", "52%", "53%", "54%", "55%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "55%", "54%", "53%", "51%", "50%", "52%", "49%", "48%", "47%", "46%", "46%", "45%", "44%", "43%", "51%"],
-              scale:  [1.2, 1.0, 0.97, 0.95, 0.92, 0.89, 0.87, 0.84, 0.81, 0.78, 0.76, 0.73, 0.7, 0.68, 0.65, 0.62, 0.6, 0.57, 0.54, 0.52, 0.49, 0.46, 0.43, 0.41, 0.38, 0.35, 0.33, 0.3, 1.2],
-              opacity:[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]
+          <motion.div
+            animate={{
+              bottom: ["34%", "30%", "35%", "36%", "37%", "38%", "39%", "40%", "42%", "43%", "45%", "46%", "47%", "48%", "50%", "51%", "51%", "52%", "53%", "51%", "54%", "55%", "56%", "57%", "58%", "59%", "60%", "64%", "34%"],
+              left: ["51%", "50%", "52%", "53%", "54%", "55%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "55%", "54%", "53%", "51%", "50%", "52%", "49%", "48%", "47%", "46%", "46%", "45%", "44%", "43%", "51%"],
+              scale: [1.2, 1.0, 0.97, 0.95, 0.92, 0.89, 0.87, 0.84, 0.81, 0.78, 0.76, 0.73, 0.7, 0.68, 0.65, 0.62, 0.6, 0.57, 0.54, 0.52, 0.49, 0.46, 0.43, 0.41, 0.38, 0.35, 0.33, 0.3, 1.2],
+              opacity: [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]
             }}
             transition={{ duration: 20, repeat: Infinity, times: [0, 0.05, 0.112, 0.123, 0.135, 0.146, 0.158, 0.169, 0.181, 0.192, 0.204, 0.215, 0.227, 0.238, 0.25, 0.262, 0.273, 0.285, 0.296, 0.308, 0.319, 0.331, 0.342, 0.354, 0.365, 0.377, 0.388, 0.4, 0.45, 1], ease: "easeInOut" }}
             style={{ position: "absolute", width: "90px", zIndex: 5, filter: "drop-shadow(0 0 35px rgba(250, 204, 21, 0.9))", transform: "translateX(-50%)" }}
@@ -157,12 +157,12 @@ export default function LandingPage() {
               strokeWidth="0.8"
               strokeLinejoin="round"
               strokeLinecap="round"
-              animate={{ 
+              animate={{
                 pathLength: [0, 0, 1, 1, 0],
                 opacity: [0, 1, 1, 1, 0]
               }}
               transition={{
-                duration: 20, 
+                duration: 20,
                 repeat: Infinity,
                 ease: "linear",
                 times: [0, 0.1, 0.38, 0.9, 1]
@@ -170,11 +170,11 @@ export default function LandingPage() {
               style={{ filter: "drop-shadow(0 0 8px #facc15)" }}
             />
           </svg>
-          
-                              {/* Realistic Scattered Rocks placed by Admin */}
+
+          {/* Realistic Scattered Rocks placed by Admin */}
           <motion.div
             key="rock-0"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.37, 0.92, 0.92, 0],
               rotate: 2
@@ -200,10 +200,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(-2deg)",
@@ -217,7 +217,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-1"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.71, 1.14, 1.14, 0],
               rotate: -1
@@ -243,10 +243,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(-6deg)",
@@ -260,7 +260,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-2"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.53, 1.02, 1.02, 0],
               rotate: 9
@@ -286,10 +286,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(0deg)",
@@ -303,7 +303,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-3"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.54, 1.03, 1.03, 0],
               rotate: 7
@@ -329,10 +329,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(4deg)",
@@ -346,7 +346,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-4"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.25, 0.83, 0.83, 0],
               rotate: 16
@@ -372,10 +372,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(-11deg)",
@@ -389,7 +389,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-5"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.58, 1.05, 1.05, 0],
               rotate: 2
@@ -415,10 +415,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(-13deg)",
@@ -432,7 +432,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-6"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.47, 0.98, 0.98, 0],
               rotate: -4
@@ -458,10 +458,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(14deg)",
@@ -475,7 +475,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-7"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.19, 0.79, 0.79, 0],
               rotate: 15
@@ -501,10 +501,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(8deg)",
@@ -518,7 +518,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-8"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.37, 0.92, 0.92, 0],
               rotate: 15
@@ -544,10 +544,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(-15deg)",
@@ -561,7 +561,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-9"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.12, 0.75, 0.75, 0],
               rotate: -3
@@ -587,10 +587,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(-12deg)",
@@ -604,7 +604,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-10"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.19, 0.80, 0.80, 0],
               rotate: -15
@@ -630,10 +630,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(8deg)",
@@ -647,7 +647,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-11"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.19, 0.79, 0.79, 0],
               rotate: -3
@@ -673,10 +673,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(11deg)",
@@ -690,7 +690,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-12"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.18, 0.79, 0.79, 0],
               rotate: 12
@@ -716,10 +716,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(6deg)",
@@ -733,7 +733,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-13"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.28, 0.85, 0.85, 0],
               rotate: 8
@@ -759,10 +759,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(3deg)",
@@ -776,7 +776,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-14"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.24, 0.83, 0.83, 0],
               rotate: -8
@@ -802,10 +802,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(-13deg)",
@@ -819,7 +819,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-15"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.24, 0.82, 0.82, 0],
               rotate: -1
@@ -845,10 +845,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(4deg)",
@@ -862,7 +862,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-16"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.13, 0.75, 0.75, 0],
               rotate: 20
@@ -888,10 +888,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(0deg)",
@@ -905,7 +905,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-17"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 0.96, 0.64, 0.64, 0],
               rotate: -18
@@ -931,10 +931,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(-2deg)",
@@ -948,7 +948,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-18"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 0.91, 0.61, 0.61, 0],
               rotate: 18
@@ -974,10 +974,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(3deg)",
@@ -991,7 +991,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-19"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 1.05, 0.70, 0.70, 0],
               rotate: -3
@@ -1017,10 +1017,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(3deg)",
@@ -1034,7 +1034,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-20"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 0.82, 0.55, 0.55, 0],
               rotate: -15
@@ -1060,10 +1060,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(-11deg)",
@@ -1077,7 +1077,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-21"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 0.89, 0.59, 0.59, 0],
               rotate: 16
@@ -1103,10 +1103,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(-7deg)",
@@ -1120,7 +1120,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-22"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 0.81, 0.54, 0.54, 0],
               rotate: -9
@@ -1146,10 +1146,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(-7deg)",
@@ -1163,7 +1163,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-23"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 0.79, 0.53, 0.53, 0],
               rotate: 11
@@ -1189,10 +1189,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(-8deg)",
@@ -1206,7 +1206,7 @@ export default function LandingPage() {
           </motion.div>
           <motion.div
             key="rock-24"
-            animate={{ 
+            animate={{
               opacity: [0, 0, 1, 1, 0, 0],
               scale: [0, 0, 0.88, 0.58, 0.58, 0],
               rotate: -8
@@ -1232,10 +1232,10 @@ export default function LandingPage() {
             }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3, background: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)" }}></div>
-            <span style={{ 
-              color: "#fef08a", 
-              fontSize: "5px", 
-              fontWeight: 900, 
+            <span style={{
+              color: "#fef08a",
+              fontSize: "5px",
+              fontWeight: 900,
               fontFamily: "sans-serif",
               textShadow: "0 0 5px #facc15, 0 0 10px #ca8a04, inset 0 0 2px #000",
               transform: "rotate(-15deg)",
@@ -1247,7 +1247,7 @@ export default function LandingPage() {
               RYTHU
             </span>
           </motion.div>
-{/* Bottom Bank: Farmer (Positioned at Left: 53%, Bottom: 34%) */}
+          {/* Bottom Bank: Farmer (Positioned at Left: 53%, Bottom: 34%) */}
           <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", bottom: "30%", width: "70px", zIndex: 4 }}>
             <div style={{ width: "70px", height: "70px", borderRadius: "50%", overflow: "hidden", border: "2px solid #4ade80", boxShadow: "0 5px 20px rgba(0,0,0,0.6), 0 0 25px rgba(74, 222, 128, 0.4)" }}>
               <img src="/real_farmer_rs.png" alt="Indian Farmer" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -1258,7 +1258,7 @@ export default function LandingPage() {
           </div>
 
           {/* Top Bank: Customer (Positioned exactly at Left: 52%, Bottom: 52%) */}
-          <motion.div 
+          <motion.div
             animate={{
               filter: [
                 "drop-shadow(0 0 0px rgba(250, 204, 21, 0))",
@@ -1278,20 +1278,20 @@ export default function LandingPage() {
             </div>
           </motion.div>
 
-                    {/* Dynamic Multiple Agents: Wait for Admin to build bridge, then deliver packages in a stream */}
+          {/* Dynamic Multiple Agents: Wait for Admin to build bridge, then deliver packages in a stream */}
 
           {/* Delivery Agent 1 */}
           <motion.div
-            animate={{ 
-              bottom: ["30%", "30%", "30%", "35%", "36%", "37%", "38%", "39%", "40%", "42%", "43%", "45%", "46%", "47%", "48%", "50%", "51%", "51%", "52%", "53%", "51%", "54%", "55%", "56%", "57%", "58%", "59%", "60%", "64%", "64%", "64%"], 
-              left:   ["50%", "50%", "50%", "52%", "53%", "54%", "55%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "55%", "54%", "53%", "51%", "50%", "52%", "49%", "48%", "47%", "46%", "46%", "45%", "44%", "43%", "43%", "43%"],
-              scale:  [0, 0, 1.0, 0.97, 0.94, 0.91, 0.88, 0.85, 0.82, 0.78, 0.75, 0.72, 0.69, 0.66, 0.63, 0.6, 0.57, 0.54, 0.51, 0.48, 0.45, 0.42, 0.38, 0.35, 0.32, 0.29, 0.26, 0.23, 0.2, 0, 0], 
-              opacity:[0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]
+            animate={{
+              bottom: ["30%", "30%", "30%", "35%", "36%", "37%", "38%", "39%", "40%", "42%", "43%", "45%", "46%", "47%", "48%", "50%", "51%", "51%", "52%", "53%", "51%", "54%", "55%", "56%", "57%", "58%", "59%", "60%", "64%", "64%", "64%"],
+              left: ["50%", "50%", "50%", "52%", "53%", "54%", "55%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "55%", "54%", "53%", "51%", "50%", "52%", "49%", "48%", "47%", "46%", "46%", "45%", "44%", "43%", "43%", "43%"],
+              scale: [0, 0, 1.0, 0.97, 0.94, 0.91, 0.88, 0.85, 0.82, 0.78, 0.75, 0.72, 0.69, 0.66, 0.63, 0.6, 0.57, 0.54, 0.51, 0.48, 0.45, 0.42, 0.38, 0.35, 0.32, 0.29, 0.26, 0.23, 0.2, 0, 0],
+              opacity: [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]
             }}
-            transition={{ 
-              duration: 20, 
-              repeat: Infinity, 
-              ease: "easeOut", 
+            transition={{
+              duration: 20,
+              repeat: Infinity,
+              ease: "easeOut",
               times: [0, 0.49, 0.5, 0.51, 0.519, 0.529, 0.538, 0.548, 0.558, 0.567, 0.577, 0.587, 0.596, 0.606, 0.615, 0.625, 0.635, 0.644, 0.654, 0.663, 0.673, 0.683, 0.692, 0.702, 0.712, 0.721, 0.731, 0.74, 0.75, 0.76, 1]
             }}
             style={{ position: "absolute", marginLeft: "-30px", width: "60px", zIndex: 4, display: "flex", flexDirection: "column", alignItems: "center", transformOrigin: "bottom center" }}
@@ -1306,16 +1306,16 @@ export default function LandingPage() {
 
           {/* Delivery Agent 2 */}
           <motion.div
-            animate={{ 
-              bottom: ["30%", "30%", "30%", "35%", "36%", "37%", "38%", "39%", "40%", "42%", "43%", "45%", "46%", "47%", "48%", "50%", "51%", "51%", "52%", "53%", "51%", "54%", "55%", "56%", "57%", "58%", "59%", "60%", "64%", "64%", "64%"], 
-              left:   ["50%", "50%", "50%", "52%", "53%", "54%", "55%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "55%", "54%", "53%", "51%", "50%", "52%", "49%", "48%", "47%", "46%", "46%", "45%", "44%", "43%", "43%", "43%"],
-              scale:  [0, 0, 1.0, 0.97, 0.94, 0.91, 0.88, 0.85, 0.82, 0.78, 0.75, 0.72, 0.69, 0.66, 0.63, 0.6, 0.57, 0.54, 0.51, 0.48, 0.45, 0.42, 0.38, 0.35, 0.32, 0.29, 0.26, 0.23, 0.2, 0, 0], 
-              opacity:[0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]
+            animate={{
+              bottom: ["30%", "30%", "30%", "35%", "36%", "37%", "38%", "39%", "40%", "42%", "43%", "45%", "46%", "47%", "48%", "50%", "51%", "51%", "52%", "53%", "51%", "54%", "55%", "56%", "57%", "58%", "59%", "60%", "64%", "64%", "64%"],
+              left: ["50%", "50%", "50%", "52%", "53%", "54%", "55%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "55%", "54%", "53%", "51%", "50%", "52%", "49%", "48%", "47%", "46%", "46%", "45%", "44%", "43%", "43%", "43%"],
+              scale: [0, 0, 1.0, 0.97, 0.94, 0.91, 0.88, 0.85, 0.82, 0.78, 0.75, 0.72, 0.69, 0.66, 0.63, 0.6, 0.57, 0.54, 0.51, 0.48, 0.45, 0.42, 0.38, 0.35, 0.32, 0.29, 0.26, 0.23, 0.2, 0, 0],
+              opacity: [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]
             }}
-            transition={{ 
-              duration: 20, 
-              repeat: Infinity, 
-              ease: "easeOut", 
+            transition={{
+              duration: 20,
+              repeat: Infinity,
+              ease: "easeOut",
               times: [0, 0.57, 0.58, 0.59, 0.599, 0.609, 0.618, 0.628, 0.638, 0.647, 0.657, 0.667, 0.676, 0.686, 0.695, 0.705, 0.715, 0.724, 0.734, 0.743, 0.753, 0.763, 0.772, 0.782, 0.792, 0.801, 0.811, 0.82, 0.83, 0.84, 1]
             }}
             style={{ position: "absolute", marginLeft: "-30px", width: "60px", zIndex: 3, display: "flex", flexDirection: "column", alignItems: "center", transformOrigin: "bottom center" }}
@@ -1330,16 +1330,16 @@ export default function LandingPage() {
 
           {/* Delivery Agent 3 */}
           <motion.div
-            animate={{ 
-              bottom: ["30%", "30%", "30%", "35%", "36%", "37%", "38%", "39%", "40%", "42%", "43%", "45%", "46%", "47%", "48%", "50%", "51%", "51%", "52%", "53%", "51%", "54%", "55%", "56%", "57%", "58%", "59%", "60%", "64%", "64%", "64%"], 
-              left:   ["50%", "50%", "50%", "52%", "53%", "54%", "55%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "55%", "54%", "53%", "51%", "50%", "52%", "49%", "48%", "47%", "46%", "46%", "45%", "44%", "43%", "43%", "43%"],
-              scale:  [0, 0, 1.0, 0.97, 0.94, 0.91, 0.88, 0.85, 0.82, 0.78, 0.75, 0.72, 0.69, 0.66, 0.63, 0.6, 0.57, 0.54, 0.51, 0.48, 0.45, 0.42, 0.38, 0.35, 0.32, 0.29, 0.26, 0.23, 0.2, 0, 0], 
-              opacity:[0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]
+            animate={{
+              bottom: ["30%", "30%", "30%", "35%", "36%", "37%", "38%", "39%", "40%", "42%", "43%", "45%", "46%", "47%", "48%", "50%", "51%", "51%", "52%", "53%", "51%", "54%", "55%", "56%", "57%", "58%", "59%", "60%", "64%", "64%", "64%"],
+              left: ["50%", "50%", "50%", "52%", "53%", "54%", "55%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "56%", "55%", "54%", "53%", "51%", "50%", "52%", "49%", "48%", "47%", "46%", "46%", "45%", "44%", "43%", "43%", "43%"],
+              scale: [0, 0, 1.0, 0.97, 0.94, 0.91, 0.88, 0.85, 0.82, 0.78, 0.75, 0.72, 0.69, 0.66, 0.63, 0.6, 0.57, 0.54, 0.51, 0.48, 0.45, 0.42, 0.38, 0.35, 0.32, 0.29, 0.26, 0.23, 0.2, 0, 0],
+              opacity: [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]
             }}
-            transition={{ 
-              duration: 20, 
-              repeat: Infinity, 
-              ease: "easeOut", 
+            transition={{
+              duration: 20,
+              repeat: Infinity,
+              ease: "easeOut",
               times: [0, 0.65, 0.66, 0.67, 0.679, 0.689, 0.698, 0.708, 0.718, 0.727, 0.737, 0.747, 0.756, 0.766, 0.775, 0.785, 0.795, 0.804, 0.814, 0.823, 0.833, 0.843, 0.852, 0.862, 0.872, 0.881, 0.891, 0.9, 0.91, 0.92, 1]
             }}
             style={{ position: "absolute", marginLeft: "-30px", width: "60px", zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center", transformOrigin: "bottom center" }}
@@ -1400,38 +1400,38 @@ export default function LandingPage() {
 
       {/* ─── RAM SETU VISION SECTION ─── */}
       <section className="sethu-section" style={{ position: "relative", padding: "8rem 2rem", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-        <div className="sethu-bg-layer" style={{ 
+        <div className="sethu-bg-layer" style={{
           position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
           background: "var(--green-deep)",
           transform: `translate(${mousePos.x * -20}px, ${mousePos.y * -20}px) scale(1.1)`,
           zIndex: 0
         }}></div>
         <div className="sethu-overlay" style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at center, rgba(10,59,32,0.6) 0%, rgba(0,0,0,0.9) 100%)", zIndex: 1 }}></div>
-        
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.3 }}
           transition={{ duration: 1.2, ease: "easeOut" }}
-          className="sethu-content" 
+          className="sethu-content"
           style={{ position: "relative", zIndex: 2, textAlign: "center", color: "white", maxWidth: "1000px", padding: "3rem", transform: `perspective(1200px) rotateX(${mousePos.y * -2}deg) rotateY(${mousePos.x * 2}deg)` }}
         >
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.8 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}
-            className="story-tag" style={{ background: "rgba(74, 222, 128, 0.15)", border: "1px solid rgba(74, 222, 128, 0.4)", color:"var(--green-light)", letterSpacing:"4px", fontSize:"1rem", textTransform: "uppercase", fontWeight: 800, padding: "0.5rem 1.5rem", borderRadius: "100px", display: "inline-block", marginBottom: "1.5rem", backdropFilter: "blur(10px)" }}
+            className="story-tag" style={{ background: "rgba(74, 222, 128, 0.15)", border: "1px solid rgba(74, 222, 128, 0.4)", color: "var(--green-light)", letterSpacing: "4px", fontSize: "1rem", textTransform: "uppercase", fontWeight: 800, padding: "0.5rem 1.5rem", borderRadius: "100px", display: "inline-block", marginBottom: "1.5rem", backdropFilter: "blur(10px)" }}
           >
             {t("theVision")}
           </motion.div>
           <style>{`
             @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap');
           `}</style>
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
             className="sethu-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(3rem, 7vw, 5.5rem)", marginBottom: "2rem", fontWeight: 700, textShadow: "0 15px 40px rgba(0,0,0,0.9)", letterSpacing: "-0.02em", color: "#ffffff" }}
           >
             {t("farmersBridge")}
           </motion.h2>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ delay: 0.6 }}
             className="sethu-desc" style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.4rem", lineHeight: 1.9, marginBottom: "5rem", color: "rgba(255,255,255,0.95)", textShadow: "0 4px 12px rgba(0,0,0,0.8)" }}
           >
@@ -1444,14 +1444,14 @@ export default function LandingPage() {
               { src: "/ram_setu_construction.png", alt: "Ram Setu Connection" },
               { src: "/digital_farmer.png", alt: "Digital Farmer" }
             ].map((img, idx) => (
-              <motion.div 
+              <motion.div
                 key={idx}
                 initial={{ opacity: 0, y: 50 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 whileHover={{ y: -15, scale: 1.05, zIndex: 10, boxShadow: "0 20px 40px rgba(74,222,128,0.3)" }}
                 transition={{ type: "spring", stiffness: 100, damping: 15, delay: idx * 0.2 }}
-                style={{ 
-                  width: "280px", height: "380px", borderRadius: "24px", overflow: "hidden", 
+                style={{
+                  width: "280px", height: "380px", borderRadius: "24px", overflow: "hidden",
                   boxShadow: "0 20px 40px rgba(0,0,0,0.8)", border: "2px solid rgba(255,255,255,0.2)",
                   background: "var(--green-deep)",
                   position: "relative"
@@ -1460,7 +1460,7 @@ export default function LandingPage() {
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 50%)", zIndex: 1, pointerEvents: "none" }} />
                 <img src={img.src} alt={img.alt} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 <div style={{ position: "absolute", bottom: "25px", left: "20px", right: "20px", zIndex: 2, textAlign: "center" }}>
-                   <p style={{ color: "var(--green-light)", fontWeight: "bold", fontSize: "1.2rem", textShadow: "0 4px 8px rgba(0,0,0,0.9)", margin: 0, letterSpacing: "1px" }}>{img.alt}</p>
+                  <p style={{ color: "var(--green-light)", fontWeight: "bold", fontSize: "1.2rem", textShadow: "0 4px 8px rgba(0,0,0,0.9)", margin: 0, letterSpacing: "1px" }}>{img.alt}</p>
                 </div>
               </motion.div>
             ))}
@@ -1469,7 +1469,7 @@ export default function LandingPage() {
       </section>
       {/* ─── STORY SECTION (SYMBIOTIC RELATIONSHIP) ─── */}
       <section className="story-section" style={{ padding: "5rem 2rem", background: "#f8fafc" }}>
-        
+
         {/* Block 1: Farmer */}
         <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} viewport={{ once: true }} className="story-block" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "3rem", marginBottom: "5rem" }}>
           <div className="story-image-container" style={{ flex: "1 1 400px", position: "relative" }}>
@@ -1636,7 +1636,7 @@ export default function LandingPage() {
           <a href="#" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Privacy Policy</a>
           <a href="#" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Terms of Service</a>
         </div>
-        <p>🌾 Rythu Jana Sethu — Connecting Farmers & Customers Across India</p>
+        <p>Rythu Jana Sethu — Connecting Farmers & Customers Across India</p>
         <p style={{ marginTop: "0.5rem", opacity: 0.8 }}>Made with ❤️ for Indian Agriculture</p>
       </footer>
     </div>

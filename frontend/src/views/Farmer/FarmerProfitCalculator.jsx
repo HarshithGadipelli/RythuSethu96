@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import { Calculator, DollarSign, Sprout, Truck, Briefcase, Sparkles, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";

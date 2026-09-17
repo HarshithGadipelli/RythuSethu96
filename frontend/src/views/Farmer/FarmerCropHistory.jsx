@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { History, TrendingUp, DollarSign, Calendar, PlusCircle, CheckCircle, AlertCircle, FileSpreadsheet } from "lucide-react";
 import API from "../../api/api";

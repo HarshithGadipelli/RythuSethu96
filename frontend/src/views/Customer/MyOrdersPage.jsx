@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { Package } from 'lucide-react';
 import API from '../../api/api';

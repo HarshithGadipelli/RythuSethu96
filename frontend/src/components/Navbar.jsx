@@ -315,6 +315,31 @@ export default function Navbar() {
           </li>
           <li>
             <button 
+              className={`icon-btn ${isAnnouncerActive ? "market-audio-active" : ""}`} 
+              onClick={handleAnnouncerToggle} 
+              title={`Marketplace Voice Audio (${isAnnouncerActive ? "Voice Announcements On - Click to Mute" : "Voice Announcements Muted - Click to Play"})`}
+              style={{ position: "relative" }}
+            >
+              <span style={{ fontSize: "1.1rem", filter: isAnnouncerActive ? "none" : "grayscale(1) opacity(0.5)" }}>
+                📢
+              </span>
+              {isAnnouncerActive && (
+                <span style={{
+                  position: "absolute",
+                  top: "4px",
+                  right: "4px",
+                  width: "7px",
+                  height: "7px",
+                  borderRadius: "50%",
+                  background: "#f59e0b",
+                  boxShadow: "0 0 8px #f59e0b",
+                  animation: "pulse 1.5s infinite"
+                }} />
+              )}
+            </button>
+          </li>
+          <li>
+            <button 
               className="device-mode-badge" 
               onClick={() => {
                 const modes = ["auto", "mobile", "tablet", "desktop"];

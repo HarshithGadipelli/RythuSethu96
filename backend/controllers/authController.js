@@ -257,6 +257,23 @@ export const login = async (req, res) => {
       });
     }
 
+    // Demo shorthand account aliases
+    if (!user) {
+      if (cleanInput === "customer" || cleanInput === "customer@test.com") {
+        user = await User.findOne({ $or: [{ email: "customer@test.com" }, { email: "anand.verma@gmail.com" }, { role: "customer" }] });
+      } else if (cleanInput === "agent" || cleanInput === "agent@test.com") {
+        user = await User.findOne({ $or: [{ email: "agent@test.com" }, { email: "raju.agent@gmail.com" }, { role: "agent" }] });
+      } else if (cleanInput === "raj" || cleanInput === "raj@test.com") {
+        user = await User.findOne({ $or: [{ email: "raj@test.com" }, { email: "raj@gmail.com" }] });
+      } else if (cleanInput === "farmer" || cleanInput === "farmer@test.com") {
+        user = await User.findOne({ $or: [{ email: "farmer@test.com" }, { role: "farmer" }] });
+      } else if (cleanInput === "ram" || cleanInput === "ram@test.com") {
+        user = await User.findOne({ $or: [{ email: "ram@test.com" }, { email: "ram.sharma@gmail.com" }] });
+      } else if (cleanInput === "admin" || cleanInput === "admin@test.com") {
+        user = await User.findOne({ $or: [{ email: "admin@test.com" }, { role: "admin" }] });
+      }
+    }
+
     // Tier 4: Phone number lookup
     if (!user) {
       const phoneDigits = cleanInput.replace(/\D/g, "");
@@ -265,7 +282,7 @@ export const login = async (req, res) => {
       }
     }
 
-    if (!user) return res.status(404).json({ error: "User not found. Please check your username/email or register first." });
+    if (!user) return res.status(401).json({ error: "User not found. Please check your username/email or register first." });
 
     let match = await bcrypt.compare(password, user.password);
 

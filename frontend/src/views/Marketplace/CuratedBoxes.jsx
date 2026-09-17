@@ -1,6 +1,7 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-
 import API from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { Package, ArrowLeft, CheckCircle, Leaf, Truck, Star, Sparkles } from "lucide-react";

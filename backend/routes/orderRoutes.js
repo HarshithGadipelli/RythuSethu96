@@ -1088,6 +1088,14 @@ router.post("/:id/farm-pickup-complete", async (req, res) => {
       await User.findByIdAndUpdate(order.farmer._id, { $inc: { rewardPoints: 10, trustScore: 2 } });
     }
 
+    // Credit farmer pending settlement for offline buy at farm using order price
+    const farmerAmount = (order.subtotal || order.totalAmount) - (order.platformFee || 0);
+    if (order.farmer?._id && !order.isSettledWithFarmer) {
+      await User.findByIdAndUpdate(order.farmer._id, { $inc: { pendingSettlement: farmerAmount } });
+      order.isSettledWithFarmer = true;
+      order.adminRevenue = order.platformFee || 0;
+    }
+
     await order.save();
 
     // Blockchain logging
@@ -1438,26 +1446,52 @@ router.put("/:id/report-mismatch", async (req, res) => {
   }
 });
 
-// ─── Customer Post-Delivery Review & Rating ───
+// ─── Customer Post-Purchase Review & Rating (Farm Buy vs Delivery Buy) ───
 router.post("/:id/review", async (req, res) => {
   try {
     const { id } = req.params;
-    const ratingVal = req.body.rating || req.body.farmerRating;
-    const commentVal = req.body.comment || req.body.reviewText || "";
-    const deliveryRatingVal = req.body.deliveryRating || req.body.agentRating;
-    const userId = req.body.userId;
+    const {
+      farmRating,
+      farmerRating,
+      platformRating,
+      deliveryRating,
+      rating,
+      comment,
+      reviewText,
+      reviewFeedback,
+      buyType,
+      userId
+    } = req.body;
 
     const order = await Order.findById(id).populate("crop").populate("farmer");
     if (!order) return res.status(404).json({ error: "Order not found." });
 
-    const numRating = Math.max(1, Math.min(5, Number(ratingVal) || 5));
-    const sentiment = numRating >= 4 ? "Positive" : numRating === 3 ? "Neutral" : "Negative";
-    const sentimentScore = numRating >= 4 ? 0.9 : numRating === 3 ? 0.5 : 0.1;
+    const numFarmerRating = Math.max(1, Math.min(5, Number(farmerRating || rating || 5)));
+    const numFarmRating = Math.max(1, Math.min(5, Number(farmRating || numFarmerRating)));
+    const numPlatformRating = Math.max(1, Math.min(5, Number(platformRating || 5)));
+    const numDeliveryRating = deliveryRating ? Math.max(1, Math.min(5, Number(deliveryRating))) : 0;
+    const feedbackText = reviewFeedback || comment || reviewText || "";
+
+    const avgOverall = numDeliveryRating > 0
+      ? (numFarmRating + numFarmerRating + numPlatformRating + numDeliveryRating) / 4
+      : (numFarmRating + numFarmerRating + numPlatformRating) / 3;
+
+    const sentiment = avgOverall >= 3.8 ? "Positive" : avgOverall >= 2.8 ? "Neutral" : "Negative";
+    const sentimentScore = avgOverall >= 3.8 ? 0.9 : avgOverall >= 2.8 ? 0.5 : 0.1;
 
     // Save Order review fields
-    order.reviewText = commentVal;
+    order.farmRating = numFarmRating;
+    order.farmerRating = numFarmerRating;
+    order.platformRating = numPlatformRating;
+    if (numDeliveryRating > 0) order.deliveryRating = numDeliveryRating;
+    order.reviewText = feedbackText;
+    order.reviewFeedback = feedbackText;
     order.sentimentScore = sentimentScore;
     order.reviewSentiment = sentiment;
+    order.buyType = buyType || (order.deliveryType === "farm_pickup" || order.deliveryType === "pickup" || !order.agent ? "farm" : "delivery");
+    order.hasReviewed = true;
+    order.reviewGiven = true;
+    order.reviewCreatedAt = new Date();
     await order.save();
 
     // Create Review record
@@ -1466,8 +1500,8 @@ router.post("/:id/review", async (req, res) => {
         user: order.customer?._id || order.customer || userId,
         crop: order.crop._id || order.crop,
         farmer: order.farmer?._id || order.farmer,
-        rating: numRating,
-        comment: commentVal
+        rating: Math.round(numFarmerRating),
+        comment: feedbackText
       });
     }
 
@@ -1477,11 +1511,11 @@ router.post("/:id/review", async (req, res) => {
       const cropReviews = await Review.find({ crop: cropId });
       const avgCropRating = cropReviews.length > 0 
         ? cropReviews.reduce((sum, r) => sum + r.rating, 0) / cropReviews.length 
-        : numRating;
+        : numFarmerRating;
       await Crop.findByIdAndUpdate(cropId, { rating: Math.round(avgCropRating * 10) / 10 });
     }
 
-    // Update Farmer trust score and rating
+    // Update Farmer trust score and rating (composite of farmer & farm ratings)
     if (order.farmer) {
       const farmerUserId = order.farmer._id || order.farmer;
       const farmerDoc = await Farmer.findOne({ user: farmerUserId });
@@ -1489,23 +1523,23 @@ router.post("/:id/review", async (req, res) => {
         const farmerReviews = await Review.find({ farmer: farmerUserId });
         const avgFarmerRating = farmerReviews.length > 0
           ? farmerReviews.reduce((sum, r) => sum + r.rating, 0) / farmerReviews.length
-          : numRating;
+          : numFarmerRating;
 
         farmerDoc.rating = Math.round(avgFarmerRating * 10) / 10;
-        farmerDoc.trustScore = Math.min(100, Math.max(20, Math.round((farmerDoc.trustScore || 85) + (numRating >= 4 ? 3 : -4))));
+        farmerDoc.trustScore = Math.min(100, Math.max(20, Math.round((farmerDoc.trustScore || 85) + (numFarmerRating >= 4 ? 3 : -3))));
         await farmerDoc.save();
         await User.findByIdAndUpdate(farmerUserId, { trustScore: farmerDoc.trustScore });
       }
     }
 
     // Update Delivery Agent rating if provided
-    if (deliveryRatingVal && order.agent) {
+    if (numDeliveryRating > 0 && order.agent) {
       const Agent = (await import("../models/Agent.js")).default;
       const agentDoc = await Agent.findOne({ user: order.agent });
       if (agentDoc) {
         const curR = agentDoc.trustScore?.rating || 5.0;
         const curCount = agentDoc.trustScore?.totalRatings || 1;
-        const nextR = ((curR * curCount) + Number(deliveryRatingVal)) / (curCount + 1);
+        const nextR = ((curR * curCount) + numDeliveryRating) / (curCount + 1);
         if (!agentDoc.trustScore) agentDoc.trustScore = {};
         agentDoc.trustScore.rating = Math.round(nextR * 10) / 10;
         agentDoc.trustScore.totalRatings = curCount + 1;
@@ -1514,25 +1548,31 @@ router.post("/:id/review", async (req, res) => {
       }
     }
 
+    // Reward customer +15 reward points for submitting review
+    const customerId = order.customer?._id || order.customer || userId;
+    if (customerId) {
+      await User.findByIdAndUpdate(customerId, { $inc: { rewardPoints: 15 } });
+    }
+
     // Notify farmer
     if (order.farmer) {
       await notify(
         req.app,
         order.farmer._id || order.farmer,
-        `⭐ New ${numRating}-Star Review!`,
-        `Customer left a review for ${order.crop?.name || "your crop"}: "${commentVal || 'Excellent quality'}".`,
+        `⭐ New ${numFarmerRating}-Star Purchase Review!`,
+        `Customer left review for ${order.crop?.name || "your produce"} (Farm: ${numFarmRating}★, Farmer: ${numFarmerRating}★): "${feedbackText || 'Excellent quality'}".`,
         "rating",
         "normal",
-        { orderId: order._id, rating: numRating }
+        { orderId: order._id, rating: numFarmerRating, farmRating: numFarmRating }
       );
     }
 
     const io = req.app.get("io");
-    if (io) io.emit("order_reviewed", { orderId: order._id, rating: numRating, sentiment });
+    if (io) io.emit("order_reviewed", { orderId: order._id, rating: numFarmerRating, sentiment, buyType: order.buyType });
 
     res.json({
       success: true,
-      message: "Review submitted successfully! Thank you for supporting our farmers.",
+      message: "Review submitted successfully! Thank you for supporting our farmers and fair-trade ecosystem.",
       order
     });
   } catch (error) {

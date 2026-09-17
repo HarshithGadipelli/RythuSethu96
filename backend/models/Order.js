@@ -81,10 +81,21 @@ const orderSchema = new mongoose.Schema({
   reportResolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // admin who resolved
   reportResolution: { type: String, enum: ["pending", "penalized", "dismissed"], default: "pending" },
 
-  // ─── Post-Delivery Review ───
+  // ─── Post-Purchase Review & Ratings (Farm Buy vs Delivery Buy) ───
   reviewText: { type: String, default: "" },
+  reviewFeedback: { type: String, default: "" },
+  farmRating: { type: Number, default: 0 },
+  farmerRating: { type: Number, default: 0 },
+  platformRating: { type: Number, default: 0 },
+  deliveryRating: { type: Number, default: 0 },
+  buyType: { type: String, default: "" }, // "farm" | "delivery"
+  hasReviewed: { type: Boolean, default: false },
+  reviewGiven: { type: Boolean, default: false },
+  reviewCreatedAt: { type: Date },
   sentimentScore: { type: Number, default: 0 },
   reviewSentiment: { type: String, enum: ["Positive", "Neutral", "Negative", ""], default: "" },
+  paidAtFarm: { type: Boolean, default: false },
+  isOfflineBuy: { type: Boolean, default: false },
 
   // ─── Financial Ledger ───
   isSettledWithFarmer: { type: Boolean, default: false },

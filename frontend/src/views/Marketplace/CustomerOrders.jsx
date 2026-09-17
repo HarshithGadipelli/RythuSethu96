@@ -1,3 +1,5 @@
+"use client";
+
 import { BASE_URL } from '../../api/api';
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,8 +14,10 @@ import { getImgSrc } from "./Marketplace";
 export default function CustomerOrders({ orders, fetchOrders }) {
   const { user } = useAuth();
   const [reviewModal, setReviewModal] = useState(null);
-  const [rating, setRating] = useState(5);
-  const [agentRating, setAgentRating] = useState(5);
+  const [farmRating, setFarmRating] = useState(5);
+  const [farmerRating, setFarmerRating] = useState(5);
+  const [platformRating, setPlatformRating] = useState(5);
+  const [deliveryRating, setDeliveryRating] = useState(5);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState("");
@@ -48,26 +52,43 @@ export default function CustomerOrders({ orders, fetchOrders }) {
     }
   };
 
+  const openReviewModal = (order) => {
+    setReviewModal(order);
+    setFarmRating(order.farmRating || 5);
+    setFarmerRating(order.farmerRating || 5);
+    setPlatformRating(order.platformRating || 5);
+    setDeliveryRating(order.deliveryRating || 5);
+    setComment(order.reviewFeedback || order.reviewText || "");
+    setMsg("");
+  };
+
   const submitReview = async () => {
     if (!reviewModal) return;
     setSubmitting(true);
     try {
+      const isFarmBuy = reviewModal.deliveryType === "farm_pickup" || reviewModal.deliveryType === "pickup" || !reviewModal.agent;
       await API.post(`/orders/${reviewModal._id}/review`, {
-        farmerRating: rating,
-        agentRating: agentRating,
-        reviewText: comment
+        farmRating,
+        farmerRating,
+        platformRating,
+        deliveryRating: isFarmBuy ? undefined : deliveryRating,
+        comment,
+        reviewFeedback: comment,
+        buyType: isFarmBuy ? "farm" : "delivery",
+        userId: user?._id
       });
 
-      setMsg("Review submitted successfully! Thank you.");
+      setMsg("✅ Review submitted successfully! Thank you for rating.");
       setTimeout(() => {
         setReviewModal(null);
         setMsg("");
-        fetchOrders();
+        if (typeof fetchOrders === "function") fetchOrders();
       }, 1500);
     } catch (err) {
-      setMsg(err.response?.data?.message || "Failed to submit review");
+      setMsg(err.response?.data?.message || err.response?.data?.error || "Failed to submit review");
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const handleCancelOrder = async () => {
@@ -248,16 +269,49 @@ export default function CustomerOrders({ orders, fetchOrders }) {
                   </button>
                 )}
                 
-                {o.status === "delivered" && !o.reviewGiven && (
-                  <button onClick={() => { setReviewModal(o); setRating(5); setAgentRating(5); setComment(""); setMsg(""); }} className="btn-secondary" style={{ padding: "0.6rem 1rem", fontSize: "0.9rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                    <Star size={16} /> Leave Review
-                  </button>
-                )}
-                {o.reviewGiven && (
-                  <span style={{ color: "var(--green-mid)", fontSize: "0.9rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                    <Star size={16} fill="var(--green-mid)" /> Reviewed
-                  </span>
-                )}
+                {/* Allow Review for any completed purchase (delivery delivered OR farm pickup paid/completed) */}
+                {(() => {
+                  const isCompleted = o.status === "delivered" || o.status === "completed" || (o.deliveryType === "farm_pickup" && o.paymentStatus === "paid");
+                  const isReviewed = o.hasReviewed || o.reviewGiven || (o.farmerRating && o.farmerRating > 0);
+                  const isFarmBuy = o.deliveryType === "farm_pickup" || o.deliveryType === "pickup" || !o.agent;
+
+                  if (isCompleted && !isReviewed) {
+                    return (
+                      <button 
+                        onClick={() => openReviewModal(o)} 
+                        className="btn-secondary" 
+                        style={{ 
+                          padding: "0.6rem 1rem", 
+                          fontSize: "0.9rem", 
+                          display: "flex", 
+                          gap: "0.5rem", 
+                          alignItems: "center",
+                          background: isFarmBuy ? "#f0fdf4" : "#eff6ff",
+                          borderColor: isFarmBuy ? "#86efac" : "#bfdbfe",
+                          color: isFarmBuy ? "#166534" : "#1e40af"
+                        }}
+                      >
+                        <Star size={16} fill={isFarmBuy ? "#22c55e" : "#3b82f6"} color={isFarmBuy ? "#16a34a" : "#2563eb"} /> 
+                        {isFarmBuy ? "Review Farm & Farmer" : "Rate Delivery & Harvest"}
+                      </button>
+                    );
+                  }
+
+                  if (isReviewed) {
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <span style={{ color: "var(--green-mid)", fontSize: "0.85rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                          <Star size={15} fill="var(--green-mid)" /> Reviewed
+                        </span>
+                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                          Farm: {o.farmRating || 5}★ • Farmer: {o.farmerRating || 5}★ • App: {o.platformRating || 5}★
+                          {!isFarmBuy && o.deliveryRating ? ` • Delivery: ${o.deliveryRating}★` : ""}
+                        </span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
           ))}
@@ -294,71 +348,140 @@ export default function CustomerOrders({ orders, fetchOrders }) {
         </div>
       )}
 
-      {/* Review Modal */}
+      {/* Review Modal with Dual Support: Farm Buy vs Delivery Buy */}
       <AnimatePresence>
-        {reviewModal && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} style={{ background: "white", padding: "2rem", borderRadius: "var(--radius-lg)", width: "100%", maxWidth: "450px" }}>
-              <h3 style={{ marginTop: 0, color: "var(--text-dark)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <Star color="var(--yellow-wheat)" fill="var(--yellow-wheat)" /> Rate your order
-              </h3>
-              <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
-                How was the {reviewModal.cropName} from farmer? Your review helps calculate their Trust Score!
-              </p>
-
-              <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem", justifyContent: "center" }}>
-                {[1, 2, 3, 4, 5].map(star => (
-                  <Star 
-                    key={star} 
-                    size={32} 
-                    color={star <= rating ? "var(--yellow-wheat)" : "#cbd5e1"} 
-                    fill={star <= rating ? "var(--yellow-wheat)" : "transparent"} 
-                    style={{ cursor: "pointer", transition: "all 0.2s" }}
-                    onClick={() => setRating(star)}
-                  />
-                ))}
-              </div>
-
-              {reviewModal.agent && (
-                <>
-                  <h3 style={{ marginTop: "1rem", color: "var(--text-dark)", display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.1rem" }}>
-                    🚚 Rate Delivery Agent
+        {reviewModal && (() => {
+          const isFarmBuy = reviewModal.deliveryType === "farm_pickup" || reviewModal.deliveryType === "pickup" || !reviewModal.agent;
+          return (
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", backdropFilter: "blur(4px)" }}>
+              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} style={{ background: "white", padding: "2rem", borderRadius: "20px", width: "100%", maxWidth: "520px", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                  <h3 style={{ margin: 0, color: "var(--text-dark)", display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.2rem" }}>
+                    {isFarmBuy ? "🧑‍🌾 Farm Purchase Feedback" : "🚚 Delivery Order Feedback"}
                   </h3>
-                  <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem", justifyContent: "center" }}>
+                  <span style={{ fontSize: "0.75rem", padding: "4px 10px", borderRadius: "100px", background: isFarmBuy ? "#dcfce7" : "#dbeafe", color: isFarmBuy ? "#166534" : "#1e40af", fontWeight: 700 }}>
+                    {isFarmBuy ? "🏡 Direct Farm Gate Buy" : "🚚 Courier Delivery"}
+                  </span>
+                </div>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "1.5rem", lineHeight: 1.4 }}>
+                  {isFarmBuy 
+                    ? `How was your offline experience buying ${reviewModal.cropName || reviewModal.crop?.name || "produce"} directly from the farm? Your review directly rewards the farmer's Trust Score!`
+                    : `How was your order of ${reviewModal.cropName || reviewModal.crop?.name || "produce"}? Please rate the farm, farmer, platform, and delivery courier.`}
+                </p>
+
+                {/* 1. Farm Rating */}
+                <div style={{ background: "#f8fafc", padding: "1rem", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "1rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                    <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1e293b" }}>🏡 Farm Quality & Produce Environment</span>
+                    <span style={{ fontSize: "0.8rem", color: "#16a34a", fontWeight: 700 }}>{farmRating} / 5 Stars</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
                     {[1, 2, 3, 4, 5].map(star => (
                       <Star 
-                        key={"agent"+star} 
+                        key={"farm-" + star} 
                         size={28} 
-                        color={star <= agentRating ? "var(--green-mid)" : "#cbd5e1"} 
-                        fill={star <= agentRating ? "var(--green-mid)" : "transparent"} 
-                        style={{ cursor: "pointer", transition: "all 0.2s" }}
-                        onClick={() => setAgentRating(star)}
+                        color={star <= farmRating ? "#16a34a" : "#cbd5e1"} 
+                        fill={star <= farmRating ? "#16a34a" : "transparent"} 
+                        style={{ cursor: "pointer", transition: "all 0.15s" }}
+                        onClick={() => setFarmRating(star)}
                       />
                     ))}
                   </div>
-                </>
-              )}
+                </div>
 
-              <textarea 
-                className="rs-input" 
-                rows="4" 
-                placeholder="Write your feedback..." 
-                value={comment} 
-                onChange={e => setComment(e.target.value)}
-                style={{ marginBottom: "1rem" }}
-              />
+                {/* 2. Farmer Rating */}
+                <div style={{ background: "#f8fafc", padding: "1rem", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "1rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                    <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1e293b" }}>🧑‍🌾 Farmer Produce & Service</span>
+                    <span style={{ fontSize: "0.8rem", color: "#eab308", fontWeight: 700 }}>{farmerRating} / 5 Stars</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <Star 
+                        key={"farmer-" + star} 
+                        size={28} 
+                        color={star <= farmerRating ? "#eab308" : "#cbd5e1"} 
+                        fill={star <= farmerRating ? "#eab308" : "transparent"} 
+                        style={{ cursor: "pointer", transition: "all 0.15s" }}
+                        onClick={() => setFarmerRating(star)}
+                      />
+                    ))}
+                  </div>
+                </div>
 
-              {msg && <p style={{ color: msg.includes("success") ? "var(--green-mid)" : "red", fontSize: "0.9rem", marginBottom: "1rem", textAlign: "center" }}>{msg}</p>}
+                {/* 3. Platform Rating */}
+                <div style={{ background: "#f8fafc", padding: "1rem", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "1rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                    <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1e293b" }}>🌐 Platform (Rythu Sethu) Experience</span>
+                    <span style={{ fontSize: "0.8rem", color: "#0284c7", fontWeight: 700 }}>{platformRating} / 5 Stars</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <Star 
+                        key={"plat-" + star} 
+                        size={28} 
+                        color={star <= platformRating ? "#0284c7" : "#cbd5e1"} 
+                        fill={star <= platformRating ? "#0284c7" : "transparent"} 
+                        style={{ cursor: "pointer", transition: "all 0.15s" }}
+                        onClick={() => setPlatformRating(star)}
+                      />
+                    ))}
+                  </div>
+                </div>
 
-              <div style={{ display: "flex", gap: "1rem" }}>
-                <button className="btn-secondary" onClick={() => setReviewModal(null)} style={{ flex: 1 }}>Cancel</button>
-                <button className="btn-primary" onClick={submitReview} disabled={submitting} style={{ flex: 1 }}>
-                  {submitting ? "Submitting..." : "Submit Review"}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
+                {/* 4. Delivery Rating (ONLY IF DELIVERY BUY) */}
+                {!isFarmBuy && (
+                  <div style={{ background: "#eff6ff", padding: "1rem", borderRadius: "12px", border: "1px solid #bfdbfe", marginBottom: "1rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                      <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1e40af" }}>🚚 Delivery Agent & Speed</span>
+                      <span style={{ fontSize: "0.8rem", color: "#2563eb", fontWeight: 700 }}>{deliveryRating} / 5 Stars</span>
+                    </div>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <Star 
+                          key={"del-" + star} 
+                          size={28} 
+                          color={star <= deliveryRating ? "#2563eb" : "#cbd5e1"} 
+                          fill={star <= deliveryRating ? "#2563eb" : "transparent"} 
+                          style={{ cursor: "pointer", transition: "all 0.15s" }}
+                          onClick={() => setDeliveryRating(star)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. Detailed Written Feedback */}
+                <div style={{ marginBottom: "1.2rem" }}>
+                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "#334155", marginBottom: "0.4rem" }}>
+                    ✍️ Written Review & Feedback
+                  </label>
+                  <textarea 
+                    className="rs-input" 
+                    rows="3" 
+                    placeholder={isFarmBuy ? "Share details about the farm, crop freshness, and farmer hospitality..." : "Share feedback on crop freshness, packaging, and delivery courier..."}
+                    value={comment} 
+                    onChange={e => setComment(e.target.value)}
+                    style={{ width: "100%", borderRadius: "10px", padding: "0.75rem", border: "1.5px solid #cbd5e1" }}
+                  />
+                </div>
+
+                {msg && (
+                  <p style={{ color: msg.includes("✅") || msg.includes("success") ? "var(--green-mid)" : "#dc2626", fontSize: "0.9rem", marginBottom: "1rem", textAlign: "center", fontWeight: 600 }}>
+                    {msg}
+                  </p>
+                )}
+
+                <div style={{ display: "flex", gap: "1rem" }}>
+                  <button className="btn-secondary" onClick={() => setReviewModal(null)} style={{ flex: 1 }}>Cancel</button>
+                  <button className="btn-primary" onClick={submitReview} disabled={submitting} style={{ flex: 1 }}>
+                    {submitting ? "Submitting..." : "Submit Review"}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Cancel Order Modal with Farmer Sympathy Graphic */}

@@ -1,3 +1,5 @@
+"use client";
+
 import { BASE_URL } from '../../api/api';
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";

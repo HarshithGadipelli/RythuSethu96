@@ -56,7 +56,13 @@ export default function MarketAnnouncer() {
   const indexRef = useRef(0);
 
   useEffect(() => {
-    const handleToggle = () => setIsActive(prev => !prev);
+    const handleToggle = (e) => {
+      if (e?.detail?.isActive !== undefined) {
+        setIsActive(e.detail.isActive);
+      } else {
+        setIsActive(prev => !prev);
+      }
+    };
     window.addEventListener("market_announcer_toggle", handleToggle);
     return () => window.removeEventListener("market_announcer_toggle", handleToggle);
   }, []);

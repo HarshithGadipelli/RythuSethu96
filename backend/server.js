@@ -170,6 +170,34 @@ app.use("/uploads", express.static(uploadDir, {
     res.setHeader("Expires", "0");
   }
 }));
+
+// Graceful fallback SVG if any image file is missing on disk
+const defaultImageSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <rect width="300" height="300" fill="#f1f5f9"/>
+  <circle cx="150" cy="115" r="55" fill="#94a3b8"/>
+  <path d="M50 260 C50 200 100 185 150 185 C200 185 250 200 250 260 Z" fill="#94a3b8"/>
+</svg>`;
+
+// Fallback for /uploads if file is missing on disk
+app.use("/uploads", (req, res) => {
+  const fallback = path.join(__dirname, "public/uploads/hero.png");
+  if (fs.existsSync(fallback)) {
+    return res.sendFile(fallback);
+  }
+  res.setHeader("Content-Type", "image/svg+xml");
+  res.status(200).send(defaultImageSvg);
+});
+
+// Also handle requests made directly to root for uploaded file patterns
+app.get(/^\/(farmerPhoto|avatar|aadhaarPhoto|farmPhoto|productPhoto|agentPhoto|vehiclePhoto|cropImage|soilPhoto)-.*$/, (req, res) => {
+  const filename = path.basename(req.path);
+  const filePath = path.join(uploadDir, filename);
+  if (fs.existsSync(filePath)) {
+    return res.sendFile(filePath);
+  }
+  res.setHeader("Content-Type", "image/svg+xml");
+  res.status(200).send(defaultImageSvg);
+});
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/farmer", farmerRoutes);

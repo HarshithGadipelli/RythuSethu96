@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import API from "../../api/api";
 import { Trophy, Medal, Star, TrendingUp } from "lucide-react";
