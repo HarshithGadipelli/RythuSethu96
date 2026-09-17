@@ -7,6 +7,7 @@ import { addCrop } from "../controllers/farmerController.js";
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
 import { callGeminiWithFallback } from "../services/geminiService.js";
+import { fetchLiveAPMCRates } from "../services/apmcService.js";
 
 const router = express.Router();
 
@@ -57,6 +58,49 @@ router.put("/:id/sell-to-admin", optionalAuth, async (req, res) => {
     res.json({ success: true, message: "Crop sold to Admin for Clearance." });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ──────────────────────────────────────────────
+// Live Real-Time APMC Mandi Rates & Explorer API
+// ──────────────────────────────────────────────
+router.get("/apmc-realtime", async (req, res) => {
+  try {
+    const { category, search, state, source } = req.query;
+    let rates = await fetchLiveAPMCRates();
+
+    if (source && source !== "all") {
+      rates = rates.filter(r => r.sourceType === source);
+    }
+    if (category && category !== "all") {
+      rates = rates.filter(r => r.category === category);
+    }
+    if (state && state !== "all") {
+      rates = rates.filter(r => r.state && r.state.toLowerCase().includes(state.toLowerCase()));
+    }
+    if (search) {
+      const q = search.toLowerCase().trim();
+      rates = rates.filter(r => 
+        (r.crop && r.crop.toLowerCase().includes(q)) || 
+        (r.variety && r.variety.toLowerCase().includes(q)) || 
+        (r.mandi && r.mandi.toLowerCase().includes(q)) ||
+        (r.district && r.district.toLowerCase().includes(q)) ||
+        (r.state && r.state.toLowerCase().includes(q)) ||
+        (r.groupName && r.groupName.toLowerCase().includes(q))
+      );
+    }
+
+    res.json({
+      success: true,
+      count: rates.length,
+      officialGovtCount: rates.filter(r => r.sourceType === "govt_apmc").length,
+      farmerGroupCount: rates.filter(r => r.sourceType === "farmer_group").length,
+      lastUpdated: new Date().toISOString(),
+      source: "Agmarknet & Real-Time APMC Mandi Exchange + Rythu Jana Sethu Farmer Groups",
+      data: rates
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -1,3 +1,5 @@
+"use client";
+
 import { BASE_URL } from '../../api/api';
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
@@ -31,7 +33,7 @@ import CustomerOfflineTours from "./CustomerOfflineTours";
 import RythuSethuAnimation from "../../components/RythuSethuAnimation";
 import FarmTourModal from "../../components/FarmTourModal";
 import SmartCuratedBasket from "../../components/SmartCuratedBasket";
-import APMCMandiExplorer from "../../components/APMCMandiExplorer";
+import CustomerOfflineTours from "./CustomerOfflineTours";
 import HealthyRecipeHub from "../../components/HealthyRecipeHub";
 
 // Fix leaflet default icons
@@ -213,20 +215,6 @@ const CROP_FALLBACK_IMAGES = {
   cotton: "https://images.unsplash.com/photo-1606041008023-472dfb5e530f?w=600&auto=format&fit=crop&q=80",
   sugarcane: "https://images.unsplash.com/photo-1596753392437-05c8733230c1?w=600&auto=format&fit=crop&q=80"
 };
-
-const APMC_MANDI_DATA = [
-  { crop: "Tomato (Hybrid)", mandi: "Bowenpally APMC", price: "₹34/kg", change: "+6.5%", up: true },
-  { crop: "Desi Onion", mandi: "Mahbubnagar Mandi", price: "₹28/kg", change: "-2.1%", up: false },
-  { crop: "Sona Masoori Paddy", mandi: "Miryalaguda", price: "₹2,480/qntl", change: "+3.4%", up: true },
-  { crop: "Guntur Teja Chili", mandi: "Warangal APMC", price: "₹168/kg", change: "+11.2%", up: true },
-  { crop: "Jyoti Potato", mandi: "Nizamabad Market", price: "₹22/kg", change: "Stable", up: null },
-  { crop: "Organic Turmeric", mandi: "Armoor / Nizamabad", price: "₹135/kg", change: "+5.1%", up: true },
-  { crop: "Yellow Maize", mandi: "Khammam Mandi", price: "₹2,210/qntl", change: "+1.8%", up: true },
-  { crop: "Cotton (Medium)", mandi: "Adilabad APMC", price: "₹7,720/qntl", change: "+4.6%", up: true },
-  { crop: "Banganapalli Mango", mandi: "Gaddiannaram", price: "₹95/kg", change: "+7.9%", up: true },
-  { crop: "Groundnut Pods", mandi: "Gadwal Market", price: "₹6,850/qntl", change: "+2.3%", up: true },
-  { crop: "A2 Desi Cow Ghee", mandi: "Karimnagar Direct", price: "₹690/L", change: "+3.0%", up: true }
-];
 
 export const getImgSrc = (img, name = "", category = "") => {
   const cleanStr = ((name || "") + " " + (category || "")).toLowerCase().trim();
@@ -1052,6 +1040,13 @@ export default function Marketplace() {
           c.isFlashSale = true;
           c.flashExpiry = Date.now() + Math.floor(Math.random() * 11 * 3600 * 1000) + 3600 * 1000; 
         }
+
+        // Auto-detect pre-booking based on lifecycle stage
+        const stage = (c.lifecycleStage || c.growingStage || "ready").toLowerCase();
+        if (stage !== "post_harvest" && stage !== "ready") {
+          c.isPrebooking = true;
+        }
+
         return c;
       });
 
@@ -1613,28 +1608,6 @@ export default function Marketplace() {
         <CustomerOfflineTours isEmbedded={true} />
       ) : (
         <>
-          {/* Production-Grade Real-Time APMC Mandi Ticker */}
-          <div className="mandi-ticker-bar" title="Live agricultural market rates across Telangana & AP mandis">
-            <div className="mandi-ticker-label">
-              <span className="live-pulsing-dot"></span>
-              <span>LIVE APMC RATES</span>
-            </div>
-            <div className="mandi-ticker-scroll-wrapper">
-              <div className="mandi-ticker-content">
-                {[...APMC_MANDI_DATA, ...APMC_MANDI_DATA].map((item, idx) => (
-                  <div key={idx} className="mandi-ticker-item">
-                    <span className="ticker-crop">{item.crop}</span>
-                    <span className="ticker-mandi">({item.mandi})</span>
-                    <span className="ticker-price">{item.price}</span>
-                    <span className={`ticker-change ${item.up === true ? "up" : item.up === false ? "down" : "neutral"}`}>
-                      {item.up === true ? "▲" : item.up === false ? "▼" : "•"} {item.change}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
           {/* Premium Hero Banner */}
           <motion.div 
             initial={{ y: -30, opacity: 0 }}
@@ -1786,9 +1759,6 @@ export default function Marketplace() {
             </motion.button>
             <motion.button whileTap={{ scale: 0.95 }} className={`tab-btn ${viewTab==="map"?"active":""}`} onClick={() => setViewTab("map")} style={viewTab==="map"?{background:"var(--green-mid)", color:"white"}:{color:"var(--text-mid)"}}>
               <MapIcon size={16} style={{marginRight:4}} /> Map
-            </motion.button>
-            <motion.button whileTap={{ scale: 0.95 }} className={`tab-btn ${viewTab==="apmc"?"active":""}`} onClick={() => setViewTab("apmc")} style={viewTab==="apmc"?{background:"var(--green-mid)", color:"white"}:{color:"var(--text-mid)"}}>
-              🏛️ APMC Rates
             </motion.button>
           </div>
         </div>
@@ -2896,10 +2866,6 @@ export default function Marketplace() {
               />
             </div>
           </div>
-        </motion.div>
-      ) : viewTab === "apmc" ? (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <APMCMandiExplorer />
         </motion.div>
       ) : (
         /* ── GRID LIST VIEW ── */

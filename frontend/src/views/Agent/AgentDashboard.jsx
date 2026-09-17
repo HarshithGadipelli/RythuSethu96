@@ -495,6 +495,15 @@ export default function AgentDashboard() {
           return;
         }
         
+        if (d.order?.paymentMode === 'cod') {
+          const confirmPayment = window.confirm(`CASH ON DELIVERY: Did you collect ₹${d.order?.totalAmount || d.totalAmount || 0} from the customer?`);
+          if (!confirmPayment) {
+            setMsg({ type: "error", text: "Delivery cannot be completed without collecting COD payment." });
+            setUpdating(null);
+            return;
+          }
+        }
+
         const otp = prompt("Enter the 6-digit OTP sent to the customer:");
         if (!otp) {
           setUpdating(null);
