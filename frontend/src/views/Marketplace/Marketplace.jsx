@@ -34,6 +34,7 @@ import RythuSethuAnimation from "../../components/RythuSethuAnimation";
 import FarmTourModal from "../../components/FarmTourModal";
 import SmartCuratedBasket from "../../components/SmartCuratedBasket";
 import HealthyRecipeHub from "../../components/HealthyRecipeHub";
+import AuthenticityCertificate from "../../components/AuthenticityCertificate";
 
 // Fix leaflet default icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -716,6 +717,7 @@ export default function Marketplace() {
   const [festivalConfig, setFestivalConfig] = useState(null);
   const [show3DView, setShow3DView] = useState(false);
   const [showRecipeHub, setShowRecipeHub] = useState(false);
+  const [showAuthenticityCert, setShowAuthenticityCert] = useState(null);
 
   // ─── Advanced Search & New Features State ───
   const [showFilters, setShowFilters] = useState(false);
@@ -2840,7 +2842,10 @@ export default function Marketplace() {
                         <button className="btn-secondary" onClick={(e) => toggleCompare(c, e)} style={{ padding:"0.5rem", borderRadius:"100px", flexShrink:0, background: compareList.find(x => x._id === c._id) ? "var(--green-pale)" : "white", borderColor: compareList.find(x => x._id === c._id) ? "var(--green-mid)" : "#e2e8f0" }} title="Compare">
                           <Scale size={16} color={compareList.find(x => x._id === c._id) ? "var(--green-deep)" : "var(--text-muted)"} />
                         </button>
-                        <button className="btn-primary" style={{ width:"auto", padding:"0.5rem 0.85rem", fontSize:"0.8rem", flexShrink:0, borderRadius:"100px" }} onClick={(e) => { e.stopPropagation(); openCrop(c); }}>{t("buy")}</button>
+                        <button className="btn-secondary" onClick={(e) => { e.stopPropagation(); addToCart(c, 1, c.isPrebooking || false); }} style={{ padding:"0.5rem", borderRadius:"100px", flexShrink:0 }} title="Add to Cart">
+                          🛒
+                        </button>
+                        <button className="btn-primary" style={{ width:"auto", padding:"0.5rem 0.85rem", fontSize:"0.8rem", flexShrink:0, borderRadius:"100px" }} onClick={(e) => { e.stopPropagation(); openCrop(c); }}>{c.isPrebooking ? "Pre-book" : t("buy")}</button>
                       </div>
                     </motion.div>
                   );
@@ -3350,6 +3355,30 @@ export default function Marketplace() {
                         )}
                       </div>
                     )}
+
+                    <button
+                      type="button"
+                      onClick={() => setShowAuthenticityCert(selected)}
+                      style={{
+                        marginTop: "0.4rem",
+                        background: "linear-gradient(135deg, #166534 0%, #15803d 100%)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "10px",
+                        padding: "8px 14px",
+                        fontWeight: 700,
+                        fontSize: "0.82rem",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px",
+                        cursor: "pointer",
+                        boxShadow: "0 2px 8px rgba(22, 101, 52, 0.25)",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      📜 View Full Organic Certificate &amp; Continuous Farm Proofs
+                    </button>
                   </div>
                 </div>
 
@@ -4257,6 +4286,18 @@ export default function Marketplace() {
                 </button>
 
                 <button
+                  onClick={() => setShowAuthenticityCert(placedOrder)}
+                  className="hover-scale"
+                  style={{
+                    padding: "1rem", fontSize: "0.95rem", borderRadius: "14px",
+                    background: "#ecfdf5", color: "#065f46", border: "1.5px solid #6ee7b7",
+                    fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem"
+                  }}
+                >
+                  📜 View Organic Certificate
+                </button>
+
+                <button
                   onClick={() => {
                     setPlacedOrder(null);
                     router.push("/my-orders");
@@ -4300,6 +4341,15 @@ export default function Marketplace() {
         <OrderTracking 
           orderId={trackingOrder} 
           onClose={() => setTrackingOrder(null)} 
+        />
+      )}
+
+      {/* ─── Organic Authenticity Certificate Modal ─── */}
+      {showAuthenticityCert && (
+        <AuthenticityCertificate 
+          crop={showAuthenticityCert?.crop || showAuthenticityCert}
+          order={showAuthenticityCert?.orderId || showAuthenticityCert?._id ? showAuthenticityCert : null}
+          onClose={() => setShowAuthenticityCert(null)}
         />
       )}
     </motion.div>

@@ -1231,6 +1231,7 @@ export default function MarketplaceMap({
                     </div>
 
                     {/* Exact Location & GPS Coordinates Badge */}
+                    {/* Exact Location & GPS Coordinates Badge */}
                     <div style={{
                       background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px",
                       padding: "6px 8px", marginBottom: "8px"
@@ -1239,9 +1240,14 @@ export default function MarketplaceMap({
                         <span style={{ fontSize: "0.9rem" }}>📍</span>
                         <span style={{ lineHeight: 1.25 }}>{f.farmLocation}</span>
                       </div>
-                      <div style={{ marginTop: "4px", fontSize: "0.7rem", color: "#15803d", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span>GPS: {f.lat.toFixed(4)}°, {f.lng.toFixed(4)}°</span>
+                      <div style={{ marginTop: "4px", fontSize: "0.7rem", color: "#15803d", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "4px" }}>
+                        <span style={{ fontFamily: "monospace", fontWeight: 700 }}>
+                          GPS: {f.lat.toFixed(5)}° N, {f.lng.toFixed(5)}° E
+                        </span>
                         {dist !== null && <span style={{ fontWeight: 800, color: "#2563eb" }}>{dist.toFixed(1)} km away</span>}
+                      </div>
+                      <div style={{ marginTop: "3px", fontSize: "0.66rem", color: "#166534", display: "flex", alignItems: "center", gap: "4px", fontWeight: 600 }}>
+                        <span>🛡️</span> <span>100% Verified Transparent Farm Location</span>
                       </div>
                     </div>
 

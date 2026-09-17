@@ -322,12 +322,20 @@ router.post("/create", async (req, res) => {
         );
       }
 
-      // Send verification code
-      await notify(req.app, customer,
-        "🔐 Your Verification Code",
-        `Your order verification code is: ${order.verificationCode}. Share this with the delivery agent to confirm your product.`,
-        "order", "high", { orderId: order._id, verificationCode: order.verificationCode }
-      );
+      // Send verification notification
+      if (order.deliveryType === "farm_pickup") {
+        await notify(req.app, customer,
+          "🏡 Farm Gate Pickup Booked",
+          `Your direct farm pickup order for ${cropDoc?.name || "produce"} is booked. When you arrive at the farm and complete payment, the farmer will provide the confirmation OTP to confirm handover.`,
+          "order", "high", { orderId: order._id }
+        );
+      } else {
+        await notify(req.app, customer,
+          "🔐 Your Verification Code",
+          `Your order verification code is: ${order.verificationCode}. Share this with the delivery agent to confirm your product.`,
+          "order", "high", { orderId: order._id, verificationCode: order.verificationCode }
+        );
+      }
     }
 
     // Notify farmer for points
@@ -990,6 +998,128 @@ router.put("/:id/complete", async (req, res) => {
     );
 
     res.json({ success: true, message: "Order delivered successfully.", performance: order.deliveryPerformance });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ─── Farm Gate Pickup: Farmer Confirms Payment & Generates/Reveals Handover OTP ───
+router.post("/:id/farm-payment-received", async (req, res) => {
+  try {
+    const { paymentMethod } = req.body;
+    const order = await Order.findById(req.params.id).populate("crop customer farmer");
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    // Generate verificationCode if missing
+    if (!order.verificationCode) {
+      order.verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
+    order.paymentStatus = "paid";
+    order.paymentMode = paymentMethod || order.paymentMode || "cod";
+    order.paidAtFarm = true;
+    order.timeline.push({ 
+      status: "payment_received", 
+      note: `Farmer confirmed payment at farm gate via ${order.paymentMode.toUpperCase()}. Handover OTP generated.` 
+    });
+
+    await order.save();
+
+    // Notify customer
+    if (order.customer?._id) {
+      await notify(
+        req.app, 
+        order.customer._id, 
+        "🎉 Farm Gate Payment Confirmed!", 
+        `Farmer confirmed payment for ${order.crop?.name || "produce"}. Tell OTP ${order.verificationCode} or enter it on your tracking screen to complete pickup.`,
+        "order", 
+        "high", 
+        { orderId: order._id, verificationCode: order.verificationCode }
+      );
+    }
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("order_updated", order);
+    }
+
+    res.json({ 
+      success: true, 
+      verificationCode: order.verificationCode,
+      message: `Payment confirmed! Share this 6-digit OTP with the customer: ${order.verificationCode}`,
+      order 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ─── Farm Gate Pickup: Customer / Farmer Confirms Handover via Farmer OTP ───
+router.post("/:id/farm-pickup-complete", async (req, res) => {
+  try {
+    const { otp } = req.body;
+    const order = await Order.findById(req.params.id).populate("crop customer farmer");
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    if (order.status === "delivered") {
+      return res.status(400).json({ error: "Order is already marked as delivered." });
+    }
+
+    if (!otp || order.verificationCode !== otp.toString().trim()) {
+      return res.status(400).json({ error: "Invalid verification code. Please check the OTP told by the farmer." });
+    }
+
+    order.status = "delivered";
+    order.paymentStatus = "paid";
+    order.deliveredAt = new Date();
+    order.timeline.push({ 
+      status: "delivered", 
+      note: "Farm gate handover confirmed securely via farmer OTP." 
+    });
+
+    // Deliver points to customer
+    if (order.customer?._id && order.pointsEarned && !order.pointsDistributed) {
+      await User.findByIdAndUpdate(order.customer._id, { $inc: { rewardPoints: order.pointsEarned } });
+      order.pointsDistributed = true;
+    }
+
+    // Deliver trust points to farmer
+    if (order.farmer?._id) {
+      await User.findByIdAndUpdate(order.farmer._id, { $inc: { rewardPoints: 10, trustScore: 2 } });
+    }
+
+    await order.save();
+
+    // Blockchain logging
+    if (order.crop) {
+      await addBlockToChain(
+        order._id, 
+        order.crop._id, 
+        "Direct Farm Gate Handover Confirmed", 
+        `Quantity: ${order.quantity}`, 
+        order.customer?.name || "Customer", 
+        order.deliveryAddress || "Farm Gate Pickup"
+      ).catch(console.error);
+    }
+
+    // Socket notification
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("order_updated", order);
+    }
+
+    if (order.customer?._id) {
+      await notify(
+        req.app, 
+        order.customer._id, 
+        "🌾 Farm Handover Verified!", 
+        `Your direct farm pickup for ${order.crop?.name || "produce"} is verified! Thank you for supporting the farmer directly.`,
+        "order", 
+        "normal"
+      );
+    }
+
+    res.json({ success: true, message: "Farm pickup confirmed successfully!", order });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

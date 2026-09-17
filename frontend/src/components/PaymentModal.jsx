@@ -176,7 +176,7 @@ export default function PaymentModal({ amount, walletBalance, orderId, customerI
       background: "rgba(15, 23, 42, 0.75)", backdropFilter: "blur(8px)",
       overflowY: "auto", WebkitOverflowScrolling: "touch",
       display: "flex", justifyContent: "center", alignItems: "center",
-      padding: "1rem", zIndex: 100010
+      padding: "1rem", zIndex: 200000
     }}>
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.95 }}

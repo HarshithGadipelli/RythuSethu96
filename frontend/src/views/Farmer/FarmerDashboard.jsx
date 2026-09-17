@@ -1197,6 +1197,48 @@ export default function FarmerDashboard({ initialTab }) {
     } catch {}
   };
 
+  const [farmHandoverLoading, setFarmHandoverLoading] = useState(false);
+  const [farmHandoverSuccess, setFarmHandoverSuccess] = useState("");
+
+  const handleFarmerConfirmPayment = async (orderId, paymentMethod = "cod") => {
+    try {
+      setFarmHandoverLoading(true);
+      const res = await API.post(`/orders/${orderId}/farm-payment-received`, { paymentMethod });
+      if (res.data?.success) {
+        setFarmHandoverSuccess(`Payment recorded! Tell this 6-digit OTP to customer: ${res.data.verificationCode}`);
+        if (viewOrder && viewOrder._id === orderId) {
+          setViewOrder(prev => ({
+            ...prev,
+            paymentStatus: "paid",
+            verificationCode: res.data.verificationCode,
+            paidAtFarm: true
+          }));
+        }
+        fetchOrders();
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || "Failed to confirm payment at farm gate.");
+    } finally {
+      setFarmHandoverLoading(false);
+    }
+  };
+
+  const handleFarmerCompleteHandover = async (orderId, otp) => {
+    try {
+      setFarmHandoverLoading(true);
+      const res = await API.post(`/orders/${orderId}/farm-pickup-complete`, { otp });
+      if (res.data?.success) {
+        alert("🎉 Farm gate handover verified and completed successfully! Stock updated.");
+        setViewOrder(null);
+        fetchOrders();
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || "Invalid OTP. Please enter the correct code.");
+    } finally {
+      setFarmHandoverLoading(false);
+    }
+  };
+
   const fetchAuctions = async () => {
     try {
       const res = await API.get(`/auctions/farmer/${user?._id}`);
@@ -2805,23 +2847,129 @@ export default function FarmerDashboard({ initialTab }) {
       
       {/* Order Details Modal */}
       {viewOrder && (
-        <div className="modal-overlay" onClick={() => setViewOrder(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: "500px" }}>
-            <h3 style={{ marginBottom: "1rem", color: "var(--text-dark)" }}>Order Details #{viewOrder.billNumber || viewOrder._id.substring(0,8).toUpperCase()}</h3>
+        <div className="modal-overlay" onClick={() => { setViewOrder(null); setFarmHandoverSuccess(""); }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: "520px", borderRadius: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h3 style={{ margin: 0, color: "var(--text-dark)", fontSize: "1.2rem", fontWeight: 800 }}>
+                Order #{viewOrder.billNumber || viewOrder._id.substring(0,8).toUpperCase()}
+              </h3>
+              <span className={`badge ${viewOrder.deliveryType === "farm_pickup" ? "badge-green" : "badge-blue"}`} style={{ fontSize: "0.8rem", padding: "4px 10px" }}>
+                {viewOrder.deliveryType === "farm_pickup" ? "🏡 Direct Farm Gate Pickup" : "🚚 Doorstep Agent Delivery"}
+              </span>
+            </div>
+
+            {/* Produce Summary */}
+            <div style={{ background: "#f8fafc", padding: "0.85rem", borderRadius: "10px", border: "1px solid #e2e8f0", marginBottom: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <strong style={{ fontSize: "1rem", color: "#1e293b" }}>{viewOrder.crop?.name || "Harvest Produce"}</strong>
+                  <div style={{ fontSize: "0.8rem", color: "#64748b" }}>Quantity: {viewOrder.quantity} {viewOrder.crop?.unit || "kg"}</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: "1.2rem", fontWeight: 900, color: "#16a34a" }}>₹{(viewOrder.totalAmount || 0).toLocaleString()}</div>
+                  <span style={{ fontSize: "0.72rem", color: viewOrder.paymentStatus === "paid" ? "#16a34a" : "#d97706", fontWeight: 700, textTransform: "uppercase" }}>
+                    {viewOrder.paymentStatus === "paid" ? "✓ Paid" : "⏳ Payment Pending"}
+                  </span>
+                </div>
+              </div>
+            </div>
             
-            <div style={{ marginBottom: "1rem", padding: "1rem", background: "rgba(22, 163, 74, 0.05)", borderRadius: "8px", border: "1px solid rgba(22, 163, 74, 0.2)" }}>
-              <h4 style={{ color: "var(--green-deep)", marginBottom: "0.5rem" }}>Customer Info</h4>
-              <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}><strong>Name:</strong> {viewOrder.customer?.name}</p>
-              <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}><strong>Delivery Address:</strong> {viewOrder.deliveryAddress || "N/A"}</p>
+            {/* Customer Details */}
+            <div style={{ marginBottom: "1rem", padding: "0.85rem", background: "white", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+              <h4 style={{ color: "#1e293b", margin: "0 0 0.4rem 0", fontSize: "0.9rem" }}>Customer Contact</h4>
+              <p style={{ margin: "0.2rem 0", fontSize: "0.85rem" }}><strong>Name:</strong> {viewOrder.customer?.name || "Customer"}</p>
+              {viewOrder.customer?.phone && (
+                <p style={{ margin: "0.2rem 0", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <strong>Phone:</strong> 
+                  <a href={`tel:${viewOrder.customer.phone}`} style={{ color: "#2563eb", fontWeight: 700, textDecoration: "none" }}>
+                    📞 {viewOrder.customer.phone}
+                  </a>
+                </p>
+              )}
+              {viewOrder.deliveryType !== "farm_pickup" && (
+                <p style={{ margin: "0.2rem 0", fontSize: "0.85rem" }}><strong>Destination:</strong> {viewOrder.deliveryAddress || "N/A"}</p>
+              )}
             </div>
 
-            <div style={{ marginBottom: "1rem", padding: "1rem", background: "rgba(37, 99, 235, 0.05)", borderRadius: "8px", border: "1px solid rgba(37, 99, 235, 0.2)" }}>
-              <h4 style={{ color: "var(--blue-deep)", marginBottom: "0.5rem" }}>Pickup Info</h4>
-              <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}><strong>Pickup Address:</strong> {viewOrder.pickupAddress || "N/A"}</p>
-              <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}><strong>Status:</strong> {viewOrder.status?.replace("_", " ")}</p>
-            </div>
+            {/* ─── FARM GATE PICKUP WORKFLOW ─── */}
+            {viewOrder.deliveryType === "farm_pickup" ? (
+              <div style={{ background: "#f0fdf4", border: "1.5px solid #86efac", borderRadius: "12px", padding: "1rem", marginBottom: "1.2rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#166534", fontWeight: 800, fontSize: "0.95rem", marginBottom: "0.5rem" }}>
+                  🏡 Farm Gate Handover &amp; OTP Verification
+                </div>
+                <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", color: "#15803d", lineHeight: 1.4 }}>
+                  The customer picks up directly from your farm. Once payment is received, reveal the 6-digit confirmation OTP to the customer so they can verify the handover on their phone.
+                </p>
 
-            <button className="btn-secondary" style={{ width: "100%" }} onClick={() => setViewOrder(null)}>Close</button>
+                {/* If payment not marked paid yet */}
+                {viewOrder.paymentStatus !== "paid" && (
+                  <div style={{ marginBottom: "0.8rem" }}>
+                    <button
+                      onClick={() => handleFarmerConfirmPayment(viewOrder._id, "cod")}
+                      disabled={farmHandoverLoading}
+                      className="btn-primary"
+                      style={{ width: "100%", padding: "0.75rem", fontSize: "0.9rem", fontWeight: 800, borderRadius: "8px", background: "linear-gradient(135deg, #16a34a, #15803d)", cursor: "pointer" }}
+                    >
+                      {farmHandoverLoading ? "Recording..." : `💵 Customer Paid Cash / UPI (₹${(viewOrder.totalAmount || 0).toLocaleString()}) — Get OTP`}
+                    </button>
+                  </div>
+                )}
+
+                {/* Show OTP to farmer to tell customer */}
+                {(viewOrder.paymentStatus === "paid" || viewOrder.verificationCode) && (
+                  <div style={{ background: "white", padding: "1rem", borderRadius: "10px", border: "1.5px dashed #16a34a", textAlign: "center", marginBottom: "0.8rem" }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 800, color: "#166534", textTransform: "uppercase", letterSpacing: "1px" }}>
+                      📢 TELL THIS 6-DIGIT OTP TO CUSTOMER:
+                    </div>
+                    <div style={{ fontSize: "2.2rem", fontWeight: 900, color: "#15803d", letterSpacing: "6px", margin: "0.3rem 0" }}>
+                      {viewOrder.verificationCode || "------"}
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "#475569" }}>
+                      Customer enters this code on their tracking screen to confirm handover and complete the order.
+                    </div>
+                  </div>
+                )}
+
+                {viewOrder.status !== "delivered" && (
+                  <button
+                    onClick={() => handleFarmerCompleteHandover(viewOrder._id, viewOrder.verificationCode)}
+                    disabled={farmHandoverLoading || !viewOrder.verificationCode}
+                    style={{
+                      width: "100%", padding: "0.7rem", borderRadius: "8px",
+                      background: "#15803d", color: "white", border: "none",
+                      fontSize: "0.85rem", fontWeight: 800, cursor: "pointer"
+                    }}
+                  >
+                    ✓ Confirm Produce Handed Over to Customer
+                  </button>
+                )}
+
+                {viewOrder.status === "delivered" && (
+                  <div style={{ textAlign: "center", color: "#166534", fontWeight: 800, fontSize: "0.9rem", padding: "0.4rem" }}>
+                    🎉 Farm Gate Handover Completed!
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Agent Doorstep Delivery Details */
+              <div style={{ marginBottom: "1rem", padding: "0.85rem", background: "#eff6ff", borderRadius: "10px", border: "1px solid #bfdbfe" }}>
+                <h4 style={{ color: "#1e40af", margin: "0 0 0.4rem 0", fontSize: "0.9rem" }}>Delivery Agent Status</h4>
+                <p style={{ margin: "0.2rem 0", fontSize: "0.85rem" }}>
+                  <strong>Assigned Agent:</strong> {viewOrder.agent?.name || "Rythu Express Logistics"}
+                </p>
+                <p style={{ margin: "0.2rem 0", fontSize: "0.85rem" }}>
+                  <strong>Status:</strong> <span className="badge badge-blue">{viewOrder.status?.replace("_", " ")}</span>
+                </p>
+              </div>
+            )}
+
+            <button 
+              className="btn-secondary" 
+              style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", fontWeight: 700 }} 
+              onClick={() => { setViewOrder(null); setFarmHandoverSuccess(""); }}
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

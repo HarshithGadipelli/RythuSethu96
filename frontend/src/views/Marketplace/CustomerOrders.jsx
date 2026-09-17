@@ -223,9 +223,16 @@ export default function CustomerOrders({ orders, fetchOrders }) {
                   📄 View Tax Bill
                 </button>
 
-                {(o.status === "in_transit" || o.status === "assigned" || o.status === "picked_up") && (
-                  <button onClick={() => setTrackingOrder(o)} className="btn-primary" style={{ padding: "0.6rem 1rem", fontSize: "0.9rem", display: "flex", gap: "0.5rem", alignItems: "center", background: "#2563eb" }}>
-                    <MapPin size={16} /> Track Live
+                {(o.deliveryType === "farm_pickup" || ["in_transit", "assigned", "picked_up", "confirmed", "pending"].includes(o.status)) && o.status !== "delivered" && o.status !== "cancelled" && (
+                  <button 
+                    onClick={() => setTrackingOrder(o)} 
+                    className="btn-primary" 
+                    style={{ 
+                      padding: "0.6rem 1rem", fontSize: "0.9rem", display: "flex", gap: "0.5rem", alignItems: "center", 
+                      background: o.deliveryType === "farm_pickup" ? "#16a34a" : "#2563eb" 
+                    }}
+                  >
+                    <MapPin size={16} /> {o.deliveryType === "farm_pickup" ? "🏡 Farm Pickup & OTP" : "Track Live"}
                   </button>
                 )}
 
