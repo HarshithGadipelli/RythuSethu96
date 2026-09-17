@@ -159,25 +159,39 @@ export default function PaymentModal({ amount, walletBalance, orderId, customerI
     }
   };
 
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        if (onSuccess) {
+          onSuccess(method, { paymentId: paymentTxnId, method });
+        }
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [success, method, paymentTxnId, onSuccess]);
+
   return (
     <div style={{
       position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-      background: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(8px)",
-      display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100010
+      background: "rgba(15, 23, 42, 0.75)", backdropFilter: "blur(8px)",
+      overflowY: "auto", WebkitOverflowScrolling: "touch",
+      display: "flex", justifyContent: "center", alignItems: "center",
+      padding: "1rem", zIndex: 100010
     }}>
       <motion.div
-        initial={{ opacity: 0, y: 50, scale: 0.95 }}
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         style={{
           background: "#ffffff", borderRadius: "24px", 
-          width: "90%", maxWidth: "420px", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+          width: "100%", maxWidth: "440px", maxHeight: "min(680px, 92vh)",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
           position: "relative", overflow: "hidden", display: "flex", flexDirection: "column",
           fontFamily: "'Inter', sans-serif"
         }}
       >
         {/* Gateway Header */}
-        <div style={{ background: "linear-gradient(135deg, #0f172a, #1e293b)", padding: "1.5rem", color: "white", position: "relative" }}>
+        <div style={{ background: "linear-gradient(135deg, #0f172a, #1e293b)", padding: "1.25rem 1.5rem", color: "white", position: "relative" }}>
           <button onClick={onClose} style={{
             position: "absolute", top: "1.2rem", right: "1.2rem", background: "rgba(255,255,255,0.1)",
             border: "none", cursor: "pointer", color: "white", borderRadius: "50%", padding: "0.4rem",
@@ -186,14 +200,14 @@ export default function PaymentModal({ amount, walletBalance, orderId, customerI
             <X size={18} />
           </button>
           
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem", opacity: 0.9 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.8rem", opacity: 0.9 }}>
             <ShieldCheck size={20} color="#4ade80" />
             <span style={{ fontSize: "0.85rem", fontWeight: 500, letterSpacing: "0.5px" }}>RYTHU JANA SETHU SECURE PAY</span>
           </div>
           
-          <div style={{ fontSize: "0.9rem", color: "#94a3b8", marginBottom: "0.2rem" }}>Amount to Pay</div>
-          <div style={{ fontSize: "2.5rem", fontWeight: 800, color: "white", display: "flex", alignItems: "baseline", gap: "0.2rem" }}>
-            <span style={{ fontSize: "1.5rem", color: "#4ade80" }}>₹</span>{amount.toLocaleString()}
+          <div style={{ fontSize: "0.85rem", color: "#94a3b8", marginBottom: "0.1rem" }}>Amount to Pay</div>
+          <div style={{ fontSize: "2.2rem", fontWeight: 800, color: "white", display: "flex", alignItems: "baseline", gap: "0.2rem" }}>
+            <span style={{ fontSize: "1.4rem", color: "#4ade80" }}>₹</span>{amount.toLocaleString()}
           </div>
         </div>
 
@@ -201,20 +215,21 @@ export default function PaymentModal({ amount, walletBalance, orderId, customerI
         <AnimatePresence>
           {success && (
             <motion.div 
-              initial={{ opacity: 0, backgroundColor: "#ffffff" }} 
-              animate={{ opacity: 1, backgroundColor: "#f0fdf4" }} 
-              style={{ position: "absolute", inset: 0, zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}
+              initial={{ opacity: 0, scale: 0.9 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              style={{ position: "absolute", inset: 0, zIndex: 10, background: "#f0fdf4", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}
             >
               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 15 }}>
-                <CheckCircle2 size={80} color="#16a34a" />
+                <CheckCircle2 size={70} color="#16a34a" />
               </motion.div>
-              <h2 style={{ color: "#166534", marginTop: "1.5rem", fontSize: "1.5rem", fontWeight: 700 }}>Payment Successful!</h2>
-              <p style={{ color: "#15803d", textAlign: "center", marginTop: "0.5rem", marginBottom: "2rem" }}>
-                Transaction ID: <strong>{paymentTxnId || `TXN${Math.floor(Math.random() * 1000000000)}`}</strong>
+              <h2 style={{ color: "#166534", marginTop: "1rem", fontSize: "1.4rem", fontWeight: 800 }}>Payment Confirmed!</h2>
+              <p style={{ color: "#15803d", textAlign: "center", marginTop: "0.25rem", marginBottom: "1.5rem", fontSize: "0.85rem" }}>
+                Txn Ref: <strong>{paymentTxnId || `TXN${Math.floor(Math.random() * 1000000000)}`}</strong>
               </p>
               
-              <div style={{ width: "100%", height: "120px", position: "relative" }}>
-                <RythuSethuAnimation onComplete={() => onSuccess(method, { paymentId: paymentTxnId, method })} />
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", color: "#166534", fontSize: "0.85rem", fontWeight: 700, background: "white", padding: "0.7rem 1.4rem", borderRadius: "100px", border: "1.5px solid #86efac", boxShadow: "0 4px 12px rgba(22,163,74,0.15)" }}>
+                <span className="loader" style={{ width: 16, height: 16, borderWidth: 2 }}></span>
+                <span>Opening Live Tracking & Receipt...</span>
               </div>
             </motion.div>
           )}

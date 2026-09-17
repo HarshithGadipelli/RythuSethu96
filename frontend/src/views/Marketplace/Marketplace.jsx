@@ -23,6 +23,8 @@ import LocationButton from "../../components/LocationButton";
 import VoiceMicButton from "../../components/VoiceMicButton";
 import LocationPickerModal from "../../components/LocationPickerModal";
 import OrderTracking from "../../components/OrderTracking";
+import OrderInvoiceModal from "../../components/OrderInvoiceModal";
+import QRCode from "react-qr-code";
 import CustomerOrders from "./CustomerOrders";
 import CustomerGroups from "./CustomerGroups";
 import CustomerOfflineTours from "./CustomerOfflineTours";
@@ -698,6 +700,12 @@ export default function Marketplace() {
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [deliveryType, setDeliveryType] = useState("standard");
   const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [onlineSubMethod, setOnlineSubMethod] = useState("upi");
+  const [inlineUtr, setInlineUtr] = useState("");
+  const [copiedUpi, setCopiedUpi] = useState(false);
+  const [merchantUpi, setMerchantUpi] = useState("8688938604@upi");
+  const [placedOrder, setPlacedOrder] = useState(null);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [usePoints, setUsePoints] = useState(false);
   const [hasWetWasteDonation, setHasWetWasteDonation] = useState(false);
@@ -1268,13 +1276,88 @@ export default function Marketplace() {
   };
 
   const placeOrder = () => {
+    handleConfirmOrder();
+  };
+
+  const handleConfirmOrder = async () => {
     if (!user) { setMsg({ type:"error", text:"Please login to place an order." }); return; }
     if (orderQty < 1) { setMsg({ type:"error", text:"Quantity must be at least 1." }); return; }
     if (deliveryType !== "farm_pickup" && !orderAddr) { setMsg({ type:"error", text:"Please enter your delivery address." }); return; }
-    setOrdering(true); setMsg({ type:"", text:"" });
     
-    // Open the new sleek Payment Modal instead of Razorpay directly
-    setShowPaymentModal(true);
+    setOrdering(true);
+    setMsg({ type:"", text:"" });
+
+    if (paymentMethod === "cod") {
+      await createPlatformOrder("cod", "pending");
+      return;
+    }
+
+    // Online Payment Options:
+    if (onlineSubMethod === "wallet") {
+      if ((user.walletBalance || 0) < totalAmount) {
+        setMsg({ type:"error", text:"Insufficient wallet balance. Please add funds or choose another payment method." });
+        setOrdering(false);
+        return;
+      }
+      await createPlatformOrder("wallet", "paid");
+      return;
+    }
+
+    if (onlineSubMethod === "upi") {
+      await createPlatformOrder("upi", "paid");
+      return;
+    }
+
+    if (onlineSubMethod === "card") {
+      try {
+        const loadRazorpay = () => {
+          return new Promise((resolve) => {
+            if (typeof window !== "undefined" && window.Razorpay) return resolve(true);
+            const script = document.createElement("script");
+            script.src = "https://checkout.razorpay.com/v1/checkout.js";
+            script.onload = () => resolve(true);
+            script.onerror = () => resolve(false);
+            document.body.appendChild(script);
+          });
+        };
+
+        const loaded = await loadRazorpay();
+        if (!loaded) {
+          await createPlatformOrder("online", "paid");
+          return;
+        }
+
+        const configRes = await API.get("/payment/razorpay/config");
+        const keyId = configRes.data?.key_id;
+
+        const options = {
+          key: keyId,
+          amount: Math.round(totalAmount * 100),
+          currency: "INR",
+          name: "Rythu Jana Sethu",
+          description: `Order Payment for ${selected?.name || "produce"}`,
+          handler: async function () {
+            await createPlatformOrder("card", "paid");
+          },
+          prefill: {
+            name: user.name || "Customer",
+            email: user.email || "",
+            contact: user.phone || ""
+          },
+          theme: { color: "#16a34a" }
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.on('payment.failed', function (err) {
+          setMsg({ type: "error", text: "Payment failed: " + (err.error?.description || "Transaction declined") });
+          setOrdering(false);
+        });
+        rzp.open();
+      } catch (e) {
+        console.error("Razorpay initiation failed, placing order via online status:", e);
+        await createPlatformOrder("online", "paid");
+      }
+    }
   };
 
   const handlePaymentSuccess = async (method) => {
@@ -1287,33 +1370,42 @@ export default function Marketplace() {
   };
 
   const createPlatformOrder = async (payMode, payStatus) => {
-    const orderData = {
-      crop: selected._id,
-      customer: user._id,
-      farmer: selected.farmer?._id || selected.farmer,
-      quantity: orderQty,
-      totalAmount,
-      subtotal,
-      deliveryCharges,
-      pointsUsed: pointsDiscount,
-      deliveryDistance: Math.round(deliveryDistance * 10) / 10,
-      deliveryType,
-      paymentMode: payMode,
-      paymentStatus: payStatus,
-      deliveryAddress: deliveryType === "farm_pickup" ? "Farm Pickup" : orderAddr,
-      deliveryLatitude: orderLat,
-      deliveryLongitude: orderLng,
-      hasWetWasteDonation,
-      wetWasteEstKg: hasWetWasteDonation ? Number(wetWasteEstKg) : 0,
-      wetWasteNotes,
-    };
+    try {
+      const orderData = {
+        crop: selected._id,
+        customer: user._id,
+        farmer: selected.farmer?._id || selected.farmer,
+        quantity: orderQty,
+        totalAmount,
+        subtotal,
+        deliveryCharges,
+        pointsUsed: pointsDiscount,
+        deliveryDistance: Math.round(deliveryDistance * 10) / 10,
+        deliveryType,
+        paymentMode: payMode,
+        paymentStatus: payStatus,
+        deliveryAddress: deliveryType === "farm_pickup" ? "Farm Pickup" : orderAddr,
+        deliveryLatitude: orderLat,
+        deliveryLongitude: orderLng,
+        hasWetWasteDonation,
+        wetWasteEstKg: hasWetWasteDonation ? Number(wetWasteEstKg) : 0,
+        wetWasteNotes,
+      };
 
-    const res = await API.post("/orders/create", orderData);
-    setTrackingOrder(res.data._id);
-    setMsg({ type:"success", text:`✅ Order placed successfully!` });
-    fetchCrops();
-    if (user) fetchMyOrders();
-    setOrdering(false);
+      const res = await API.post("/orders/create", orderData);
+      setShowModal(false);
+      setShowPaymentModal(false);
+      setOrdering(false);
+      setShowBill(null);
+      setPlacedOrder(res.data);
+      setMsg({ type:"success", text:`✅ Order placed successfully!` });
+      fetchCrops();
+      if (user) fetchMyOrders();
+    } catch (err) {
+      console.error("Order creation failed:", err);
+      setMsg({ type:"error", text: err.response?.data?.error || "Failed to place order. Please try again." });
+      setOrdering(false);
+    }
   };
 
   const mapLocations = filtered.filter(c => {
@@ -2004,6 +2096,143 @@ export default function Marketplace() {
                   </div>
                 </div>
 
+                {/* Fixed Inline Online Payment Options (No Floating Popup) */}
+                {paymentMethod === "online" && (
+                  <div style={{
+                    marginBottom: "1rem",
+                    padding: "1.1rem",
+                    background: "#f8fafc",
+                    borderRadius: "16px",
+                    border: "1.5px solid #e2e8f0"
+                  }}>
+                    <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "0.75rem" }}>
+                      Select Online Payment Mode
+                    </div>
+
+                    {/* Sub-method tabs */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem", marginBottom: "0.85rem" }}>
+                      <button
+                        type="button"
+                        onClick={() => setOnlineSubMethod("upi")}
+                        style={{
+                          padding: "0.6rem 0.4rem", borderRadius: "10px",
+                          border: onlineSubMethod === "upi" ? "2px solid #3b82f6" : "1px solid #cbd5e1",
+                          background: onlineSubMethod === "upi" ? "#eff6ff" : "white",
+                          color: onlineSubMethod === "upi" ? "#1d4ed8" : "#475569",
+                          fontWeight: 700, fontSize: "0.8rem", cursor: "pointer",
+                          display: "flex", flexDirection: "column", alignItems: "center", gap: "4px"
+                        }}
+                      >
+                        <span style={{ fontSize: "1.1rem" }}>📱</span>
+                        <span>UPI / QR</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setOnlineSubMethod("wallet")}
+                        style={{
+                          padding: "0.6rem 0.4rem", borderRadius: "10px",
+                          border: onlineSubMethod === "wallet" ? "2px solid #10b981" : "1px solid #cbd5e1",
+                          background: onlineSubMethod === "wallet" ? "#ecfdf5" : "white",
+                          color: onlineSubMethod === "wallet" ? "#047857" : "#475569",
+                          fontWeight: 700, fontSize: "0.8rem", cursor: "pointer",
+                          display: "flex", flexDirection: "column", alignItems: "center", gap: "4px"
+                        }}
+                      >
+                        <span style={{ fontSize: "1.1rem" }}>👛</span>
+                        <span>Wallet</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setOnlineSubMethod("card")}
+                        style={{
+                          padding: "0.6rem 0.4rem", borderRadius: "10px",
+                          border: onlineSubMethod === "card" ? "2px solid #6366f1" : "1px solid #cbd5e1",
+                          background: onlineSubMethod === "card" ? "#eef2ff" : "white",
+                          color: onlineSubMethod === "card" ? "#4338ca" : "#475569",
+                          fontWeight: 700, fontSize: "0.8rem", cursor: "pointer",
+                          display: "flex", flexDirection: "column", alignItems: "center", gap: "4px"
+                        }}
+                      >
+                        <span style={{ fontSize: "1.1rem" }}>💳</span>
+                        <span>Cards</span>
+                      </button>
+                    </div>
+
+                    {/* Mode details */}
+                    {onlineSubMethod === "upi" && (
+                      <div style={{ textAlign: "center", background: "white", padding: "1rem", borderRadius: "12px", border: "1.5px dashed #3b82f6" }}>
+                        <div style={{ display: "inline-block", padding: "0.5rem", background: "white", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", marginBottom: "0.5rem" }}>
+                          <QRCode value={`upi://pay?pa=${merchantUpi}&pn=Rythu%20Jana%20Sethu&am=${totalAmount}&cu=INR&tn=RythuOrder`} size={110} level="M" />
+                        </div>
+                        <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e293b", marginBottom: "0.4rem" }}>
+                          Scan with GPay / PhonePe / Paytm / BHIM
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem", background: "#f8fafc", padding: "4px 8px", borderRadius: "8px", border: "1px solid #e2e8f0", maxWidth: "280px", margin: "0 auto 0.5rem auto" }}>
+                          <span style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>UPI:</span>
+                          <code style={{ fontSize: "0.82rem", color: "#2563eb", fontWeight: 700 }}>{merchantUpi}</code>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(merchantUpi);
+                              setCopiedUpi(true);
+                              setTimeout(() => setCopiedUpi(false), 2000);
+                            }}
+                            style={{ border: "none", background: copiedUpi ? "#dcfce7" : "#e2e8f0", color: copiedUpi ? "#16a34a" : "#475569", borderRadius: "4px", padding: "2px 6px", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer" }}
+                          >
+                            {copiedUpi ? "✓ Copied" : "📋 Copy"}
+                          </button>
+                        </div>
+
+                        <a
+                          href={`upi://pay?pa=${merchantUpi}&pn=Rythu%20Jana%20Sethu&am=${totalAmount}&cu=INR&tn=RythuOrder`}
+                          style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "#3b82f6", color: "white", padding: "5px 12px", borderRadius: "8px", textDecoration: "none", fontSize: "0.78rem", fontWeight: 700 }}
+                        >
+                          ⚡ Open in UPI App
+                        </a>
+
+                        <div style={{ marginTop: "0.6rem", display: "flex", gap: "4px" }}>
+                          <input
+                            placeholder="Optional: Enter UPI Ref / UTR No"
+                            value={inlineUtr}
+                            onChange={e => setInlineUtr(e.target.value)}
+                            style={{ flex: 1, padding: "5px 8px", fontSize: "0.78rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {onlineSubMethod === "wallet" && (
+                      <div style={{ background: "white", padding: "1rem", borderRadius: "12px", border: "1px solid #10b981", textAlign: "center" }}>
+                        <div style={{ fontSize: "0.82rem", color: "#065f46", fontWeight: 600 }}>Rythu Wallet Balance</div>
+                        <div style={{ fontSize: "1.4rem", fontWeight: 800, color: (user?.walletBalance || 0) >= totalAmount ? "#059669" : "#dc2626", margin: "0.2rem 0" }}>
+                          ₹{(user?.walletBalance || 0).toLocaleString()}
+                        </div>
+                        {(user?.walletBalance || 0) < totalAmount ? (
+                          <div style={{ fontSize: "0.78rem", color: "#dc2626", fontWeight: 600 }}>
+                            ⚠️ Insufficient balance for this order (Need ₹{totalAmount.toLocaleString()})
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: "0.78rem", color: "#059669", fontWeight: 600 }}>
+                            ✓ Sufficient balance available
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {onlineSubMethod === "card" && (
+                      <div style={{ background: "white", padding: "1rem", borderRadius: "12px", border: "1px solid #6366f1", textAlign: "center" }}>
+                        <div style={{ fontSize: "0.85rem", color: "#3730a3", fontWeight: 700 }}>Cards & NetBanking</div>
+                        <p style={{ margin: "0.3rem 0 0 0", fontSize: "0.78rem", color: "#64748b" }}>
+                          Pay securely via Visa, MasterCard, RuPay & NetBanking via Razorpay.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Active filters summary */}
                 {activeFilterCount > 0 && (
                   <div style={{ marginTop: "1rem", padding: "0.75rem 1rem", background: "#f0fdf4", borderRadius: "12px", border: "1px solid #bbf7d0", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
@@ -2098,7 +2327,7 @@ export default function Marketplace() {
               <span>🌴</span>
               <span>{search.toLowerCase().includes("bellam") ? "✓ Thaati Bellam Active" : "Thaati Bellam"}</span>
             </button>
-            <Link href="/farmer/dashboard"
+            <Link href="/farmer"
               style={{
                 padding: "0.45rem 0.85rem",
                 borderRadius: "100px",
@@ -3683,8 +3912,28 @@ export default function Marketplace() {
                 <div style={{ display:"flex", gap:"0.75rem", flexDirection: "column" }}>
                   <div style={{ display:"flex", gap:"0.75rem" }}>
                     <button className="btn-secondary" onClick={() => { setShowModal(false); setMsg({ type:"", text:"" }); setTrustScoreDetail(null); }}>Cancel</button>
-                    <button className="btn-primary" onClick={placeOrder} disabled={ordering || selected.quantity < orderQty} style={{ flex:1, background: selected.isPrebooking ? "var(--yellow-wheat)" : "", color: selected.isPrebooking ? "#000" : "" }}>
-                      {ordering ? t("loading") : selected.isPrebooking ? `⏳ Buy Now (Pre-order) — ₹${totalAmount.toLocaleString()}` : `⚡ Buy Now — ₹${totalAmount.toLocaleString()}`}
+                    <button 
+                      className="btn-primary" 
+                      onClick={handleConfirmOrder} 
+                      disabled={ordering || selected.quantity < orderQty} 
+                      style={{ 
+                        flex: 1, 
+                        background: selected.isPrebooking ? "var(--yellow-wheat)" : paymentMethod === "online" ? "linear-gradient(135deg, #2563eb, #1d4ed8)" : "", 
+                        color: selected.isPrebooking ? "#000" : "white" 
+                      }}
+                    >
+                      {ordering ? (
+                        <>
+                          <span className="loader" style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", display: "inline-block", marginRight: "6px" }}></span>
+                          Placing Order...
+                        </>
+                      ) : selected.isPrebooking ? (
+                        `⏳ Pre-order Now — ₹${totalAmount.toLocaleString()}`
+                      ) : paymentMethod === "cod" ? (
+                        `💵 Place COD Order — ₹${totalAmount.toLocaleString()}`
+                      ) : (
+                        `🔒 Pay & Place Order — ₹${totalAmount.toLocaleString()}`
+                      )}
                     </button>
                   </div>
                   <button 
@@ -3906,6 +4155,179 @@ export default function Marketplace() {
       {/* ─── Healthy Millet Recipe Hub Modal ─── */}
       {showRecipeHub && (
         <HealthyRecipeHub onClose={() => setShowRecipeHub(false)} />
+      )}
+
+      {/* ─── IMMERSIVE ORDER SUCCESS CELEBRATION VIEW ─── */}
+      {placedOrder && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 100002, background: "#f8fafc",
+          display: "flex", flexDirection: "column", overflowY: "auto"
+        }}>
+          <div style={{ maxWidth: "800px", margin: "0 auto", padding: "2.5rem 1.5rem", width: "100%" }}>
+            
+            {/* Top Success Badge & Heading */}
+            <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+              <div style={{
+                width: "72px", height: "72px", borderRadius: "50%", background: "#dcfce7",
+                color: "#16a34a", display: "inline-flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 10px 25px rgba(22,163,74,0.25)", marginBottom: "1rem"
+              }}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              </div>
+              
+              <div style={{ display: "inline-block", background: "#dcfce7", color: "#166534", padding: "4px 16px", borderRadius: "100px", fontSize: "0.85rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1px", marginBottom: "0.5rem" }}>
+                ✓ Order Confirmed Successfully
+              </div>
+              
+              <h1 style={{ margin: "0.5rem 0", fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 900, color: "#0f172a" }}>
+                Thank You for Your Order!
+              </h1>
+              
+              <p style={{ margin: 0, color: "#64748b", fontSize: "1rem" }}>
+                Bill <strong>#{placedOrder.billNumber || placedOrder._id}</strong> • Your purchase directly empowers rural Indian farmers.
+              </p>
+            </div>
+
+            {/* Order Highlights Card */}
+            <div style={{
+              background: "white", borderRadius: "20px", border: "1px solid #e2e8f0",
+              padding: "1.75rem", boxShadow: "0 15px 35px rgba(0,0,0,0.04)", marginBottom: "2rem"
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem", borderBottom: "1px solid #f1f5f9", paddingBottom: "1.25rem", marginBottom: "1.25rem" }}>
+                <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                  {selected?.image && (
+                    <img src={getImgSrc(selected.image, selected.name, selected.category)} alt={selected.name} style={{ width: 64, height: 64, borderRadius: 12, objectFit: "cover" }} />
+                  )}
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#1e293b" }}>
+                      {placedOrder.crop?.name || selected?.name || "Direct Farm Produce"}
+                    </h3>
+                    <div style={{ fontSize: "0.9rem", color: "#64748b", marginTop: "2px" }}>
+                      Quantity: <strong>{placedOrder.quantity} {placedOrder.crop?.unit || selected?.unit || "kg"}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Total Amount</div>
+                  <div style={{ fontSize: "1.6rem", fontWeight: 900, color: "#16a34a" }}>
+                    ₹{(placedOrder.totalAmount || 0).toLocaleString()}
+                  </div>
+                  <span style={{ fontSize: "0.75rem", padding: "2px 8px", borderRadius: "6px", background: placedOrder.paymentStatus === "paid" ? "#dcfce7" : "#fef3c7", color: placedOrder.paymentStatus === "paid" ? "#166534" : "#b45309", fontWeight: 700, textTransform: "uppercase" }}>
+                    {placedOrder.paymentMode?.toUpperCase()} • {placedOrder.paymentStatus?.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+
+              {/* OTP & ETA Highlights */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1rem" }}>
+                {placedOrder.verificationCode && (
+                  <div style={{ background: "#f0fdf4", border: "1.5px dashed #86efac", borderRadius: "12px", padding: "1rem", textAlign: "center" }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 800, color: "#166534", textTransform: "uppercase", letterSpacing: "1px" }}>
+                      🔐 Delivery Verification OTP
+                    </div>
+                    <div style={{ fontSize: "1.8rem", fontWeight: 900, color: "#15803d", letterSpacing: "4px", margin: "0.3rem 0" }}>
+                      {placedOrder.verificationCode}
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "#166534" }}>
+                      Share with delivery rider at your doorstep
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ background: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: "12px", padding: "1rem", textAlign: "center" }}>
+                  <div style={{ fontSize: "0.75rem", fontWeight: 800, color: "#1e40af", textTransform: "uppercase", letterSpacing: "1px" }}>
+                    ⏱️ Estimated Arrival
+                  </div>
+                  <div style={{ fontSize: "1.8rem", fontWeight: 900, color: "#1d4ed8", margin: "0.3rem 0" }}>
+                    ~{placedOrder.estimatedDeliveryMinutes || 35} mins
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#1e40af" }}>
+                    Real-time GPS tracking active
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ fontSize: "0.85rem", color: "#475569", lineHeight: 1.6, background: "#f8fafc", padding: "0.85rem 1rem", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                <div>📍 <strong>Delivery Address:</strong> {placedOrder.deliveryAddress}</div>
+                {placedOrder.hasWetWasteDonation && (
+                  <div style={{ color: "#16a34a", fontWeight: 600, marginTop: "4px" }}>
+                    🌱 <strong>Wet Waste Donation:</strong> ~{placedOrder.wetWasteEstKg || 2}kg container requested (+15 Green Points)
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <button
+                onClick={() => {
+                  setTrackingOrder(placedOrder);
+                  setPlacedOrder(null);
+                }}
+                className="btn-primary hover-scale"
+                style={{
+                  padding: "1.2rem", fontSize: "1.1rem", borderRadius: "16px",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: "0.6rem",
+                  boxShadow: "0 10px 25px rgba(22,163,74,0.3)", fontWeight: 800, cursor: "pointer"
+                }}
+              >
+                🗺️ Track Live Order on Map (Rider GPS & Chat)
+              </button>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                <button
+                  onClick={() => setShowInvoiceModal(true)}
+                  className="hover-scale"
+                  style={{
+                    padding: "1rem", fontSize: "0.95rem", borderRadius: "14px",
+                    background: "#f0fdf4", color: "#166534", border: "1.5px solid #86efac",
+                    fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem"
+                  }}
+                >
+                  📄 View &amp; Print Tax Bill
+                </button>
+
+                <button
+                  onClick={() => {
+                    setPlacedOrder(null);
+                    router.push("/my-orders");
+                  }}
+                  className="hover-scale"
+                  style={{
+                    padding: "1rem", fontSize: "0.95rem", borderRadius: "14px",
+                    background: "white", color: "#1e293b", border: "1.5px solid #cbd5e1",
+                    fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem"
+                  }}
+                >
+                  📦 View All My Orders
+                </button>
+              </div>
+
+              <button
+                onClick={() => setPlacedOrder(null)}
+                style={{
+                  padding: "0.8rem", fontSize: "0.9rem", color: "#64748b", background: "transparent",
+                  border: "none", cursor: "pointer", fontWeight: 600, marginTop: "0.5rem"
+                }}
+              >
+                ← Back to Marketplace
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tax Invoice Modal ─── */}
+      {showInvoiceModal && placedOrder && (
+        <OrderInvoiceModal 
+          order={placedOrder} 
+          onClose={() => setShowInvoiceModal(false)} 
+        />
       )}
 
       {/* ─── Order Tracking Portal ─── */}

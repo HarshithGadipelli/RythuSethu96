@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const CROSSERS = [
@@ -11,6 +11,12 @@ const CROSSERS = [
 export default function RythuSethuAnimation({ onComplete }) {
   const [stones, setStones] = useState([]);
   const [truckCross, setTruckCross] = useState(false);
+  const onCompleteRef = useRef(onComplete);
+
+  // Keep ref in sync with latest callback without triggering re-renders
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   // Generate 25 keyframe points for the bridge (with a slight arc)
   const { pathLefts, pathBottoms, agentOpacities } = useMemo(() => {
@@ -37,13 +43,13 @@ export default function RythuSethuAnimation({ onComplete }) {
         clearInterval(interval);
         setTimeout(() => setTruckCross(true), 400);
         // Let the order proceed quickly instead of waiting 11 seconds
-        if (onComplete) {
-           setTimeout(() => onComplete(), 1500); 
+        if (onCompleteRef.current) {
+           setTimeout(() => onCompleteRef.current(), 1500); 
         }
       }
     }, 80);
     return () => clearInterval(interval);
-  }, [onComplete]);
+  }, []); // Run only once on mount — uses ref for latest callback
 
   return (
     <div style={{

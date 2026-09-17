@@ -200,7 +200,7 @@ export default function OrderTracking({ orderId, onClose }) {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "#f8fafc", display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 100005, background: "#f8fafc", display: "flex", flexDirection: "column" }}>
       {/* Header */}
       <div style={{ background: "white", padding: "1.5rem", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", flexWrap: "wrap", gap: "0.75rem" }}>
         <div>

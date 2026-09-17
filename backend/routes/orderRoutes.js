@@ -586,6 +586,18 @@ router.get("/customer/:id", async (req, res) => {
   }
 });
 
+// Get orders for a user (customer or farmer)
+router.get("/user/:id", async (req, res) => {
+  try {
+    const orders = await Order.find({
+      $or: [{ customer: req.params.id }, { farmer: req.params.id }]
+    }).populate("crop").populate("farmer").populate("customer").sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get orders for a farmer
 router.get("/farmer/:id", async (req, res) => {
   try {

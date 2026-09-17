@@ -18,7 +18,8 @@ export default function MyOrdersPage() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const res = await API.get(`/orders/user/${user._id}`);
+      // Primary: customer orders endpoint; Fallback: user orders endpoint
+      const res = await API.get(`/orders/customer/${user._id}`).catch(() => API.get(`/orders/user/${user._id}`));
       setOrders(res.data || []);
     } catch (e) {
       console.error("Failed to fetch orders", e);
