@@ -1248,7 +1248,7 @@ export default function AgentDashboard() {
             }}
           >
             <Car size={18} />
-            <span>🚗 Hands-Free Driving Assistant</span>
+            <span>🤖 Agent Workflow AI Companion</span>
           </button>
         </div>
       </div>

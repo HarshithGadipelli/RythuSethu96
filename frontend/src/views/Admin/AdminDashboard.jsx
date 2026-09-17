@@ -3341,11 +3341,6 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ── FINANCIALS TAB ── */}
-          {tab === "financials" && (
-            <AdminFinancials />
-          )}
-
           {/* ── GROWTH TIPS TAB ── */}
           {tab === "tips" && (
             <AdminTips stats={stats} />
