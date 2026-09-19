@@ -2053,7 +2053,7 @@ h3, h4, h5 { font-family: 'Outfit', sans-serif; font-weight: 600; }
 .mandi-ticker-content {
   display: inline-flex;
   gap: 2rem;
-  animation: mandiTickerScroll 42s linear infinite;
+  animation: mandiTickerScroll 75s linear infinite;
 }
 
 .mandi-ticker-bar:hover .mandi-ticker-content {
