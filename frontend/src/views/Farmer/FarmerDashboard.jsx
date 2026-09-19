@@ -699,7 +699,6 @@ export default function FarmerDashboard({ initialTab }) {
   const [tab, setTab] = useState(getInitialTab);
   const [crops, setCrops] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [showPledge, setShowPledge] = useState(user?.acceptedTerms === false);
@@ -728,8 +727,6 @@ export default function FarmerDashboard({ initialTab }) {
   const [viewOrder, setViewOrder] = useState(null);
   const [tabCategory, setTabCategory] = useState("all");
 
-  // Auction Modal State
-  const [auctionModal, setAuctionModal] = useState({ isOpen: false, crop: null, quantity: "", startingBid: "", durationHours: "24" });
 
   // Pest Detection State
   const [pestImage, setPestImage] = useState(null);
@@ -1133,7 +1130,6 @@ export default function FarmerDashboard({ initialTab }) {
   useEffect(() => { 
     fetchCrops();
     fetchOrders();
-    fetchAuctions();
     API.get("/farmers/profile").then(res => setFarmerProfile(res.data)).catch(() => {});
     const socket = io(BASE_URL);
     socket.on("order_created", () => { 
@@ -1141,7 +1137,6 @@ export default function FarmerDashboard({ initialTab }) {
       fetchOrders(); 
       setMsg({ type: "success", text: "🔔 New Order Received! Check your orders tab." });
     });
-    socket.on("auction_update", () => fetchAuctions());
     socket.on("farmer_verified", () => window.location.reload());
 
     // Listen for AI Autofill events
@@ -1252,32 +1247,6 @@ export default function FarmerDashboard({ initialTab }) {
     }
   };
 
-  const fetchAuctions = async () => {
-    try {
-      const res = await API.get(`/auctions/farmer/${user?._id}`);
-      setAuctions(res.data);
-    } catch {}
-  };
-
-  const createAuction = async () => {
-    if (!auctionModal.quantity || !auctionModal.startingBid) return;
-    try {
-      await API.post("/auctions/create", {
-        cropId: auctionModal.crop._id,
-        farmerId: user._id,
-        quantity: Number(auctionModal.quantity),
-        startingBid: Number(auctionModal.startingBid),
-        durationHours: Number(auctionModal.durationHours)
-      });
-      setMsg({ type: "success", text: "Auction created successfully!" });
-      setAuctionModal({ isOpen: false, crop: null, quantity: "", startingBid: "", durationHours: "24" });
-      fetchAuctions();
-      fetchCrops();
-      setTab("auctions");
-    } catch (e) {
-      setMsg({ type: "error", text: e.response?.data?.error || "Error creating auction" });
-    }
-  };
 
   const getLocation = () => {
     if (!navigator.geolocation) { alert("Geolocation not supported"); return; }
@@ -1951,11 +1920,11 @@ export default function FarmerDashboard({ initialTab }) {
           {[
             { k: "crops", l: `🌿 My Crops (${crops.length})` },
             { k: "add", l: `➕ ${t("addCrop")}` },
+            { k: "profile", l: "👤 Profile & Tours" },
             { k: "tools_hub", l: "🌾 Agri-Tools Suite (19+)" },
             { k: "orders", l: `📦 Daily Orders (${orders.length})` },
             { k: "apmc", l: "🏛️ All India APMC Mandis" },
-            { k: "demand", l: "📊 Demand & Dynamic Pricing" },
-            { k: "auctions", l: `🔨 Live Auctions (${auctions.length})` }
+            { k: "demand", l: "📊 Demand & Dynamic Pricing" }
           ].map(tb => (
             <button
               key={tb.k}
@@ -2153,7 +2122,6 @@ export default function FarmerDashboard({ initialTab }) {
                                 <button className="btn-secondary" style={{ padding:"0.35rem 0.5rem", fontSize:"0.78rem", background: "var(--yellow-wheat)", color: "white", border: "none" }} onClick={() => sellToAdmin(c._id)} title="Sell leftovers to Admin at discount">❄️ Sell to Admin</button>
                               )}
                               
-                              <button className="btn-secondary" style={{ padding:"0.35rem 0.5rem", fontSize:"0.78rem", background: "var(--blue-mid)", color: "white", border: "none" }} onClick={() => setAuctionModal({ isOpen: true, crop: c, quantity: c.quantity, startingBid: c.price, durationHours: "24" })}>🔨 Auction</button>
                               <label className="btn-secondary" style={{ padding:"0.35rem 0.5rem", fontSize:"0.78rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.2rem", margin: 0 }}>
                                 🎥 {c.farmTourVideo ? "Update Tour" : "Record Tour"}
                                 <input type="file" accept="video/*" capture="environment" style={{ display: "none" }} onChange={(e) => uploadFarmTour(c._id, e.target.files[0])} />
@@ -2168,33 +2136,6 @@ export default function FarmerDashboard({ initialTab }) {
                 )}
               </div>
             </>
-          )}
-        </div>
-      )}
-
-      {/* ── AUCTIONS TAB ── */}
-      {tab === "auctions" && (
-        <div>
-          <div className="flex-between mb-2">
-            <h2 className="section-title">🔨 B2B Auctions</h2>
-            <button className="btn-primary" onClick={() => setTab("crops")}>+ Create Auction from Crops</button>
-          </div>
-          {auctions.length === 0 ? (
-            <div className="glass-card text-center" style={{ padding: "3rem" }}>
-              <p style={{ color: "var(--text-muted)" }}>No active auctions. List a bulk harvest to start bidding!</p>
-            </div>
-          ) : (
-            <div className="grid-cards">
-              {auctions.map(a => (
-                <div key={a._id} className="glass-card" style={{ borderLeft: "4px solid var(--primary)" }}>
-                  <h3>{a.crop?.name} ({a.quantity} {a.crop?.unit})</h3>
-                  <p>Starting Bid: ₹{a.startingBid}</p>
-                  <p>Current Highest: <strong style={{ color: "var(--green-mid)" }}>₹{a.currentHighestBid}</strong></p>
-                  <p>Ends: {new Date(a.endTime).toLocaleString()}</p>
-                  <span className={`badge ${a.status === "active" ? "badge-green" : "badge-yellow"}`}>{a.status}</span>
-                </div>
-              ))}
-            </div>
           )}
         </div>
       )}
@@ -3265,53 +3206,7 @@ export default function FarmerDashboard({ initialTab }) {
         </div>
       )}
 
-      {/* Auction Modal */}
-      {auctionModal.isOpen && (
-        <div className="modal-overlay" onClick={() => setAuctionModal(m => ({ ...m, isOpen: false }))}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: "400px" }}>
-            <h3 style={{ marginBottom: "1rem", color: "var(--text-dark)" }}>Create B2B Auction</h3>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1rem" }}>
-              List {auctionModal.crop?.name} for bulk bidding by B2B buyers.
-            </p>
 
-            <div className="form-group mb-3">
-              <label className="field-label">Quantity to Auction ({auctionModal.crop?.unit})</label>
-              <input 
-                type="number" className="rs-input" 
-                value={auctionModal.quantity} 
-                onChange={e => setAuctionModal(m => ({ ...m, quantity: e.target.value }))}
-                max={auctionModal.crop?.quantity}
-              />
-              <small style={{ color: "var(--text-muted)" }}>Available: {auctionModal.crop?.quantity}</small>
-            </div>
-
-            <div className="form-group mb-3">
-              <label className="field-label">Starting Bid (₹)</label>
-              <input 
-                type="number" className="rs-input" 
-                value={auctionModal.startingBid} 
-                onChange={e => setAuctionModal(m => ({ ...m, startingBid: e.target.value }))}
-              />
-            </div>
-
-            <div className="form-group mb-4">
-              <label className="field-label">Duration</label>
-              <select className="rs-select" value={auctionModal.durationHours} onChange={e => setAuctionModal(m => ({ ...m, durationHours: e.target.value }))}>
-                <option value="12">12 Hours</option>
-                <option value="24">24 Hours (1 Day)</option>
-                <option value="48">48 Hours (2 Days)</option>
-                <option value="72">72 Hours (3 Days)</option>
-                <option value="168">1 Week</option>
-              </select>
-            </div>
-
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setAuctionModal(m => ({ ...m, isOpen: false }))}>Cancel</button>
-              <button className="btn-primary" style={{ flex: 1, background: "var(--blue-mid)", borderColor: "var(--blue-mid)" }} onClick={createAuction}>Start Auction</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showLocModal && (
         <LocationUpdateModal
@@ -3471,6 +3366,59 @@ export default function FarmerDashboard({ initialTab }) {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ── PROFILE & TOURS TAB ── */}
+      {tab === "profile" && (
+        <div className="glass-card">
+          <h2 className="section-title">👤 Farmer Profile & Farm Tours</h2>
+          <p style={{ color: "var(--text-muted)", marginBottom: "1rem" }}>
+            Manage your public profile and add sample photos or videos to promote your farm for Farm Tours.
+          </p>
+
+          <div className="form-group mb-3">
+            <label className="field-label">Upload Farm Tour Media (Photos/Videos)</label>
+            <input
+              type="file"
+              accept="image/*,video/*"
+              className="rs-input"
+              onChange={async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const formData = new FormData();
+                formData.append("file", file);
+                try {
+                  const res = await API.post(`/farmers/${user._id}/tour-media`, formData);
+                  setFarmerProfile(res.data);
+                  setMsg({ type: "success", text: "Media uploaded successfully!" });
+                } catch (err) {
+                  setMsg({ type: "error", text: "Upload failed" });
+                }
+              }}
+            />
+          </div>
+
+          <div className="grid-cards" style={{ marginTop: "1rem" }}>
+            {farmerProfile?.farmTourMedia?.map((media, idx) => (
+              <div key={idx} className="glass-card" style={{ padding: "0.5rem", textAlign: "center" }}>
+                {media.type === "video" ? (
+                  <video src={media.url} controls style={{ width: "100%", height: "150px", objectFit: "cover", borderRadius: "8px" }} />
+                ) : (
+                  <img src={media.url} alt="Farm Tour" style={{ width: "100%", height: "150px", objectFit: "cover", borderRadius: "8px" }} />
+                )}
+                <button className="btn-danger mt-2" style={{ padding: "0.3rem 0.5rem", fontSize: "0.8rem" }} onClick={async () => {
+                  try {
+                    const res = await API.delete(`/farmers/${user._id}/tour-media/${idx}`);
+                    setFarmerProfile(res.data);
+                    setMsg({ type: "success", text: "Media removed." });
+                  } catch (err) {
+                    setMsg({ type: "error", text: "Failed to remove media." });
+                  }
+                }}>Remove</button>
+              </div>
+            ))}
           </div>
         </div>
       )}

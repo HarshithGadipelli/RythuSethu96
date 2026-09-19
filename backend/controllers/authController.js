@@ -64,6 +64,8 @@ const formatUserPayload = (user) => ({
   requiresDailyDelivery: user.requiresDailyDelivery || false,
   agentType: user.agentType || "bike",
   farmName: user.farmName || "",
+  notificationPreference: user.notificationPreference || "both",
+  audioNotificationVoice: user.audioNotificationVoice || "default",
   acceptedTerms: user.acceptedTerms ?? true
 });
 

@@ -35,6 +35,10 @@ const farmerSchema = new mongoose.Schema({
   farmTourVerified: { type: Boolean, default: false },
   farmTourPrice: { type: Number, default: 0 },
   farmTourDetails: { type: String, default: "" },
+  farmTourMedia: [{
+    url: { type: String },
+    type: { type: String, enum: ["photo", "video"] }
+  }],
   
   // ── Soil Testing ──
   soilTestRequested: { type: Boolean, default: false },

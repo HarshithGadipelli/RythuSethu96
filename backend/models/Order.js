@@ -108,6 +108,14 @@ const orderSchema = new mongoose.Schema({
   // ─── Multi-Location Delivery ───
   multiLocationGroupId: { type: String, default: "" },
 
+  // ─── Multi-Hop Logistics ───
+  deliveryLegs: [{ type: mongoose.Schema.Types.ObjectId, ref: "Delivery" }],
+  logisticsPhase: { 
+    type: String, 
+    enum: ["pending", "farm_to_hub", "hub_to_storage", "storage_to_customer", "completed", "cancelled"],
+    default: "pending"
+  },
+
   // ─── Circular Economy Wet-Waste Collection ───
   hasWetWasteDonation: { type: Boolean, default: false },
   wetWasteEstKg: { type: Number, default: 0 },

@@ -84,6 +84,14 @@ const userSchema = new mongoose.Schema({
   upiId: { type: String, default: "" },
   bankAccountNumber: { type: String, default: "" },
 
+  // ─── Notification Preferences ───
+  notificationPreference: { 
+    type: String, 
+    enum: ["view", "hear", "both"], 
+    default: "both" 
+  },
+  audioNotificationVoice: { type: String, default: "default" },
+
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 

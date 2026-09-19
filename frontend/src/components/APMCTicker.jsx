@@ -3,16 +3,16 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { BASE_URL } from "../api/api";
-import { 
-  Search, 
-  TrendingUp, 
-  TrendingDown, 
-  Minus, 
-  MapPin, 
-  RefreshCw, 
-  X, 
-  ExternalLink, 
-  Sparkles, 
+import {
+  Search,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  MapPin,
+  RefreshCw,
+  X,
+  ExternalLink,
+  Sparkles,
   Users,
   Building2,
   CheckCircle2,
@@ -303,7 +303,7 @@ export default function APMCTicker() {
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      list = list.filter(item => 
+      list = list.filter(item =>
         item.crop.toLowerCase().includes(q) ||
         (item.variety && item.variety.toLowerCase().includes(q)) ||
         (item.mandi && item.mandi.toLowerCase().includes(q)) ||
@@ -344,12 +344,12 @@ export default function APMCTicker() {
   return (
     <>
       {/* ─── LIVE APMC & FARMER GROUP TICKER BAR ─── */}
-      <div 
-        className="mandi-ticker-bar" 
-        title="Live Indian APMC Mandi Rates & Farmer Group Direct Pools" 
-        style={{ 
-          position: "relative", 
-          zIndex: 998, 
+      <div
+        className="mandi-ticker-bar"
+        title="Live Indian APMC Mandi Rates & Farmer Group Direct Pools"
+        style={{
+          position: "relative",
+          zIndex: 998,
           marginTop: "64px",
           display: "flex",
           alignItems: "center",
@@ -360,12 +360,12 @@ export default function APMCTicker() {
         <div className="mandi-ticker-label" style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
           <span className="live-pulsing-dot"></span>
           <span style={{ letterSpacing: "0.05em" }}>LIVE RATES</span>
-          <span style={{ 
-            fontSize: "0.68rem", 
-            background: "rgba(34, 197, 94, 0.25)", 
-            color: "#86efac", 
-            padding: "2px 6px", 
-            borderRadius: "4px", 
+          <span style={{
+            fontSize: "0.68rem",
+            background: "rgba(34, 197, 94, 0.25)",
+            color: "#86efac",
+            padding: "2px 6px",
+            borderRadius: "4px",
             fontWeight: 700,
             border: "1px solid rgba(74, 222, 128, 0.3)"
           }}>
@@ -377,8 +377,8 @@ export default function APMCTicker() {
         <div className="mandi-ticker-scroll-wrapper" style={{ flex: 1, overflow: "hidden", position: "relative" }}>
           <div className="mandi-ticker-content" style={{ display: "inline-flex", gap: "2rem" }}>
             {[...rates, ...rates].map((item, idx) => (
-              <div 
-                key={`${item.id || item.crop}-${idx}`} 
+              <div
+                key={`${item.id || item.crop}-${idx}`}
                 className="mandi-ticker-item"
                 style={{ cursor: "pointer" }}
                 onClick={() => {
@@ -388,7 +388,7 @@ export default function APMCTicker() {
                 title={`Click to view full analytics for ${item.crop}`}
               >
                 {/* Source Pill */}
-                <span 
+                <span
                   style={{
                     fontSize: "0.65rem",
                     padding: "1px 5px",
@@ -454,7 +454,7 @@ export default function APMCTicker() {
 
       {/* ─── INTERACTIVE APMC & FARMER GROUP EXPLORER MODAL ─── */}
       {showExplorerModal && (
-        <div 
+        <div
           style={{
             position: "fixed",
             inset: 0,
@@ -470,7 +470,7 @@ export default function APMCTicker() {
             if (e.target === e.currentTarget) setShowExplorerModal(false);
           }}
         >
-          <div 
+          <div
             className="glass-card"
             style={{
               width: "100%",
@@ -486,7 +486,7 @@ export default function APMCTicker() {
             }}
           >
             {/* Modal Header */}
-            <div 
+            <div
               style={{
                 padding: "1.25rem 1.75rem",
                 background: "linear-gradient(135deg, #064e3b 0%, #047857 100%)",
@@ -515,7 +515,7 @@ export default function APMCTicker() {
                     🏛️ Live Indian APMC & Farmer Group Rates
                   </h2>
                   <div style={{ fontSize: "0.78rem", color: "#a7f3d0", marginTop: "2px", display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                    <span>● Verified Live Feed: Official Agmarknet & FPO Direct</span>
+                    <span>● Live Feed from Official Agmarknet & FPO Direct</span>
                     <span>•</span>
                     <span>Updated: {lastUpdated}</span>
                   </div>
@@ -600,7 +600,7 @@ export default function APMCTicker() {
             </div>
 
             {/* Filter & Search Bar */}
-            <div 
+            <div
               style={{
                 padding: "1rem 1.75rem",
                 background: "#f0fdf4",
@@ -613,9 +613,9 @@ export default function APMCTicker() {
               <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
                 {/* Search Input */}
                 <div style={{ flex: 1, minWidth: "260px", position: "relative" }}>
-                  <Search 
-                    size={18} 
-                    style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#059669" }} 
+                  <Search
+                    size={18}
+                    style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#059669" }}
                   />
                   <input
                     type="text"
@@ -635,7 +635,7 @@ export default function APMCTicker() {
                     }}
                   />
                   {searchQuery && (
-                    <button 
+                    <button
                       onClick={() => setSearchQuery("")}
                       style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}
                     >
@@ -733,7 +733,7 @@ export default function APMCTicker() {
             </div>
 
             {/* Main Cards Grid (Scrollable) */}
-            <div 
+            <div
               style={{
                 flex: 1,
                 overflowY: "auto",
@@ -749,7 +749,7 @@ export default function APMCTicker() {
                   <Info size={40} color="#10b981" style={{ margin: "0 auto 1rem" }} />
                   <h3 style={{ color: "#1f2937", marginBottom: "0.5rem" }}>No Market Rates Found</h3>
                   <p style={{ fontSize: "0.9rem" }}>No rates matched "{searchQuery}". Try changing category or channel.</p>
-                  <button 
+                  <button
                     onClick={() => { setSearchQuery(""); setSelectedCategory("all"); setSelectedState("all"); setSourceFilter("all"); }}
                     className="btn-primary"
                     style={{ marginTop: "1rem", padding: "0.5rem 1.2rem", fontSize: "0.85rem" }}
@@ -786,7 +786,7 @@ export default function APMCTicker() {
                     {/* Card Top: Source Badge & Trend */}
                     <div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
-                        <span 
+                        <span
                           style={{
                             fontSize: "0.72rem",
                             fontWeight: 700,
@@ -800,7 +800,7 @@ export default function APMCTicker() {
                           {item.sourceLabel || (item.sourceType === "farmer_group" ? "👨‍🌾 Farmer Group Pool" : "🏛️ Official Govt APMC")}
                         </span>
 
-                        <span 
+                        <span
                           style={{
                             fontSize: "0.74rem",
                             fontWeight: 700,
@@ -838,11 +838,11 @@ export default function APMCTicker() {
                     </div>
 
                     {/* Price Block */}
-                    <div style={{ 
-                      background: item.sourceType === "farmer_group" ? "#fefce8" : "#f0fdf4", 
-                      padding: "0.75rem", 
-                      borderRadius: "10px", 
-                      border: item.sourceType === "farmer_group" ? "1px solid #fef08a" : "1px solid #bbf7d0" 
+                    <div style={{
+                      background: item.sourceType === "farmer_group" ? "#fefce8" : "#f0fdf4",
+                      padding: "0.75rem",
+                      borderRadius: "10px",
+                      border: item.sourceType === "farmer_group" ? "1px solid #fef08a" : "1px solid #bbf7d0"
                     }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                         <span style={{ fontSize: "0.74rem", color: item.sourceType === "farmer_group" ? "#854d0e" : "#065f46", fontWeight: 600 }}>
@@ -909,7 +909,7 @@ export default function APMCTicker() {
             </div>
 
             {/* Modal Footer */}
-            <div 
+            <div
               style={{
                 padding: "0.9rem 1.75rem",
                 background: "#ffffff",

@@ -7,7 +7,7 @@ import { useLayout } from "../context/LayoutContext";
 import { useCart } from "../context/CartContext";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, ShoppingBag, Leaf, Truck, Shield, LogOut, User, Bell, Headphones, Volume2, VolumeX, ShoppingCart, MapPin, Smartphone, Tablet, Monitor, Laptop, Globe, Package } from "lucide-react";
+import { Home, ShoppingBag, Leaf, Truck, Shield, LogOut, User, Bell, Headphones, Volume2, VolumeX, ShoppingCart, MapPin, Smartphone, Tablet, Monitor, Laptop, Globe, Package, Check, Play } from "lucide-react";
 import API from "../api/api";
 import { io } from "socket.io-client";
 import { createPortal } from "react-dom";
@@ -58,6 +58,9 @@ export default function Navbar() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState("");
   const [settingsTab, setSettingsTab] = useState("profile");
+  const [notificationMode, setNotificationMode] = useState("both"); // "view", "hear", "both"
+  const [isSpeakingTest, setIsSpeakingTest] = useState(false);
+  const settingsRef = useRef(null);
 
   useEffect(() => {
     const handleOpenSettings = (e) => {
@@ -67,6 +70,20 @@ export default function Navbar() {
     window.addEventListener("open_user_settings", handleOpenSettings);
     return () => window.removeEventListener("open_user_settings", handleOpenSettings);
   }, []);
+
+  useEffect(() => {
+    const handleClickOutsideSettings = (e) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target)) {
+        if (!e.target.closest?.(".settings-popover-panel") && !e.target.closest?.(".settings-mobile-sheet")) {
+          setShowSettings(false);
+        }
+      }
+    };
+    if (showSettings) {
+      document.addEventListener("mousedown", handleClickOutsideSettings);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutsideSettings);
+  }, [showSettings]);
 
   // Universal Location States
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -144,22 +161,62 @@ export default function Navbar() {
 
   useEffect(() => {
     if (showSettings && user) {
+      const stored = localStorage.getItem("rs_notification_mode");
+      if (stored) setNotificationMode(stored);
+
       API.get("/auth/profile").then(res => {
-        setName(res.data.user.name || "");
-        setPhone(res.data.user.phone || "");
-        setUpiId(res.data.user.upiId || "");
-        setBankAcc(res.data.user.bankAccountNumber || "");
+        setName(res.data.user?.name || "");
+        setPhone(res.data.user?.phone || "");
+        setUpiId(res.data.user?.upiId || "");
+        setBankAcc(res.data.user?.bankAccountNumber || "");
+        if (res.data.user?.notificationPreference) {
+          setNotificationMode(res.data.user.notificationPreference);
+          localStorage.setItem("rs_notification_mode", res.data.user.notificationPreference);
+        }
       }).catch(console.error);
     }
   }, [showSettings, user]);
+
+  const handleTestVoiceNotification = () => {
+    if (typeof window === "undefined" || !('speechSynthesis' in window)) {
+      alert("Voice speech is not supported in this environment.");
+      return;
+    }
+    setIsSpeakingTest(true);
+    window.speechSynthesis.cancel();
+
+    try {
+      const audio = new Audio("https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3?filename=success-1-6297.mp3");
+      audio.volume = 0.5;
+      audio.play().catch(() => {});
+    } catch {}
+
+    const text = "Rythu Jana Sethu Voice Alert: Your fresh organic farm harvest order has been assigned to your local bike partner for swift doorstep delivery!";
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.rate = 1.0;
+    utter.pitch = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const ind = voices.find(v => v.lang.includes("en-IN") || v.lang.includes("en_IN")) || voices[0];
+    if (ind) utter.voice = ind;
+    utter.onend = () => setIsSpeakingTest(false);
+    utter.onerror = () => setIsSpeakingTest(false);
+    window.speechSynthesis.speak(utter);
+  };
 
   const handleSaveSettings = async () => {
     try {
       setSavingSettings(true);
       setSettingsMsg("");
-      await API.put("/auth/profile", { name, phone, upiId, bankAccountNumber: bankAcc });
+      localStorage.setItem("rs_notification_mode", notificationMode);
+      await API.put("/auth/profile", { 
+        name, 
+        phone, 
+        upiId, 
+        bankAccountNumber: bankAcc,
+        notificationPreference: notificationMode 
+      });
       setSettingsMsg("✅ Settings saved successfully!");
-      setTimeout(() => setShowSettings(false), 2000);
+      setTimeout(() => setShowSettings(false), 1200);
     } catch (e) {
       setSettingsMsg("❌ Failed to save settings.");
     } finally {
@@ -514,10 +571,300 @@ export default function Navbar() {
                   </Link>
                 </li>
               )}
-              <li>
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-secondary" onClick={() => setShowSettings(true)} style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem", color: "var(--text-dark)", borderColor: "#e2e8f0" }}>
-                  <User size={16} /> Profile
+              <li ref={settingsRef} style={{ position: "relative" }}>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }} 
+                  whileTap={{ scale: 0.95 }} 
+                  className="btn-secondary" 
+                  onClick={() => setShowSettings(prev => !prev)} 
+                  style={{ 
+                    padding: "0.5rem 1rem", fontSize: "0.85rem", 
+                    display: "flex", alignItems: "center", gap: "0.4rem", 
+                    color: showSettings ? "var(--green-deep)" : "var(--text-dark)", 
+                    borderColor: showSettings ? "var(--green-mid)" : "#e2e8f0",
+                    background: showSettings ? "rgba(34, 197, 94, 0.08)" : "transparent"
+                  }}
+                >
+                  <User size={16} color={showSettings ? "var(--green-mid)" : "currentColor"} /> Profile & Settings
                 </motion.button>
+
+                {/* Desktop Anchored Popover - directly under the button */}
+                <AnimatePresence>
+                  {showSettings && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="settings-popover-panel"
+                    >
+                      <div style={{ padding: "1.25rem", display: "flex", flexDirection: "column", maxHeight: "82vh", overflowY: "auto" }}>
+                        {/* Header */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", paddingBottom: "0.75rem", borderBottom: "1px solid #f1f5f9" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                            <div style={{ width: 32, height: 32, borderRadius: "8px", background: "rgba(34,197,94,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <User size={18} color="var(--green-mid)" />
+                            </div>
+                            <div>
+                              <h4 style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-dark)", fontWeight: 700 }}>Personal Settings</h4>
+                              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{user?.email || user?.role}</span>
+                            </div>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => setShowSettings(false)} 
+                            style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", cursor: "pointer", color: "#64748b" }}
+                            title="Close Settings"
+                          >
+                            ×
+                          </button>
+                        </div>
+
+                        {/* Tabs */}
+                        <div style={{ display: "flex", background: "#f1f5f9", borderRadius: "10px", padding: "3px", marginBottom: "1rem" }}>
+                          {[
+                            { id: "profile", label: "👤 Profile & Audio" },
+                            { id: "app", label: "📱 Display" },
+                            { id: "wallet", label: "💳 Wallet" }
+                          ].map(tab => (
+                            <button
+                              key={tab.id}
+                              type="button"
+                              onClick={() => setSettingsTab(tab.id)}
+                              style={{
+                                flex: 1, padding: "0.45rem 0.3rem", background: settingsTab === tab.id ? "white" : "transparent",
+                                border: "none", borderRadius: "8px", cursor: "pointer",
+                                fontSize: "0.8rem", fontWeight: settingsTab === tab.id ? 700 : 500,
+                                color: settingsTab === tab.id ? "var(--green-deep)" : "var(--text-muted)",
+                                boxShadow: settingsTab === tab.id ? "0 2px 5px rgba(0,0,0,0.08)" : "none",
+                                transition: "all 0.2s"
+                              }}
+                            >
+                              {tab.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Tab Contents */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                          {settingsTab === "profile" && (
+                            <>
+                              {/* Notification Mode Selection (Hear vs View) */}
+                              <div style={{ background: "#f8fafc", padding: "0.9rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                                  <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-dark)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                    <Volume2 size={16} color="var(--green-mid)" /> Notification Alert Mode
+                                  </span>
+                                  <span style={{ fontSize: "0.7rem", background: "#dcfce7", color: "#166534", padding: "2px 8px", borderRadius: "10px", fontWeight: 700 }}>
+                                    {notificationMode === "hear" ? "Voice Only" : notificationMode === "view" ? "Visual Only" : "Voice + Visual"}
+                                  </span>
+                                </div>
+                                <p style={{ margin: "0 0 0.65rem 0", fontSize: "0.76rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
+                                  Toggle to hear notifications read aloud on your phone (ideal while walking or working) or view screen alerts.
+                                </p>
+
+                                {/* 3 Option Selector */}
+                                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.4rem", marginBottom: "0.65rem" }}>
+                                  {[
+                                    { id: "hear", label: "🔊 Hear on Phone", desc: "Voice speech" },
+                                    { id: "view", label: "👁️ View on Screen", desc: "Visual popups" },
+                                    { id: "both", label: "🔔 Both", desc: "Voice & screen" }
+                                  ].map(opt => {
+                                    const active = notificationMode === opt.id;
+                                    return (
+                                      <button
+                                        key={opt.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setNotificationMode(opt.id);
+                                          localStorage.setItem("rs_notification_mode", opt.id);
+                                        }}
+                                        style={{
+                                          padding: "0.55rem 0.25rem", borderRadius: "8px",
+                                          border: active ? "2px solid var(--green-mid)" : "1px solid #cbd5e1",
+                                          background: active ? "rgba(34,197,94,0.09)" : "white",
+                                          cursor: "pointer", textAlign: "center",
+                                          display: "flex", flexDirection: "column", gap: "2px", alignItems: "center"
+                                        }}
+                                      >
+                                        <span style={{ fontSize: "0.78rem", fontWeight: active ? 700 : 500, color: active ? "var(--green-deep)" : "var(--text-dark)" }}>
+                                          {opt.label}
+                                        </span>
+                                        <span style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>
+                                          {opt.desc}
+                                        </span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+
+                                {/* Test Voice Readout */}
+                                <button
+                                  type="button"
+                                  onClick={handleTestVoiceNotification}
+                                  disabled={isSpeakingTest}
+                                  style={{
+                                    width: "100%", padding: "0.45rem", borderRadius: "8px",
+                                    background: isSpeakingTest ? "#dcfce7" : "#f1f5f9",
+                                    border: "1px dashed #86efac", color: isSpeakingTest ? "#166534" : "#334155",
+                                    fontSize: "0.78rem", fontWeight: 600, cursor: "pointer",
+                                    display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem"
+                                  }}
+                                >
+                                  <Volume2 size={14} color={isSpeakingTest ? "#16a34a" : "#64748b"} />
+                                  {isSpeakingTest ? "Speaking alert aloud..." : "▶️ Test Voice Notification"}
+                                </button>
+                              </div>
+
+                              {/* Profile Form Fields */}
+                              <div>
+                                <label style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block", marginBottom: "0.2rem", fontWeight: 600 }}>Full Name</label>
+                                <input 
+                                  type="text" 
+                                  value={name} 
+                                  onChange={e => setName(e.target.value)} 
+                                  placeholder="e.g. John Doe" 
+                                  style={{ width: "100%", padding: "0.55rem", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white", fontSize: "0.88rem" }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block", marginBottom: "0.2rem", fontWeight: 600 }}>Mobile Number</label>
+                                <input 
+                                  type="text" 
+                                  value={phone} 
+                                  onChange={e => setPhone(e.target.value)} 
+                                  placeholder="e.g. 9876543210" 
+                                  style={{ width: "100%", padding: "0.55rem", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white", fontSize: "0.88rem" }}
+                                />
+                              </div>
+                            </>
+                          )}
+
+                          {settingsTab === "app" && (
+                            <>
+                              <div style={{ background: "#f8fafc", padding: "0.9rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                                  <h4 style={{ margin: 0, fontSize: "0.88rem", color: "var(--text-dark)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                    <Smartphone size={16} color="var(--green-mid)" /> Device Compatibility View
+                                  </h4>
+                                  <span style={{ fontSize: "0.68rem", background: "#dcfce7", color: "#166534", padding: "2px 6px", borderRadius: "8px", fontWeight: 700 }}>
+                                    {layoutMode.toUpperCase()}
+                                  </span>
+                                </div>
+                                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.4rem" }}>
+                                  {[
+                                    { id: "auto", title: "Auto Responsive", icon: <Globe size={15} /> },
+                                    { id: "mobile", title: "Mobile", icon: <Smartphone size={15} /> },
+                                    { id: "tablet", title: "Tablet Grid", icon: <Tablet size={15} /> },
+                                    { id: "desktop", title: "Desktop Wide", icon: <Monitor size={15} /> },
+                                  ].map(device => {
+                                    const isSelected = layoutMode === device.id;
+                                    return (
+                                      <button
+                                        key={device.id}
+                                        type="button"
+                                        onClick={() => setLayoutMode(device.id)}
+                                        style={{
+                                          padding: "0.5rem", borderRadius: "8px",
+                                          border: isSelected ? "2px solid var(--green-mid)" : "1px solid #cbd5e1",
+                                          background: isSelected ? "rgba(34, 197, 94, 0.08)" : "white",
+                                          cursor: "pointer", textAlign: "left",
+                                          display: "flex", alignItems: "center", gap: "0.35rem",
+                                          fontSize: "0.78rem", fontWeight: isSelected ? 700 : 500,
+                                          color: isSelected ? "var(--green-deep)" : "var(--text-dark)"
+                                        }}
+                                      >
+                                        {device.icon}
+                                        <span>{device.title}</span>
+                                        {isSelected && <span style={{ marginLeft: "auto", color: "var(--green-mid)", fontWeight: 800 }}>✓</span>}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              <div style={{ background: "#f8fafc", padding: "0.9rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                                <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.88rem", color: "var(--text-dark)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                  <Volume2 size={16} /> Global Audio Settings
+                                </h4>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                  <span style={{ fontSize: "0.8rem", color: "var(--text-mid)", fontWeight: 500 }}>Chime Tone</span>
+                                  <select 
+                                    className="rs-select" 
+                                    style={{ padding: "0.3rem", fontSize: "0.78rem", width: "150px" }}
+                                    value={localStorage.getItem("rs_notif_sound") || "default"}
+                                    onChange={(e) => {
+                                      localStorage.setItem("rs_notif_sound", e.target.value);
+                                      if (e.target.value === "nature") {
+                                        const audio = new Audio("https://freesound.org/data/previews/352/352514_5062143-lq.mp3");
+                                        audio.play().catch(()=>{});
+                                      }
+                                    }}
+                                  >
+                                    <option value="default">System Default</option>
+                                    <option value="nature">Nature (Water Drop)</option>
+                                    <option value="birds">Nature (Bird Chirp)</option>
+                                    <option value="mute">Muted</option>
+                                  </select>
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          {settingsTab === "wallet" && (
+                            <>
+                              <div style={{ background: "linear-gradient(135deg, #16a34a, #059669)", padding: "1rem", borderRadius: "12px", color: "white" }}>
+                                <h4 style={{ margin: "0 0 0.25rem 0", fontSize: "0.82rem", opacity: 0.9 }}>💳 My Wallet Balance</h4>
+                                <div style={{ fontSize: "1.6rem", fontWeight: 800 }}>
+                                  ₹{(user?.walletBalance || 0).toLocaleString()}
+                                </div>
+                                <p style={{ margin: "0.25rem 0 0", fontSize: "0.72rem", opacity: 0.85 }}>
+                                  Use this balance for instant checkout or delivery earnings.
+                                </p>
+                              </div>
+
+                              <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+                                <div>
+                                  <label style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block", marginBottom: "0.2rem", fontWeight: 600 }}>UPI ID</label>
+                                  <input 
+                                    type="text" 
+                                    value={upiId} 
+                                    onChange={e => setUpiId(e.target.value)} 
+                                    placeholder="e.g. 9876543210@ybl" 
+                                    style={{ width: "100%", padding: "0.55rem", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white", fontSize: "0.88rem" }}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block", marginBottom: "0.2rem", fontWeight: 600 }}>Bank Account Number</label>
+                                  <input 
+                                    type="text" 
+                                    value={bankAcc} 
+                                    onChange={e => setBankAcc(e.target.value)} 
+                                    placeholder="e.g. 123456789012" 
+                                    style={{ width: "100%", padding: "0.55rem", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white", fontSize: "0.88rem" }}
+                                  />
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          {settingsMsg && (
+                            <div style={{ padding: "0.55rem", borderRadius: "8px", fontSize: "0.82rem", textAlign: "center", fontWeight: 600, background: settingsMsg.includes("success") ? "#dcfce7" : "#fee2e2", color: settingsMsg.includes("success") ? "#166534" : "#991b1b" }}>
+                              {settingsMsg}
+                            </div>
+                          )}
+
+                          <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.35rem", paddingTop: "0.65rem", borderTop: "1px solid #e2e8f0" }}>
+                            <button type="button" className="btn-secondary" style={{ flex: 1, padding: "0.55rem", fontSize: "0.85rem" }} onClick={() => setShowSettings(false)}>Close</button>
+                            <button type="button" className="btn-primary" style={{ flex: 1, padding: "0.55rem", fontSize: "0.85rem" }} onClick={handleSaveSettings} disabled={savingSettings}>
+                              {savingSettings ? "Saving..." : "Save Changes"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </li>
               <li>
                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-secondary" onClick={handleLogout} style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem", background: "#fef2f2", color: "#ef4444", borderColor: "#fecaca" }}>
@@ -541,128 +888,164 @@ export default function Navbar() {
           )}
         </ul>
 
-        {/* Settings Modal - Attached perfectly to body */}
-        {showSettings && createPortal(
-          <div className="modal-overlay" onClick={() => setShowSettings(false)} style={{ zIndex: 9999 }}>
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: "500px", padding: "2rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                <h3 style={{ margin: 0, color: "var(--text-dark)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <User color="var(--green-primary)" /> Global Settings
-                </h3>
-                <button onClick={() => setShowSettings(false)} style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer" }}>×</button>
-              </div>
-              
-              <div style={{ display: "flex", borderBottom: "1px solid #e2e8f0", marginBottom: "1rem" }}>
-                {["profile", "app", "wallet"].map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setSettingsTab(tab)}
-                    style={{
-                      flex: 1, padding: "0.75rem", background: "transparent", border: "none", cursor: "pointer",
-                      fontSize: "0.95rem", fontWeight: 600, color: settingsTab === tab ? "var(--green-deep)" : "var(--text-muted)",
-                      borderBottom: settingsTab === tab ? "3px solid var(--green-mid)" : "3px solid transparent",
-                      transition: "all 0.3s"
-                    }}
-                  >
-                    {tab === "profile" ? "👤 Profile" : tab === "app" ? "📱 App Settings" : "💳 Wallet & Pay"}
-                  </button>
-                ))}
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", minHeight: "300px" }}>
-                
-                {settingsTab === "app" && (
-                  <>
-                    <div style={{ background: "#f8fafc", padding: "1.25rem", borderRadius: "14px", border: "1px solid #e2e8f0" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                        <h4 style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-dark)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <Smartphone size={18} color="var(--green-mid)" /> Device Compatibility View
-                        </h4>
-                        <span style={{ fontSize: "0.75rem", background: "#dcfce7", color: "#166534", padding: "3px 8px", borderRadius: "10px", fontWeight: 700 }}>
-                          Active: {layoutMode.toUpperCase()}
-                        </span>
-                      </div>
-                      <p style={{ margin: "0 0 1rem 0", fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
-                        Choose your preferred layout format or let the platform adapt automatically to your handheld phone, tablet, or desktop monitor.
-                      </p>
-
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.75rem" }}>
-                        {[
-                          { 
-                            id: "auto", 
-                            title: "Auto Responsive", 
-                            desc: "Fluid layout adjusting to your current screen size", 
-                            icon: <Globe size={18} /> 
-                          },
-                          { 
-                            id: "mobile", 
-                            title: "Mobile (Handheld)", 
-                            desc: "Single-column touch view with bottom quick-action bar", 
-                            icon: <Smartphone size={18} /> 
-                          },
-                          { 
-                            id: "tablet", 
-                            title: "Tablet (Split Grid)", 
-                            desc: "Optimized two-column grid for tablets & foldables", 
-                            icon: <Tablet size={18} /> 
-                          },
-                          { 
-                            id: "desktop", 
-                            title: "Desktop (Expansive)", 
-                            desc: "Full widescreen density with multi-column views", 
-                            icon: <Monitor size={18} /> 
-                          },
-                        ].map(device => {
-                          const isSelected = layoutMode === device.id;
-                          return (
-                            <button
-                              key={device.id}
-                              type="button"
-                              onClick={() => setLayoutMode(device.id)}
-                              style={{
-                                padding: "0.85rem",
-                                borderRadius: "10px",
-                                border: isSelected ? "2px solid var(--green-mid)" : "1px solid #cbd5e1",
-                                background: isSelected ? "rgba(34, 197, 94, 0.08)" : "white",
-                                cursor: "pointer",
-                                textAlign: "left",
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: "0.3rem",
-                                transition: "all 0.2s ease",
-                                boxShadow: isSelected ? "0 4px 12px rgba(34, 197, 94, 0.15)" : "none"
-                              }}
-                            >
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", color: isSelected ? "var(--green-deep)" : "var(--text-dark)", fontWeight: 700, fontSize: "0.88rem" }}>
-                                {device.icon}
-                                <span>{device.title}</span>
-                                {isSelected && <span style={{ marginLeft: "auto", color: "var(--green-mid)", fontSize: "0.85rem", fontWeight: 800 }}>✓</span>}
-                              </div>
-                              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.3 }}>
-                                {device.desc}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
+        {/* Mobile Settings Drawer - Anchored above BottomNav on mobile */}
+        {showSettings && typeof window !== "undefined" && window.innerWidth <= 768 && createPortal(
+          <div className="modal-overlay" onClick={() => setShowSettings(false)} style={{ zIndex: 10004 }}>
+            <motion.div 
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="settings-mobile-sheet"
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ padding: "1.25rem", display: "flex", flexDirection: "column", maxHeight: "82vh", overflowY: "auto" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", paddingBottom: "0.75rem", borderBottom: "1px solid #f1f5f9" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "8px", background: "rgba(34,197,94,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <User size={18} color="var(--green-mid)" />
                     </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-dark)", fontWeight: 700 }}>Personal Settings</h4>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{user?.email || user?.role}</span>
+                    </div>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setShowSettings(false)} 
+                    style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", cursor: "pointer", color: "#64748b" }}
+                  >
+                    ×
+                  </button>
+                </div>
 
-                    <div style={{ background: "#f8fafc", padding: "1.25rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-                      <h4 style={{ margin: "0 0 1rem 0", fontSize: "0.95rem", color: "var(--text-dark)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                {/* Tabs */}
+                <div style={{ display: "flex", background: "#f1f5f9", borderRadius: "10px", padding: "3px", marginBottom: "1rem" }}>
+                  {[
+                    { id: "profile", label: "👤 Profile & Audio" },
+                    { id: "app", label: "📱 Display" },
+                    { id: "wallet", label: "💳 Wallet" }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setSettingsTab(tab.id)}
+                      style={{
+                        flex: 1, padding: "0.45rem 0.3rem", background: settingsTab === tab.id ? "white" : "transparent",
+                        border: "none", borderRadius: "8px", cursor: "pointer",
+                        fontSize: "0.8rem", fontWeight: settingsTab === tab.id ? 700 : 500,
+                        color: settingsTab === tab.id ? "var(--green-deep)" : "var(--text-muted)",
+                        boxShadow: settingsTab === tab.id ? "0 2px 5px rgba(0,0,0,0.08)" : "none"
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tab Contents for mobile */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  {settingsTab === "profile" && (
+                    <>
+                      <div style={{ background: "#f8fafc", padding: "0.9rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                          <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-dark)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                            <Volume2 size={16} color="var(--green-mid)" /> Notification Alert Mode
+                          </span>
+                          <span style={{ fontSize: "0.7rem", background: "#dcfce7", color: "#166534", padding: "2px 8px", borderRadius: "10px", fontWeight: 700 }}>
+                            {notificationMode === "hear" ? "Voice Only" : notificationMode === "view" ? "Visual Only" : "Voice + Visual"}
+                          </span>
+                        </div>
+                        <p style={{ margin: "0 0 0.65rem 0", fontSize: "0.76rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
+                          Choose whether to hear notifications spoken aloud on phone or view alerts.
+                        </p>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.4rem", marginBottom: "0.65rem" }}>
+                          {[
+                            { id: "hear", label: "🔊 Hear", desc: "Voice speech" },
+                            { id: "view", label: "👁️ View", desc: "Silent alerts" },
+                            { id: "both", label: "🔔 Both", desc: "Voice + visual" }
+                          ].map(opt => {
+                            const active = notificationMode === opt.id;
+                            return (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => {
+                                  setNotificationMode(opt.id);
+                                  localStorage.setItem("rs_notification_mode", opt.id);
+                                }}
+                                style={{
+                                  padding: "0.55rem 0.25rem", borderRadius: "8px",
+                                  border: active ? "2px solid var(--green-mid)" : "1px solid #cbd5e1",
+                                  background: active ? "rgba(34,197,94,0.09)" : "white",
+                                  cursor: "pointer", textAlign: "center"
+                                }}
+                              >
+                                <span style={{ fontSize: "0.78rem", fontWeight: active ? 700 : 500, color: active ? "var(--green-deep)" : "var(--text-dark)" }}>
+                                  {opt.label}
+                                </span>
+                                <div style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>
+                                  {opt.desc}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleTestVoiceNotification}
+                          disabled={isSpeakingTest}
+                          style={{
+                            width: "100%", padding: "0.5rem", borderRadius: "8px",
+                            background: isSpeakingTest ? "#dcfce7" : "#f1f5f9",
+                            border: "1px dashed #86efac", color: isSpeakingTest ? "#166534" : "#334155",
+                            fontSize: "0.8rem", fontWeight: 600, cursor: "pointer",
+                            display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem"
+                          }}
+                        >
+                          <Volume2 size={14} color={isSpeakingTest ? "#16a34a" : "#64748b"} />
+                          {isSpeakingTest ? "Speaking alert aloud..." : "▶️ Test Voice Notification"}
+                        </button>
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block", marginBottom: "0.2rem", fontWeight: 600 }}>Full Name</label>
+                        <input 
+                          type="text" 
+                          value={name} 
+                          onChange={e => setName(e.target.value)} 
+                          placeholder="e.g. John Doe" 
+                          style={{ width: "100%", padding: "0.55rem", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white", fontSize: "0.88rem" }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block", marginBottom: "0.2rem", fontWeight: 600 }}>Mobile Number</label>
+                        <input 
+                          type="text" 
+                          value={phone} 
+                          onChange={e => setPhone(e.target.value)} 
+                          placeholder="e.g. 9876543210" 
+                          style={{ width: "100%", padding: "0.55rem", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white", fontSize: "0.88rem" }}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {settingsTab === "app" && (
+                    <div style={{ background: "#f8fafc", padding: "0.9rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                      <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.88rem", color: "var(--text-dark)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
                         <Volume2 size={16} /> Global Audio Settings
                       </h4>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: "0.85rem", color: "var(--text-mid)", fontWeight: 500 }}>Notification Sound</span>
+                        <span style={{ fontSize: "0.8rem", color: "var(--text-mid)", fontWeight: 500 }}>Chime Tone</span>
                         <select 
                           className="rs-select" 
-                          style={{ padding: "0.4rem", fontSize: "0.8rem", width: "160px" }}
+                          style={{ padding: "0.3rem", fontSize: "0.78rem", width: "150px" }}
                           value={localStorage.getItem("rs_notif_sound") || "default"}
                           onChange={(e) => {
                             localStorage.setItem("rs_notif_sound", e.target.value);
-                            if (e.target.value === "nature") {
-                              const audio = new Audio("https://freesound.org/data/previews/352/352514_5062143-lq.mp3");
-                              audio.play().catch(()=>{});
-                            }
                           }}
                         >
                           <option value="default">System Default</option>
@@ -672,85 +1055,29 @@ export default function Navbar() {
                         </select>
                       </div>
                     </div>
-                  </>
-                )}
+                  )}
 
-                {settingsTab === "profile" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                    <div>
-                      <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem", fontWeight: 600 }}>Full Name</label>
-                      <input 
-                        type="text" 
-                        value={name} 
-                        onChange={e => setName(e.target.value)} 
-                        placeholder="e.g. John Doe" 
-                        style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white", fontSize: "1rem" }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem", fontWeight: 600 }}>Mobile Number</label>
-                      <input 
-                        type="text" 
-                        value={phone} 
-                        onChange={e => setPhone(e.target.value)} 
-                        placeholder="e.g. 9876543210" 
-                        style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white", fontSize: "1rem" }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {settingsTab === "wallet" && (
-                  <>
-                    <div style={{ background: "linear-gradient(135deg, #16a34a, #059669)", padding: "1.5rem", borderRadius: "12px", color: "white", boxShadow: "0 10px 25px rgba(22, 163, 74, 0.3)" }}>
-                      <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.95rem", opacity: 0.9 }}>💳 My Wallet Balance</h4>
-                      <div style={{ fontSize: "2rem", fontWeight: 800 }}>
+                  {settingsTab === "wallet" && (
+                    <div style={{ background: "linear-gradient(135deg, #16a34a, #059669)", padding: "1rem", borderRadius: "12px", color: "white" }}>
+                      <h4 style={{ margin: "0 0 0.25rem 0", fontSize: "0.82rem", opacity: 0.9 }}>💳 My Wallet Balance</h4>
+                      <div style={{ fontSize: "1.6rem", fontWeight: 800 }}>
                         ₹{(user?.walletBalance || 0).toLocaleString()}
                       </div>
-                      <p style={{ margin: "0.5rem 0 0", fontSize: "0.8rem", opacity: 0.8 }}>
-                        Use this balance for instant checkouts or receive refunds here.
-                      </p>
                     </div>
+                  )}
 
-                    <div>
-                      <h4 style={{ margin: "1rem 0 0.5rem 0", fontSize: "0.95rem", color: "var(--text-dark)" }}>💳 Payment Profile</h4>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                        <div>
-                          <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem", fontWeight: 600 }}>UPI ID</label>
-                          <input 
-                            type="text" 
-                            value={upiId} 
-                            onChange={e => setUpiId(e.target.value)} 
-                            placeholder="e.g. 9876543210@ybl" 
-                            style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white" }}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem", fontWeight: 600 }}>Bank Account Number</label>
-                          <input 
-                            type="text" 
-                            value={bankAcc} 
-                            onChange={e => setBankAcc(e.target.value)} 
-                            placeholder="e.g. 123456789012" 
-                            style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white" }}
-                          />
-                        </div>
-                      </div>
+                  {settingsMsg && (
+                    <div style={{ padding: "0.55rem", borderRadius: "8px", fontSize: "0.82rem", textAlign: "center", fontWeight: 600, background: settingsMsg.includes("success") ? "#dcfce7" : "#fee2e2", color: settingsMsg.includes("success") ? "#166534" : "#991b1b" }}>
+                      {settingsMsg}
                     </div>
-                  </>
-                )}
+                  )}
 
-                {settingsMsg && (
-                  <div style={{ padding: "0.75rem", borderRadius: "8px", fontSize: "0.9rem", textAlign: "center", fontWeight: 500, background: settingsMsg.includes("success") ? "#dcfce7" : "#fee2e2", color: settingsMsg.includes("success") ? "#166534" : "#991b1b" }}>
-                    {settingsMsg}
+                  <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.35rem", paddingTop: "0.65rem", borderTop: "1px solid #e2e8f0" }}>
+                    <button type="button" className="btn-secondary" style={{ flex: 1, padding: "0.55rem", fontSize: "0.85rem" }} onClick={() => setShowSettings(false)}>Close</button>
+                    <button type="button" className="btn-primary" style={{ flex: 1, padding: "0.55rem", fontSize: "0.85rem" }} onClick={handleSaveSettings} disabled={savingSettings}>
+                      {savingSettings ? "Saving..." : "Save Changes"}
+                    </button>
                   </div>
-                )}
-
-                <div style={{ display: "flex", gap: "1rem", marginTop: "auto", paddingTop: "1rem", borderTop: "1px solid #e2e8f0" }}>
-                  <button className="btn-secondary" style={{ flex: 1, padding: "0.75rem" }} onClick={() => setShowSettings(false)}>Close</button>
-                  <button className="btn-primary" style={{ flex: 1, padding: "0.75rem" }} onClick={handleSaveSettings} disabled={savingSettings}>
-                    {savingSettings ? "Saving..." : "Save Changes"}
-                  </button>
                 </div>
               </div>
             </motion.div>

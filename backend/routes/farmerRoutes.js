@@ -251,4 +251,48 @@ router.get("/vermi-compost/requests", protect, async (req, res) => {
   }
 });
 
+// ─── FARM TOUR MEDIA ───
+import { upload } from "../middleware/uploadMiddleware.js";
+
+router.post("/:id/tour-media", protect, upload.single("file"), async (req, res) => {
+  try {
+    const farmer = await Farmer.findOne({ user: req.params.id });
+    if (!farmer) return res.status(404).json({ error: "Farmer not found" });
+
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+    const fileUrl = `${process.env.BASE_URL || "http://localhost:5000"}/uploads/${req.file.filename}`;
+    const type = req.file.mimetype.startsWith("video/") ? "video" : "photo";
+
+    farmer.farmTourMedia.push({ url: fileUrl, type });
+    await farmer.save();
+    
+    // Return populated profile
+    const updatedFarmer = await Farmer.findById(farmer._id).populate("user", "-password");
+    res.json(updatedFarmer);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/:id/tour-media/:index", protect, async (req, res) => {
+  try {
+    const farmer = await Farmer.findOne({ user: req.params.id });
+    if (!farmer) return res.status(404).json({ error: "Farmer not found" });
+
+    const index = parseInt(req.params.index, 10);
+    if (isNaN(index) || index < 0 || index >= farmer.farmTourMedia.length) {
+      return res.status(400).json({ error: "Invalid index" });
+    }
+
+    farmer.farmTourMedia.splice(index, 1);
+    await farmer.save();
+
+    const updatedFarmer = await Farmer.findById(farmer._id).populate("user", "-password");
+    res.json(updatedFarmer);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

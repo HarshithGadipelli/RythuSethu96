@@ -13,6 +13,17 @@ const deliverySchema = new mongoose.Schema({
   agentLongitude: { type: Number },
   lastLocationUpdate: { type: Date },
   route: { type: String, default: "" },
+
+  // ─── Multi-Hop Logistics Leg ───
+  legType: { 
+    type: String, 
+    enum: ["rural_to_hub", "hub_to_storage", "storage_to_customer", "return_to_storage", "direct"], 
+    default: "direct" 
+  },
+  sourceLocationId: { type: mongoose.Schema.Types.ObjectId, ref: "HubLocation" },
+  destinationLocationId: { type: mongoose.Schema.Types.ObjectId, ref: "HubLocation" },
+  sourceLocationName: { type: String, default: "" },
+  destinationLocationName: { type: String, default: "" },
   
   // ─── Multi-Location Delivery ───
   dropoffs: [{

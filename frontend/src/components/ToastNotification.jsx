@@ -14,20 +14,44 @@ export default function ToastNotification() {
     const socket = io(BASE_URL);
     socket.on("notification", (data) => {
       if (data.userId === user._id) {
-        const newToast = { id: Date.now(), ...data };
+        const notifMode = localStorage.getItem("rs_notification_mode") || user?.notificationPreference || "both";
+        const newToast = { id: Date.now(), ...data, isAudioOnly: notifMode === "hear" };
         setToasts(prev => [...prev, newToast]);
         
-        // Play WhatsApp style sound
+        // Play Chime Sound
         try {
-          const audio = new Audio("https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3?filename=success-1-6297.mp3");
-          audio.volume = 0.5;
-          audio.play();
+          const soundChoice = localStorage.getItem("rs_notif_sound") || "default";
+          if (soundChoice !== "mute") {
+            const soundUrl = soundChoice === "nature" 
+              ? "https://freesound.org/data/previews/352/352514_5062143-lq.mp3"
+              : "https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3?filename=success-1-6297.mp3";
+            const audio = new Audio(soundUrl);
+            audio.volume = 0.6;
+            audio.play().catch(() => {});
+          }
         } catch (e) {}
 
-        // Auto remove after 5 seconds
+        // Voice Readout if user set notification mode to "hear" or "both"
+        if ((notifMode === "hear" || notifMode === "both") && typeof window !== "undefined" && ('speechSynthesis' in window)) {
+          try {
+            window.speechSynthesis.cancel();
+            const textToSpeak = `${data.title || "Notification"}. ${data.message || ""}`;
+            const utter = new SpeechSynthesisUtterance(textToSpeak);
+            utter.rate = 1.0;
+            utter.pitch = 1.0;
+            const voices = window.speechSynthesis.getVoices();
+            const indVoice = voices.find(v => v.lang.includes("en-IN") || v.lang.includes("en_IN")) || voices[0];
+            if (indVoice) utter.voice = indVoice;
+            window.speechSynthesis.speak(utter);
+          } catch (err) {
+            console.error("Speech readout error:", err);
+          }
+        }
+
+        // Auto remove after 5 seconds (or 3 seconds if hear-only)
         setTimeout(() => {
           setToasts(prev => prev.filter(t => t.id !== newToast.id));
-        }, 5000);
+        }, notifMode === "hear" ? 4000 : 6000);
       }
     });
 
@@ -67,6 +91,11 @@ export default function ToastNotification() {
                   {toast.type === "order" ? "📦" : toast.type === "delivery" ? "🚚" : toast.type === "payment" ? "💰" : "🔔"}
                 </span>
                 {toast.title}
+                {toast.isAudioOnly && (
+                  <span style={{ fontSize: "0.68rem", background: "#dcfce7", color: "#166534", padding: "1px 6px", borderRadius: "8px", fontWeight: 700 }}>
+                    🔊 Voiced
+                  </span>
+                )}
               </div>
               <button onClick={() => removeToast(toast.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999' }}>
                 <X size={16} />

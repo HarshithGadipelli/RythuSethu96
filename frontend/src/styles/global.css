@@ -1600,6 +1600,73 @@ h3, h4, h5 { font-family: 'Outfit', sans-serif; font-weight: 600; }
   flex-shrink: 0;
 }
 
+/* ─── UNIVERSAL MODAL OVERLAY & ANCHORED SETTINGS POPOVER ─── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* Anchored Settings Popover (Desktop) */
+.settings-popover-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 440px;
+  max-width: 92vw;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.22);
+  z-index: 10005;
+  overflow: hidden;
+  animation: slideDownFade 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Anchored Settings Sheet (Mobile bottom trigger) */
+.settings-mobile-sheet {
+  position: fixed;
+  bottom: 74px;
+  right: 12px;
+  left: 12px;
+  max-height: 82vh;
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
+  z-index: 10005;
+  overflow-y: auto;
+  animation: slideUpFade 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDownFade {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ─── STORY SECTION (PICTURE VIEW UI) ─── */
 .story-section {
   padding: 5rem 1rem;

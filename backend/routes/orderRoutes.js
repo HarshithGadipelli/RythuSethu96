@@ -13,6 +13,39 @@ import { calculateTrustScore } from "../services/trustScoreService.js";
 
 const router = express.Router();
 
+// Helper: enrich orders with Farmer model profile details (farmTourMedia, farmPhoto, real farm coords)
+async function enrichOrdersWithFarmerDetails(orders) {
+  if (!orders || !orders.length) return orders;
+  const farmerUserIds = orders.map(o => o.farmer?._id || o.farmer).filter(Boolean);
+  const farmerProfiles = await Farmer.find({ user: { $in: farmerUserIds } }).lean();
+  const farmerMap = new Map();
+  farmerProfiles.forEach(fp => farmerMap.set(String(fp.user), fp));
+  
+  return orders.map(order => {
+    const oObj = order.toObject ? order.toObject() : { ...order };
+    const fId = String(oObj.farmer?._id || oObj.farmer || "");
+    const fProfile = farmerMap.get(fId);
+    if (fProfile) {
+      oObj.farmerProfile = {
+        farmName: fProfile.farmName || "",
+        farmLocation: fProfile.farmLocation || "",
+        latitude: fProfile.latitude,
+        longitude: fProfile.longitude,
+        farmSize: fProfile.farmSize || 0,
+        soilType: fProfile.soilType || "loamy",
+        farmTourMedia: fProfile.farmTourMedia || [],
+        farmPhoto: fProfile.farmPhoto || "",
+        farmerPhoto: fProfile.farmerPhoto || "",
+        productPhoto: fProfile.productPhoto || "",
+        farmTourDetails: fProfile.farmTourDetails || "",
+        verified: fProfile.verified || false,
+        trustScore: fProfile.trustScore || 85
+      };
+    }
+    return oObj;
+  });
+}
+
 // Get orders for current logged-in user (Customer or Farmer)
 router.get("/my-orders", protect, async (req, res) => {
   try {
@@ -21,8 +54,10 @@ router.get("/my-orders", protect, async (req, res) => {
       .populate("crop")
       .populate("farmer", "name location trustScore phone")
       .populate("customer", "name location phone")
+      .populate({ path: "deliveryLegs", populate: { path: "agent", select: "name phone vehicle agentType latitude longitude" } })
       .sort({ createdAt: -1 });
-    res.json(orders);
+    const enriched = await enrichOrdersWithFarmerDetails(orders);
+    res.json(enriched);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -57,7 +92,9 @@ function computeETA(distanceKm, vehicleType = "bike") {
   return Math.round((distanceKm / speed) * 60) + 15; // 15 min buffer for pickup/loading
 }
 
-// Auto Assign Delivery Agent Logic
+import HubLocation from "../models/HubLocation.js";
+
+// Auto Assign Delivery Agent Logic (Multi-Hop)
 async function autoAssignDelivery(app, orderDoc) {
   try {
     if (orderDoc.deliveryType === "farm_pickup" || orderDoc.status !== "pending") return;
@@ -65,7 +102,6 @@ async function autoAssignDelivery(app, orderDoc) {
     let pickupLat = orderDoc.pickupLatitude || 0;
     let pickupLng = orderDoc.pickupLongitude || 0;
 
-    // Fallback if Order doesn't have it
     if (pickupLat === 0 && pickupLng === 0) {
       if (orderDoc.farmer) {
         const farmer = await User.findById(orderDoc.farmer);
@@ -81,44 +117,141 @@ async function autoAssignDelivery(app, orderDoc) {
     
     if (pickupLat === 0 && pickupLng === 0) return;
 
-    let agents = await User.find({ role: "agent", isActive: true });
-    if (!agents.length) {
-       // Fallback: Create an agent automatically if none exist to prevent tracking failure
-       const fallbackAgent = await User.create({
-         name: "Rythu Express",
-         email: `agent_${Date.now()}@rythusethu.com`,
-         password: "auto_express",
-         role: "agent",
-         agentType: "bike",
-         isActive: true,
-         latitude: pickupLat + 0.01,
-         longitude: pickupLng + 0.01
-       });
-       agents = [fallbackAgent];
+    // 1. Fetch Hubs
+    const hubs = await HubLocation.find({ isActive: true });
+    const outerHubs = hubs.filter(h => h.type === "outer_hub");
+    const innerStorages = hubs.filter(h => h.type === "inner_cold_storage");
+
+    // Fallback if no hubs (direct delivery)
+    if (outerHubs.length === 0 || innerStorages.length === 0) {
+       return await autoAssignDeliveryDirect(app, orderDoc, pickupLat, pickupLng);
     }
 
-    const scoredAgents = agents.map(agent => {
-      const dist = haversineDistance(agent.latitude || 0, agent.longitude || 0, pickupLat, pickupLng);
-      const score = (dist * 10) - (agent.deliveryScore || 0);
-      return { agent, dist, score };
+    // 2. Find Nearest Outer Hub
+    let nearestOuterHub = outerHubs[0];
+    let minOuterDist = Infinity;
+    outerHubs.forEach(h => {
+      const d = haversineDistance(pickupLat, pickupLng, h.latitude, h.longitude);
+      if (d < minOuterDist) { minOuterDist = d; nearestOuterHub = h; }
     });
 
-    scoredAgents.sort((a, b) => a.score - b.score);
-    const bestAgentData = scoredAgents[0];
-    const bestAgent = bestAgentData.agent;
+    // 3. Find Nearest Inner Storage
+    let nearestInnerStorage = innerStorages[0];
+    let minInnerDist = Infinity;
+    const deliveryLat = orderDoc.deliveryLatitude || 0;
+    const deliveryLng = orderDoc.deliveryLongitude || 0;
+    innerStorages.forEach(h => {
+      const d = haversineDistance(deliveryLat, deliveryLng, h.latitude, h.longitude);
+      if (d < minInnerDist) { minInnerDist = d; nearestInnerStorage = h; }
+    });
+
+    // 4. Create Legs
+    const order = await Order.findById(orderDoc._id);
+    
+    // Leg 1: Farmer to Outer Hub (Truck/Tractor)
+    const leg1 = await Delivery.create({
+      order: order._id,
+      pickupLocation: "Farmer Location",
+      pickupLatitude: pickupLat,
+      pickupLongitude: pickupLng,
+      deliveryLocation: nearestOuterHub.name + " (Outer Hub)",
+      deliveryLatitude: nearestOuterHub.latitude,
+      deliveryLongitude: nearestOuterHub.longitude,
+      vehicleType: "truck",
+      legType: "rural_to_hub",
+      destinationLocationId: nearestOuterHub._id,
+      destinationLocationName: nearestOuterHub.name,
+      status: "assigned", // we'll assign it shortly
+      trackingCode: "TRK-L1-" + Date.now().toString(36).toUpperCase(),
+    });
+
+    // Leg 2: Outer Hub to Inner Storage (Truck)
+    const leg2 = await Delivery.create({
+      order: order._id,
+      pickupLocation: nearestOuterHub.name + " (Outer Hub)",
+      pickupLatitude: nearestOuterHub.latitude,
+      pickupLongitude: nearestOuterHub.longitude,
+      deliveryLocation: nearestInnerStorage.name + " (Inner Cold Storage)",
+      deliveryLatitude: nearestInnerStorage.latitude,
+      deliveryLongitude: nearestInnerStorage.longitude,
+      vehicleType: "truck",
+      legType: "hub_to_storage",
+      sourceLocationId: nearestOuterHub._id,
+      sourceLocationName: nearestOuterHub.name,
+      destinationLocationId: nearestInnerStorage._id,
+      destinationLocationName: nearestInnerStorage.name,
+      status: "pending",
+      trackingCode: "TRK-L2-" + Date.now().toString(36).toUpperCase(),
+    });
+
+    // Leg 3: Inner Storage to Customer (Bike)
+    const leg3 = await Delivery.create({
+      order: order._id,
+      pickupLocation: nearestInnerStorage.name + " (Inner Cold Storage)",
+      pickupLatitude: nearestInnerStorage.latitude,
+      pickupLongitude: nearestInnerStorage.longitude,
+      deliveryLocation: order.deliveryAddress || "Customer Location",
+      deliveryLatitude: deliveryLat,
+      deliveryLongitude: deliveryLng,
+      vehicleType: "bike",
+      legType: "storage_to_customer",
+      sourceLocationId: nearestInnerStorage._id,
+      sourceLocationName: nearestInnerStorage.name,
+      status: "pending",
+      trackingCode: "TRK-L3-" + Date.now().toString(36).toUpperCase(),
+      customerHasWetWaste: Boolean(order.hasWetWasteDonation),
+      wetWasteEstKg: order.wetWasteEstKg || 0,
+      wetWasteNotes: order.wetWasteNotes || "",
+      agentCarryingWasteKit: true,
+      wasteDestinationHub: nearestInnerStorage.name + " (Inner Cold Storage)"
+    });
+
+    order.deliveryLegs = [leg1._id, leg2._id, leg3._id];
+    order.logisticsPhase = "farm_to_hub";
+    order.status = "assigned";
+    order.timeline.push({ status: "assigned", note: `Multi-Hop logistics planned. Routing via ${nearestOuterHub.name} and ${nearestInnerStorage.name}.` });
+    await order.save();
+
+    // Assign Agent to Leg 1
+    let agents = await User.find({ role: "agent", isActive: true });
+    if (agents.length) {
+       const bestAgent = agents[0]; // Simplified assignment
+       leg1.agent = bestAgent._id;
+       await leg1.save();
+       
+       await notify(app, bestAgent._id, 
+         "🚀 New Leg 1 Delivery!", 
+         `Pickup from Farm, deliver to ${nearestOuterHub.name} Hub.`,
+         "delivery", "high", { deliveryId: leg1._id }
+       );
+    }
+
+    const io = app.get("io");
+    if (io) {
+      io.emit("delivery_assigned", leg1);
+      io.emit("order_updated", order);
+    }
+  } catch (err) {
+    console.error("Auto assign multi-hop delivery failed:", err);
+  }
+}
+
+// Fallback logic for direct delivery if no hubs exist
+async function autoAssignDeliveryDirect(app, orderDoc, pickupLat, pickupLng) {
+  try {
+    let agents = await User.find({ role: "agent", isActive: true });
+    if (!agents.length) return;
+    const bestAgent = agents[0];
 
     const distToDrop = orderDoc.deliveryDistance || haversineDistance(pickupLat, pickupLng, orderDoc.deliveryLatitude || 0, orderDoc.deliveryLongitude || 0);
-    const totalDist = bestAgentData.dist + distToDrop;
-    const etaMinutes = computeETA(totalDist, "bike");
-    const etaText = etaMinutes < 60 ? `${etaMinutes} mins` : `${Math.floor(etaMinutes / 60)}h ${etaMinutes % 60}m`;
+    const etaMinutes = computeETA(distToDrop, "bike");
 
     const order = await Order.findById(orderDoc._id);
     order.agent = bestAgent._id;
     order.status = "assigned";
     order.estimatedDeliveryMinutes = etaMinutes;
-    order.timeline.push({ status: "assigned", note: `Auto-assigned best agent (${bestAgent.name}). ETA: ${etaText}` });
-    await order.save();
-
+    order.timeline.push({ status: "assigned", note: `Direct delivery assigned.` });
+    
     const delivery = await Delivery.create({
       order: order._id,
       agent: bestAgent._id,
@@ -129,39 +262,18 @@ async function autoAssignDelivery(app, orderDoc) {
       deliveryLatitude: order.deliveryLatitude || 0,
       deliveryLongitude: order.deliveryLongitude || 0,
       vehicleType: "bike",
-      estimatedTime: etaText,
-      estimatedMinutes: etaMinutes,
-      trackingCode: "TRK-" + Date.now().toString(36).toUpperCase(),
-      customerHasWetWaste: Boolean(order.hasWetWasteDonation),
-      wetWasteEstKg: order.wetWasteEstKg || 0,
-      wetWasteNotes: order.wetWasteNotes || "",
-      agentCarryingWasteKit: true,
-      wasteDestinationHub: "Central Cold Storage & Vermicompost/Biogas Hub"
+      legType: "direct",
+      status: "assigned",
+      trackingCode: "TRK-" + Date.now().toString(36).toUpperCase()
     });
 
-    const io = app.get("io");
-    if (io) {
-      io.emit("delivery_assigned", delivery);
-      io.emit("order_updated", order);
-    }
-    
-    await notify(app, bestAgent._id, 
-      "🚀 New Delivery Auto-Assigned!", 
-      `You have been assigned a new delivery. Pickup is ${bestAgentData.dist.toFixed(1)}km away.${order.hasWetWasteDonation ? ` (🌱 Wet Waste Pickup: ~${order.wetWasteEstKg || 2}kg raw peels)` : ""}`,
-      "delivery", "high", { deliveryId: delivery._id }
-    );
-
-    if (order.hasWetWasteDonation) {
-      await notify(app, bestAgent._id,
-        "🌱 Wet Waste Collection Kit Required",
-        `Customer requested wet-waste collection (~${order.wetWasteEstKg || 2}kg raw fruits/vegetables). Verify with doorstep scan and return to Cold Storage Hub for composting/biogas!`,
-        "delivery", "high", { deliveryId: delivery._id, orderId: order._id }
-      );
-    }
+    order.deliveryLegs = [delivery._id];
+    await order.save();
   } catch (err) {
-    console.error("Auto assign delivery failed:", err);
+    console.error("Direct fallback failed", err);
   }
 }
+
 
 // Create order (with stock validation, delivery charges, bill, product snapshot, verification code)
 router.post("/create", async (req, res) => {
@@ -587,8 +699,13 @@ router.get("/", async (req, res) => {
 // Get orders for a customer
 router.get("/customer/:id", async (req, res) => {
   try {
-    const orders = await Order.find({ customer: req.params.id }).populate("crop").populate("farmer").sort({ createdAt: -1 });
-    res.json(orders);
+    const orders = await Order.find({ customer: req.params.id })
+      .populate("crop")
+      .populate("farmer")
+      .populate({ path: "deliveryLegs", populate: { path: "agent", select: "name phone vehicle agentType latitude longitude" } })
+      .sort({ createdAt: -1 });
+    const enriched = await enrichOrdersWithFarmerDetails(orders);
+    res.json(enriched);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -599,8 +716,14 @@ router.get("/user/:id", async (req, res) => {
   try {
     const orders = await Order.find({
       $or: [{ customer: req.params.id }, { farmer: req.params.id }]
-    }).populate("crop").populate("farmer").populate("customer").sort({ createdAt: -1 });
-    res.json(orders);
+    })
+      .populate("crop")
+      .populate("farmer")
+      .populate("customer")
+      .populate({ path: "deliveryLegs", populate: { path: "agent", select: "name phone vehicle agentType latitude longitude" } })
+      .sort({ createdAt: -1 });
+    const enriched = await enrichOrdersWithFarmerDetails(orders);
+    res.json(enriched);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -609,8 +732,13 @@ router.get("/user/:id", async (req, res) => {
 // Get orders for a farmer
 router.get("/farmer/:id", async (req, res) => {
   try {
-    const orders = await Order.find({ farmer: req.params.id }).populate("crop").populate("customer").sort({ createdAt: -1 });
-    res.json(orders);
+    const orders = await Order.find({ farmer: req.params.id })
+      .populate("crop")
+      .populate("customer")
+      .populate({ path: "deliveryLegs", populate: { path: "agent", select: "name phone vehicle agentType latitude longitude" } })
+      .sort({ createdAt: -1 });
+    const enriched = await enrichOrdersWithFarmerDetails(orders);
+    res.json(enriched);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -626,9 +754,12 @@ router.get("/:id", async (req, res, next) => {
       .populate("crop")
       .populate("customer", "name phone email location latitude longitude")
       .populate("farmer", "name phone email location latitude longitude")
-      .populate("agent", "name phone email vehicle agentType latitude longitude");
+      .populate("agent", "name phone email vehicle agentType latitude longitude")
+      .populate({ path: "deliveryLegs", populate: { path: "agent", select: "name phone vehicle agentType latitude longitude" } });
     if (!order) return res.status(404).json({ error: "Order not found" });
-    res.json(order);
+
+    const enrichedList = await enrichOrdersWithFarmerDetails([order]);
+    res.json(enrichedList[0] || order);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
