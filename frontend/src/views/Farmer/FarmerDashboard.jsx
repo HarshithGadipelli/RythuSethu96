@@ -31,7 +31,6 @@ import CropVisualPicker, { VISUAL_CROPS } from "../../components/CropVisualPicke
 import { Navigation, Volume2, Mic, Sparkles, CheckCircle2, TrendingUp, RefreshCw, IndianRupee, HelpCircle, XCircle, MapPin, LocateFixed, Compass, Layers, ArrowLeft, X, ChevronRight, Sliders, ExternalLink, Activity, Search } from "lucide-react";
 import LocationUpdateModal from "../../components/LocationUpdateModal";
 import SecurityPledgeModal from "../../components/SecurityPledgeModal";
-import APMCMandiExplorer from "../../components/APMCMandiExplorer";
 import WeedControlAdvisor from "../../components/WeedControlAdvisor";
 import SelectiveBreedingAdvisor from "../../components/SelectiveBreedingAdvisor";
 import FarmerCropHistory from "./FarmerCropHistory";
@@ -1848,7 +1847,7 @@ export default function FarmerDashboard({ initialTab }) {
                 boxShadow: "0 2px 8px rgba(2, 132, 199, 0.3)"
               }}
             >
-              <ArrowLeft size={15} /> Back to Agri-Tools Suite
+              <ArrowLeft size={15} /> Back to Seasonal &amp; Agri-Tools Suite
             </button>
             <button
               type="button"
@@ -1872,7 +1871,7 @@ export default function FarmerDashboard({ initialTab }) {
             </button>
             
             <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem", color: "#374151" }}>
-              <span style={{ color: "#0369a1", fontWeight: 700 }}>🌾 Seasonal Suite</span>
+              <span style={{ color: "#0369a1", fontWeight: 700 }}>🌾 Seasonal &amp; Agri-Tools Suite</span>
               <span>/</span>
               <strong style={{ color: "#0f172a" }}>
                 {SPECIALIZED_TOOL_GROUPS.flatMap(g => g.tools).find(t => t.k === tab)?.l || tab}
@@ -1921,9 +1920,8 @@ export default function FarmerDashboard({ initialTab }) {
             { k: "crops", l: `🌿 My Crops (${crops.length})` },
             { k: "add", l: `➕ ${t("addCrop")}` },
             { k: "profile", l: "👤 Profile & Tours" },
-            { k: "tools_hub", l: "🌾 Agri-Tools Suite (19+)" },
+            { k: "tools_hub", l: "🌾 Seasonal & Agri-Tools Suite (19+)" },
             { k: "orders", l: `📦 Daily Orders (${orders.length})` },
-            { k: "apmc", l: "🏛️ All India APMC Mandis" },
             { k: "demand", l: "📊 Demand & Dynamic Pricing" }
           ].map(tb => (
             <button
@@ -1940,28 +1938,8 @@ export default function FarmerDashboard({ initialTab }) {
               {tb.l}
             </button>
           ))}
-
-          <button
-            type="button"
-            className="tab-btn"
-            onClick={() => setShowToolsDrawer(true)}
-            style={{
-              background: "#f0fdf4",
-              border: "1.5px dashed #16a34a",
-              color: "#166534",
-              fontWeight: 700,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "5px"
-            }}
-          >
-            <Sliders size={14} /> More Seasonal Tools (19+) ▾
-          </button>
         </div>
       )}
-
-      {/* ── APMC MANDI EXPLORER TAB ── */}
-      {tab === "apmc" && <APMCMandiExplorer />}
 
       {/* ── CROP HISTORY & REVENUE LEDGER TAB ── */}
       {tab === "cropHistory" && <FarmerCropHistory />}
@@ -3234,7 +3212,7 @@ export default function FarmerDashboard({ initialTab }) {
               <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
                 <span style={{ fontSize: "1.75rem" }}>🌾</span>
                 <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 900, color: "#166534" }}>
-                  Seasonal &amp; Specialized Agri-Suite
+                  Seasonal &amp; Agri-Tools Suite
                 </h2>
                 <span style={{ background: "#16a34a", color: "white", padding: "2px 10px", borderRadius: "100px", fontSize: "0.75rem", fontWeight: 800 }}>
                   19 Integrated Tools
