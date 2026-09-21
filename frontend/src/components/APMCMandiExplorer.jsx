@@ -652,8 +652,8 @@ export default function APMCMandiExplorer() {
     return combinedDataset.filter(item => {
       const matchCat = selectedCategory === "all" || item.category === selectedCategory;
       const matchState = selectedState === "all" || item.state.toLowerCase().includes(selectedState.toLowerCase().split(" ")[0]);
-      const matchSearch = searchTerm === "" || 
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      const matchSearch = searchTerm === "" ||
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (item.variety && item.variety.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (item.mandi && item.mandi.toLowerCase().includes(searchTerm.toLowerCase()));
       return matchCat && matchState && matchSearch;
@@ -662,7 +662,7 @@ export default function APMCMandiExplorer() {
 
   return (
     <div className="apmc-container" style={{ background: "rgba(15, 23, 42, 0.4)", borderRadius: "16px", padding: "1.5rem", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(12px)" }}>
-      
+
       {/* Top Banner & Live Ticker */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1.2rem" }}>
         <div>
@@ -675,13 +675,13 @@ export default function APMCMandiExplorer() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
-          <div style={{ 
-            background: isLiveConnected ? "rgba(34, 197, 94, 0.15)" : "rgba(59, 130, 246, 0.15)", 
-            border: isLiveConnected ? "1px solid rgba(34, 197, 94, 0.4)" : "1px solid rgba(59, 130, 246, 0.3)", 
-            borderRadius: "100px", padding: "0.4rem 0.9rem", 
-            display: "flex", alignItems: "center", gap: "6px", 
-            color: isLiveConnected ? "#4ade80" : "#60a5fa", 
-            fontSize: "0.78rem", fontWeight: 700 
+          <div style={{
+            background: isLiveConnected ? "rgba(34, 197, 94, 0.15)" : "rgba(59, 130, 246, 0.15)",
+            border: isLiveConnected ? "1px solid rgba(34, 197, 94, 0.4)" : "1px solid rgba(59, 130, 246, 0.3)",
+            borderRadius: "100px", padding: "0.4rem 0.9rem",
+            display: "flex", alignItems: "center", gap: "6px",
+            color: isLiveConnected ? "#4ade80" : "#60a5fa",
+            fontSize: "0.78rem", fontWeight: 700
           }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: isLiveConnected ? "#4ade80" : "#60a5fa", display: "inline-block", animation: "pulse 2s infinite" }} />
             {isLiveConnected ? `Live Agmarknet Sync (${lastSyncedTime})` : "Connecting to Mandi Feed..."}
@@ -725,12 +725,13 @@ export default function APMCMandiExplorer() {
                 <span style={{ fontSize: "0.65rem", background: "rgba(34, 197, 94, 0.2)", color: "#4ade80", padding: "1px 5px", borderRadius: "4px", fontWeight: 800 }}>LIVE</span>
               )}
             </span>
+          ))}
         </div>
       </div>
 
       {/* Search & Filters Bar */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1.2rem" }}>
-        
+
         {/* Search Field */}
         <div style={{ position: "relative" }}>
           <Search size={16} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
