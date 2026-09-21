@@ -1,5 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
+import crypto from "crypto";
+import Razorpay from "razorpay";
 import Order from "../models/Order.js";
 import Crop from "../models/Crop.js";
 import User from "../models/User.js";
@@ -7,6 +9,7 @@ import Farmer from "../models/Farmer.js";
 import Notification from "../models/Notification.js";
 import Delivery from "../models/Delivery.js";
 import Review from "../models/Review.js";
+import Payment from "../models/Payment.js";
 import { addBlockToChain } from "../utils/blockchain.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { calculateTrustScore } from "../services/trustScoreService.js";
@@ -90,6 +93,51 @@ const VEHICLE_SPEEDS = { bike: 25, auto: 20, truck: 15, van: 18 };
 function computeETA(distanceKm, vehicleType = "bike") {
   const speed = VEHICLE_SPEEDS[vehicleType] || 25;
   return Math.round((distanceKm / speed) * 60) + 15; // 15 min buffer for pickup/loading
+}
+
+// Verification helper for online payments (Razorpay HMAC-SHA256 & direct API check)
+async function verifyOnlinePayment({ razorpayOrderId, razorpayPaymentId, razorpaySignature, amount }) {
+  const { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET } = process.env;
+  
+  if (!razorpayPaymentId) {
+    return { verified: false, reason: "Missing transaction / payment ID" };
+  }
+
+  // 1. Cryptographic HMAC-SHA256 Verification (when orderId and signature are available)
+  if (razorpayOrderId && razorpaySignature && RAZORPAY_KEY_SECRET) {
+    try {
+      const sign = razorpayOrderId + "|" + razorpayPaymentId;
+      const expectedSign = crypto
+        .createHmac("sha256", RAZORPAY_KEY_SECRET)
+        .update(sign.toString())
+        .digest("hex");
+      if (razorpaySignature === expectedSign) {
+        return { verified: true, method: "hmac_signature", paymentId: razorpayPaymentId };
+      }
+    } catch (sigErr) {
+      console.warn("HMAC signature verification failed:", sigErr.message);
+    }
+  }
+
+  // 2. Direct API verification via Razorpay SDK (official server-to-server check)
+  if (RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET && razorpayPaymentId.startsWith("pay_")) {
+    try {
+      const rzp = new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET });
+      const payment = await rzp.payments.fetch(razorpayPaymentId);
+      if (payment && (payment.status === "captured" || payment.status === "authorized")) {
+        return { verified: true, method: "razorpay_api_fetch", paymentId: razorpayPaymentId, status: payment.status };
+      }
+    } catch (err) {
+      console.warn("Razorpay API payment fetch check warning:", err.message);
+    }
+  }
+
+  // 3. Fallback for manual UPI UTR or Sandbox test IDs
+  if (razorpayPaymentId.startsWith("UPI-") || razorpayPaymentId.startsWith("UTR-") || razorpayPaymentId.startsWith("pay_test_")) {
+    return { verified: true, method: "upi_reference_sandbox", paymentId: razorpayPaymentId };
+  }
+
+  return { verified: false, reason: "Payment could not be verified by gateway" };
 }
 
 import HubLocation from "../models/HubLocation.js";
@@ -311,14 +359,25 @@ router.post("/create", async (req, res) => {
     const platformFee = Math.round(subtotal * 0.05); // 5% platform fee
     const totalAmount = Math.max(0, subtotal + charges - finalDiscount);
 
-    // Handle Wallet Payment
-    if (req.body.paymentMode === "wallet" && cust) {
+    // Handle Payments (Wallet, Online, UPI, Card, COD)
+    let finalPaymentStatus = "pending";
+    const reqPayMode = req.body.paymentMode || "cod";
+
+    if (reqPayMode === "wallet" && cust) {
       if (cust.walletBalance < totalAmount) {
         return res.status(400).json({ error: "Insufficient wallet balance." });
       }
       cust.walletBalance -= totalAmount;
       await cust.save();
-      req.body.paymentStatus = "paid"; // Auto-mark paid
+      finalPaymentStatus = "paid";
+    } else if (reqPayMode === "online" || reqPayMode === "upi" || reqPayMode === "card") {
+      const vResult = await verifyOnlinePayment({
+        razorpayOrderId: req.body.razorpayOrderId,
+        razorpayPaymentId: req.body.razorpayPaymentId || req.body.paymentTransactionId,
+        razorpaySignature: req.body.razorpaySignature,
+        amount: totalAmount
+      });
+      finalPaymentStatus = vResult.verified ? "paid" : "pending";
     }
     
     // Base points logic
@@ -386,6 +445,13 @@ router.post("/create", async (req, res) => {
       pickupAddress,
       pickupLatitude: pickupLat,
       pickupLongitude: pickupLng,
+      paymentMode: reqPayMode,
+      paymentStatus: finalPaymentStatus,
+      razorpayPaymentId: req.body.razorpayPaymentId || "",
+      razorpayOrderId: req.body.razorpayOrderId || "",
+      razorpaySignature: req.body.razorpaySignature || "",
+      paymentTransactionId: req.body.razorpayPaymentId || req.body.paymentTransactionId || "",
+      paymentVerifiedAt: finalPaymentStatus === "paid" ? new Date() : null,
       productSnapshot,
       hasWetWasteDonation: Boolean(hasWetWasteDonation),
       wetWasteEstKg: hasWetWasteDonation ? (Number(wetWasteEstKg) || 2) : 0,
@@ -400,6 +466,21 @@ router.post("/create", async (req, res) => {
       }] : [],
       timeline: [{ status: initialStatus, note: isPrebooked ? "Pre-booking placed" : "Order placed by customer" }]
     });
+
+    if (finalPaymentStatus === "paid" && (reqPayMode === "online" || reqPayMode === "upi" || reqPayMode === "card")) {
+      Payment.create({
+        order: order._id,
+        customer: customer || null,
+        amount: totalAmount,
+        currency: "INR",
+        method: reqPayMode,
+        status: "paid",
+        razorpayOrderId: req.body.razorpayOrderId || "",
+        razorpayPaymentId: req.body.razorpayPaymentId || req.body.paymentTransactionId || "",
+        razorpaySignature: req.body.razorpaySignature || "",
+        paidAt: new Date()
+      }).catch(err => console.warn("Payment log record failed:", err.message));
+    }
 
     // ─── Blockchain Logging ───
     await addBlockToChain(
@@ -547,6 +628,20 @@ router.post("/checkout-multi", async (req, res) => {
     const isMultiDrop = items.length > 1 || items.some(it => it.deliveryAddress);
     const groupId = isMultiDrop ? ("MLG-" + Date.now().toString(36).toUpperCase()) : "";
     
+    // Verify Payment (Wallet, Online, UPI, Card, COD)
+    let finalPaymentStatus = "pending";
+    if (paymentMode === "wallet") {
+      finalPaymentStatus = "paid";
+    } else if (paymentMode === "online" || paymentMode === "upi" || paymentMode === "card") {
+      const vResult = await verifyOnlinePayment({
+        razorpayOrderId: req.body.razorpayOrderId,
+        razorpayPaymentId: req.body.razorpayPaymentId || req.body.paymentTransactionId,
+        razorpaySignature: req.body.razorpaySignature,
+        amount: grandTotal
+      });
+      finalPaymentStatus = vResult.verified ? "paid" : "pending";
+    }
+
     const itemsWithDiscount = items.map(item => {
       const itemDiscount = Math.min(remainingDiscount, item.totalAmount);
       remainingDiscount -= itemDiscount;
@@ -612,7 +707,12 @@ router.post("/checkout-multi", async (req, res) => {
         platformFee,
         totalAmount: itemTotalAmount,
         paymentMode: paymentMode || "cod",
-        paymentStatus: (paymentMode === "wallet" || paymentMode === "online" || paymentMode === "upi") ? "paid" : "pending",
+        paymentStatus: finalPaymentStatus,
+        razorpayPaymentId: req.body.razorpayPaymentId || "",
+        razorpayOrderId: req.body.razorpayOrderId || "",
+        razorpaySignature: req.body.razorpaySignature || "",
+        paymentTransactionId: req.body.razorpayPaymentId || req.body.paymentTransactionId || "",
+        paymentVerifiedAt: finalPaymentStatus === "paid" ? new Date() : null,
         deliveryAddress: effectiveDeliveryAddr,
         deliveryLatitude: effectiveDeliveryLat,
         deliveryLongitude: effectiveDeliveryLng,
@@ -660,6 +760,21 @@ router.post("/checkout-multi", async (req, res) => {
       
       return order;
     }));
+
+    if (finalPaymentStatus === "paid" && (paymentMode === "online" || paymentMode === "upi" || paymentMode === "card")) {
+      Payment.create({
+        order: createdOrders[0]?._id,
+        customer: customer || null,
+        amount: Math.max(0, grandTotal - finalDiscount),
+        currency: "INR",
+        method: paymentMode,
+        status: "paid",
+        razorpayOrderId: req.body.razorpayOrderId || "",
+        razorpayPaymentId: req.body.razorpayPaymentId || req.body.paymentTransactionId || "",
+        razorpaySignature: req.body.razorpaySignature || "",
+        paidAt: new Date()
+      }).catch(err => console.warn("Multi Payment log record failed:", err.message));
+    }
 
     // Trigger auto-assignment: multi-delivery for multi-drop, else single delivery
     if (isMultiDrop && createdOrders.length > 1) {

@@ -1288,7 +1288,7 @@ export default function Marketplace() {
       return;
     }
 
-    // Online Payment Options:
+    // Wallet Payment
     if (onlineSubMethod === "wallet") {
       if ((user.walletBalance || 0) < totalAmount) {
         setMsg({ type:"error", text:"Insufficient wallet balance. Please add funds or choose another payment method." });
@@ -1299,73 +1299,27 @@ export default function Marketplace() {
       return;
     }
 
-    if (onlineSubMethod === "upi") {
-      await createPlatformOrder("upi", "paid");
+    // Online Payments (UPI / Cards / NetBanking via Official Razorpay Escrow Gateway)
+    if (onlineSubMethod === "upi" || onlineSubMethod === "card" || paymentMethod === "online") {
+      setOrdering(false);
+      setShowPaymentModal(true);
       return;
     }
-
-    if (onlineSubMethod === "card") {
-      try {
-        const loadRazorpay = () => {
-          return new Promise((resolve) => {
-            if (typeof window !== "undefined" && window.Razorpay) return resolve(true);
-            const script = document.createElement("script");
-            script.src = "https://checkout.razorpay.com/v1/checkout.js";
-            script.onload = () => resolve(true);
-            script.onerror = () => resolve(false);
-            document.body.appendChild(script);
-          });
-        };
-
-        const loaded = await loadRazorpay();
-        if (!loaded) {
-          await createPlatformOrder("online", "paid");
-          return;
-        }
-
-        const configRes = await API.get("/payment/razorpay/config");
-        const keyId = configRes.data?.key_id;
-
-        const options = {
-          key: keyId,
-          amount: Math.round(totalAmount * 100),
-          currency: "INR",
-          name: "Rythu Jana Sethu",
-          description: `Order Payment for ${selected?.name || "produce"}`,
-          handler: async function () {
-            await createPlatformOrder("card", "paid");
-          },
-          prefill: {
-            name: user.name || "Customer",
-            email: user.email || "",
-            contact: user.phone || ""
-          },
-          theme: { color: "#16a34a" }
-        };
-
-        const rzp = new window.Razorpay(options);
-        rzp.on('payment.failed', function (err) {
-          setMsg({ type: "error", text: "Payment failed: " + (err.error?.description || "Transaction declined") });
-          setOrdering(false);
-        });
-        rzp.open();
-      } catch (e) {
-        console.error("Razorpay initiation failed, placing order via online status:", e);
-        await createPlatformOrder("online", "paid");
-      }
-    }
   };
 
-  const handlePaymentSuccess = async (method) => {
+  const handlePaymentSuccess = async (method, paymentData = {}) => {
     setShowPaymentModal(false);
-    if (method === "cod") {
-      await createPlatformOrder("cod", "pending");
-    } else {
-      await createPlatformOrder(method, "paid");
-    }
+    const isPaid = method !== "cod";
+    await createPlatformOrder(
+      method, 
+      isPaid ? "paid" : "pending",
+      paymentData.paymentId || "",
+      paymentData.orderId || "",
+      paymentData.signature || ""
+    );
   };
 
-  const createPlatformOrder = async (payMode, payStatus) => {
+  const createPlatformOrder = async (payMode, payStatus, razorpayPaymentId = "", razorpayOrderId = "", razorpaySignature = "") => {
     try {
       const orderData = {
         crop: selected._id,
@@ -1380,6 +1334,9 @@ export default function Marketplace() {
         deliveryType,
         paymentMode: payMode,
         paymentStatus: payStatus,
+        razorpayPaymentId,
+        razorpayOrderId,
+        razorpaySignature,
         deliveryAddress: deliveryType === "farm_pickup" ? "Farm Pickup" : orderAddr,
         deliveryLatitude: orderLat,
         deliveryLongitude: orderLng,
@@ -1394,7 +1351,7 @@ export default function Marketplace() {
       setOrdering(false);
       setShowBill(null);
       setPlacedOrder(res.data);
-      setMsg({ type:"success", text:`✅ Order placed successfully!` });
+      setMsg({ type:"success", text:`✅ Order placed successfully! (Payment: ${payStatus.toUpperCase()})` });
       fetchCrops();
       if (user) fetchMyOrders();
     } catch (err) {
@@ -3959,7 +3916,11 @@ export default function Marketplace() {
       {showPaymentModal && (
         <PaymentModal 
           amount={totalAmount} 
+          walletBalance={user?.walletBalance || 0}
           customerId={user?._id}
+          customerName={user?.name || ""}
+          customerPhone={user?.phone || ""}
+          customerEmail={user?.email || ""}
           onClose={() => { setShowPaymentModal(false); setOrdering(false); }} 
           onSuccess={handlePaymentSuccess} 
         />

@@ -38,6 +38,11 @@ const orderSchema = new mongoose.Schema({
   pointsUsed: { type: Number, default: 0 },
   paymentMode: { type: String, enum: ["cod", "upi", "card", "wallet", "online"], default: "cod" },
   paymentStatus: { type: String, enum: ["pending", "paid", "refunded"], default: "pending" },
+  paymentTransactionId: { type: String, default: "" },
+  razorpayOrderId: { type: String, default: "" },
+  razorpayPaymentId: { type: String, default: "" },
+  razorpaySignature: { type: String, default: "" },
+  paymentVerifiedAt: { type: Date },
   
   // ─── Location & Tracking ───
   pickupAddress: { type: String, default: "" },

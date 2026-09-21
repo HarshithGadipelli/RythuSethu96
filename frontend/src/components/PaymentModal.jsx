@@ -19,8 +19,19 @@ const loadRazorpay = () => {
   });
 };
 
-export default function PaymentModal({ amount, walletBalance, orderId, customerId, onClose, onSuccess }) {
+export default function PaymentModal({ 
+  amount, 
+  walletBalance = 0, 
+  orderId = null, 
+  customerId = null, 
+  customerName = "", 
+  customerPhone = "", 
+  customerEmail = "", 
+  onClose, 
+  onSuccess 
+}) {
   const [merchantUpi, setMerchantUpi] = useState("8688938604@upi");
+  const [gatewayConfig, setGatewayConfig] = useState(null);
   const [method, setMethod] = useState("upi");
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -28,12 +39,14 @@ export default function PaymentModal({ amount, walletBalance, orderId, customerI
   const [copied, setCopied] = useState(false);
   const [utrInput, setUtrInput] = useState("");
   const [paymentTxnId, setPaymentTxnId] = useState("");
+  const [paymentDetails, setPaymentDetails] = useState(null);
 
   useEffect(() => {
     API.get("/payment/razorpay/config")
       .then(res => {
-        if (res.data?.merchantUpiId) {
-          setMerchantUpi(res.data.merchantUpiId);
+        if (res.data) {
+          setGatewayConfig(res.data);
+          if (res.data.merchantUpiId) setMerchantUpi(res.data.merchantUpiId);
         }
       })
       .catch(() => {});
@@ -128,6 +141,12 @@ export default function PaymentModal({ amount, walletBalance, orderId, customerI
               paymentRecordId: order.paymentRecordId
             });
             setPaymentTxnId(response.razorpay_payment_id);
+            setPaymentDetails({
+              paymentId: response.razorpay_payment_id,
+              orderId: response.razorpay_order_id,
+              signature: response.razorpay_signature,
+              verified: true
+            });
             setProcessing(false);
             setSuccess(true);
           } catch (e) {
@@ -137,9 +156,9 @@ export default function PaymentModal({ amount, walletBalance, orderId, customerI
           }
         },
         prefill: {
-          name: "Rythu Jana Sethu Customer",
-          email: "customer@rythujanasethu.com",
-          contact: "9999999999"
+          name: customerName || "Rythu Jana Sethu Customer",
+          email: customerEmail || "customer@rythujanasethu.com",
+          contact: customerPhone || "9999999999"
         },
         theme: {
           color: "#16a34a"
@@ -163,12 +182,18 @@ export default function PaymentModal({ amount, walletBalance, orderId, customerI
     if (success) {
       const timer = setTimeout(() => {
         if (onSuccess) {
-          onSuccess(method, { paymentId: paymentTxnId, method });
+          onSuccess(method, { 
+            paymentId: paymentTxnId, 
+            orderId: paymentDetails?.orderId || "",
+            signature: paymentDetails?.signature || "",
+            method,
+            isVerified: true
+          });
         }
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [success, method, paymentTxnId, onSuccess]);
+  }, [success, method, paymentTxnId, paymentDetails, onSuccess]);
 
   return (
     <div style={{
@@ -206,8 +231,18 @@ export default function PaymentModal({ amount, walletBalance, orderId, customerI
           </div>
           
           <div style={{ fontSize: "0.85rem", color: "#94a3b8", marginBottom: "0.1rem" }}>Amount to Pay</div>
-          <div style={{ fontSize: "2.2rem", fontWeight: 800, color: "white", display: "flex", alignItems: "baseline", gap: "0.2rem" }}>
-            <span style={{ fontSize: "1.4rem", color: "#4ade80" }}>₹</span>{amount.toLocaleString()}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: "2.2rem", fontWeight: 800, color: "white", display: "flex", alignItems: "baseline", gap: "0.2rem" }}>
+              <span style={{ fontSize: "1.4rem", color: "#4ade80" }}>₹</span>{amount.toLocaleString()}
+            </div>
+            <div style={{
+              background: gatewayConfig?.isLiveMode ? "rgba(34, 197, 94, 0.2)" : "rgba(234, 179, 8, 0.2)",
+              border: gatewayConfig?.isLiveMode ? "1px solid rgba(34, 197, 94, 0.4)" : "1px solid rgba(234, 179, 8, 0.4)",
+              color: gatewayConfig?.isLiveMode ? "#86efac" : "#fef08a",
+              padding: "3px 9px", borderRadius: "100px", fontSize: "0.7rem", fontWeight: 700
+            }}>
+              {gatewayConfig?.isLiveMode ? "🟢 Live Razorpay Direct" : "🧪 Razorpay Sandbox"}
+            </div>
           </div>
         </div>
 

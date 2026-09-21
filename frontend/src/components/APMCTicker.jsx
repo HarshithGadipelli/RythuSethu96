@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import axios from "axios";
-import { BASE_URL } from "../api/api";
+import API, { BASE_URL } from "../api/api";
 import {
   Search,
   TrendingUp,
@@ -248,17 +247,22 @@ export default function APMCTicker() {
   const [selectedState, setSelectedState] = useState("all");
   const [sortBy, setSortBy] = useState("default");
 
-  // Fetch real-time live rates (Native Next.js Route Handler -> Backend API -> Local Seed)
+  // Fetch real-time live rates (Backend API -> Native Next.js Route Handler -> Local Seed)
   const fetchRealtimeRates = async (silent = false) => {
     if (!silent) setIsRefreshing(true);
     try {
-      // 1. Try Next.js native API Route Handler
       let res;
       try {
-        res = await axios.get("/api/apmc-rates", { timeout: 3000 });
-      } catch (nextApiErr) {
-        // 2. Fallback to Express backend endpoint
-        res = await axios.get(`${BASE_URL}/crops/apmc-realtime`, { timeout: 3500 });
+        // 1. Direct Backend Endpoint via configured Axios instance
+        res = await API.get("/crops/apmc-realtime", { timeout: 6000 });
+      } catch (apiErr) {
+        // 2. Next.js native API Route Handler proxy
+        try {
+          res = await API.get("/apmc-rates", { timeout: 6000 });
+        } catch (nextApiErr) {
+          const fallbackHost = BASE_URL.replace(/\/api\/?$/, "");
+          res = await API.get(`${fallbackHost}/api/crops/apmc-realtime`, { timeout: 6000 });
+        }
       }
 
       if (res && res.data && res.data.data && res.data.data.length > 0) {

@@ -219,7 +219,7 @@ export default function CartSidebar() {
   const hasPrebookingItems = cart.some(item => !!item.isPrebooked);
 
   // Execute Order Placement
-  const executeOrderPlacement = async (payMethod = "cod") => {
+  const executeOrderPlacement = async (payMethod = "cod", paymentData = {}) => {
     if (!user) {
       setIsCartOpen(false);
       router.push("/login");
@@ -300,6 +300,10 @@ export default function CartSidebar() {
         items: orderItems,
         customer: user._id,
         paymentMode: payMethod,
+        paymentStatus: payMethod === "cod" ? "pending" : "paid",
+        razorpayPaymentId: paymentData.paymentId || "",
+        razorpayOrderId: paymentData.orderId || "",
+        razorpaySignature: paymentData.signature || "",
         pointsUsed: pointsDiscount,
         hasWetWasteDonation,
         wetWasteEstKg: hasWetWasteDonation ? Number(wetWasteEstKg) : 0,
@@ -959,9 +963,9 @@ export default function CartSidebar() {
           walletBalance={user?.walletBalance || 0}
           customerId={user?._id}
           onClose={() => setShowOnlinePaymentModal(false)}
-          onSuccess={(payMethod) => {
+          onSuccess={(payMethod, paymentData) => {
             setShowOnlinePaymentModal(false);
-            executeOrderPlacement(payMethod);
+            executeOrderPlacement(payMethod, paymentData);
           }}
         />
       )}
