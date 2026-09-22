@@ -4,8 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import API from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
-import { Package, ArrowLeft, CheckCircle, Leaf, Truck, Star, Sparkles } from "lucide-react";
-import SmartCuratedBasket from "../../components/SmartCuratedBasket";
+import { Package, ArrowLeft, CheckCircle, Leaf, Truck, Star } from "lucide-react";
 
 export default function CuratedBoxes() {
   const { user } = useAuth();
@@ -53,11 +52,9 @@ export default function CuratedBoxes() {
   ];
 
   useEffect(() => {
-    // In a real implementation, we would fetch from API.get("/boxes")
     const fetchCrops = async () => {
       try {
         const res = await API.get("/crops");
-        // Get unique crops by name
         const unique = [];
         const seen = new Set();
         for (const c of (res.data || [])) {
@@ -107,8 +104,6 @@ export default function CuratedBoxes() {
     setSubscribingTo(plan.id);
     setMsg({ type: "", text: "" });
     try {
-      // Typically calls API.post("/boxes/subscribe") but we simulate it for now 
-      // if backend route isn't fully scaffolded for creation.
       setTimeout(() => {
         setMsg({
           type: "success",
@@ -130,16 +125,13 @@ export default function CuratedBoxes() {
         </Link>
         <div>
           <h1 className="section-title" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Package color="var(--primary)" /> Curated Farm Boxes & AI Smart Basket
+            <Package color="var(--primary)" /> Curated Farm Boxes
           </h1>
           <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", margin: 0 }}>
-            Build custom boxes, calculate event catering, or subscribe to fresh produce delivered to your door.
+            Subscribe to weekly or monthly organic farm boxes or handpick your own custom produce basket directly from local farmers.
           </p>
         </div>
       </div>
-
-      {/* ── SMART AI BASKET BUILDER & EVENT CATERING ── */}
-      <SmartCuratedBasket />
 
       {msg.text && (
         <div style={{ padding: "1rem", borderRadius: "8px", marginBottom: "1.5rem", background: msg.type === "error" ? "rgba(239,68,68,0.1)" : "rgba(34,197,94,0.1)", color: msg.type === "error" ? "var(--red-deep)" : "var(--green-deep)", border: `1px solid ${msg.type === "error" ? "rgba(239,68,68,0.3)" : "rgba(34,197,94,0.3)"}` }}>

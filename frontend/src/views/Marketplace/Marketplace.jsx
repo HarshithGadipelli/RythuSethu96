@@ -1697,9 +1697,6 @@ export default function Marketplace() {
             >
               <span>🍲</span> Healthy Millet Recipes
             </button>
-            <Link href="/farm-tours" className="btn-secondary" style={{ padding: "0.3rem 0.8rem", fontSize: "0.85rem", textDecoration: "none", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-              🎥 Farm Tours
-            </Link>
             <Link href="/curated-boxes" className="btn-secondary" style={{ padding: "0.3rem 0.8rem", fontSize: "0.85rem", textDecoration: "none", display: "flex", alignItems: "center", gap: "0.3rem" }}>
               📦 Curated Boxes
             </Link>
