@@ -3,6 +3,7 @@ import Crop from "../models/Crop.js";
 import User from "../models/User.js";
 import Farmer from "../models/Farmer.js";
 import Notification from "../models/Notification.js";
+import { recordCropEvent } from "../services/continuousLearningService.js";
 
 export const addCrop = async (req, res) => {
   try {
@@ -254,6 +255,9 @@ export const addCrop = async (req, res) => {
     // Emit real-time event
     const io = req.app?.get?.("io");
     if (io) io.emit("crop_added", crop);
+    
+    // Ingest upcoming real crop listing into Continuous ML Training Pipeline
+    recordCropEvent(crop, io);
     
     res.json(crop);
   } catch (error) {

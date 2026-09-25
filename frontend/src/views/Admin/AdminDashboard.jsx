@@ -122,7 +122,7 @@ export default function AdminDashboard() {
   const [fleetReassignForm, setFleetReassignForm] = useState({
     agentId: "",
     vehicleTier: "heavy_truck",
-    algorithm: "tsp_genetic",
+    algorithm: "branch_and_cut",
     notes: ""
   });
 
@@ -276,7 +276,7 @@ export default function AdminDashboard() {
     setFleetReassignForm({
       agentId: (delivery.agent?._id || delivery.agent || "").toString(),
       vehicleTier: delivery.vehicleType === "heavy_truck" ? "heavy_truck" : "dabbawala_rider",
-      algorithm: delivery.vehicleType === "heavy_truck" ? "tsp_genetic" : "dabbawala_cluster",
+      algorithm: delivery.vehicleType === "heavy_truck" ? "branch_and_cut" : "guided_local_search",
       notes: ""
     });
   };
@@ -1971,7 +1971,7 @@ export default function AdminDashboard() {
                         Bulk capacity freight trucks equipped with IoT cold-chain temperature sensors and highway TSP route optimization.
                       </p>
                     </div>
-                    <span className="badge badge-blue">Algorithm: tsp_genetic</span>
+                    <span className="badge badge-blue">Algorithm: branch_and_cut</span>
                   </div>
 
                   <div style={{ overflowX: "auto" }}>
@@ -2000,7 +2000,7 @@ export default function AdminDashboard() {
                             loadWeightKg: 4200,
                             bulkCapacityKg: 5000,
                             coldChainTemp: "3.4°C",
-                            algorithm: "tsp_genetic",
+                            algorithm: "branch_and_cut",
                             status: "in_transit"
                           },
                           {
@@ -2012,7 +2012,7 @@ export default function AdminDashboard() {
                             loadWeightKg: 3800,
                             bulkCapacityKg: 4500,
                             coldChainTemp: "3.8°C",
-                            algorithm: "tsp_genetic",
+                            algorithm: "branch_and_cut",
                             status: "in_transit"
                           },
                           {
@@ -2024,7 +2024,7 @@ export default function AdminDashboard() {
                             loadWeightKg: 4600,
                             bulkCapacityKg: 5000,
                             coldChainTemp: "4.1°C",
-                            algorithm: "tsp_genetic",
+                            algorithm: "branch_and_cut",
                             status: "picked_up"
                           }
                         ]).map((truck, i) => (
@@ -2057,7 +2057,7 @@ export default function AdminDashboard() {
                             </td>
                             <td>
                               <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
-                                {truck.algorithm || "tsp_genetic"}
+                                {truck.algorithm || "branch_and_cut"}
                               </span>
                             </td>
                             <td>
@@ -2094,7 +2094,7 @@ export default function AdminDashboard() {
                         Local cycle & cargo e-bike delivery couriers operating in 2km micro-clusters with OTP security and batch drop routing.
                       </p>
                     </div>
-                    <span className="badge badge-green">Algorithm: dabbawala_cluster</span>
+                    <span className="badge badge-green">Algorithm: guided_local_search</span>
                   </div>
 
                   <div style={{ overflowX: "auto" }}>
@@ -2121,7 +2121,7 @@ export default function AdminDashboard() {
                             hubOrigin: "Shamshabad Agri-Hub",
                             radialZoneKm: 2.0,
                             batchDropCount: 5,
-                            algorithm: "dabbawala_cluster",
+                            algorithm: "guided_local_search",
                             status: "in_transit",
                             otpSecured: true
                           },
@@ -2132,7 +2132,7 @@ export default function AdminDashboard() {
                             hubOrigin: "Medchal Cold-Chain Logistics Hub",
                             radialZoneKm: 1.8,
                             batchDropCount: 4,
-                            algorithm: "dabbawala_cluster",
+                            algorithm: "guided_local_search",
                             status: "in_transit",
                             otpSecured: true
                           },
@@ -2143,7 +2143,7 @@ export default function AdminDashboard() {
                             hubOrigin: "Patancheru Regional Hub",
                             radialZoneKm: 2.2,
                             batchDropCount: 6,
-                            algorithm: "dabbawala_cluster",
+                            algorithm: "guided_local_search",
                             status: "assigned",
                             otpSecured: true
                           }
@@ -2171,7 +2171,7 @@ export default function AdminDashboard() {
                             </td>
                             <td>
                               <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
-                                {dab.algorithm || "dabbawala_cluster"}
+                                {dab.algorithm || "guided_local_search"}
                               </span>
                             </td>
                             <td>
@@ -3991,11 +3991,11 @@ export default function AdminDashboard() {
                   onChange={(e) => setFleetReassignForm(f => ({
                     ...f,
                     vehicleTier: e.target.value,
-                    algorithm: e.target.value === "heavy_truck" ? "tsp_genetic" : "dabbawala_cluster"
+                    algorithm: e.target.value === "heavy_truck" ? "branch_and_cut" : "guided_local_search"
                   }))}
                 >
                   <option value="heavy_truck">🚛 Heavy Freight Truck (Farm ➔ Cold Storage Hub)</option>
-                  <option value="dabbawala_rider">🚲 Hyperlocal Dabbawala Courier (Cold Hub ➔ Doorstep)</option>
+                  <option value="dabbawala_rider">🚲 Hyperlocal Micro-Courier (Cold Hub ➔ Doorstep)</option>
                 </select>
               </div>
 
@@ -4006,8 +4006,8 @@ export default function AdminDashboard() {
                   value={fleetReassignForm.algorithm}
                   onChange={(e) => setFleetReassignForm(f => ({ ...f, algorithm: e.target.value }))}
                 >
-                  <option value="tsp_genetic">🧬 Highway TSP Genetic Metaheuristic (Long-haul)</option>
-                  <option value="dabbawala_cluster">🚲 2km Radial Micro-Cluster Batching (Hyperlocal)</option>
+                  <option value="branch_and_cut">🚛 Branch-and-Cut (Optimum Long-Haul Fuel / Truck)</option>
+                  <option value="guided_local_search">⚡ Guided Local Search (Traffic Penalties & PCM Windows / Bike)</option>
                 </select>
               </div>
 

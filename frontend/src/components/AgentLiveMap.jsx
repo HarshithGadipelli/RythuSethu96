@@ -146,10 +146,10 @@ export default function AgentLiveMap({ agentPos, deliveryData }) {
       }}>
         <div>
           <span style={{ fontWeight: 800, fontSize: "0.85rem", color: isHeavyTruck ? "#0369a1" : "#166534" }}>
-            {isHeavyTruck ? "🚛 Heavy Freight Truck (Farm ➔ Cold Hub)" : "🚲 Hyperlocal Dabbawala Courier (Hub ➔ Doorstep)"}
+            {isHeavyTruck ? "🚛 Heavy Freight Truck (Farm ➔ Cold Hub)" : "🚲 Hyperlocal Micro-Courier (Hub ➔ Doorstep)"}
           </span>
           <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
-            Routing Algorithm: <code>{isHeavyTruck ? "tsp_genetic (Highway Genetic TSP)" : "dabbawala_cluster (2km Radial Cluster)"}</code>
+            Routing Algorithm: <code>{isHeavyTruck ? "branch_and_cut (Branch-and-Cut Long-Haul Fuel Optimizer)" : "guided_local_search (Guided Local Search PCM Windows)"}</code>
             {isHeavyTruck && deliveryData.coldChainTemp && (
               <span style={{ marginLeft: "8px", color: "#0284c7", fontWeight: 700 }}>
                 ❄️ Cold Chain: {deliveryData.coldChainTemp}

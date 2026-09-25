@@ -12,8 +12,10 @@ import {
   predictDeliveryETA,
   analyzeSentiment,
   retrainEnsemble,
-  getSeasonalPrediction
+  getSeasonalPrediction,
+  getLearningTelemetry
 } from "../controllers/mlController.js";
+import { recordSearchEvent } from "../services/continuousLearningService.js";
 import SearchHistory from "../models/SearchHistory.js";
 import User from "../models/User.js";
 import Notification from "../models/Notification.js";
@@ -45,16 +47,21 @@ router.post("/price-trends", predictPriceTrends);
 router.post("/predict-eta", predictDeliveryETA);
 router.post("/analyze-sentiment", analyzeSentiment);
 router.post("/retrain", retrainEnsemble);
+router.get("/continuous-learning-status", getLearningTelemetry);
 router.get("/seasonal-prediction", getSeasonalPrediction);
 
 // ─── Search Demand Prediction ───
 
-// Log a search query
+// Log a search query (Ingests into Continuous ML Training Queue)
 router.post("/search", async (req, res) => {
   try {
     const { query, category, latitude, longitude, user } = req.body;
     if (!query) return res.status(400).json({ error: "Query is required" });
     const searchLog = await SearchHistory.create({ query, category, latitude, longitude, user });
+    
+    // Wire live website search event into Continuous ML Learning Pipeline
+    recordSearchEvent(searchLog, req.app?.get?.("io"));
+    
     res.json(searchLog);
   } catch (error) {
     res.status(500).json({ error: error.message });

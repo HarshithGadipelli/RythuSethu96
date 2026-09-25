@@ -317,7 +317,7 @@ export default function AgentDashboard() {
   };
 
   // ─── Multi-Algorithm Routing Constraint State ───
-  const [selectedAlgorithm, setSelectedAlgorithm] = useState("dabbawala_cluster");
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState("guided_local_search");
 
   const [ridealongForm, setRidealongForm] = useState({
     fromLocation: user?.ridealongRoute?.fromLocation || "",
@@ -1618,8 +1618,8 @@ export default function AgentDashboard() {
                   padding: "8px 12px", borderRadius: "10px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer"
                 }}
               >
-                <option value="dabbawala_cluster">🚲 Dabbawala Zone Cluster (Bike)</option>
-                <option value="tsp_genetic">🚚 TSP Genetic Annealing (Min KM / Truck)</option>
+                <option value="guided_local_search">⚡ Guided Local Search (Traffic & PCM Windows / Bike)</option>
+                <option value="branch_and_cut">🚛 Branch-and-Cut (Optimum Long-Haul Fuel / Truck)</option>
                 <option value="perishable_priority">🥬 Cold-Chain Perishable First (Freshness Priority)</option>
                 <option value="greedy_fastest">⚡ Fastest ETA (Nearest Urgent Drop)</option>
                 <option value="eco_fuel_saver">🌱 Eco-Fuel Saver (Low Emission)</option>

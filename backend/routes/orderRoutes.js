@@ -13,6 +13,7 @@ import Payment from "../models/Payment.js";
 import { addBlockToChain } from "../utils/blockchain.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { calculateTrustScore } from "../services/trustScoreService.js";
+import { recordOrderEvent } from "../services/continuousLearningService.js";
 
 const router = express.Router();
 
@@ -570,6 +571,9 @@ router.post("/create", async (req, res) => {
     const io = req.app.get("io");
     if (io) io.emit("order_created", order);
 
+    // Ingest upcoming real order transaction into Continuous ML Training Pipeline
+    recordOrderEvent(order, io);
+
     // Trigger auto-assignment asynchronously
     autoAssignDelivery(req.app, order);
 
@@ -757,6 +761,9 @@ router.post("/checkout-multi", async (req, res) => {
       
       const io = req.app.get("io");
       if (io) io.emit("order_created", order);
+      
+      // Ingest upcoming real order into Continuous ML Training Pipeline
+      recordOrderEvent(order, io);
       
       return order;
     }));
@@ -1991,6 +1998,8 @@ router.post("/create-multi", async (req, res) => {
         timeline: [{ status: "pending", note: "Multi-location order placed" }]
       });
       createdOrders.push(order);
+      // Ingest upcoming real order into Continuous ML Training Pipeline
+      recordOrderEvent(order, req.app?.get?.("io"));
     }
 
     if (createdOrders.length === 0) {

@@ -5,6 +5,7 @@ import { suggestAdvancedCrop } from "../services/cropSuggestionService.js";
 import { predictAdvancedDemand } from "../services/demandPredictionService.js";
 import { getNutritionAnalysis } from "../services/nutritionAnalysisService.js";
 import { optimizeDeliveryRoute } from "../services/deliveryRouteService.js";
+import { executeRetrainingPipeline, getContinuousLearningStatus } from "../services/continuousLearningService.js";
 
 const runPythonScript = async (endpoint, payload) => {
   try {
@@ -106,7 +107,7 @@ export const routeOptimize = async (req, res) => {
     
     // Determine agent type, defaulting to bike
     const type = agentType || (req.user && req.user.agentType) || "bike";
-    const selectedAlgo = algorithm || (type === "truck" ? "tsp_genetic" : "dabbawala_cluster");
+    const selectedAlgo = algorithm || (type === "truck" ? "branch_and_cut" : "guided_local_search");
     
     const result = await optimizeDeliveryRoute(agentLat, agentLng, orders, { agentType: type, algorithm: selectedAlgo });
     res.json(result);
@@ -493,50 +494,36 @@ export const getMarketDemand = async (req, res) => {
   } catch (error) {
     res.json({ demand: [] });
   }
-};export const retrainEnsemble = async (req, res) => { 
-  try {
-    res.json({ success: true, message: 'Ensemble model retraining initiated. The system is compiling fresh data from MongoDB.' });
-    
-    const io = req.app.get("io");
-    
-    // Paths to the python scripts
-    const pythonScripts = [
-      { name: "Price Model", file: "train_model.py", progress: 25 },
-      { name: "Demand Model", file: "train_demand_model.py", progress: 50 },
-      { name: "Seasonal Model", file: "train_seasonal_model.py", progress: 75 },
-      { name: "Crop Model", file: "train_crop_model.py", progress: 100 }
-    ];
+};
 
-    // Execute sequential retraining using FastAPI
-    console.log("[ML Server] Starting live real-data retraining pipeline via FastAPI...");
-    // Ideally we'd have a /train endpoint, but for now we'll simulate the delay or call the endpoint
-    // await runPythonScript("/train/ensemble", {});
+export const retrainEnsemble = async (req, res) => { 
+  try {
+    const io = req.app?.get?.("io");
     
-    for (const script of pythonScripts) {
-      if (io) io.emit("ml_retrain_progress", { progress: script.progress - 10, stage: `Training ${script.name}...` });
-      await new Promise(r => setTimeout(r, 2000)); // Simulated progress for now until the FastAPI /train is built
-      if (io) io.emit("ml_retrain_progress", { progress: script.progress, stage: `${script.name} Trained Successfully` });
-    }
+    // Immediate HTTP response so the admin dashboard doesn't time out
+    res.json({ 
+      success: true, 
+      message: "Continuous ensemble retraining initiated. Ingesting live crops, orders, and searches from MongoDB." 
+    });
     
-    console.log("[ML Server] Ensemble retraining complete.");
-    if (io) {
-      io.emit("ml_retrain_complete", { 
-        success: true, 
-        message: "Ensemble models successfully updated with latest MongoDB marketplace data.",
-        timestamp: new Date().toISOString()
-      });
-    }
+    // Execute real retraining asynchronously with Socket.io streaming
+    console.log("[ML Server] Starting live real-data continuous retraining pipeline...");
+    executeRetrainingPipeline("manual_admin", io).catch(err => {
+      console.error("[ML Server] Retraining pipeline execution error:", err);
+    });
 
   } catch (error) {
     console.error("Retrain Error:", error);
-    const io = req.app.get("io");
-    if (io) {
-      io.emit("ml_retrain_complete", { 
-        success: false, 
-        message: "Failed to update models: " + error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getLearningTelemetry = async (req, res) => {
+  try {
+    const status = await getContinuousLearningStatus();
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 

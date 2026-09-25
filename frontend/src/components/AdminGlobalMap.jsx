@@ -158,7 +158,7 @@ export default function AdminGlobalMap({ activeDeliveries = [], tierFilter = "al
         agentLat: agentPos.lat,
         agentLng: agentPos.lng,
         orders: agentDeliveries,
-        algorithm: "tsp_genetic"
+        algorithm: "branch_and_cut"
       });
 
       // 2. Push to Agent via admin dispatch endpoint
