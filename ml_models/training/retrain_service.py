@@ -10,7 +10,8 @@ from pymongo import MongoClient
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
 from sklearn.preprocessing import LabelEncoder
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier
+from lightgbm import LGBMRegressor
 from xgboost import XGBRegressor, XGBClassifier
 
 # Base paths
@@ -21,10 +22,16 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 DEFAULT_CROPS = ['Tomato', 'Potato', 'Onion', 'Rice', 'Wheat', 'Mango', 'Cotton', 'Apple', 'Banana', 'Chilli', 'Turmeric', 'Ginger']
 SEASONS = ['Summer', 'Monsoon', 'Winter', 'Spring']
 
-def get_mongo_db(uri="mongodb://127.0.0.1:27017/"):
+def get_mongo_db(uri=None):
     try:
-        client = MongoClient(uri, serverSelectionTimeoutMS=2000)
-        db = client["rythu_sethu"]
+        resolved_uri = uri or os.environ.get("MONGO_URI") or "mongodb://127.0.0.1:27017/"
+        client = MongoClient(resolved_uri, serverSelectionTimeoutMS=3000)
+        try:
+            db = client.get_default_database()
+            if db is None:
+                db = client["rythu_sethu"]
+        except Exception:
+            db = client["rythu_sethu"]
         client.admin.command('ping')
         return db
     except Exception as e:
@@ -261,7 +268,7 @@ def train_demand_model(target_rows=30000, mongo_uri="mongodb://127.0.0.1:27017/"
     y = df['target_demand']
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    model = RandomForestRegressor(n_estimators=100, max_depth=14, random_state=42, n_jobs=-1)
+    model = LGBMRegressor(n_estimators=100, max_depth=14, random_state=42, n_jobs=-1, verbose=-1)
     model.fit(X_train, y_train)
     
     preds = model.predict(X_test)
@@ -277,7 +284,7 @@ def train_demand_model(target_rows=30000, mongo_uri="mongodb://127.0.0.1:27017/"
     print(f"[DEMAND MODEL] Trained: R2={r2:.4f}, Saved to {model_path}")
     return {
         "status": "success",
-        "algorithm": "RandomForestRegressor",
+        "algorithm": "LGBMRegressor",
         "realOrdersIngested": real_orders,
         "realSearchesIngested": real_searches,
         "totalSamples": len(df),

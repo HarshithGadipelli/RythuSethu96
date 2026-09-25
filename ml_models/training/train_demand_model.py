@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor
+from lightgbm import LGBMRegressor
 from sklearn.model_selection import train_test_split
 from pymongo import MongoClient
 import pickle
@@ -122,8 +122,8 @@ if __name__ == "__main__":
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    print("Training Advanced Demand Prediction Model (RandomForest)...")
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
+    print("Training Advanced Demand Prediction Model (LightGBM)...")
+    model = LGBMRegressor(n_estimators=100, random_state=42, verbose=-1)
     model.fit(X_train, y_train)
     
     score = model.score(X_test, y_test)
