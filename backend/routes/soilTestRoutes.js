@@ -198,32 +198,29 @@ router.post(["/scan-photo", "/instant-scan"], upload.any(), async (req, res) => 
         const ai = getGenAI() || new GoogleGenAI({ apiKey });
 
         const prompt = `You are a certified senior agricultural soil chemist and pedologist in India.
-Analyze this farm soil photograph with high precision and return ONLY a valid JSON object without any markdown code blocks or triple backticks.
-Classify the exact soil type from standard Indian categories:
-- Black Cotton Soil (Regur)
-- Red Sandy Loam Soil
-- Alluvial Loam Soil
-- Clay Loam Soil
-- Laterite Soil
-- Sandy Soil
-- Silt Loam Soil
-- Peat Soil
-- Saline Soil
-- Arid Desert Soil
-- Forest Soil
-
-Provide a complete agronomic evaluation including:
+Examine this photograph carefully.
+FIRST, determine if this image actually shows farm soil, field earth, topsoil, dirt, mud, compost, or farmland ground.
+If it is NOT soil (for example: a human selfie, a vehicle, indoor room, a piece of paper, electronics, or unrelated object):
+Return ONLY this JSON:
 {
-  "soilType": "e.g. Black Cotton Soil (Regur) or Red Sandy Loam Soil",
-  "confidence": 95,
-  "texture": "detailed physical particle size and aeration",
-  "colorProfile": "visual color shade and mineral indicators",
+  "isSoilSample": false,
+  "rejectionReason": "The uploaded photo does not appear to be a soil or farmland sample. Please upload a clear, focused photograph of your farm ground, field earth, or soil."
+}
+
+If it IS a soil sample, analyze its chromas, pedological texture, granular structure, and regional agronomic suitability.
+Return ONLY a valid JSON object without any markdown code blocks or triple backticks matching this structure:
+{
+  "isSoilSample": true,
+  "soilType": "e.g. Black Cotton Soil (Regur), Red Sandy Loam Soil, Alluvial Loam Soil, Clay Loam Soil, Laterite Soil, Sandy Soil, etc.",
+  "confidence": 94,
+  "texture": "Detailed physical particle size, sand-silt-clay proportion, and aeration description",
+  "colorProfile": "Visual color shade, hue, and mineral indicator (e.g., Deep charcoal brown rich in montmorillonite clay / Reddish brown rich in iron oxide)",
   "organicMatterEstimate": "Low (<0.5%), Medium (0.5% - 0.75%), or High (>0.75%)",
-  "organicCarbonPercent": 0.75,
+  "organicCarbonPercent": 0.72,
   "organicCarbonStatus": "High (>0.75%) or Moderate or Low",
-  "estimatedPH": 7.0,
-  "phStatus": "Neutral, Slightly Acidic, or Slightly Alkaline",
-  "electricalConductivityEC": "0.35 dS/m (Normal / Non-saline)",
+  "estimatedPH": 6.8,
+  "phStatus": "Neutral / Slightly Acidic / Slightly Alkaline",
+  "electricalConductivityEC": "0.38 dS/m (Normal / Non-saline)",
   "npkEstimate": {
     "nitrogen": "Medium (260 kg/ha)",
     "phosphorus": "Adequate (22 kg/ha)",
@@ -238,22 +235,28 @@ Provide a complete agronomic evaluation including:
     "sulphur": "Medium (14 ppm)"
   },
   "suitableCrops": ["Paddy", "Cotton", "Groundnut", "Chili", "Millets"],
-  "suggestedOrganicFertilizers": ["Jeevamrutham", "Vermicompost", "Neem Cake"],
-  "recommendations": "practical irrigation and organic management advice",
+  "suggestedOrganicFertilizers": ["Jeevamrutham", "Vermicompost", "Neem Cake", "Farm Yard Manure"],
+  "recommendations": "Practical irrigation, drainage, and organic soil health management advice",
   "notice": "Visual AI scan estimates chemical & elemental parameters based on soil chromas, pedological texture, and regional agro-climatic indicators."
 }`;
 
         let imagePart;
+        let mimeType = "image/jpeg";
         if (rawBase64) {
-          const cleanBase64 = rawBase64.replace(/^data:image\/\w+;base64,/, "");
-          imagePart = { inlineData: { data: cleanBase64, mimeType: "image/jpeg" } };
+          const mimeMatch = rawBase64.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,/);
+          if (mimeMatch) {
+            mimeType = mimeMatch[1];
+          }
+          const cleanBase64 = rawBase64.replace(/^data:[^;]+;base64,/, "");
+          imagePart = { inlineData: { data: cleanBase64, mimeType } };
         } else if (uploadedFile) {
+          mimeType = uploadedFile.mimetype || "image/jpeg";
           const fileData = fs.readFileSync(uploadedFile.path).toString("base64");
-          imagePart = { inlineData: { data: fileData, mimeType: uploadedFile.mimetype || "image/jpeg" } };
+          imagePart = { inlineData: { data: fileData, mimeType } };
         }
 
         // Try modern Gemini models with fallback
-        const visionModels = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"];
+        const visionModels = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-flash-latest"];
         for (const modelName of visionModels) {
           try {
             const geminiRes = await ai.models.generateContent({
@@ -263,11 +266,13 @@ Provide a complete agronomic evaluation including:
             const text = geminiRes.text || "";
             const jsonMatch = text.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
-              analysisResult = JSON.parse(jsonMatch[0]);
+              const parsed = JSON.parse(jsonMatch[0]);
+              parsed.modelUsed = `Gemini Vision AI (${modelName})`;
+              analysisResult = parsed;
               break;
             }
           } catch (modelErr) {
-            console.warn(`Model ${modelName} vision failed:`, modelErr.message);
+            console.warn(`Model ${modelName} soil vision failed:`, modelErr.message);
           }
         }
       } catch (geminiErr) {
@@ -277,6 +282,15 @@ Provide a complete agronomic evaluation including:
 
     if (!analysisResult) {
       analysisResult = classifySoilFallback(sampleNotes || "red soil sandy loam");
+      analysisResult.isSoilSample = true;
+      analysisResult.modelUsed = "Agronomic Rule-Based ML Model";
+    }
+
+    if (analysisResult.isSoilSample === false) {
+      return res.status(400).json({
+        success: false,
+        error: analysisResult.rejectionReason || "The uploaded image does not appear to be a soil sample. Please upload a clear photo of field ground or soil."
+      });
     }
 
     res.json({

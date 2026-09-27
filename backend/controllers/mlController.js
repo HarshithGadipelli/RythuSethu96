@@ -24,14 +24,21 @@ const runPythonScript = async (endpoint, payload) => {
 
 export const suggestCrop = async (req, res) => {
   try {
-    const { temp, hum, rain, soil, location, waterAvailability, region } = req.body;
-    if (temp === undefined || temp === null || hum === undefined || hum === null || rain === undefined || rain === null) return res.status(400).json({ error: "Missing temp, hum, or rain" });
+    const { temp, hum, rain, soil, location, waterAvailability, region, season } = req.body;
+    if (temp === undefined || temp === null || hum === undefined || hum === null || rain === undefined || rain === null) {
+      return res.status(400).json({ error: "Missing temp, hum, or rain" });
+    }
 
-    // Use waterAvailability and region in the Gemini prompt
-    const waterContext = waterAvailability ? `, with ${waterAvailability} water availability` : "";
-    const locStr = (region || location || "India") + waterContext;
+    const locStr = (region || location || "Telangana, India");
+    const activeSoil = soil || "loamy";
 
-    let result = await getGeminiCropSuggestion({ temp, hum, rain }, soil || "loamy", locStr);
+    let result = await getGeminiCropSuggestion(
+      { temp, hum, rain }, 
+      activeSoil, 
+      locStr, 
+      season || "kharif", 
+      waterAvailability || "moderate"
+    );
     if (!result) {
       result = await suggestAdvancedCrop(temp, hum, rain);
     }
@@ -63,32 +70,73 @@ export const analyzeNutrition = async (req, res) => {
 
 export const farmerSuggestions = async (req, res) => {
   try {
-    const { crop, soil, location, stage, waterAvailability } = req.body;
-    if (!crop || !soil) return res.status(400).json({ error: "Missing crop or soil" });
-    
-    const waterContext = waterAvailability ? `, and ${waterAvailability} water availability` : "";
-    let result = await getGeminiFarmerTips(crop, soil, (location || "") + waterContext, stage);
+    const {
+      crop,
+      soil,
+      location,
+      stage,
+      waterAvailability,
+      symptoms,
+      irrigationMethod,
+      fertilizerUsed,
+      previousCrop,
+      soilMoisture,
+      season,
+      temperature,
+      humidity,
+      rainfall
+    } = req.body;
+
+    if (!crop) return res.status(400).json({ error: "Missing crop name" });
+    const activeSoil = soil || "loamy";
+
+    let result = await getGeminiFarmerTips(crop, activeSoil, location, stage, {
+      symptoms,
+      irrigationMethod: irrigationMethod || waterAvailability,
+      fertilizerUsed,
+      previousCrop,
+      soilMoisture,
+      season,
+      temperature,
+      humidity,
+      rainfall
+    });
+
     if (result) return res.json(result);
-    
-    const locNote = location ? ` based on your location: ${location}` : "";
-    const isSuitable = ["loamy", "clay"].includes(soil.toLowerCase()) || crop.toLowerCase() === "rice";
-    
+
+    // Dynamic ICAR Fallback
+    const currentStage = stage || "vegetative";
     const stageAdvice = {
-      sowing: ["Prepare seedbed 2 weeks before sowing.", "Treat seeds with fungicide."],
-      growing: ["Apply nitrogen-rich fertilizer.", "Irrigate every 5-7 days."],
-      flowering: ["Reduce nitrogen fertilizer.", "Ensure consistent irrigation."],
-      harvesting: ["Harvest in early morning.", "Use clean tools."],
-      post_harvest: ["Store in cool areas.", "Track inventory closely."]
+      sowing: ["Prepare deep raised beds with 250kg/acre well-rotted vermicompost.", "Treat seed with Trichoderma viride (10g/kg) to prevent damping-off."],
+      vegetative: ["Apply 20% nitrogen top-dressing or Jeevamrutha foliar spray.", "Maintain light alternate-furrow irrigation to stimulate root branching."],
+      flowering: ["Spray 2% DAP or Panchagavya (3%) to enhance blossom retention.", "Strictly avoid flood irrigation; soil should be moist, not waterlogged."],
+      fruiting: ["Foliar spray of Potassium Schoenite or wood ash extract for uniform grain/fruit size.", "Monitor underside of leaves for sucking pests and fruit borers."],
+      harvesting: ["Cease irrigation 7 days prior to harvest for improved shelf life.", "Harvest during morning hours (6 AM - 10 AM) to preserve turgidity."],
+      post_harvest: ["Pre-cool produce in shaded evaporative cooling chambers before packing.", "Inoculate post-harvest crop stubbles with bio-decomposer."]
     };
 
-    const currentStage = stage || "sowing";
-    const tips = stageAdvice[currentStage] || stageAdvice.sowing;
-    const generalTips = [`Monitor local weather forecasts.`, `Soil test every season.`];
-    
+    const tips = stageAdvice[currentStage] || stageAdvice.vegetative;
+
     res.json({
-      crop, soil_type: soil, location_considered: location || "Unknown", current_stage: currentStage,
-      is_suitable: isSuitable, suggestions: [...tips, ...generalTips],
-      quick_actions: [{ label: "Update Stage", action: "update_stage" }]
+      crop,
+      soil_type: activeSoil,
+      current_stage: currentStage,
+      vitality_score: symptoms && symptoms !== "None / General Maintenance" ? 72 : 88,
+      health_status: symptoms && symptoms !== "None / General Maintenance" ? "Requires Attention" : "Optimal",
+      root_cause_diagnosis: symptoms ? `Observed symptoms (${symptoms}) indicate micro-climatic or soil nutrient imbalance during the ${currentStage} stage.` : "Crop displays steady vegetative vigor under current management.",
+      nutrient_prescription: {
+        organic_solution: "Apply 250kg Vermicompost + 50kg Neem Cake per acre as organic side-dressing.",
+        npk_dosage: "Apply balanced N:P:K 19:19:19 water-soluble spray at 5g/liter.",
+        micronutrient_foliar: "Foliar spray of multi-micronutrient mixture (Zinc, Boron, Ferrous) at 2.5ml/liter."
+      },
+      irrigation_protocol: irrigationMethod ? `Regulate ${irrigationMethod} scheduling based on soil surface moisture.` : "Maintain moist soil with 4-5 day irrigation cycles.",
+      pest_prevention: "Preventative foliar spray of Neem oil (5ml/L) + soap emulsifier (1ml/L).",
+      critical_next_actions: [
+        `Step 1: Check root zone moisture before next irrigation cycle.`,
+        `Step 2: Apply prescribed nutrient dose during early morning or late evening.`,
+        `Step 3: Monitor leaf color progression over next 72 hours.`
+      ],
+      suggestions: tips
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -146,104 +194,162 @@ export const marketBasketAnalysis = async (req, res) => {
   }
 };
 
-// 1. Crop Yield Prediction (Advanced with Gemini Integration)
+// 1. Crop Yield Prediction (Advanced Real-Time Criteria ML & Gemini Integration)
 export const predictYield = async (req, res) => {
   try {
-    const { crop, acres, soilType, soilPh } = req.body;
-    if (!crop || !acres || !soilType) return res.status(400).json({ error: "Missing required fields" });
+    const { crop, acres, soilType, soilPh, season, location, irrigation, weather, farmingMethod } = req.body;
+    if (!crop || !acres || !soilType) return res.status(400).json({ error: "Missing required fields: crop, acres, and soilType" });
 
-    const target = crop.toLowerCase();
+    const target = crop.toLowerCase().trim();
 
-    // Baseline fallback logic in case Gemini fails
+    // Baseline fallback data for common Indian crops
     const yieldBaselines = {
-      // Vegetables
-      tomato: { base: 12000, idealPh: 6.5, price: 40 },
-      potato: { base: 10000, idealPh: 5.5, price: 25 },
-      onion: { base: 8000, idealPh: 6.0, price: 30 },
-      cabbage: { base: 15000, idealPh: 6.5, price: 20 },
-      cauliflower: { base: 12000, idealPh: 6.5, price: 30 },
-      brinjal: { base: 9000, idealPh: 6.0, price: 35 },
-      carrot: { base: 11000, idealPh: 6.0, price: 40 },
-      spinach: { base: 4000, idealPh: 6.5, price: 50 },
-      chili: { base: 2000, idealPh: 6.0, price: 80 },
-      garlic: { base: 4000, idealPh: 6.5, price: 100 },
-      // Grains & Pulses
-      rice: { base: 2500, idealPh: 6.0, price: 60 },
-      wheat: { base: 1500, idealPh: 6.5, price: 40 },
-      maize: { base: 2800, idealPh: 6.0, price: 25 },
-      corn: { base: 2800, idealPh: 6.0, price: 25 },
-      soybean: { base: 1200, idealPh: 6.5, price: 45 },
-      gram: { base: 900, idealPh: 6.0, price: 70 },
-      // Fruits
-      apple: { base: 6000, idealPh: 6.5, price: 120 },
-      mango: { base: 5000, idealPh: 6.0, price: 80 },
-      banana: { base: 15000, idealPh: 6.5, price: 30 },
-      papaya: { base: 18000, idealPh: 6.0, price: 40 },
-      orange: { base: 7000, idealPh: 6.5, price: 60 },
-      grapes: { base: 8000, idealPh: 6.5, price: 90 },
-      watermelon: { base: 20000, idealPh: 6.0, price: 15 },
-      // Cash Crops
-      cotton: { base: 500, idealPh: 6.2, price: 150 },
-      sugarcane: { base: 35000, idealPh: 6.5, price: 5 },
-      groundnut: { base: 1000, idealPh: 6.0, price: 80 }
+      tomato: { base: 12000, idealPh: 6.5, price: 38, category: "Vegetables" },
+      potato: { base: 10000, idealPh: 5.5, price: 26, category: "Vegetables" },
+      onion: { base: 8500, idealPh: 6.0, price: 32, category: "Vegetables" },
+      cabbage: { base: 14000, idealPh: 6.5, price: 22, category: "Vegetables" },
+      cauliflower: { base: 11000, idealPh: 6.5, price: 30, category: "Vegetables" },
+      brinjal: { base: 9500, idealPh: 6.0, price: 34, category: "Vegetables" },
+      carrot: { base: 10500, idealPh: 6.0, price: 42, category: "Vegetables" },
+      spinach: { base: 4500, idealPh: 6.5, price: 48, category: "Vegetables" },
+      chili: { base: 2200, idealPh: 6.0, price: 85, category: "Spices" },
+      garlic: { base: 4200, idealPh: 6.5, price: 110, category: "Spices" },
+      ginger: { base: 5500, idealPh: 6.2, price: 90, category: "Spices" },
+      turmeric: { base: 6000, idealPh: 6.0, price: 95, category: "Spices" },
+      rice: { base: 2600, idealPh: 6.0, price: 58, category: "Grains & Millets" },
+      paddy: { base: 2600, idealPh: 6.0, price: 58, category: "Grains & Millets" },
+      wheat: { base: 1600, idealPh: 6.5, price: 42, category: "Grains & Millets" },
+      maize: { base: 3000, idealPh: 6.0, price: 28, category: "Grains & Millets" },
+      corn: { base: 3000, idealPh: 6.0, price: 28, category: "Grains & Millets" },
+      jowar: { base: 1400, idealPh: 6.5, price: 35, category: "Grains & Millets" },
+      bajra: { base: 1200, idealPh: 7.0, price: 30, category: "Grains & Millets" },
+      ragi: { base: 1500, idealPh: 6.2, price: 45, category: "Grains & Millets" },
+      soybean: { base: 1300, idealPh: 6.5, price: 48, category: "Pulses" },
+      gram: { base: 950, idealPh: 6.0, price: 72, category: "Pulses" },
+      toor: { base: 850, idealPh: 6.5, price: 88, category: "Pulses" },
+      moong: { base: 750, idealPh: 6.8, price: 85, category: "Pulses" },
+      apple: { base: 6500, idealPh: 6.5, price: 130, category: "Fruits" },
+      mango: { base: 5200, idealPh: 6.0, price: 85, category: "Fruits" },
+      banana: { base: 16000, idealPh: 6.5, price: 32, category: "Fruits" },
+      papaya: { base: 19000, idealPh: 6.0, price: 42, category: "Fruits" },
+      orange: { base: 7500, idealPh: 6.5, price: 65, category: "Fruits" },
+      grapes: { base: 8500, idealPh: 6.5, price: 95, category: "Fruits" },
+      watermelon: { base: 22000, idealPh: 6.0, price: 16, category: "Fruits" },
+      guava: { base: 7000, idealPh: 6.5, price: 50, category: "Fruits" },
+      cotton: { base: 650, idealPh: 6.2, price: 165, category: "Cash Crops" },
+      sugarcane: { base: 36000, idealPh: 6.5, price: 6, category: "Cash Crops" },
+      groundnut: { base: 1100, idealPh: 6.0, price: 82, category: "Cash Crops" }
     };
-    const baseline = yieldBaselines[target] || { base: 5000, idealPh: 6.5, price: 45 };
+    const baseline = yieldBaselines[target] || { base: 5000, idealPh: 6.5, price: 45, category: "General" };
 
-    // Try using Gemini for advanced ML prediction
+    // Try using Gemini for advanced real-time ML agronomic prediction
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey && apiKey.trim().length > 10) {
       try {
         const { callGeminiWithFallback } = await import("../services/geminiService.js");
+        const weatherInfo = weather ? `Temperature: ${weather.temp}°C, Humidity: ${weather.hum}%, Rainfall: ${weather.rain}mm` : "Seasonal climate conditions for region";
         const prompt = `
-        You are an expert Indian agricultural ML prediction model.
-        Predict the harvest yield and revenue for:
-        Crop: ${crop}
-        Acres: ${acres}
-        Soil Type: ${soilType}
-        Soil pH: ${soilPh || 'Unknown'}
-        
-        Calculate realistic figures based on current Indian average yields.
-        Return EXACTLY and ONLY JSON matching this structure:
-        {
-          "estimatedYieldKg": 12500,
-          "estimatedYieldTons": "12.50",
-          "estimatedRevenue": 450000,
-          "soilSuitability": "Optimal/Average/Sub-optimal",
-          "phEfficiencyPct": 95,
-          "aiRecommendation": "Short tip to improve yield based on this data"
-        }`;
-        
+You are an expert Indian agricultural agronomist and yield estimation ML model.
+Predict the harvest yield, market price, and revenue using real-time criteria:
+- Crop: ${crop}
+- Cultivation Land Area: ${acres} Acres
+- Soil Type: ${soilType}
+- Soil pH: ${soilPh || 'Typical for ' + soilType}
+- Season: ${season || 'Current Season'}
+- Region / Location: ${location || 'Telangana / Andhra Pradesh, South India'}
+- Irrigation / Water Source: ${irrigation || 'Borewell / Canal'}
+- Real-Time Weather Context: ${weatherInfo}
+- Farming Method: ${farmingMethod || 'Integrated Organic & Conventional'}
+
+Calculate realistic scientific figures based on Indian Council of Agricultural Research (ICAR) benchmarks and current APMC Mandi trends.
+Return EXACTLY and ONLY valid JSON without markdown code blocks matching this structure:
+{
+  "estimatedYieldKg": 12500,
+  "estimatedYieldQuintals": 125,
+  "estimatedYieldTons": "12.50",
+  "yieldPerAcreKg": 6250,
+  "confidenceRange": "11.2 - 13.8 Tons",
+  "estimatedMarketPricePerKg": 42,
+  "estimatedRevenue": 525000,
+  "estimatedNetProfit": 340000,
+  "soilSuitability": "Optimal",
+  "phEfficiencyPct": 94,
+  "seasonSuitability": "Highly Favorable",
+  "weatherImpact": "Optimal temperature supports high grain/fruit setting",
+  "harvestWindow": "90 - 110 days after sowing",
+  "actionableSteps": [
+    "Apply enriched vermicompost or FYM before final tilling",
+    "Maintain soil moisture during flowering to prevent blossom drop",
+    "Monitor for early pest signs and spray neem oil bio-pesticide"
+  ],
+  "aiRecommendation": "Direct recommendation to maximize per-acre yield and harvest timing"
+}`;
+
         const rawText = await callGeminiWithFallback(prompt);
         if (rawText) {
-          let text = rawText.trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
-          const parsed = JSON.parse(text);
-          return res.json({
-            ...parsed,
-            source: "gemini_ml"
-          });
+          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return res.json({
+              ...parsed,
+              crop,
+              acres,
+              soilType,
+              season: season || "kharif",
+              source: "gemini_multimodal_ml"
+            });
+          }
         }
       } catch (err) {
         console.warn("Gemini Yield Prediction Failed:", err.message);
       }
     }
 
-    // Fallback static model
-    let totalMultiplier = 1.0;
-    if (["loamy", "clay"].includes(soilType.toLowerCase())) totalMultiplier = 1.15;
-    else if (soilType.toLowerCase() === "saline") totalMultiplier = 0.70;
+    // Dynamic rule-based agronomic calculation when AI is offline
+    const acresNum = parseFloat(acres) || 1;
+    let soilMultiplier = 1.0;
+    const sType = soilType.toLowerCase();
+    if (sType.includes("loam") || sType.includes("black") || sType.includes("alluvial")) soilMultiplier = 1.18;
+    else if (sType.includes("clay") || sType.includes("red")) soilMultiplier = 1.05;
+    else if (sType.includes("saline") || sType.includes("arid")) soilMultiplier = 0.72;
 
-    const estimatedYieldKg = baseline.base * parseFloat(acres) * totalMultiplier;
+    let irrigationMultiplier = 1.0;
+    const irrig = (irrigation || "").toLowerCase();
+    if (irrig.includes("drip") || irrig.includes("sprinkler")) irrigationMultiplier = 1.15;
+    else if (irrig.includes("rainfed")) irrigationMultiplier = 0.88;
+
+    const totalYieldKg = Math.round(baseline.base * acresNum * soilMultiplier * irrigationMultiplier);
     const pricePerKg = baseline.price;
-    const estimatedRevenue = estimatedYieldKg * pricePerKg;
+    const grossRevenue = totalYieldKg * pricePerKg;
+    const estimatedCost = Math.round(grossRevenue * 0.35); // 35% average input cost
+    const netProfit = grossRevenue - estimatedCost;
 
     res.json({
-      crop, acres, soilType, soilPh: soilPh || baseline.idealPh,
-      estimatedYieldKg: Math.round(estimatedYieldKg),
-      estimatedYieldTons: (estimatedYieldKg / 1000).toFixed(2),
-      estimatedRevenue: Math.round(estimatedRevenue),
-      soilSuitability: totalMultiplier > 1 ? "Optimal" : "Average",
-      phEfficiencyPct: 90,
-      aiRecommendation: "Ensure regular irrigation during the growth phase."
+      crop,
+      acres: acresNum,
+      soilType,
+      soilPh: soilPh || baseline.idealPh,
+      season: season || "kharif",
+      estimatedYieldKg: totalYieldKg,
+      estimatedYieldQuintals: Math.round(totalYieldKg / 100),
+      estimatedYieldTons: (totalYieldKg / 1000).toFixed(2),
+      yieldPerAcreKg: Math.round(totalYieldKg / acresNum),
+      confidenceRange: `${((totalYieldKg * 0.9) / 1000).toFixed(1)} - ${((totalYieldKg * 1.1) / 1000).toFixed(1)} Tons`,
+      estimatedMarketPricePerKg: pricePerKg,
+      estimatedRevenue: grossRevenue,
+      estimatedNetProfit: netProfit,
+      soilSuitability: soilMultiplier > 1.1 ? "Optimal" : soilMultiplier >= 1.0 ? "Good" : "Sub-optimal",
+      phEfficiencyPct: Math.round(88 * soilMultiplier),
+      seasonSuitability: "Favorable for current regional agro-climate",
+      weatherImpact: "Normal growing conditions with standard irrigation",
+      harvestWindow: "Standard seasonal maturity cycle",
+      actionableSteps: [
+        "Incorporate organic compost to enhance water retention capacity",
+        "Adopt micro-irrigation (drip) to boost water use efficiency by 25%",
+        "Apply bio-fertilizers (Azotobacter / PSB) at early root establishment"
+      ],
+      aiRecommendation: `Ensure proper drainage and consistent nutrient schedule during vegetative growth for ${crop}.`,
+      source: "agronomic_rule_engine"
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -443,52 +549,152 @@ export const analyzeSentiment = async (req, res) => {
   }
 };
 
+const CROP_TYPE_MAP = {
+  // Vegetables
+  tomato: "Vegetables", potato: "Vegetables", onion: "Vegetables", cabbage: "Vegetables",
+  cauliflower: "Vegetables", brinjal: "Vegetables", carrot: "Vegetables", spinach: "Vegetables",
+  okra: "Vegetables", cucumber: "Vegetables", "bitter gourd": "Vegetables", capsicum: "Vegetables",
+  radish: "Vegetables", beetroot: "Vegetables",
+  // Grains & Millets
+  rice: "Grains & Millets", paddy: "Grains & Millets", wheat: "Grains & Millets", maize: "Grains & Millets",
+  corn: "Grains & Millets", jowar: "Grains & Millets", bajra: "Grains & Millets", ragi: "Grains & Millets",
+  barley: "Grains & Millets", millets: "Grains & Millets",
+  // Pulses
+  toor: "Pulses", "toor dal": "Pulses", moong: "Pulses", "moong dal": "Pulses",
+  urad: "Pulses", "urad dal": "Pulses", gram: "Pulses", chickpea: "Pulses",
+  soybean: "Pulses", peas: "Pulses", lentils: "Pulses",
+  // Fruits
+  banana: "Fruits", mango: "Fruits", papaya: "Fruits", watermelon: "Fruits",
+  apple: "Fruits", orange: "Fruits", grapes: "Fruits", guava: "Fruits",
+  pomegranate: "Fruits", muskmelon: "Fruits", lemon: "Fruits",
+  // Spices & Cash Crops
+  chili: "Spices & Cash Crops", chilli: "Spices & Cash Crops", turmeric: "Spices & Cash Crops",
+  ginger: "Spices & Cash Crops", garlic: "Spices & Cash Crops", cotton: "Spices & Cash Crops",
+  sugarcane: "Spices & Cash Crops", groundnut: "Spices & Cash Crops", mustard: "Spices & Cash Crops",
+  coriander: "Spices & Cash Crops", cumin: "Spices & Cash Crops"
+};
+
 export const getMarketDemand = async (req, res) => {
   try {
     const crops = await Crop.find({}).lean();
-    const recentOrders = await Order.find({ status: { $ne: "cancelled" } }).populate("crop", "name").limit(500).lean();
+    const recentOrders = await Order.find({ status: { $ne: "cancelled" } }).populate("crop", "name category price").limit(500).lean();
 
     const cropMap = {};
     crops.forEach(c => {
       const name = c.name?.toLowerCase()?.trim();
       if (!name) return;
-      if (!cropMap[name]) cropMap[name] = { crop: c.name, totalSupplyKg: 0, totalDemandKg: 0 };
+      const type = CROP_TYPE_MAP[name] || (c.category ? c.category.charAt(0).toUpperCase() + c.category.slice(1) : "Vegetables");
+      if (!cropMap[name]) {
+        cropMap[name] = { 
+          crop: c.name, 
+          category: type,
+          totalSupplyKg: 0, 
+          totalDemandKg: 0,
+          priceSum: 0,
+          priceCount: 0
+        };
+      }
       cropMap[name].totalSupplyKg += c.quantity || 0;
+      if (c.price) {
+        cropMap[name].priceSum += c.price;
+        cropMap[name].priceCount += 1;
+      }
     });
 
     recentOrders.forEach(o => {
       const name = (o.crop?.name || o.productSnapshot?.name || "").toLowerCase().trim();
       if (!name) return;
-      if (!cropMap[name]) cropMap[name] = { crop: name.charAt(0).toUpperCase() + name.slice(1), totalSupplyKg: 0, totalDemandKg: 0 };
+      const type = CROP_TYPE_MAP[name] || (o.crop?.category ? o.crop.category.charAt(0).toUpperCase() + o.crop.category.slice(1) : "Vegetables");
+      if (!cropMap[name]) {
+        cropMap[name] = { 
+          crop: name.charAt(0).toUpperCase() + name.slice(1), 
+          category: type,
+          totalSupplyKg: 0, 
+          totalDemandKg: 0,
+          priceSum: 0,
+          priceCount: 0
+        };
+      }
       cropMap[name].totalDemandKg += o.quantity || 0;
+      if (o.pricePerUnit) {
+        cropMap[name].priceSum += o.pricePerUnit;
+        cropMap[name].priceCount += 1;
+      }
+    });
+
+    // Curated comprehensive items to guarantee each category is represented
+    const defaultCategories = [
+      { crop: "Tomato", category: "Vegetables", totalSupplyKg: 350, totalDemandKg: 620, avgPrice: 38 },
+      { crop: "Onion", category: "Vegetables", totalSupplyKg: 500, totalDemandKg: 850, avgPrice: 32 },
+      { crop: "Potato", category: "Vegetables", totalSupplyKg: 600, totalDemandKg: 520, avgPrice: 26 },
+      { crop: "Green Chilli", category: "Vegetables", totalSupplyKg: 120, totalDemandKg: 280, avgPrice: 75 },
+      { crop: "Rice (Sona Masoori)", category: "Grains & Millets", totalSupplyKg: 1200, totalDemandKg: 2400, avgPrice: 58 },
+      { crop: "Wheat", category: "Grains & Millets", totalSupplyKg: 800, totalDemandKg: 1100, avgPrice: 42 },
+      { crop: "Jowar (Sorghum)", category: "Grains & Millets", totalSupplyKg: 300, totalDemandKg: 450, avgPrice: 35 },
+      { crop: "Ragi (Finger Millet)", category: "Grains & Millets", totalSupplyKg: 150, totalDemandKg: 320, avgPrice: 46 },
+      { crop: "Toor Dal (Red Gram)", category: "Pulses", totalSupplyKg: 250, totalDemandKg: 580, avgPrice: 92 },
+      { crop: "Moong Dal", category: "Pulses", totalSupplyKg: 180, totalDemandKg: 310, avgPrice: 88 },
+      { crop: "Chickpea (Chana)", category: "Pulses", totalSupplyKg: 320, totalDemandKg: 420, avgPrice: 70 },
+      { crop: "Banana (Yellaki)", category: "Fruits", totalSupplyKg: 400, totalDemandKg: 780, avgPrice: 34 },
+      { crop: "Papaya", category: "Fruits", totalSupplyKg: 300, totalDemandKg: 490, avgPrice: 40 },
+      { crop: "Mango (Banganapalli)", category: "Fruits", totalSupplyKg: 200, totalDemandKg: 600, avgPrice: 90 },
+      { crop: "Turmeric (Salem)", category: "Spices & Cash Crops", totalSupplyKg: 180, totalDemandKg: 420, avgPrice: 98 },
+      { crop: "Cotton (Bt Cotton)", category: "Spices & Cash Crops", totalSupplyKg: 500, totalDemandKg: 800, avgPrice: 165 },
+      { crop: "Ginger", category: "Spices & Cash Crops", totalSupplyKg: 110, totalDemandKg: 290, avgPrice: 95 }
+    ];
+
+    defaultCategories.forEach(def => {
+      const k = def.crop.toLowerCase().trim();
+      if (!cropMap[k]) {
+        cropMap[k] = {
+          crop: def.crop,
+          category: def.category,
+          totalSupplyKg: def.totalSupplyKg,
+          totalDemandKg: def.totalDemandKg,
+          priceSum: def.avgPrice,
+          priceCount: 1
+        };
+      }
     });
 
     const demand = Object.values(cropMap).map(c => {
-      const ratio = c.totalSupplyKg > 0 ? c.totalDemandKg / c.totalSupplyKg : (c.totalDemandKg > 0 ? 2.0 : 0);
+      const supply = c.totalSupplyKg || 0;
+      const dem = c.totalDemandKg || 0;
+      const ratio = supply > 0 ? dem / supply : (dem > 0 ? 2.0 : 0.5);
+      
       let status = "Stable";
-      if (ratio > 0.8) status = "High Demand";
-      else if (ratio < 0.2 && c.totalSupplyKg > 10) status = "Low Demand";
-      return { ...c, status };
+      let priceTrend = "stable";
+      let suggestedAction = "⚖️ Balanced market. Consistent orders at benchmark rates.";
+
+      if (ratio >= 0.75 || dem > supply) {
+        status = "High Demand";
+        priceTrend = "up";
+        suggestedAction = "🔥 Peak buyer demand! Excellent time to harvest and list.";
+      } else if (ratio < 0.25 && supply > 100) {
+        status = "Low Demand";
+        priceTrend = "down";
+        suggestedAction = "❄️ High market supply. Consider cold storage or deferred listing.";
+      }
+
+      const avgPrice = c.priceCount > 0 ? Math.round(c.priceSum / c.priceCount) : 40;
+
+      return {
+        crop: c.crop,
+        category: c.category || "Vegetables",
+        totalSupplyKg: supply,
+        totalDemandKg: dem,
+        demandRatio: Number(ratio.toFixed(2)),
+        status,
+        priceTrend,
+        avgPrice,
+        suggestedAction
+      };
     });
 
     demand.sort((a, b) => {
       const order = { "High Demand": 0, "Stable": 1, "Low Demand": 2 };
       return (order[a.status] || 1) - (order[b.status] || 1);
     });
-
-    if (demand.length === 0) {
-      const month = new Date().getMonth();
-      const seasonal = month >= 5 && month <= 9 
-        ? ["Rice", "Maize", "Cotton", "Groundnut", "Sugarcane", "Tomato", "Brinjal", "Chili", "Mango", "Cucumber", "Okra", "Papaya", "Garlic", "Ginger", "Turmeric"] 
-        : ["Wheat", "Mustard", "Peas", "Potato", "Onion", "Carrot", "Cabbage", "Cauliflower", "Spinach", "Apple", "Grapes", "Orange", "Coriander", "Fenugreek", "Radish"];
-      const defaults = seasonal.map((name, i) => ({
-        crop: name, 
-        totalSupplyKg: Math.round(50 + Math.random() * 500), 
-        totalDemandKg: Math.round(30 + Math.random() * 800),
-        status: i < 5 ? "High Demand" : i < 10 ? "Stable" : "Low Demand",
-      }));
-      return res.json({ demand: defaults });
-    }
 
     res.json({ demand });
   } catch (error) {

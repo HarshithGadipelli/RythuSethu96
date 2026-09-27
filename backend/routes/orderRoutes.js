@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import crypto from "crypto";
 import Razorpay from "razorpay";
+import jwt from "jsonwebtoken";
 import Order from "../models/Order.js";
 import Crop from "../models/Crop.js";
 import User from "../models/User.js";
@@ -1278,7 +1279,11 @@ router.post("/:id/farm-payment-received", async (req, res) => {
 
     await order.save();
 
-    // Notify customer
+    const farmerName = order.farmer?.name || "Farmer";
+    const customerName = order.customer?.name || "Customer";
+    const billNum = order.billNumber || order._id.toString().substring(0, 8).toUpperCase();
+
+    // 1. Notify customer
     if (order.customer?._id) {
       await notify(
         req.app, 
@@ -1288,6 +1293,20 @@ router.post("/:id/farm-payment-received", async (req, res) => {
         "order", 
         "high", 
         { orderId: order._id, verificationCode: order.verificationCode }
+      );
+    }
+
+    // 2. Notify Admin about Money Received at Farm
+    const admins = await User.find({ role: "admin" });
+    for (const admin of admins) {
+      await notify(
+        req.app,
+        admin._id,
+        "💰 Farm Gate Payment Received",
+        `Farmer ${farmerName} confirmed payment of ₹${(order.totalAmount || 0).toLocaleString()} for Farm Pickup Order #${billNum} (${order.crop?.name || "produce"}).`,
+        "order",
+        "normal",
+        { orderId: order._id, billNumber: billNum, amount: order.totalAmount, farmerId: order.farmer?._id }
       );
     }
 
@@ -1307,10 +1326,10 @@ router.post("/:id/farm-payment-received", async (req, res) => {
   }
 });
 
-// ─── Farm Gate Pickup: Customer / Farmer Confirms Handover via Farmer OTP ───
+// ─── Farm Gate Pickup: Customer / Farmer Confirms Handover & Order Delivered ───
 router.post("/:id/farm-pickup-complete", async (req, res) => {
   try {
-    const { otp } = req.body;
+    const { otp, farmerDirectConfirmation } = req.body;
     const order = await Order.findById(req.params.id).populate("crop customer farmer");
     if (!order) return res.status(404).json({ error: "Order not found" });
 
@@ -1318,16 +1337,21 @@ router.post("/:id/farm-pickup-complete", async (req, res) => {
       return res.status(400).json({ error: "Order is already marked as delivered." });
     }
 
-    if (!otp || order.verificationCode !== otp.toString().trim()) {
-      return res.status(400).json({ error: "Invalid verification code. Please check the OTP told by the farmer." });
+    // Direct farmer confirmation allowed if farmer explicitly confirms or OTP matches
+    const isFarmerDirect = farmerDirectConfirmation === true;
+    if (!isFarmerDirect) {
+      if (!otp || order.verificationCode !== otp.toString().trim()) {
+        return res.status(400).json({ error: "Invalid verification code. Please check the OTP told by the farmer." });
+      }
     }
 
     order.status = "delivered";
     order.paymentStatus = "paid";
+    order.paidAtFarm = true;
     order.deliveredAt = new Date();
     order.timeline.push({ 
       status: "delivered", 
-      note: "Farm gate handover confirmed securely via farmer OTP." 
+      note: "Farm gate handover confirmed and produce delivered to customer." 
     });
 
     // Deliver points to customer
@@ -1363,12 +1387,17 @@ router.post("/:id/farm-pickup-complete", async (req, res) => {
       ).catch(console.error);
     }
 
+    const farmerName = order.farmer?.name || "Farmer";
+    const customerName = order.customer?.name || "Customer";
+    const billNum = order.billNumber || order._id.toString().substring(0, 8).toUpperCase();
+
     // Socket notification
     const io = req.app.get("io");
     if (io) {
       io.emit("order_updated", order);
     }
 
+    // 1. Notify Customer
     if (order.customer?._id) {
       await notify(
         req.app, 
@@ -1376,7 +1405,22 @@ router.post("/:id/farm-pickup-complete", async (req, res) => {
         "🌾 Farm Handover Verified!", 
         `Your direct farm pickup for ${order.crop?.name || "produce"} is verified! Thank you for supporting the farmer directly.`,
         "order", 
-        "normal"
+        "high",
+        { orderId: order._id, billNumber: billNum }
+      );
+    }
+
+    // 2. Notify Admin about Farm Pickup Order Delivered
+    const admins = await User.find({ role: "admin" });
+    for (const admin of admins) {
+      await notify(
+        req.app,
+        admin._id,
+        "🌾 Farm Pickup Order Delivered",
+        `Farmer ${farmerName} confirmed produce handover and delivery for Order #${billNum} (${order.quantity}kg ${order.crop?.name || "produce"}) to ${customerName}.`,
+        "order",
+        "high",
+        { orderId: order._id, billNumber: billNum, farmerId: order.farmer?._id, customerId: order.customer?._id }
       );
     }
 
@@ -1390,14 +1434,50 @@ router.post("/:id/farm-pickup-complete", async (req, res) => {
 router.put("/:id/status", async (req, res) => {
   try {
     const { status, note } = req.body;
+    const existingOrder = await Order.findById(req.params.id);
+    if (!existingOrder) return res.status(404).json({ error: "Order not found" });
+
+    // Check caller role if Bearer token present
+    let callingUser = null;
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+      try {
+        const tokenStr = req.headers.authorization.split(" ")[1];
+        const decoded = jwt.verify(tokenStr, process.env.JWT_SECRET);
+        callingUser = await User.findById(decoded.id);
+      } catch (e) {}
+    }
+
+    const isDeliveryBased = existingOrder.deliveryType !== "farm_pickup" && existingOrder.deliveryType !== "pickup";
+    const deliveryProgressStatuses = ["picked_up", "in_transit", "delivered"];
+
+    // RULE: For delivery-based orders, progress statuses (picked_up, in_transit, delivered)
+    // MUST be updated by the assigned delivery agent (or admin).
+    if (isDeliveryBased && deliveryProgressStatuses.includes(status)) {
+      if (callingUser && callingUser.role === "farmer") {
+        return res.status(403).json({
+          error: "Delivery status for doorstep delivery orders must be updated by the assigned delivery agent."
+        });
+      }
+    }
+
+    // Build update payload
+    const updatePayload = {
+      status,
+      $push: { timeline: { status, note: note || `Status changed to ${status}` } }
+    };
+
+    // If it's a farm pickup order and marked delivered:
+    if (!isDeliveryBased && status === "delivered") {
+      updatePayload.paymentStatus = "paid";
+      updatePayload.paidAtFarm = true;
+      updatePayload.deliveredAt = new Date();
+    }
+
     const order = await Order.findByIdAndUpdate(
       req.params.id,
-      {
-        status,
-        $push: { timeline: { status, note: note || `Status changed to ${status}` } }
-      },
+      updatePayload,
       { new: true }
-    );
+    ).populate("crop customer farmer agent");
 
     // ─── Blockchain Logging ───
     if (order) {
@@ -1406,62 +1486,68 @@ router.put("/:id/status", async (req, res) => {
         order.crop, 
         `Status Updated: ${status}`, 
         note || `Status changed to ${status}`, 
-        "System/Farmer", 
+        callingUser?.name || "System/Agent", 
         "Platform"
-      );
+      ).catch(console.error);
     }
 
     // If cancelled, restore stock
     if (status === "cancelled") {
-      const original = await Order.findById(req.params.id);
-      if (original?.crop && original?.quantity) {
-        await Crop.findByIdAndUpdate(original.crop, {
-          $inc: { quantity: Number(original.quantity) },
+      if (order?.crop && order?.quantity) {
+        await Crop.findByIdAndUpdate(order.crop._id || order.crop, {
+          $inc: { quantity: Number(order.quantity) },
           isAvailable: true
         });
       }
     }
 
-    const fetchedOrder = await Order.findById(req.params.id);
-
     // If picked up, settle with farmer
-    if (status === "picked_up" && fetchedOrder && fetchedOrder.farmer) {
-      if (!fetchedOrder.isSettledWithFarmer) {
-        const farmerAmount = fetchedOrder.subtotal - fetchedOrder.platformFee;
-        await User.findByIdAndUpdate(fetchedOrder.farmer, { $inc: { pendingSettlement: farmerAmount } });
-        await Order.findByIdAndUpdate(fetchedOrder._id, { isSettledWithFarmer: true, adminRevenue: fetchedOrder.platformFee });
+    if (status === "picked_up" && order?.farmer) {
+      if (!order.isSettledWithFarmer) {
+        const farmerAmount = (order.subtotal || order.totalAmount) - (order.platformFee || 0);
+        await User.findByIdAndUpdate(order.farmer._id || order.farmer, { $inc: { pendingSettlement: farmerAmount } });
+        await Order.findByIdAndUpdate(order._id, { isSettledWithFarmer: true, adminRevenue: order.platformFee || 0 });
       }
     }
 
     // If delivered, handle agent payout & COD cash holding
-    if (status === "delivered" && fetchedOrder && fetchedOrder.agent) {
-      if (!fetchedOrder.isSettledWithAgent) {
-        const agentUser = await User.findById(fetchedOrder.agent);
-        let agentPayout = fetchedOrder.agentEarnings || fetchedOrder.deliveryCharges;
+    if (status === "delivered" && order?.agent) {
+      if (!order.isSettledWithAgent) {
+        const agentUser = await User.findById(order.agent._id || order.agent);
+        let agentPayout = order.agentEarnings || order.deliveryCharges;
         
         if (agentUser && agentUser.agentType === "ridealong") {
-          agentPayout = (fetchedOrder.deliveryCharges || 0) * 0.50;
-          const platformShare = (fetchedOrder.deliveryCharges || 0) * 0.10;
-          const customerRefund = (fetchedOrder.deliveryCharges || 0) * 0.40;
+          agentPayout = (order.deliveryCharges || 0) * 0.50;
+          const platformShare = (order.deliveryCharges || 0) * 0.10;
+          const customerRefund = (order.deliveryCharges || 0) * 0.40;
           
-          await Order.findByIdAndUpdate(fetchedOrder._id, { $inc: { adminRevenue: platformShare } });
-          if (fetchedOrder.customer) {
-            await User.findByIdAndUpdate(fetchedOrder.customer, { $inc: { walletBalance: customerRefund } });
+          await Order.findByIdAndUpdate(order._id, { $inc: { adminRevenue: platformShare } });
+          if (order.customer) {
+            await User.findByIdAndUpdate(order.customer._id || order.customer, { $inc: { walletBalance: customerRefund } });
           }
         }
         
-        await User.findByIdAndUpdate(fetchedOrder.agent, { $inc: { walletBalance: agentPayout } });
+        await User.findByIdAndUpdate(order.agent._id || order.agent, { $inc: { walletBalance: agentPayout } });
         
         // If COD, the agent holds the total cash for this order (owed to admin)
-        if (fetchedOrder.paymentMode === "cod") {
-          await User.findByIdAndUpdate(fetchedOrder.agent, { $inc: { cashInHand: fetchedOrder.totalAmount } });
+        if (order.paymentMode === "cod") {
+          await User.findByIdAndUpdate(order.agent._id || order.agent, { $inc: { cashInHand: order.totalAmount } });
         }
         
         // Agent gets experience and delivery score
-        await User.findByIdAndUpdate(fetchedOrder.agent, { 
+        await User.findByIdAndUpdate(order.agent._id || order.agent, { 
           $inc: { experiencePoints: 10, deliveryScore: 5 } 
         });
-        await Order.findByIdAndUpdate(fetchedOrder._id, { isSettledWithAgent: true });
+        await Order.findByIdAndUpdate(order._id, { isSettledWithAgent: true });
+      }
+    }
+
+    // If farm pickup delivered, also credit farmer settlement if not already settled
+    if (!isDeliveryBased && status === "delivered" && order?.farmer) {
+      if (!order.isSettledWithFarmer) {
+        const farmerAmount = (order.subtotal || order.totalAmount) - (order.platformFee || 0);
+        await User.findByIdAndUpdate(order.farmer._id || order.farmer, { $inc: { pendingSettlement: farmerAmount } });
+        await Order.findByIdAndUpdate(order._id, { isSettledWithFarmer: true, adminRevenue: order.platformFee || 0 });
       }
     }
 
@@ -1470,9 +1556,8 @@ router.put("/:id/status", async (req, res) => {
     if (io) io.emit("order_updated", order);
 
     // Notify customer about status change
-    const updatedOrder = await Order.findById(req.params.id);
-    if (updatedOrder && updatedOrder.customer) {
-      await notify(req.app, updatedOrder.customer,
+    if (order && order.customer) {
+      await notify(req.app, order.customer._id || order.customer,
         "📦 Order Update",
         `Your order status has been updated to: ${status.replace("_", " ")}`,
         "order", "normal", { orderId: req.params.id }
@@ -1481,12 +1566,15 @@ router.put("/:id/status", async (req, res) => {
 
     // Notify admin about status change
     const admins = await User.find({ role: "admin" });
+    const billNum = order.billNumber || req.params.id.substring(0, 8).toUpperCase();
     for (const admin of admins) {
-      await notify(req.app, admin._id,
-        "📋 Order Status Changed",
-        `Order #${updatedOrder?.billNumber || req.params.id.substring(0, 8)} → ${status.replace("_", " ")}`,
-        "order", "low", { orderId: req.params.id }
-      );
+      const notifTitle = (!isDeliveryBased && status === "delivered") 
+        ? "🌾 Farm Pickup Order Delivered"
+        : "📋 Order Status Changed";
+      const notifMsg = (!isDeliveryBased && status === "delivered")
+        ? `Farmer confirmed handover & delivery for Farm Pickup Order #${billNum} (${order.crop?.name || "produce"}).`
+        : `Order #${billNum} → ${status.replace("_", " ")}`;
+      await notify(req.app, admin._id, notifTitle, notifMsg, "order", status === "delivered" ? "high" : "low", { orderId: req.params.id, status });
     }
 
     res.json(order);

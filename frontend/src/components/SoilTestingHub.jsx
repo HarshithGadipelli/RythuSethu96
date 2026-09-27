@@ -78,10 +78,10 @@ export default function SoilTestingHub({ user, farmerProfile }) {
       });
       if (res.data.success) {
         setScanResult(res.data.analysis);
-        setMsg({ type: "success", text: "🌱 Soil preliminary AI analysis complete!" });
+        setMsg({ type: "success", text: `🌱 Soil AI Analysis Complete! Processed with ${res.data.analysis?.modelUsed || "Computer Vision AI"}.` });
       }
     } catch (e) {
-      setMsg({ type: "error", text: "AI Soil scan failed. Please try again." });
+      setMsg({ type: "error", text: e.response?.data?.error || "AI Soil scan failed. Please try again." });
     } finally {
       setScanning(false);
       setTimeout(() => setMsg({ type: "", text: "" }), 4000);
@@ -284,7 +284,7 @@ export default function SoilTestingHub({ user, farmerProfile }) {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
                     <strong style={{ color: "#166534", fontSize: "0.88rem" }}>🧪 Chemical & Elemental Scan</strong>
                     <span style={{ fontSize: "0.72rem", color: "#16a34a", fontWeight: 700, background: "#ecfdf5", padding: "2px 6px", borderRadius: "4px" }}>
-                      Advanced AI Model
+                      {scanResult.modelUsed || "Computer Vision AI Model"}
                     </span>
                   </div>
 

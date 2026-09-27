@@ -225,14 +225,15 @@ router.post("/visit/:farmerId", async (req, res) => {
 // ─── VERMI COMPOST ───
 router.post("/vermi-compost/request", protect, async (req, res) => {
   try {
-    const { requestedKg, totalCost } = req.body;
+    const { requestedKg, totalCost, wasteType, deliveryAddress } = req.body;
     if (!requestedKg || requestedKg <= 0 || !totalCost) return res.status(400).json({ error: "Invalid request data" });
 
     const VermiCompostRequest = (await import("../models/VermiCompostRequest.js")).default;
     const newRequest = await VermiCompostRequest.create({
       farmer: req.user._id,
       requestedKg,
-      totalCost
+      totalCost,
+      adminNotes: wasteType ? `Type: ${wasteType}. Address: ${deliveryAddress || "Farm location"}` : ""
     });
 
     res.status(201).json({ success: true, message: "Request submitted successfully", request: newRequest });
@@ -246,6 +247,114 @@ router.get("/vermi-compost/requests", protect, async (req, res) => {
     const VermiCompostRequest = (await import("../models/VermiCompostRequest.js")).default;
     const requests = await VermiCompostRequest.find({ farmer: req.user._id }).sort({ createdAt: -1 });
     res.json(requests);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ─── VERMI BATCH TRACKING & TELEMETRY ───
+router.get("/vermi-compost/batches", protect, async (req, res) => {
+  try {
+    const VermiBatch = (await import("../models/VermiBatch.js")).default;
+    const batches = await VermiBatch.find({ farmer: req.user._id }).sort({ createdAt: -1 });
+    res.json(batches);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/vermi-compost/batches", protect, async (req, res) => {
+  try {
+    const { bedName, dimensions, wormSpecies, wormQuantityKg, biomassCapacityKg, currentBiomassKg, moisturePercent, temperatureC, phLevel } = req.body;
+    const VermiBatch = (await import("../models/VermiBatch.js")).default;
+
+    const setupDate = new Date();
+    // Typical vermicompost cycle is 50-60 days
+    const expectedHarvestDate = new Date(setupDate.getTime() + 55 * 24 * 60 * 60 * 1000);
+
+    const batch = await VermiBatch.create({
+      farmer: req.user._id,
+      bedName: bedName || `Bed #${Date.now().toString().slice(-4)}`,
+      dimensions: dimensions || "10 ft x 3 ft x 2 ft",
+      wormSpecies: wormSpecies || "Eisenia fetida (Red Wigglers)",
+      wormQuantityKg: Number(wormQuantityKg) || 2,
+      biomassCapacityKg: Number(biomassCapacityKg) || 150,
+      currentBiomassKg: Number(currentBiomassKg) || 100,
+      setupDate,
+      expectedHarvestDate,
+      moisturePercent: Number(moisturePercent) || 65,
+      temperatureC: Number(temperatureC) || 25,
+      phLevel: Number(phLevel) || 7.0,
+      stage: "decomposition",
+      logs: [
+        {
+          action: "Bed Setup Completed",
+          moisture: Number(moisturePercent) || 65,
+          temperature: Number(temperatureC) || 25,
+          note: `Bed initiated with ${wormQuantityKg || 2}kg worms and ${currentBiomassKg || 100}kg organic substrate.`
+        }
+      ]
+    });
+
+    res.status(201).json({ success: true, batch });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put("/vermi-compost/batches/:id", protect, async (req, res) => {
+  try {
+    const VermiBatch = (await import("../models/VermiBatch.js")).default;
+    const batch = await VermiBatch.findOne({ _id: req.params.id, farmer: req.user._id });
+    if (!batch) return res.status(404).json({ error: "Vermi bed not found" });
+
+    const {
+      moisturePercent,
+      temperatureC,
+      phLevel,
+      stage,
+      vermiwashCollectedLiters,
+      harvestedCompostKg,
+      currentBiomassKg,
+      logAction,
+      logNote
+    } = req.body;
+
+    if (moisturePercent !== undefined) batch.moisturePercent = Number(moisturePercent);
+    if (temperatureC !== undefined) batch.temperatureC = Number(temperatureC);
+    if (phLevel !== undefined) batch.phLevel = Number(phLevel);
+    if (stage) batch.stage = stage;
+    if (currentBiomassKg !== undefined) batch.currentBiomassKg = Number(currentBiomassKg);
+    if (vermiwashCollectedLiters !== undefined) {
+      batch.vermiwashCollectedLiters = (batch.vermiwashCollectedLiters || 0) + Number(vermiwashCollectedLiters);
+    }
+    if (harvestedCompostKg !== undefined) {
+      batch.harvestedCompostKg = (batch.harvestedCompostKg || 0) + Number(harvestedCompostKg);
+    }
+
+    if (logAction) {
+      batch.logs.unshift({
+        date: new Date(),
+        action: logAction,
+        moisture: batch.moisturePercent,
+        temperature: batch.temperatureC,
+        note: logNote || ""
+      });
+    }
+
+    await batch.save();
+    res.json({ success: true, batch });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/vermi-compost/batches/:id", protect, async (req, res) => {
+  try {
+    const VermiBatch = (await import("../models/VermiBatch.js")).default;
+    const result = await VermiBatch.findOneAndDelete({ _id: req.params.id, farmer: req.user._id });
+    if (!result) return res.status(404).json({ error: "Bed not found" });
+    res.json({ success: true, message: "Bed removed successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

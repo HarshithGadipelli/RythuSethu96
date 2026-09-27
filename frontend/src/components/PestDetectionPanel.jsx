@@ -1,16 +1,16 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import API from "../api/api";
-import { playTTS } from "../utils/voiceParser";
+import { playTTS, stopTTS } from "../utils/voiceParser";
+import { Bug, Sparkles, AlertCircle, ShieldAlert, CheckCircle2, Volume2, VolumeX, ChevronDown, ChevronUp } from "lucide-react";
 
-const VOICE = {
-  en: "Upload a photo of your crop leaf. Our AI will detect pests and diseases instantly.",
-  te: "మీ పంట ఆకు ఫోటో అప్‌లోడ్ చేయండి. మన AI వెంటనే తెగుళ్ళు గుర్తిస్తుంది.",
-  hi: "अपनी फसल के पत्ते की फोटो अपलोड करें। हमारा AI तुरंत कीट पहचानेगा।",
-  kn: "ನಿಮ್ಮ ಬೆಳೆ ಎಲೆಯ ಫೋಟೋ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ. ನಮ್ಮ AI ತಕ್ಷಣ ಕೀಟಗಳನ್ನು ಗುರ್ತಿಸುತ್ತದೆ.",
-  ta: "உங்கள் பயிர் இலையின் புகைப்படத்தை பதிவேற்றவும். AI உடனடியாக பூச்சிகளை கண்டறியும்.",
+const SEVERITY_BADGE = {
+  Low: { bg: "#dcfce7", text: "#15803d", border: "#86efac", icon: "🟢" },
+  Moderate: { bg: "#fef3c7", text: "#b45309", border: "#fde68a", icon: "🟡" },
+  High: { bg: "#fee2e2", text: "#b91c1c", border: "#fca5a5", icon: "🟠" },
+  Severe: { bg: "#fef2f2", text: "#991b1b", border: "#f87171", icon: "🔴" },
+  Healthy: { bg: "#ecfdf5", text: "#047857", border: "#a7f3d0", icon: "🌱" },
+  Unknown: { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1", icon: "⚪" }
 };
-
-const SEVERITY_COLOR = { Low: "#16a34a", Moderate: "#f59e0b", High: "#ef4444", Severe: "#7f1d1d", Healthy: "#16a34a" };
 
 export default function PestDetectionPanel({ user, lang = "en" }) {
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -20,6 +20,8 @@ export default function PestDetectionPanel({ user, lang = "en" }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [msg, setMsg] = useState({ type: "", text: "" });
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [showRefLibrary, setShowRefLibrary] = useState(false);
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -29,15 +31,59 @@ export default function PestDetectionPanel({ user, lang = "en" }) {
     reader.onloadend = () => setPhotoPreview(reader.result);
     reader.readAsDataURL(file);
     setResult(null);
+    stopSpeaking();
+  };
+
+  const stopSpeaking = () => {
+    try {
+      stopTTS();
+    } catch (e) {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    }
+    setIsSpeaking(false);
+  };
+
+  const toggleSpeech = () => {
+    if (isSpeaking) {
+      stopSpeaking();
+      return;
+    }
+    if (!result) return;
+
+    let textToSpeak = "";
+    if (result.disease === "Healthy" || result.disease === "None/Healthy") {
+      textToSpeak = "Your crop appears healthy and vigorous. No pathogen or insect pest detected.";
+    } else if (result.disease === "Not a Crop/Plant") {
+      textToSpeak = "The uploaded photo does not appear to show a crop leaf or agricultural plant. Please upload a clear photo of your plant.";
+    } else {
+      textToSpeak = `Issue identified: ${result.disease}. Severity rating: ${result.severity || "Moderate"}. ${result.symptoms ? `Symptoms observed: ${result.symptoms}.` : ""} Treatment: ${result.remedy}`;
+    }
+
+    setIsSpeaking(true);
+    playTTS(textToSpeak, lang);
+
+    // Auto toggle off state when speaking finishes
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      const checkDone = setInterval(() => {
+        if (!window.speechSynthesis.speaking) {
+          setIsSpeaking(false);
+          clearInterval(checkDone);
+        }
+      }, 500);
+    }
   };
 
   const runPestDetect = async () => {
     if (!photoPreview && !cropName && !symptoms) {
-      setMsg({ type: "error", text: "Please upload a crop photo or describe the symptoms." });
+      setMsg({ type: "error", text: "Please upload a crop leaf photo or describe symptoms." });
       return;
     }
     setLoading(true);
     setMsg({ type: "", text: "" });
+    stopSpeaking();
+
     try {
       const res = await API.post("/ai/pest-detect", {
         imageBase64: photoPreview || null,
@@ -45,117 +91,283 @@ export default function PestDetectionPanel({ user, lang = "en" }) {
         symptoms: symptoms || undefined,
       });
       setResult(res.data);
-      const ttsText = res.data.disease === "Healthy"
-        ? "Your crop looks healthy. No pest detected."
-        : "Issue detected: " + res.data.disease + ". Severity: " + res.data.severity + ". " + res.data.remedy;
-      playTTS(ttsText, lang);
     } catch (e) {
-      setMsg({ type: "error", text: "Detection failed. Please try again." });
+      setMsg({ type: "error", text: e.response?.data?.error || "Pest diagnosis failed. Please check network or try a clearer photo." });
     } finally {
       setLoading(false);
     }
   };
 
+  const isHealthy = result?.disease === "Healthy" || result?.disease === "None/Healthy";
+  const isInvalid = result?.disease === "Not a Crop/Plant" || result?.disease === "Diagnosis Inconclusive";
+  const severityStyle = SEVERITY_BADGE[result?.severity] || SEVERITY_BADGE.Unknown;
+
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", marginBottom: "1.5rem" }}>
+    <div className="space-y-6">
+      {/* Title & Description */}
+      <div className="flex items-center justify-between flex-wrap gap-4 border-b border-gray-100 pb-4">
         <div>
-          <h2 className="section-title mb-0">Crop Health and Pest Detection</h2>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: "0.3rem" }}>{VOICE[lang] || VOICE.en}</p>
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <Bug className="text-emerald-600" /> AI Crop Health & Pest Diagnostics
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Multimodal Computer Vision analysis for insect pests, bacterial/fungal blights, and organic remedies.
+          </p>
         </div>
-        <button onClick={() => playTTS(VOICE[lang] || VOICE.en, lang)} style={{ background: "var(--green-pale)", border: "1px solid var(--green-light)", padding: "0.5rem 1rem", borderRadius: "100px", cursor: "pointer", color: "var(--green-deep)", fontWeight: 600 }}>Listen</button>
       </div>
 
-      <div className="glass-card">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* INPUT COLUMN (5 cols) */}
+        <div className="lg:col-span-5 bg-white p-5 rounded-2xl border border-gray-200 shadow-sm space-y-4">
           <div>
-            <div className="form-group mb-3">
-              <label className="field-label">Upload Crop or Leaf Photo</label>
-              <label className="file-upload-area" style={{ cursor: "pointer" }}>
-                <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handlePhotoChange} />
-                <span style={{ fontSize: "2rem" }}>&#127807;</span>
-                <p className="file-upload-text">{photoFile ? ("Selected: " + photoFile.name) : "Tap to capture or upload crop photo"}</p>
-              </label>
-              {photoPreview && <img src={photoPreview} alt="Crop preview" style={{ width: "100%", maxHeight: "220px", objectFit: "cover", borderRadius: "12px", marginTop: "1rem" }} />}
-            </div>
-            <div className="form-group mb-3">
-              <label className="field-label">Crop Name (Optional)</label>
-              <input className="rs-input" placeholder="e.g. Tomato, Rice, Cotton..." value={cropName} onChange={(e) => setCropName(e.target.value)} />
-            </div>
-            <div className="form-group mb-3">
-              <label className="field-label">Describe Symptoms (Optional)</label>
-              <textarea className="rs-input" rows={3} placeholder="e.g. Yellow leaves, white powder on leaves, holes in stem, wilting..." value={symptoms} onChange={(e) => setSymptoms(e.target.value)} style={{ resize: "vertical" }} />
-            </div>
-            {msg.text && <div className={"alert alert-" + msg.type + " mb-3"}>{msg.text}</div>}
-            <button className="btn-primary" style={{ width: "100%", padding: "0.9rem" }} onClick={runPestDetect} disabled={loading}>{loading ? "Analyzing crop..." : "Detect Pest or Disease"}</button>
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
+              1. Leaf / Plant Photo
+            </label>
+            <label className="border-2 border-dashed border-gray-300 hover:border-emerald-500 rounded-xl p-5 flex flex-col items-center justify-center cursor-pointer bg-gray-50/50 hover:bg-emerald-50/30 transition text-center">
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handlePhotoChange}
+              />
+              <span className="text-3xl mb-1">📸</span>
+              <p className="text-xs font-semibold text-gray-700">
+                {photoFile ? `Selected: ${photoFile.name}` : "Tap to capture or upload leaf photo"}
+              </p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Supports JPG, PNG, WEBP</p>
+            </label>
+
+            {photoPreview && (
+              <div className="mt-3 relative rounded-xl overflow-hidden border border-gray-200 shadow-inner">
+                <img
+                  src={photoPreview}
+                  alt="Crop preview"
+                  className="w-full max-h-52 object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => { setPhotoPreview(null); setPhotoFile(null); setResult(null); }}
+                  className="absolute top-2 right-2 bg-black/60 hover:bg-black text-white text-xs px-2 py-1 rounded-md backdrop-blur transition"
+                >
+                  ✕ Remove
+                </button>
+              </div>
+            )}
           </div>
 
           <div>
-            {!result && !loading && (
-              <div style={{ padding: "3rem 2rem", textAlign: "center", color: "var(--text-muted)", border: "2px dashed #e2e8f0", borderRadius: "16px", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1rem" }}>
-                <div style={{ fontSize: "4rem" }}>&#128126;</div>
-                <p style={{ fontSize: "1rem" }}>Upload a photo or describe symptoms to get an instant AI diagnosis</p>
-                <div style={{ fontSize: "0.85rem", textAlign: "left", background: "rgba(0,0,0,0.03)", padding: "1rem", borderRadius: "10px", width: "100%" }}>
-                  <strong>How it works:</strong>
-                  <ul style={{ paddingLeft: "1.2rem", margin: "0.5rem 0 0 0" }}>
-                    <li>Upload a clear photo of the affected leaf or plant</li>
-                    <li>Our AI model analyzes it with Gemini Vision</li>
-                    <li>Get instant diagnosis with organic remedy advice</li>
-                    <li>Audio read-out available in your language</li>
-                  </ul>
-                </div>
-              </div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+              2. Cultivated Crop (Optional)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Tomato, Cotton, Paddy, Chilli..."
+              value={cropName}
+              onChange={(e) => setCropName(e.target.value)}
+              className="w-full p-2.5 border rounded-lg text-sm bg-white focus:ring-emerald-500 focus:border-emerald-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+              3. Visual Symptoms Observed (Optional)
+            </label>
+            <textarea
+              rows={3}
+              placeholder="e.g. Yellowing leaf margins, white powdery coating, brown concentric spots, wilting during mid-day..."
+              value={symptoms}
+              onChange={(e) => setSymptoms(e.target.value)}
+              className="w-full p-2.5 border rounded-lg text-sm bg-white focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+            />
+          </div>
+
+          {msg.text && (
+            <div className={`p-3 rounded-lg text-xs font-medium ${msg.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
+              {msg.text}
+            </div>
+          )}
+
+          <button
+            onClick={runPestDetect}
+            disabled={loading}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow transition flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <span className="animate-spin text-base">⚙️</span>
+                <span>Running Computer Vision Diagnostics...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles size={18} />
+                <span>Diagnose Crop Health</span>
+              </>
             )}
-            {loading && (
-              <div style={{ padding: "3rem", textAlign: "center" }}>
-                <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>&#128300;</div>
-                <p style={{ color: "var(--text-muted)" }}>Analyzing your crop with AI Vision...</p>
+          </button>
+        </div>
+
+        {/* OUTPUT COLUMN (7 cols) */}
+        <div className="lg:col-span-7 flex flex-col">
+          {!result && !loading && (
+            <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-8 text-center flex-1 flex flex-col items-center justify-center text-gray-400">
+              <div className="p-4 bg-emerald-50 text-emerald-600 rounded-full mb-3 text-3xl">
+                🔬
               </div>
-            )}
-            {result && (
-              <div style={{ padding: "1.5rem", background: result.disease === "Healthy" ? "rgba(22,163,74,0.05)" : "rgba(239,68,68,0.05)", border: "1px solid " + (result.disease === "Healthy" ? "rgba(22,163,74,0.3)" : "rgba(239,68,68,0.3)"), borderRadius: "16px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
-                  <h4 style={{ margin: 0, color: "var(--text-dark)", fontSize: "1.2rem" }}>{result.disease}</h4>
-                  {result.severity && (
-                    <span style={{ padding: "0.3rem 0.8rem", borderRadius: "100px", background: SEVERITY_COLOR[result.severity] || "#64748b", color: "white", fontSize: "0.8rem", fontWeight: 700 }}>{result.severity}</span>
-                  )}
+              <h4 className="text-base font-bold text-gray-700 mb-1">No Crop Diagnosis Active</h4>
+              <p className="text-xs text-gray-500 max-w-sm mb-4">
+                Upload a clear close-up photograph of an affected leaf, stem, or fruit. The AI Vision model inspects pathological patterns, pest bite vectors, and nutrient chlorosis.
+              </p>
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-left text-xs text-gray-600 w-full max-w-md space-y-1">
+                <span className="font-semibold text-gray-800 block mb-1">📸 Photography Tips for Best Accuracy:</span>
+                <p>• Capture under bright natural daylight (avoid heavy shadows or flash glare).</p>
+                <p>• Include both affected discolored tissue and healthy leaf margin for contrast.</p>
+                <p>• Flip leaf to inspect underside for aphids, whiteflies, or fungal pustules.</p>
+              </div>
+            </div>
+          )}
+
+          {loading && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center flex-1 flex flex-col items-center justify-center">
+              <div className="animate-bounce text-4xl mb-3">🌿</div>
+              <h4 className="font-bold text-gray-800 text-lg">AI Multimodal Vision Analyzing Leaf Patterns</h4>
+              <p className="text-xs text-gray-500 mt-1 max-w-xs">
+                Scanning leaf veins, lesion coloration, necrosis margins, and pest frass vectors...
+              </p>
+            </div>
+          )}
+
+          {result && !loading && (
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-md p-6 flex-1 flex flex-col justify-between space-y-5 animate-in fade-in">
+              {/* Single Unified Diagnostic Header */}
+              <div>
+                <div className="flex items-start justify-between gap-3 flex-wrap border-b pb-4 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-gray-100 rounded-xl text-2xl">
+                      {isHealthy ? "🌱" : isInvalid ? "⚠️" : "🦠"}
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
+                        Diagnostic Assessment
+                      </span>
+                      <h3 className="text-xl font-extrabold text-gray-800">{result.disease}</h3>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {result.severity && (
+                      <span
+                        className="px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 border"
+                        style={{
+                          backgroundColor: severityStyle.bg,
+                          color: severityStyle.text,
+                          borderColor: severityStyle.border
+                        }}
+                      >
+                        {severityStyle.icon} Severity: {result.severity}
+                      </span>
+                    )}
+
+                    {/* Single Unified Audio Speaker Toggle */}
+                    <button
+                      onClick={toggleSpeech}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition border ${
+                        isSpeaking
+                          ? "bg-red-500 text-white border-red-600 animate-pulse"
+                          : "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                      }`}
+                      title={isSpeaking ? "Stop audio" : "Listen to diagnosis"}
+                    >
+                      {isSpeaking ? (
+                        <>
+                          <VolumeX size={14} /> Stop Audio
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 size={14} /> Listen
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
+
+                {/* Symptoms & Pathological Markers */}
                 {result.symptoms && (
-                  <div style={{ marginBottom: "1rem" }}>
-                    <strong style={{ fontSize: "0.85rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Observed Symptoms</strong>
-                    <p style={{ fontSize: "0.9rem", color: "var(--text-dark)", marginTop: "0.3rem" }}>{result.symptoms}</p>
+                  <div className="mb-4 bg-gray-50 p-3.5 rounded-xl border border-gray-200">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 block mb-1">
+                      Identified Symptoms & Indicators
+                    </span>
+                    <p className="text-xs text-gray-800 leading-relaxed">{result.symptoms}</p>
                   </div>
                 )}
-                {result.remedy && (
-                  <div style={{ padding: "1rem", background: "rgba(255,255,255,0.8)", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-                    <strong style={{ fontSize: "0.85rem", color: "#16a34a", textTransform: "uppercase" }}>Organic Remedy and Treatment</strong>
-                    <p style={{ fontSize: "0.9rem", color: "var(--text-dark)", marginTop: "0.5rem", whiteSpace: "pre-line", lineHeight: 1.7 }}>{result.remedy}</p>
+
+                {/* Unified Organic Remedy & Action Protocol */}
+                <div
+                  className={`p-4 rounded-xl border ${
+                    isHealthy
+                      ? "bg-emerald-50/70 border-emerald-200 text-emerald-900"
+                      : isInvalid
+                      ? "bg-amber-50/70 border-amber-200 text-amber-900"
+                      : "bg-red-50/40 border-red-200 text-red-950"
+                  }`}
+                >
+                  <span className="text-xs font-bold uppercase tracking-wider block mb-2 flex items-center gap-1.5">
+                    {isHealthy ? "🛡️ Maintenance & Crop Vigour Routine" : "💊 Prescribed Organic Remedy & Action Plan"}
+                  </span>
+                  <div className="text-xs space-y-1.5 whitespace-pre-line leading-relaxed font-medium">
+                    {result.remedy}
                   </div>
-                )}
-                {result.source && <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.8rem" }}>Powered by: {result.source}</p>}
-                <button className="btn-secondary mt-3" style={{ width: "100%" }} onClick={() => playTTS(result.remedy || "No remedy available.", lang)}>Listen to Remedy in Your Language</button>
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Footer Meta & Single Audio Button */}
+              <div className="pt-3 border-t flex items-center justify-between text-xs text-gray-500 flex-wrap gap-2">
+                <span className="flex items-center gap-1">
+                  ⚡ Model: <strong>{result.source || "Gemini Vision Multimodal AI"}</strong>
+                </span>
+                <span className="text-gray-400">Diagnosis strictly for agricultural advisement</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="glass-card mt-3" style={{ background: "rgba(34,197,94,0.03)", border: "1px solid rgba(34,197,94,0.2)" }}>
-        <h4 className="section-title">Common Crop Diseases - Quick Reference</h4>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
-          {[
-            { name: "Leaf Blight", emoji: "&#127807;", tip: "Remove infected leaves. Spray copper fungicide." },
-            { name: "Aphids", emoji: "&#128027;", tip: "Spray Neem oil 5ml/L. Introduce ladybugs." },
-            { name: "Root Rot", emoji: "&#127758;", tip: "Improve drainage. Use Trichoderma biofungicide." },
-            { name: "Powdery Mildew", emoji: "&#129419;", tip: "Spray potassium bicarbonate or sulfur." },
-          ].map((d, i) => (
-            <div key={i} style={{ padding: "1rem", background: "white", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
-              <div style={{ fontSize: "1.5rem", marginBottom: "0.3rem" }} dangerouslySetInnerHTML={{ __html: d.emoji }} />
-              <strong style={{ color: "var(--text-dark)", fontSize: "0.9rem" }}>{d.name}</strong>
-              <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.3rem" }}>{d.tip}</p>
+      {/* Collapsible Reference Library (only when user clicks) */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <button
+          onClick={() => setShowRefLibrary(!showRefLibrary)}
+          className="w-full p-4 flex items-center justify-between text-left font-semibold text-gray-700 hover:bg-gray-50 transition text-sm"
+        >
+          <span className="flex items-center gap-2">
+            <span>📚</span> Common Regional Pest & Pathogen Field Reference
+          </span>
+          {showRefLibrary ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+
+        {showRefLibrary && (
+          <div className="p-4 pt-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs border-t bg-gray-50/50">
+            <div className="bg-white p-3 rounded-lg border border-gray-200">
+              <span className="font-bold text-gray-800 block text-sm mb-1">🍂 Early / Late Blight</span>
+              <p className="text-gray-600 mb-1">Brown concentric target rings on leaves, spreading upward.</p>
+              <strong className="text-emerald-700">Remedy:</strong> Spray Copper Oxychloride (2.5g/L) or Trichoderma viride.
             </div>
-          ))}
-        </div>
+            <div className="bg-white p-3 rounded-lg border border-gray-200">
+              <span className="font-bold text-gray-800 block text-sm mb-1">🦟 Aphids & Thrips</span>
+              <p className="text-gray-600 mb-1">Leaf curling upward, sticky honeydew secretion on underside.</p>
+              <strong className="text-emerald-700">Remedy:</strong> Neem Oil 10,000 ppm (3-5ml/L) + yellow sticky traps.
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-gray-200">
+              <span className="font-bold text-gray-800 block text-sm mb-1">🐛 Helicoverpa (Fruit Borer)</span>
+              <p className="text-gray-600 mb-1">Circular boreholes in fruits, flower bud drop.</p>
+              <strong className="text-emerald-700">Remedy:</strong> Pheromone traps (5/acre) + NPV virus or Bt bio-spray.
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-gray-200">
+              <span className="font-bold text-gray-800 block text-sm mb-1">⚪ Powdery Mildew</span>
+              <p className="text-gray-600 mb-1">White talcum powder-like fungal patches on leaf surfaces.</p>
+              <strong className="text-emerald-700">Remedy:</strong> Wettable Sulfur 80% WP (2g/L) or cow urine spray (10%).
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
