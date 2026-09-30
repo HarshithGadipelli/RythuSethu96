@@ -406,3 +406,78 @@ A. JavaScript / ECMAScript 2023+ (ES14):
      - Native Cryptographic Extensions: Built-in `crypto` module executing constant-time buffer evaluations (`crypto.timingSafeEqual`) and SHA-256 / HMAC-SHA256 digests (`crypto.createHmac`).
 
 [Note: Document truncated to fit within 50,000 character limit.]
+
+
+================================================================================
+NEW ADVANCED MODULES (NALABHEEMA, SOIL TEST, PACKAGING, ORGANIC CERT)
+================================================================================
+# RythuJanaSethu: Advanced Architecture Expansion
+
+This document outlines the advanced, enterprise-grade architectures for the four proposed modules. By implementing these, RythuJanaSethu transitions from a logistical marketplace into a state-of-the-art Cyber-Physical Agricultural ecosystem.
+
+---
+
+## 1. "Nalabheema" - Real-Time Multimodal AI Cook
+**Concept:** A conversational, real-time culinary assistant that not only provides recipes based on the user's "Smart Basket" but actively coaches them through the cooking process using voice and computer vision.
+
+### Advanced Implementation:
+*   **Real-Time WebRTC Streaming:** Instead of standard request-response chatbots, Nalabheema uses a persistent WebRTC connection for continuous two-way audio. The user cooks hands-free, talking to Nalabheema as if a chef is in the room.
+*   **Multimodal Vision Integration:** The user can prop up their smartphone camera. Nalabheema (powered by Gemini 1.5 Pro) continuously processes frames at 1fps. If the AI detects smoke or over-browning, it interrupts with an audio alert: *"The onions are getting too brown, turn down the heat to medium."*
+*   **Nutritional State Tracking:** Synchronizes with fitness APIs (like Google Fit) to automatically log the macros of the meal being cooked.
+
+### MongoDB Schema (`NalabheemaProfileSchema`)
+```javascript
+{
+  customerId: { type: ObjectId, ref: 'User' },
+  dietaryConstraints: { type: [String], enum: ['VEGAN', 'KETO', 'GLUTEN_FREE', 'DIABETIC_FRIENDLY'] },
+  flavorProfile: { spiceTolerance: Number, sweetPreference: Number },
+  culinarySkillLevel: { type: String, enum: ['BEGINNER', 'INTERMEDIATE', 'EXPERT'] },
+  favoriteRecipes: [{ type: ObjectId, ref: 'Recipe' }],
+  healthGoals: { targetCalories: Number, targetProteinGrams: Number }
+}
+```
+
+---
+
+## 2. Soil Test Analyzer - TinyML & IoT Swarm
+**Concept:** A decentralized, offline-first soil intelligence system that provides granular, meter-by-meter soil health mapping without relying on expensive lab tests or continuous internet connectivity.
+
+### Advanced Implementation:
+*   **TinyML (Edge AI):** Agricultural areas often lack 4G/5G. We compile the Soil Image Classification model (ResNet Mobile) into **TensorFlow Lite (TFLite)**. This 5MB model runs directly on the farmer's smartphone GPU. The farmer takes a photo of the soil, and it infers nitrogen deficiencies instantly, 100% offline.
+*   **LoRaWAN Sensor Swarm:** For progressive farmers, cheap ($5) battery-powered NPK/Moisture probes are placed every 50 meters. They communicate via LoRa (Long Range, Low Power) to a single solar-powered Raspberry Pi gateway on the farm, which batches the data and sends it to the cloud once a day.
+*   **Spatio-Temporal Graph Convolutional Networks (STGCN):** The backend uses this advanced ML model to map how water and nutrients flow across the farm's terrain over time, suggesting precise, localized fertilizer application (Precision Agriculture).
+
+---
+
+## 3. Food Packaging Advisor - Digital Twin & MILP
+**Concept:** Dynamically optimizing packaging for every single order to ensure zero spoilage with zero plastic waste.
+
+### Advanced Implementation:
+*   **Digital Twin Simulation:** Before an order is dispatched, a microservice creates a "Digital Twin" of the delivery route. It pulls live weather API data (e.g., ambient temp 42°C in Hyderabad) and simulates the thermal decay inside the delivery box.
+*   **Mixed-Integer Linear Programming (MILP):** The algorithm calculates the absolute minimum amount of Phase-Change Material (PCM) cooling gel needed to keep the box below 15°C for the exact duration of the ETA. 
+    *   *Why this matters:* PCM is heavy. Every extra kilogram reduces the electric bike's battery range. The MILP algorithm balances thermal safety vs. battery range perfectly.
+*   **Material Matrix:** Recommends specific biodegradable wrappers (like Areca leaf shells or PLA bioplastics) depending on the crop's respiration rate (e.g., tomatoes breathe differently than spinach).
+
+### MongoDB Schema (`PackagingOptimizationSchema`)
+```javascript
+{
+  routeId: { type: ObjectId, ref: 'VehicleRoute' },
+  ambientTemperatureCelsius: Number,
+  estimatedTransitTimeMins: Number,
+  recommendedMaterial: { type: String, enum: ['ARECA_SHELL', 'CORRUGATED_CARDBOARD', 'BAMBOO_CRATE'] },
+  pcmGelGramsRequired: Number, // Precisely calculated to save weight
+  thermalDecayRisk: Number, // 0.0 to 1.0
+  co2SavedKg: Number // For environmental tracking
+}
+```
+
+---
+
+## 4. Organic Certification - Blockchain & Hyperspectral Oracles
+**Concept:** A zero-trust, cryptographically secure guarantee that the food is 100% organic and safe, eliminating certification fraud.
+
+### Advanced Implementation:
+*   **Polygon Smart Contracts:** The entire lifecycle of the crop is tokenized as an NFT on the Polygon blockchain (chosen for sub-cent transaction fees). Sowing date, bio-fertilizer invoices, and harvest date are cryptographically hashed.
+*   **Chainlink IoT Oracles:** If a farmer's IoT soil sensor suddenly detects a massive spike in synthetic Nitrogen (indicating illegal urea dumping), the sensor acts as a blockchain "Oracle." It automatically triggers a Smart Contract that burns the "Organic" NFT badge for that specific crop batch. No human intervention is needed.
+*   **Hyperspectral Security Inspection:** At the urban cross-docking hub, crates pass under a Hyperspectral Camera. Standard cameras capture RGB (3 bands of light); hyperspectral captures 100+ bands. A Support Vector Machine (SVM) algorithm analyzes the light spectrum to detect invisible chemical pesticide residues or internal rot. If flagged, the system automatically routes the crate for lab testing.
+

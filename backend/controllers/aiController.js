@@ -44,84 +44,145 @@ export const parseIntent = async (req, res) => {
   try {
     const { text, context, lang } = req.body;
     if (!text) return res.status(400).json({ error: "No text provided" });
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey && apiKey.trim() !== "") {
-      try {
 
+    // Extract any existing form state passed in the prompt
+    let currentUtterance = text;
+    let existingForm = {};
+    const contextMatch = text.match(/I already have: (\{.*\}). User says: "(.*)"/s);
+    if (contextMatch) {
+      try { existingForm = JSON.parse(contextMatch[1]); } catch(e) {}
+      currentUtterance = contextMatch[2];
+    }
+
+    const hasAIKey = (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim() !== "") ||
+                     (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() !== "");
+
+    if (hasAIKey) {
+      try {
         let prompt = "";
         
         if (context === "farmer_add_crop") {
           prompt = `
-          You are an expert NLP parser for a farming app. The user is a rural Indian farmer speaking into a microphone. The speech-to-text might transcribe their local language/accent phonetically in broken English or regional Indian languages.
-          
-          CRITICAL INSTRUCTIONS:
-          1. Ignore conversational filler/honorific words ("andi", "bhaiya", "sir", "ayya", "amma", "ji", "namaste", "namaskaram").
-          2. Map phonetic/slang crop names to standard English (e.g., "tamota" -> "Tomato", "bhendi" -> "Okra", "vankaya" / "baingan" -> "Brinjal", "ullipaya" / "kanda" / "pyaz" -> "Onion").
-          3. Convert local units: 1 quintal = 100 kg, 1 bag/bori/basta = 50 kg, 1 crate/peti = 25 kg, 1 ton = 1000 kg.
-          4. Parse phonetic numbers (e.g. "yebhai" -> 50, "pachas" -> 50, "noota" -> 100, "muppai" -> 30, "nalabhai" -> 40).
-          
-          Analyze the text: "${text}"
-          
-          Extract the following fields:
-          {
-            "name": "crop name (standard English name, first letter capitalized)",
-            "category": "vegetable, fruit, grain, spice, pulse, dairy, other",
-            "quantity": number (in standard units, e.g. kg or ton),
-            "unit": "kg" or "ton" or "litre" (default to "kg"),
-            "price": number (price per unit in INR),
-            "farmLocation": "district or village name if mentioned",
-            "description": "Short appealing description of the crop for buyers",
-            "isOrganic": boolean (true if they mention organic, chemical free, natural, no pesticide, desi),
-            "isPesticideFree": boolean (true if they mention pesticide free),
-            "reply": "A short, conversational acknowledgment in English asking for the FIRST missing field in this order: 1. name, 2. quantity, 3. price, 4. isOrganic. If all are present, say 'Great! I have all details. Say Submit to list your crop!'",
-            "completed": boolean (true ONLY if name, quantity and price are present)
-          }
-          Respond ONLY with valid JSON. Do not include backticks or markdown.
-          `;
+You are the world's best Multimodal Conversational AI Assistant and NLP Parser for RythuJanaSethu ("The Farmer-to-Citizen Bridge").
+The user is an Indian farmer speaking into a smartphone microphone in Telugu, Hindi, Tamil, Kannada, or Indian English.
+
+CURRENT ACCUMULATED FORM:
+${JSON.stringify(existingForm, null, 2)}
+
+FARMER'S NEW VOICE UTTERANCE:
+"${currentUtterance}"
+
+CRITICAL INSTRUCTIONS:
+1. PRESERVE & MERGE: Retain all valid, non-empty fields from CURRENT ACCUMULATED FORM unless the farmer explicitly changes them.
+2. PHONETIC & REGIONAL CROP NAMES:
+   - "tamota", "tamatar", "takkali", "టమోటా", "टमाटर" -> "Tomato" (vegetable)
+   - "vankaya", "baingan", "gutthi vankaya", "వంకాయ", "बैंगन" -> "Brinjal" (vegetable)
+   - "ullipaya", "pyaz", "kanda", "erragaddalu", "ఉల్లిపాయ", "प्याज" -> "Onion" (vegetable)
+   - "aloo", "batata", "alugadda", "బంగాళదుంప", "आलू" -> "Potato" (vegetable)
+   - "mirchi", "mirapa", "pachi mirchi", "మిర్చి", "मिर्ची" -> "Chili" (spice)
+   - "bhendi", "bhindi", "bendakaya", "బెండకాయ", "भिंडी" -> "Okra" (vegetable)
+   - "paddy", "chawal", "dhan", "biyyam", "వరి", "బియ్యం", "चावल" -> "Rice" (grain)
+   - "godhumalu", "gehu", "గోధుమ", "गेहूं" -> "Wheat" (grain)
+   - "kapaas", "patti", "పత్తి", "कपास" -> "Cotton" (other)
+   - "mamidi", "aam", "alphonso", "మామిడి", "आम" -> "Mango" (fruit)
+   - "arati", "kela", "అరటి", "केला" -> "Banana" (fruit)
+3. INDIAN CROP UNITS CONVERSION:
+   - 1 quintal / qntl / క్వింటాల్ / क्विंटल = 100 kg
+   - 1 bag / bori / basta / bastha / బస్తా / बोरी = 50 kg
+   - 1 crate / peti / pette / పెట్టె / पेटी = 25 kg
+   - 1 ton / tonne / టన్ / टन = 1000 kg
+   - Standardize unit to "kg" (or "ton" / "litre").
+4. NUMBER & PRICE PARSING:
+   - Recognize regional numbers ("yebhai" -> 50, "pachas" -> 50, "muppai" -> 30, "nalabhai" -> 40, "nooru/vanda/sau" -> 100).
+   - If farmer says "50 rupees" or "₹50", parse price = 50.
+5. ORGANIC STATUS:
+   - Mark isOrganic = true if farmer mentions "organic", "natural", "chemical free", "desi", "prakruthi", "jaivik", "సేంద్రీయ", "जैविक".
+6. CONVERSATIONAL REPLY:
+   - Provide a warm, respectful 1-sentence reply in English addressing the farmer.
+   - If missing name: ask what crop they have.
+   - If missing quantity: ask how many kilos or quintals they harvested.
+   - If missing price: ask what price per kg they want to sell at.
+   - If name, quantity, and price are all filled: say "Great! I have all your crop details ready. Tap Submit or say Submit to list your crop on the marketplace!"
+
+Return ONLY a valid JSON object matching this structure:
+{
+  "name": "Standard English Crop Name",
+  "category": "vegetable" | "fruit" | "grain" | "spice" | "pulse" | "dairy" | "other",
+  "quantity": number,
+  "unit": "kg" | "ton" | "litre",
+  "price": number,
+  "farmLocation": "Location or District if mentioned",
+  "description": "Short appealing listing description",
+  "isOrganic": boolean,
+  "isPesticideFree": boolean,
+  "reply": "Warm conversational guidance",
+  "completed": boolean
+}
+Do NOT include markdown formatting or explanations. Output pure JSON only.
+`;
         } else if (context === "marketplace_search") {
           prompt = `
-          You are an advanced AI assistant for a farming app marketplace. Analyze the search intent from: "${text}".
-          Required JSON structure:
-          {
-            "searchQuery": "main item (standard English crop name)",
-            "category": "vegetable, fruit, grain, dairy, pulse, spice or all",
-            "isOrganic": boolean,
-            "maxPrice": number or null,
-            "maxDistance": number or null
-          }
-          Respond ONLY with valid JSON.
-          `;
+You are an advanced search assistant for a farm marketplace.
+Analyze the user's search query: "${currentUtterance}".
+Return pure JSON:
+{
+  "searchQuery": "standard English crop name",
+  "category": "vegetable" | "fruit" | "grain" | "dairy" | "pulse" | "spice" | "all",
+  "isOrganic": boolean,
+  "maxPrice": number or null,
+  "maxDistance": number or null
+}
+`;
         } else if (context === "omnipresent_farmer") {
           prompt = `
-          You are an AI assistant for a farmer dashboard. Determine the intent from: "${text}".
-          Required JSON structure:
-          {
-            "intent": "navigate_tab" | "add_crop" | "farming_doubt" | "unknown",
-            "targetTab": "overview" | "crops" | "orders" | "analytics" (if navigate_tab, else null),
-            "aiAnswer": "Short 1-2 sentence answer in English" (if farming_doubt, else null)
-          }
-          Respond ONLY with valid JSON.
-          `;
+Determine farmer dashboard intent from: "${currentUtterance}".
+Return pure JSON:
+{
+  "intent": "navigate_tab" | "add_crop" | "farming_doubt" | "unknown",
+  "targetTab": "overview" | "crops" | "orders" | "analytics" (or null),
+  "aiAnswer": "Short 1-2 sentence agronomic advice in English" (or null)
+}
+`;
         } else {
-          prompt = `Extract intent from: "${text}". Output JSON.`;
+          prompt = `Extract intent and parameters from: "${currentUtterance}". Output pure JSON.`;
         }
 
         const responseText = await callGeminiWithFallback(prompt);
         if (responseText) {
-          let cleanJsonStr = responseText.replace(/```json/gi, '').replace(/```/gi, '').trim();
-          const parsedData = JSON.parse(cleanJsonStr);
-          
-          if (parsedData.reply && lang && lang !== "en" && lang !== "en-IN") {
-            parsedData.reply = await translateFromEnglish(parsedData.reply, lang);
+          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            let parsedData = JSON.parse(jsonMatch[0]);
+
+            // Ensure existing fields are not blanked out
+            parsedData = {
+              ...existingForm,
+              ...parsedData,
+              name: parsedData.name || existingForm.name,
+              category: parsedData.category || existingForm.category,
+              quantity: parsedData.quantity || existingForm.quantity,
+              unit: parsedData.unit || existingForm.unit || "kg",
+              price: parsedData.price || existingForm.price,
+              farmLocation: parsedData.farmLocation || existingForm.farmLocation,
+              isOrganic: parsedData.isOrganic !== undefined ? parsedData.isOrganic : existingForm.isOrganic,
+              isPesticideFree: parsedData.isPesticideFree !== undefined ? parsedData.isPesticideFree : existingForm.isPesticideFree
+            };
+
+            // Recalculate completed status
+            parsedData.completed = Boolean(parsedData.name && parsedData.quantity && parsedData.price);
+
+            // Vernacular translation for audio playback
+            if (parsedData.reply && lang && lang !== "en" && lang !== "en-IN") {
+              parsedData.reply = await translateFromEnglish(parsedData.reply, lang);
+            }
+            if (parsedData.aiAnswer && lang && lang !== "en" && lang !== "en-IN") {
+              parsedData.aiAnswer = await translateFromEnglish(parsedData.aiAnswer, lang);
+            }
+
+            return res.json({ source: "llm_engine", data: parsedData });
           }
-          if (parsedData.aiAnswer && lang && lang !== "en" && lang !== "en-IN") {
-            parsedData.aiAnswer = await translateFromEnglish(parsedData.aiAnswer, lang);
-          }
-          
-          return res.json({ source: "gemini", data: parsedData });
         }
-      } catch (geminiError) {
-        console.error("Gemini API Error, falling back to local parser:", geminiError.message);
+      } catch (aiError) {
+        console.error("LLM Parse Error, engaging resilient heuristic parser:", aiError.message);
       }
     }
 

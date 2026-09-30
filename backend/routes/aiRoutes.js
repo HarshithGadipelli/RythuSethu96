@@ -1156,11 +1156,19 @@ router.post("/parse-wizard-step", async (req, res) => {
 
     let prompt = "";
     if (step === "NAME") {
-      prompt = `You are an Indian agricultural produce parser. The farmer said: "${transcript}" in language "${lang || "en"}". Extract the standard crop/produce name in English (e.g. Tomato, Potato, Onion, Rice, Wheat, Cotton, Chilli, Garlic, Ginger, Turmeric, Groundnut, Maize, Mango, Banana, Apple, Okra, Brinjal, Cabbage, Sugarcane, Watermelon, Bio Waste). Reply strictly in JSON: { "name": "StandardCropName" } without markdown formatting.`;
+      prompt = `You are an Indian agricultural produce parser for farmers speaking English, Telugu, Hindi, Tamil, or Kannada.
+The farmer said: "${transcript}" in language "${lang || "en"}".
+Extract the standard English crop/produce name (e.g. Tomato, Potato, Onion, Rice, Wheat, Cotton, Chilli, Garlic, Ginger, Turmeric, Groundnut, Maize, Mango, Banana, Apple, Okra, Brinjal, Cabbage, Sugarcane, Watermelon, Bio Waste).
+Phonetic guide: Tamata/Tamatar -> Tomato, Vankaya/Baingan -> Brinjal, Ullipayalu/Kanda/Pyaaz -> Onion, Mirapa/Mirchi -> Chilli, Pasupu/Haldi -> Turmeric, Vari/Chawal -> Rice, Bhendi/Bhindi -> Okra, Allam/Adrak -> Ginger.
+Reply strictly in JSON: { "name": "StandardCropName" } without any markdown backticks or commentary.`;
     } else if (step === "QUANTITY") {
-      prompt = `You are an Indian agricultural parser. The farmer said: "${transcript}". Extract the numerical quantity and standard unit (kg, quintal, bag, tonne, litre, piece, dozen). Reply strictly in JSON: { "quantity": number, "unit": "unit_string" } without markdown.`;
+      prompt = `You are an Indian agricultural parser. The farmer said: "${transcript}".
+Extract the numerical quantity and standard unit (one of: kg, quintal, bag, tonne, litre, piece, dozen).
+Reply strictly in JSON: { "quantity": number, "unit": "unit_string" } without any markdown backticks or commentary.`;
     } else if (step === "PRICE") {
-      prompt = `You are an Indian agricultural parser. The farmer said: "${transcript}". Extract the price amount as a single number in Rupees. Reply strictly in JSON: { "price": number } without markdown.`;
+      prompt = `You are an Indian agricultural parser. The farmer said: "${transcript}".
+Extract the price amount as a single number in Indian Rupees.
+Reply strictly in JSON: { "price": number } without any markdown backticks or commentary.`;
     } else {
       return res.status(400).json({ error: "Invalid step" });
     }
@@ -1168,10 +1176,14 @@ router.post("/parse-wizard-step", async (req, res) => {
     const rawText = await callGeminiWithFallback([prompt]);
     if (rawText) {
       const cleanJson = (rawText || "").trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
-      const jsonMatch = cleanJson.match(/\{.*\}/s);
+      const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsedData = JSON.parse(jsonMatch[0]);
-        return res.json(parsedData);
+        try {
+          const parsedData = JSON.parse(jsonMatch[0]);
+          return res.json(parsedData);
+        } catch (jsonErr) {
+          console.warn("Wizard JSON parse error:", jsonErr.message);
+        }
       }
     }
 

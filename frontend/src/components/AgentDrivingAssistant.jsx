@@ -34,36 +34,42 @@ export default function AgentDrivingAssistant({
 
   // Initialize Continuous Speech Recognition for Driving & Workflow Companion
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
+    const startContinuousListening = () => {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) return;
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.lang = lang === "te" ? "te-IN" : lang === "hi" ? "hi-IN" : "en-IN";
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = false;
+      recognition.lang = lang === "te" ? "te-IN" : lang === "hi" ? "hi-IN" : "en-IN";
 
-    recognition.onresult = (event) => {
-      const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
-      setLastCommand(transcript);
-      handleVoiceCommand(transcript);
-    };
+      recognition.onresult = (event) => {
+        const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+        setLastCommand(transcript);
+        handleVoiceCommand(transcript);
+      };
 
-    recognition.onerror = (e) => {
-      if (e.error !== "no-speech") {
-        console.warn("[Driving Assistant Speech Error]", e.error);
-      }
-    };
+      recognition.onerror = (e) => {
+        if (e.error !== "no-speech") {
+          console.warn("[Driving Assistant Speech Error]", e.error);
+        }
+      };
 
-    recognition.onend = () => {
+      recognition.onend = () => {
+        if (isListening) {
+          setTimeout(() => {
+            if (isListening) startContinuousListening(); // Create a fresh instance instead of reusing dead one
+          }, 350);
+        }
+      };
+
       if (isListening) {
         try { recognition.start(); } catch (err) {}
       }
+      recognitionRef.current = recognition;
     };
 
-    if (isListening) {
-      try { recognition.start(); } catch (err) {}
-    }
-    recognitionRef.current = recognition;
+    startContinuousListening();
 
     const welcomeMsg = lang === "te"
       ? "హ్యాండ్స్-ఫ్రీ వర్క్‌ఫ్లో అసిస్టెంట్ ప్రారంభమైంది. డెలివరీ, మ్యాప్స్, సీఓడీ లేదా అసిస్టెంట్ మూసివేయడానికి మాట్లాడండి."

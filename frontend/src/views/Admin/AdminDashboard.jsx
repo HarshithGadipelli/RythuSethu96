@@ -14,8 +14,9 @@ import AdminFinancials from "./AdminFinancials";
 import AdminGlobalMap from "../../components/AdminGlobalMap";
 import AdminWasteManagement from "../../components/AdminWasteManagement";
 import AdminStockAdvisory from "../../components/AdminStockAdvisory";
+import AdminOrganicCertification from "../../components/AdminOrganicCertification";
 
-const TABS = ["overview","users","verification","orders","deliveries","profit","security","support", "tips", "demand", "stock", "mlops", "waste", "soiltests", "clearance", "broadcasts"];
+const TABS = ["overview","users","verification","orders","deliveries","profit","security","support", "tips", "demand", "stock", "mlops", "waste", "soiltests", "clearance", "broadcasts", "organic_cert"];
 
 export const getAdminMediaUrl = (path) => {
   if (!path) return "";
@@ -89,6 +90,7 @@ export default function AdminDashboard() {
   const [selectedUserModal, setSelectedUserModal] = useState(null);
   const [userRoleFilter, setUserRoleFilter] = useState("all");
   const [cropSubTab, setCropSubTab] = useState("catalog");
+  const [securitySubTab, setSecuritySubTab] = useState("safety_organic");
   const [soilRequests, setSoilRequests] = useState([]);
   const [soilFilter, setSoilFilter] = useState("all");
   const [soilAssignModal, setSoilAssignModal] = useState(null);
@@ -557,7 +559,7 @@ export default function AdminDashboard() {
       {msg.text && <div className={`alert alert-${msg.type} mb-3`}>{msg.text}</div>}
 
       {/* ── BREADCRUMB WHEN IN SPECIALIZED ADMIN SUITE ── */}
-      {["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) && (
+      {["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips", "organic_cert"].includes(tab) && (
         <div style={{
           background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
           border: "1.5px solid #93c5fd",
@@ -582,6 +584,7 @@ export default function AdminDashboard() {
                  tab === "demand" ? "📊 Consumer Search Demand Spikes" :
                  tab === "broadcast" ? "📢 Urgent Farmer Supply Broadcast Center" :
                  tab === "waste" ? "🌱 Circular Waste & Organic Composting" :
+                 tab === "organic_cert" ? "🌿 Organic Certification & Continuous Batch Verification" :
                  tab === "system_terms" ? "📜 Mandatory System Rules Mandate" :
                  tab === "mlops" ? "🤖 AI & MLOps Pipeline Supervised Diagnostics" :
                  tab === "security" ? "🛡️ Security Pledge & Fraud Audit Logs" :
@@ -637,10 +640,11 @@ export default function AdminDashboard() {
             { k:"overview", l:"📊 Overview" },
             { k:"tracking", l:"🗺️ Live Map" },
             { k:"verification", l:`🌾 Verify Farmers (${pendingFarmers.length})` },
+            { k:"organic_cert", l:"🌿 Organic & Food Safety" },
             { k:"orders",  l:`📦 Orders (${orders.length})` },
             { k:"deliveries", l:`🚚 Fleet (${needsDelivery.length})` },
             { k:"users",   l:`👥 Users (${users.length})` },
-            { k:"specialized_hub", l: "⚡ Enterprise Suite (12 Modules)" }
+            { k:"specialized_hub", l: "⚡ Enterprise Suite (13 Modules)" }
           ].map(tb => (
             <button key={tb.k} className={`tab-btn ${tab===tb.k?"active":""}`} onClick={() => setTab(tb.k)}>
               {tb.l}
@@ -652,9 +656,9 @@ export default function AdminDashboard() {
           type="button"
           onClick={() => setTab("specialized_hub")}
           style={{
-            background: ["specialized_hub", "crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "linear-gradient(135deg, #1d4ed8, #2563eb)" : "linear-gradient(135deg, #f8fafc, #f1f5f9)",
-            color: ["specialized_hub", "crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "white" : "#1e293b",
-            border: ["specialized_hub", "crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "1.5px solid #3b82f6" : "1.5px solid #cbd5e1",
+            background: ["specialized_hub", "crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips", "organic_cert"].includes(tab) ? "linear-gradient(135deg, #1d4ed8, #2563eb)" : "linear-gradient(135deg, #f8fafc, #f1f5f9)",
+            color: ["specialized_hub", "crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips", "organic_cert"].includes(tab) ? "white" : "#1e293b",
+            border: ["specialized_hub", "crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips", "organic_cert"].includes(tab) ? "1.5px solid #3b82f6" : "1.5px solid #cbd5e1",
             padding: "0.6rem 1.15rem",
             borderRadius: "12px",
             fontWeight: 800,
@@ -669,14 +673,14 @@ export default function AdminDashboard() {
         >
           <span>⚡ Specialized Enterprise Suite</span>
           <span style={{
-            background: ["specialized_hub", "crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "white" : "#2563eb",
-            color: ["specialized_hub", "crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "#1d4ed8" : "white",
+            background: ["specialized_hub", "crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips", "organic_cert"].includes(tab) ? "white" : "#2563eb",
+            color: ["specialized_hub", "crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips", "organic_cert"].includes(tab) ? "#1d4ed8" : "white",
             padding: "1px 7px",
             borderRadius: "100px",
             fontSize: "0.72rem",
             fontWeight: 800
           }}>
-            {tab === "specialized_hub" ? "Open" : ["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips"].includes(tab) ? "Active" : "12 Modules"}
+            {tab === "specialized_hub" ? "Open" : ["crops", "soil", "financials", "demand", "broadcast", "waste", "system_terms", "mlops", "security", "support", "tours", "tips", "organic_cert"].includes(tab) ? "Active" : "13 Modules"}
           </span>
         </button>
       </div>
@@ -704,13 +708,13 @@ export default function AdminDashboard() {
                     <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.18)", padding: "0.3rem 0.85rem", borderRadius: "100px", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "0.6rem" }}>
                       <span>⚡ Centralized Operations Suite</span>
                       <span>•</span>
-                      <span>12 Production Workflows</span>
+                      <span>13 Production Workflows</span>
                     </div>
                     <h2 style={{ margin: 0, fontSize: "1.65rem", fontWeight: 800, letterSpacing: "-0.02em" }}>
                       Enterprise Agricultural Administration & Governance
                     </h2>
                     <p style={{ margin: "0.4rem 0 0 0", color: "#bfdbfe", fontSize: "0.92rem", maxWidth: "780px", lineHeight: 1.5 }}>
-                      Full in-page command suite for supervising Mandi listings, allocating government soil testing vans, managing bi-weekly escrow settlements, monitoring MLOps neural models, and auditing delivery pledges.
+                      Full in-page command suite for supervising Mandi listings, organic certification audits, allocating government soil testing vans, managing bi-weekly escrow settlements, monitoring MLOps neural models, and auditing delivery pledges.
                     </p>
                   </div>
                   <div style={{ display: "flex", gap: "0.6rem" }}>
@@ -741,7 +745,7 @@ export default function AdminDashboard() {
                       type="text"
                       value={adminSuiteSearch}
                       onChange={(e) => setAdminSuiteSearch(e.target.value)}
-                      placeholder="🔍 Search across 12 enterprise modules..."
+                      placeholder="🔍 Search across 13 enterprise modules..."
                       style={{
                         width: "100%",
                         padding: "0.65rem 1rem",
@@ -766,8 +770,8 @@ export default function AdminDashboard() {
                   </div>
                   <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
                     {[
-                      { k: "all", l: "All Modules (12)" },
-                      { k: "agri", l: "🌾 Agriculture (4)" },
+                      { k: "all", l: "All Modules (13)" },
+                      { k: "agri", l: "🌾 Agriculture (5)" },
                       { k: "labs", l: "🧪 Labs & Waste (2)" },
                       { k: "finance", l: "💵 Finance & MLOps (3)" },
                       { k: "gov", l: "🛡️ Governance (3)" }
@@ -794,9 +798,19 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* 12 Enterprise Modules Grid */}
+              {/* 13 Enterprise Modules Grid */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(330px, 1fr))", gap: "1.1rem" }}>
                 {[
+                  {
+                    k: "organic_cert",
+                    cat: "agri",
+                    icon: "🌿",
+                    title: `Organic Certification & Multi-Batch Audits`,
+                    badge: "Strict 5-Point Procedure",
+                    badgeColor: "#059669",
+                    desc: "Continuous strict verification protocol across Geo-location, field photos, call audits, tools/soil images, and pest images. Certify batches and allocate farmer subsidies.",
+                    metric: "Zero-Residue Certified"
+                  },
                   {
                     k: "crops",
                     cat: "agri",
@@ -2285,13 +2299,55 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ── SECURITY & RULES ── */}
+          {/* ── SECURITY & FOOD SAFETY GOVERNANCE ── */}
           {tab === "security" && (
             <div>
-              <h3 className="section-title mb-2">🚨 Misuse & Mismatch Reports</h3>
-              {reports.length === 0 ? (
-                <div className="glass-card text-center text-muted p-4">No reports found.</div>
+              {/* Security & Food Safety Sub-Tab Navigation */}
+              <div style={{ display: "flex", gap: "0.6rem", marginBottom: "1.4rem", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => setSecuritySubTab("safety_organic")}
+                  style={{
+                    background: securitySubTab === "safety_organic" ? "#059669" : "#ffffff",
+                    color: securitySubTab === "safety_organic" ? "#ffffff" : "#1f2937",
+                    border: securitySubTab === "safety_organic" ? "1.5px solid #059669" : "1.5px solid #cbd5e1",
+                    padding: "0.65rem 1.25rem",
+                    borderRadius: "10px",
+                    fontWeight: 800,
+                    fontSize: "0.86rem",
+                    cursor: "pointer",
+                    boxShadow: securitySubTab === "safety_organic" ? "0 4px 12px rgba(5,150,105,0.25)" : "none"
+                  }}
+                >
+                  🌿 Food Safety & Organic Verification Tools
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSecuritySubTab("misuse")}
+                  style={{
+                    background: securitySubTab === "misuse" ? "#ef4444" : "#ffffff",
+                    color: securitySubTab === "misuse" ? "#ffffff" : "#1f2937",
+                    border: securitySubTab === "misuse" ? "1.5px solid #ef4444" : "1.5px solid #cbd5e1",
+                    padding: "0.65rem 1.25rem",
+                    borderRadius: "10px",
+                    fontWeight: 800,
+                    fontSize: "0.86rem",
+                    cursor: "pointer",
+                    boxShadow: securitySubTab === "misuse" ? "0 4px 12px rgba(239,68,68,0.25)" : "none"
+                  }}
+                >
+                  🚨 Misuse, Tamper & Mismatch Reports ({reports.length})
+                </button>
+              </div>
+
+              {securitySubTab === "safety_organic" ? (
+                <AdminOrganicCertification />
               ) : (
+                <>
+                  <h3 className="section-title mb-2">🚨 Misuse & Mismatch Reports</h3>
+                  {reports.length === 0 ? (
+                    <div className="glass-card text-center text-muted p-4">No reports found.</div>
+                  ) : (
                 <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
                   {reports.map(r => (
                     <div key={r._id} className="glass-card">
@@ -2412,8 +2468,10 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
-            </div>
+            </>
           )}
+        </div>
+      )}
 
           {/* ── CROPS MANAGEMENT ── */}
           {tab === "crops" && (
@@ -2714,6 +2772,13 @@ export default function AdminDashboard() {
           {tab === "waste" && (
             <div className="mt-3">
               <AdminWasteManagement />
+            </div>
+          )}
+
+          {/* 🌿 ORGANIC CERTIFICATION & STRICT CONTINUOUS AUDIT TAB 🌿 */}
+          {tab === "organic_cert" && (
+            <div className="mt-3">
+              <AdminOrganicCertification />
             </div>
           )}
 

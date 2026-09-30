@@ -588,11 +588,14 @@ export default function AddCrop() {
 
     recognition.onend = () => {
       setIsListening(false);
-      // Restart cleanly only if idle & not speaking/processing
+      // Restart cleanly only if wizard is active & not speaking/processing
+      // IMPORTANT: Create a FRESH recognition instance via startContinuousListening()
+      // because a recognition object that has fired 'onend' cannot be .start()-ed again
+      // on many browsers (especially mobile Chrome) — it throws InvalidStateError.
       if (wizardStepRef.current !== 'IDLE' && wizardStepRef.current !== 'COMPLETED' && !isSpeakingRef.current && !isProcessingRef.current) {
          setTimeout(() => {
             if (wizardStepRef.current !== 'IDLE' && wizardStepRef.current !== 'COMPLETED' && !isSpeakingRef.current && !isProcessingRef.current) {
-              try { recognition.start(); } catch(e) {}
+              startContinuousListening(); // Create fresh instance instead of reusing dead one
             }
          }, 350);
       }
@@ -954,7 +957,8 @@ export default function AddCrop() {
 
     setFilledFields({});
     setRetryCount(0);
-    setWizardStep('NAME');
+    // Don't set wizardStep here — askStep('NAME') does it internally.
+    // Setting it twice creates a brief window where wizardStepRef is stale.
     askStep('NAME');
   };
 
@@ -962,10 +966,13 @@ export default function AddCrop() {
     stopRecognition();
     stopTTS();
     setWizardStep('IDLE');
+    wizardStepRef.current = 'IDLE'; // Sync ref immediately to prevent stale race conditions
     setWizardMsg("");
     setIsSpeaking(false);
+    isSpeakingRef.current = false;
     setIsListening(false);
     setIsProcessing(false);
+    isProcessingRef.current = false;
     setInterim("");
   };
 

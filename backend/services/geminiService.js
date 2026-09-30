@@ -14,14 +14,57 @@ export const getGenAI = () => {
   return genAI;
 };
 
+// Call OpenAI GPT if key is configured in environment
+export const callOpenAI = async (prompt) => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey || apiKey.trim().length < 10) return null;
+  const models = ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"];
+  for (const m of models) {
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey.trim()}`
+        },
+        body: JSON.stringify({
+          model: m,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.2
+        })
+      });
+      if (response.ok) {
+        const json = await response.json();
+        const content = json?.choices?.[0]?.message?.content;
+        if (content) return content;
+      }
+    } catch (err) {
+      console.warn(`[OpenAI] ${m} error:`, err.message);
+    }
+  }
+  return null;
+};
+
 export const callGeminiWithFallback = async (promptOrParts) => {
+  // If OpenAI key is explicitly provided, try GPT first for highest precision
+  if (typeof promptOrParts === "string" && process.env.OPENAI_API_KEY) {
+    const gptResponse = await callOpenAI(promptOrParts);
+    if (gptResponse) return gptResponse;
+  }
+
   const ai = getGenAI();
-  if (!ai) return null;
+  if (!ai) {
+    // If no Gemini instance but OpenAI key exists, try OpenAI
+    if (typeof promptOrParts === "string") return await callOpenAI(promptOrParts);
+    return null;
+  }
+
+  // Official production Google Gemini model identifiers
   const models = [
-    "gemini-3.5-flash-lite",
-    "gemini-3.6-flash",
-    "gemini-flash-latest",
-    "gemini-1.5-flash"
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-2.5-flash",
+    "gemini-1.5-pro"
   ];
   for (const m of models) {
     try {
@@ -31,8 +74,13 @@ export const callGeminiWithFallback = async (promptOrParts) => {
       });
       if (res && res.text) return res.text;
     } catch (err) {
-      console.warn(`[Gemini] ${m} unavailable (${err.status || err.message}). Trying fallback...`);
+      console.warn(`[Gemini] ${m} unavailable (${err.status || err.message}). Trying next model...`);
     }
+  }
+
+  // Final fallback to OpenAI if not tried yet
+  if (typeof promptOrParts === "string") {
+    return await callOpenAI(promptOrParts);
   }
   return null;
 };

@@ -1,0 +1,29 @@
+# RythuJanaSethu ML Service - Python Dependencies
+# Install: pip install -r requirements.txt
+
+# ── Core API Framework ──
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+pydantic>=2.0
+
+# ── Ensembled Yield Prediction (CatBoost + LightGBM + XGBoost → Ridge) ──
+catboost>=1.2
+lightgbm>=4.0
+xgboost>=2.0
+scikit-learn>=1.4
+
+# ── Pest Detection (SAHI + YOLOv11) ──
+ultralytics>=8.3         # YOLOv11 engine
+sahi>=0.11               # Slicing Aided Hyper Inference
+opencv-python>=4.9
+
+# ── Soil Analyzer (MobileNetV4 / TinyML) ──
+tensorflow>=2.16
+
+# ── Hyperspectral SVM ──
+joblib>=1.3
+
+# ── Scientific Computing ──
+numpy>=1.26
+pandas>=2.1
+scipy>=1.12

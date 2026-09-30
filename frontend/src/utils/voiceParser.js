@@ -377,7 +377,6 @@ export function parseVoiceToFormMultilingual(transcript, lang = "en") {
   }
 
   return updates;
-  return updates;
 }
 
 import { BASE_URL } from "../api/api";

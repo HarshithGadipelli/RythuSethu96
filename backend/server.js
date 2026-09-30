@@ -38,6 +38,10 @@ import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import translationRoutes from "./routes/translationRoutes.js";
 import soilTestRoutes from "./routes/soilTestRoutes.js";
 import trustScoreRoutes from "./routes/trustScoreRoutes.js";
+import nalabheemaRoutes from "./routes/nalabheemaRoutes.js";
+import packagingRoutes from "./routes/packagingRoutes.js";
+import organicCertRoutes from "./routes/organicCertRoutes.js";
+
 
 import { GoogleGenAI } from "@google/genai";
 
@@ -224,6 +228,10 @@ app.use("/api/translate", translationRoutes);
 app.use("/api/soil-test", soilTestRoutes);
 app.use("/api/soil-testing", soilTestRoutes);
 app.use("/api/trust-score", trustScoreRoutes);
+app.use("/api/nalabheema", nalabheemaRoutes);
+app.use("/api/packaging", packagingRoutes);
+app.use("/api/organic", organicCertRoutes);
+app.use("/api/ml", mlRoutes);
 
 app.get("/", (req, res) => {
   res.send("Rythu Jana Sethu Backend Running");
