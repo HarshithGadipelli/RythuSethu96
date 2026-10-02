@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "build": "node -e \"console.log('Backend build ready')\"",
     "start": "node server.js",
     "predev": "kill-port 5000 || exit 0",
     "dev": "nodemon server.js"

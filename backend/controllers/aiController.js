@@ -187,13 +187,7 @@ Return pure JSON:
     }
 
     // --- High-Performance Multilingual Heuristic Fallback Parser ---
-    let currentUtterance = text;
-    let existingForm = {};
-    const contextMatch = text.match(/I already have: (\{.*\}). User says: "(.*)"/s);
-    if (contextMatch) {
-      try { existingForm = JSON.parse(contextMatch[1]); } catch(e) {}
-      currentUtterance = contextMatch[2];
-    }
+    // (currentUtterance and existingForm are already extracted above)
 
     // Translate regional languages into English for NLP analysis
     const englishText = await translateToEnglish(currentUtterance);
