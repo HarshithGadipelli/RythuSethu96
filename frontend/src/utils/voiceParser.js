@@ -1,5 +1,4 @@
 // Multilingual Voice Parser for Rythu Sethu
-import { LANG_MAP } from "./useVoiceInput";
 
 export const CROPS_MAP = {
   // English & Slangs
@@ -28,6 +27,16 @@ export const CROPS_MAP = {
   coconut: "Coconut", nariyal: "Coconut", kobbari: "Coconut",
   pomegranate: "Pomegranate", anar: "Pomegranate", danimma: "Pomegranate",
   papaya: "Papaya", papita: "Papaya", boppayi: "Papaya",
+  watermelon: "Watermelon", watermelons: "Watermelon", tarbooj: "Watermelon", tarbuz: "Watermelon", kalingar: "Watermelon", puchakaya: "Watermelon",
+  grapes: "Grapes", grape: "Grapes", angoor: "Grapes", angur: "Grapes", draksha: "Grapes",
+  guava: "Guava", amrood: "Guava", amrud: "Guava", jamakaya: "Guava", jamapandu: "Guava",
+  soybean: "Soybean", soya: "Soybean", soyabean: "Soybean",
+  mustard: "Mustard", rai: "Mustard", sarson: "Mustard", aavalu: "Mustard", avalu: "Mustard",
+  peas: "Peas", pea: "Peas", greenpeas: "Peas", matar: "Peas", batanilu: "Peas", batani: "Peas",
+  cucumber: "Cucumber", cucumbers: "Cucumber", kheera: "Cucumber", khira: "Cucumber", dosakaya: "Cucumber", dosakai: "Cucumber",
+  drumstick: "Drumstick", drumsticks: "Drumstick", moringa: "Drumstick", munagakaya: "Drumstick", sahjan: "Drumstick",
+  coriander: "Coriander", cilantro: "Coriander", dhaniya: "Coriander", kothimeera: "Coriander", kottimeera: "Coriander",
+  bittergourd: "BitterGourd", "bitter gourd": "BitterGourd", karela: "BitterGourd", kakarakaya: "BitterGourd",
 
   // Telugu
   టమోటా: "Tomato", టమోటాలు: "Tomato", తమోటా: "Tomato", టమాట: "Tomato", నాటుటమోటా: "Tomato",
@@ -54,6 +63,16 @@ export const CROPS_MAP = {
   చెరకు: "Sugarcane", చెరుకు: "Sugarcane",
   కొబ్బరి: "Coconut", కొబ్బరికాయ: "Coconut",
   దానిమ్మ: "Pomegranate", బొప్పాయి: "Papaya",
+  పుచ్చకాయ: "Watermelon", పుచ్చకాయలు: "Watermelon",
+  ద్రాక్ష: "Grapes", ద్రాక్షపండ్లు: "Grapes",
+  జామకాయ: "Guava", జామపండు: "Guava",
+  సోయాబీన్: "Soybean", సోయా: "Soybean",
+  ఆవాలు: "Mustard", ఆవాలులు: "Mustard",
+  బఠానీలు: "Peas", బఠానీ: "Peas",
+  దోసకాయ: "Cucumber", దోసకాయలు: "Cucumber",
+  మునగకాయ: "Drumstick", మునగకాయలు: "Drumstick",
+  కొత్తిమీర: "Coriander",
+  కాకరకాయ: "BitterGourd", కాకరకాయలు: "BitterGourd",
 
   // Hindi
   टमाटर: "Tomato", आलू: "Potato", प्याज: "Onion", चावल: "Rice", धान: "Rice", गेहूं: "Wheat", गेहूँ: "Wheat",
@@ -61,6 +80,8 @@ export const CROPS_MAP = {
   मूंगफली: "Groundnut", मक्का: "Maize", भुट्टा: "Maize", आम: "Mango", केला: "Banana", सेब: "Apple",
   भिंडी: "Okra", बैंगन: "Brinjal", पत्तागोभी: "Cabbage", फूलगोभी: "Cauliflower", गाजर: "Carrot", पालक: "Spinach",
   दालें: "Pulses", दाल: "Pulses", चना: "Pulses", गन्ना: "Sugarcane", नारियल: "Coconut", अनार: "Pomegranate", पपीता: "Papaya",
+  तरबूज: "Watermelon", अंगूर: "Grapes", अमरूद: "Guava", सोयाबीन: "Soybean", सरसों: "Mustard", राई: "Mustard",
+  मटर: "Peas", खीरा: "Cucumber", सहजन: "Drumstick", धनिया: "Coriander", करेला: "BitterGourd",
 
   // Kannada
   ಟೊಮೆಟೊ: "Tomato", ಆಲೂಗಡ್ಡೆ: "Potato", ಈರುಳ್ಳಿ: "Onion", ಅಕ್ಕಿ: "Rice", ಭತ್ತ: "Rice", ಗೋಧಿ: "Wheat",
@@ -68,21 +89,26 @@ export const CROPS_MAP = {
   ನೆಲಗಡಲೆ: "Groundnut", ಜೋಳ: "Maize", ಮಾವು: "Mango", ಬಾಳೆ: "Banana", ಸೇಬು: "Apple", ಬೆಂಡೆಕಾಯಿ: "Okra",
   ಬದನೆಕಾಯಿ: "Brinjal", ಕೋಸು: "Cabbage", ಹೂಕೋಸು: "Cauliflower", ಕ್ಯಾರೆಟ್: "Carrot", ಪಾಲಕ್: "Spinach",
   ಬೇಳೆ: "Pulses", ಕಬ್ಬು: "Sugarcane", ತೆಂಗಿನಕಾಯಿ: "Coconut", ದಾಳಿಂಬೆ: "Pomegranate", ಪರಂಗಿ: "Papaya",
+  ಕಲ್ಲಂಗಡಿ: "Watermelon", ದ್ರಾಕ್ಷಿ: "Grapes", ಸೀಬೆಹಣ್ಣು: "Guava", ಸೋಯಾಬೀನ್: "Soybean", ಸಾಸಿವೆ: "Mustard",
+  ಬಟಾಣಿ: "Peas", ಸೌತೆಕಾಯಿ: "Cucumber", ನುಗ್ಗೆಕಾಯಿ: "Drumstick", ಕೊತ್ತಂಬರಿ: "Coriander", ಹಾಗಲಕಾಯಿ: "BitterGourd",
 
   // Tamil
   தக்காளி: "Tomato", உருளைக்கிழங்கு: "Potato", வெங்காயம்: "Onion", அரிசி: "Rice", நெல்: "Rice", கோதுமை: "Wheat",
   பருத்தி: "Cotton", மிளகாய்: "Chili", பூண்டு: "Garlic", இஞ்சி: "Ginger", மஞ்சள்: "Turmeric",
   வேர்க்கடலை: "Groundnut", மக்காச்சோளம்: "Maize", மாம்பழம்: "Mango", வாழைப்பழம்: "Banana", ஆப்பிள்: "Apple",
   வெண்டைக்காய்: "Okra", கத்தரிக்காய்: "Brinjal", முட்டைக்கோஸ்: "Cabbage", காலிபிளவர்: "Cauliflower",
-  கேரட்: "Carrot", கீரை: "Spinach", பருப்பு: "Pulses", கரும்பு: "Sugarcane", தேங்காய்: "Coconut", மாதுளை: "Pomegranate", பப்பாளி: "Papaya"
+  கேரட்: "Carrot", கீரை: "Spinach", பருப்பு: "Pulses", கரும்பு: "Sugarcane", தேங்காய்: "Coconut", மாதுளை: "Pomegranate", பப்பாளி: "Papaya",
+  தர்பூசணி: "Watermelon", திராட்சை: "Grapes", கொய்யாப்பழம்: "Guava", சோயாபீன்: "Soybean", கடுகு: "Mustard",
+  பட்டாணி: "Peas", வெள்ளரிக்காய்: "Cucumber", முருங்கைக்காய்: "Drumstick", கொத்தமல்லி: "Coriander", பாகற்காய்: "BitterGourd"
 };
 
 export const CATEGORIES_MAP = {
   Tomato: "vegetable", Potato: "vegetable", Onion: "vegetable", Cabbage: "vegetable", Cauliflower: "vegetable", Carrot: "vegetable", Brinjal: "vegetable", Spinach: "vegetable", Okra: "vegetable",
-  Apple: "fruit", Mango: "fruit", Banana: "fruit", Pomegranate: "fruit", Papaya: "fruit", Coconut: "fruit",
+  Peas: "vegetable", Cucumber: "vegetable", Drumstick: "vegetable", BitterGourd: "vegetable",
+  Apple: "fruit", Mango: "fruit", Banana: "fruit", Pomegranate: "fruit", Papaya: "fruit", Coconut: "fruit", Watermelon: "fruit", Grapes: "fruit", Guava: "fruit",
   Rice: "grain", Wheat: "grain", Maize: "grain",
-  Pulses: "pulse", Groundnut: "pulse",
-  Chili: "spice", Garlic: "spice", Ginger: "spice", Turmeric: "spice",
+  Pulses: "pulse", Groundnut: "pulse", Soybean: "pulse",
+  Chili: "spice", Garlic: "spice", Ginger: "spice", Turmeric: "spice", Mustard: "spice", Coriander: "spice",
   Cotton: "other", Sugarcane: "other"
 };
 
@@ -189,23 +215,69 @@ export const CROP_BENCHMARKS = {
 // Convert spoken number (word or digit string) to numerical string (always positive)
 export function parseSpokenNumber(text) {
   if (!text) return "";
-  const cleaned = text.trim().toLowerCase().replace(/\s+/g, '').replace(/^-+/, '');
+  const lower = text.trim().toLowerCase();
+  const cleaned = lower.replace(/\s+/g, '').replace(/^-+/, '');
   if (NUMBERS_MAP[cleaned] !== undefined) {
     return String(Math.abs(NUMBERS_MAP[cleaned]));
   }
-  const words = text.toLowerCase().trim().split(/[\s,]+/);
+
+  // 1. Direct digit match e.g. "40", "50.5"
+  const digits = text.match(/\d+(?:\.\d+)?/);
+  if (digits) {
+    const num = Math.abs(parseFloat(digits[0]));
+    if (!isNaN(num)) return String(num);
+  }
+
+  const words = lower.split(/[\s,]+/);
+
+  // 2. Check compound pairs e.g. "twenty five" (20 + 5 = 25), "నలభై ఐదు" (40 + 5 = 45), "तीस पांच" (30 + 5 = 35)
+  for (let i = 0; i < words.length - 1; i++) {
+    const w1 = words[i].replace(/^-+/, '');
+    const w2 = words[i + 1].replace(/^-+/, '');
+    if (NUMBERS_MAP[w1 + w2] !== undefined) {
+      return String(Math.abs(NUMBERS_MAP[w1 + w2]));
+    }
+    const val1 = NUMBERS_MAP[w1];
+    const val2 = NUMBERS_MAP[w2];
+    if (val1 !== undefined && val2 !== undefined) {
+      if (val1 >= 20 && val1 <= 90 && val2 >= 1 && val2 <= 9) {
+        return String(val1 + val2);
+      }
+      if (val1 === 100 && val2 >= 1 && val2 <= 99) {
+        return String(val1 + val2);
+      }
+    }
+  }
+
+  // 3. Single word number match
   for (const w of words) {
     const cleanWord = w.replace(/^-+/, '');
     if (NUMBERS_MAP[cleanWord] !== undefined) {
       return String(Math.abs(NUMBERS_MAP[cleanWord]));
     }
   }
-  const digits = text.match(/\d+(?:\.\d+)?/);
-  if (digits) {
-    const num = Math.abs(parseFloat(digits[0]));
-    return isNaN(num) ? "" : String(num);
-  }
+
   return text.trim().replace(/^-+/, '');
+}
+
+// Helper to match a token against a unit alias accurately without false substring hits
+export function matchesUnitToken(token, alias) {
+  if (!token || !alias) return false;
+  const t = token.toLowerCase().trim();
+  const a = alias.toLowerCase().trim();
+  if (t === a) return true;
+  // Attached numeric e.g. "50kg", "10quintal", "5bags"
+  if (/^\d+(?:\.\d+)?/.test(t)) {
+    const stripped = t.replace(/^\d+(?:\.\d+)?/, '');
+    if (stripped === a || (stripped.endsWith('s') && stripped.slice(0, -1) === a)) return true;
+  }
+  // If alias length >= 4, allow prefix/plural match e.g. "quintals" -> "quintal", "kilograms" -> "kilogram"
+  if (a.length >= 4 && (t.startsWith(a) || a.startsWith(t))) return true;
+  // Plural 's' match for single word
+  if (t.endsWith('s') && t.slice(0, -1) === a) return true;
+  // Indic script prefix matching (e.g. "కేజీలు" matching "కేజీ")
+  if (!/^[a-z0-9]+$/i.test(a) && (t === a || t.startsWith(a))) return true;
+  return false;
 }
 
 // Convert spoken digit sequence (e.g. for phone numbers, OTPs, pincodes) to digits
@@ -245,28 +317,41 @@ export function parseVoiceToFormMultilingual(transcript, lang = "en") {
   const lower = transcript.toLowerCase().trim();
   const updates = {};
 
-  // 0. Detect Voice Commands / Actions
-  if (/(submit|post|save|list|finish|done|ammali|ammandi|bechna|becho|సమర్పించు|దాఖలు|మార్కెట్|जमा करें|सहेजें|ಸಲ್ಲಿಸು|சமர்ப்பி)/i.test(lower)) {
+  // 0. Detect Pure Voice Commands (Only if explicitly issued as a standalone command)
+  const isPureSubmit = /^(submit|post|save|list item|finish|done|సమర్పించు|దాఖలు|మార్కెట్|जमा करें|सहेजें|ಸಲ್ಲಿಸು|சமர்ப்பி)$/i.test(lower);
+  if (isPureSubmit) {
     updates.action = "submit";
     return updates;
   }
-  if (/(clear|reset|delete all|erase|malli|fir se|రద్దు|తుడిచివేయి|हटाएं|खाली करें|ಅಳಿಸು|அழி)/i.test(lower)) {
+  const isPureClear = /^(clear|reset|delete all|erase|clear form|తుడిచివేయి|हटाएं|खाली करें|ಅಳಿಸು|அழி)$/i.test(lower);
+  if (isPureClear) {
     updates.action = "clear";
     return updates;
   }
-  if (/(cancel|close|exit|stop|quit|aapu|bandh|ఆపు|మూసివేయి|రద్దు|బంద్|बंद करें|ರದ್ದು|ரத்து)/i.test(lower)) {
+  const isPureCancel = /^(cancel|close|exit|stop|quit|aapu|bandh|ఆపు|మూసివేయి|రద్దు|బంద్|बंद करें|ರದ್ದು|ரத்து)$/i.test(lower);
+  if (isPureCancel) {
     updates.action = "cancel";
     return updates;
   }
 
-  // 1. Detect Crop Name - use substring matching to handle phonetic variants
-  for (const [key, value] of Object.entries(CROPS_MAP)) {
+  // 1. Detect Crop Name - sort by length descending to match specific phrases first
+  // Use strict word boundary for ASCII to prevent "price" matching "rice", "speak" matching "peas", etc.
+  const words = lower.split(/[\s,!?.;:]+/);
+  const sortedCrops = Object.entries(CROPS_MAP).sort((a, b) => b[0].length - a[0].length);
+  for (const [key, value] of sortedCrops) {
     const keyLower = key.toLowerCase();
-    // Match if the full key appears as a word boundary or substring in the transcript
-    if (
-      lower.split(/[\s,]+/).some(tok => tok === keyLower || tok.startsWith(keyLower) || keyLower.startsWith(tok.substring(0, Math.max(4, tok.length - 1))))
-      || lower.includes(keyLower)
-    ) {
+    const isAscii = /^[a-z0-9\s]+$/i.test(keyLower);
+    let matched = false;
+
+    if (isAscii) {
+      const regex = new RegExp(`(^|[^a-z0-9])${keyLower}([^a-z0-9]|$)`, 'i');
+      matched = regex.test(lower);
+    } else {
+      const indicRegex = new RegExp(`(^|[\\s,!?.;:])${keyLower}`, 'i');
+      matched = words.includes(keyLower) || indicRegex.test(lower) || (keyLower.length >= 3 && lower.includes(keyLower));
+    }
+
+    if (matched) {
       updates.name = value;
       if (CATEGORIES_MAP[value]) updates.category = CATEGORIES_MAP[value];
       break;
@@ -308,12 +393,12 @@ export function parseVoiceToFormMultilingual(transcript, lang = "en") {
       const dist = Math.abs(index - i);
       if (dist > 4) return; // Only look within radius of 4
 
-      // Check if this token is a unit
+      // Check if this token is a unit using matchesUnitToken
       for (const [unitKey, unitAliases] of Object.entries(UNITS_MAP)) {
-        if (unitAliases.some(alias => t.includes(alias.toLowerCase()))) {
+        if (unitAliases.some(alias => matchesUnitToken(t, alias))) {
           if (dist < minQtyDist) {
             minQtyDist = dist;
-            foundUnit = unitKey;
+            foundUnit = unitKey === 'ton' ? 'tonne' : unitKey;
           }
         }
       }
@@ -379,7 +464,7 @@ export function parseVoiceToFormMultilingual(transcript, lang = "en") {
   return updates;
 }
 
-import { BASE_URL } from "../api/api";
+import { BASE_URL } from "../api/api.js";
 
 let activeAudioNodes = new Set();
 let currentTTSResolver = null;

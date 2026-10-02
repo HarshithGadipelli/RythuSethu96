@@ -13,7 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLang } from '../../context/LangContext';
 import { 
   playTTS, stopTTS, parseVoiceToFormMultilingual, 
-  CROPS_MAP, CATEGORIES_MAP, UNITS_MAP, parseSpokenNumber 
+  CROPS_MAP, CATEGORIES_MAP, UNITS_MAP, parseSpokenNumber, matchesUnitToken 
 } from '../../utils/voiceParser';
 import { useVoiceInput, LANG_MAP } from '../../utils/useVoiceInput';
 
@@ -154,14 +154,20 @@ export default function AddCrop() {
 
   const STEP_CHIPS = {
     NAME: [
-      { label: "🍅 Tomato", val: "Tomato" },
-      { label: "🥔 Potato", val: "Potato" },
-      { label: "🧅 Onion", val: "Onion" },
-      { label: "🌾 Rice", val: "Rice" },
-      { label: "🌶️ Chili", val: "Chili" },
-      { label: "🥭 Mango", val: "Mango" },
-      { label: "🍌 Banana", val: "Banana" },
-      { label: "🥕 Carrot", val: "Carrot" }
+      { label: "🍅 Tomato (టమోటా)", val: "Tomato" },
+      { label: "🧅 Onion (ఉల్లిపాయ)", val: "Onion" },
+      { label: "🥔 Potato (బంగాళదుంప)", val: "Potato" },
+      { label: "🌾 Rice (వరి / బియ్యం)", val: "Rice" },
+      { label: "🌶️ Chili (మిర్చి)", val: "Chili" },
+      { label: "🥭 Mango (మామిడి)", val: "Mango" },
+      { label: "🍌 Banana (అరటి)", val: "Banana" },
+      { label: "🥕 Carrot (క్యారెట్)", val: "Carrot" },
+      { label: "☁️ Cotton (పత్తి)", val: "Cotton" },
+      { label: "🥜 Groundnut (పల్లీలు)", val: "Groundnut" },
+      { label: "🌽 Maize (మొక్కజొన్న)", val: "Maize" },
+      { label: "🍉 Watermelon (పుచ్చకాయ)", val: "Watermelon" },
+      { label: "🍇 Grapes (ద్రాక్ష)", val: "Grapes" },
+      { label: "🌿 Organic Waste (వ్యర్థాలు)", val: "Bio Waste" }
     ],
     QUANTITY: [
       { label: "10 kg", val: "10 kg" },
@@ -169,8 +175,12 @@ export default function AddCrop() {
       { label: "50 kg", val: "50 kg" },
       { label: "100 kg", val: "100 kg" },
       { label: "500 kg", val: "500 kg" },
-      { label: "1 Quintal", val: "1 quintal" },
-      { label: "10 Bags", val: "10 bags" }
+      { label: "1 Quintal (100kg)", val: "1 quintal" },
+      { label: "5 Quintals", val: "5 quintal" },
+      { label: "10 Quintals", val: "10 quintal" },
+      { label: "5 Bags", val: "5 bags" },
+      { label: "10 Bags", val: "10 bags" },
+      { label: "1 Tonne", val: "1 tonne" }
     ],
     PRICE: [
       { label: "₹20 /kg", val: "20" },
@@ -179,7 +189,13 @@ export default function AddCrop() {
       { label: "₹50 /kg", val: "50" },
       { label: "₹60 /kg", val: "60" },
       { label: "₹80 /kg", val: "80" },
-      { label: "₹100 /kg", val: "100" }
+      { label: "₹100 /kg", val: "100" },
+      { label: "₹150 /kg", val: "150" },
+      { label: "₹2,500 /quintal", val: "2500" }
+    ],
+    CONFIRM_SUBMIT: [
+      { label: "✅ Yes, Submit (అవును / हाँ)", val: "yes" },
+      { label: "❌ No, Start Over (వద్దు / नहीं)", val: "no" }
     ]
   };
 
@@ -336,8 +352,65 @@ export default function AddCrop() {
     setIsListening(false);
   };
 
+  // Multilingual Affirmative (Yes) and Negative (No) Detection
+  const isAffirmative = (text) => {
+    if (!text) return false;
+    const clean = text.toLowerCase().trim();
+    const yesTokens = [
+      "yes", "yeah", "yep", "sure", "ok", "okay", "submit", "list", "confirm", "done", "save", "proceed",
+      "అవును", "సరే", "హా", "అవునండి", "చేయండి", "సమర్పించు", "లిస్ట్ చేయండి", "అవ్వను", "ఓకే",
+      "avunu", "sare", "ha", "avunandi", "cheyandi", "list cheyandi",
+      "हाँ", "हां", "हाँजी", "जी", "हांजी", "ठीक", "ठीक है", "जमा करें", "सहेजें", "कर दो", "लिस्ट करो",
+      "haan", "haanji", "theek", "theek hai", "sahi", "ji haan",
+      "ஆம்", "ஆமாம்", "சரி", "சமர்ப்பி", "செய்",
+      "aam", "aamaam", "sari",
+      "ಹೌದು", "ಸರಿ", "ಸಲ್ಲಿಸು", "ಮಾಡು",
+      "haudu", "sari", "houdu"
+    ];
+    return yesTokens.some(tok => {
+      if (clean === tok) return true;
+      if (clean.includes(tok)) {
+        const words = clean.split(/[\s,!?.]+/);
+        return words.includes(tok) || clean.startsWith(tok + " ") || clean.endsWith(" " + tok) || clean.includes(" " + tok + " ");
+      }
+      return false;
+    });
+  };
+
+  const isNegative = (text) => {
+    if (!text) return false;
+    const clean = text.toLowerCase().trim();
+    const noTokens = [
+      "no", "nope", "cancel", "stop", "restart", "start over", "reset", "clear", "don't", "dont",
+      "కాదు", "వద్దు", "వద్దండి", "రద్దు", "ఆపు", "మళ్లీ", "మళ్ళీ", "కాదండి",
+      "kadu", "vaddu", "vaddhu", "raddu", "malli", "aapu",
+      "नहीं", "ना", "मत", "रद्द", "बंद", "फिर से", "रोको",
+      "nahi", "nahin", "na", "mat", "radd", "fir se", "roko",
+      "இல்லை", "வேண்டாம்", "ரத்து", "நிறுத்து",
+      "illai", "vendaam", "niruthu",
+      "ಇಲ್ಲ", "ಬೇಡ", "ರದ್ದು", "ನಿಲ್ಲಿಸು", "ಮತ್ತೆ",
+      "illa", "beda", "raddu"
+    ];
+    return noTokens.some(tok => {
+      if (clean === tok) return true;
+      if (clean.includes(tok)) {
+        const words = clean.split(/[\s,!?.]+/);
+        return words.includes(tok) || clean.startsWith(tok + " ") || clean.endsWith(" " + tok) || clean.includes(" " + tok + " ");
+      }
+      return false;
+    });
+  };
+
   // ─── Conversational Prompts & Acknowledgments in Indian Languages ───
   const getPromptForStep = (step, currentCrop = "", currentQty = "", currentUnit = "kg") => {
+    const unitInLang = {
+      te: currentUnit === 'kg' ? 'కేజీ' : currentUnit === 'bag' ? 'బస్తా' : currentUnit === 'quintal' ? 'క్వింటాల్' : currentUnit,
+      hi: currentUnit === 'kg' ? 'किलो' : currentUnit === 'bag' ? 'बोरी' : currentUnit === 'quintal' ? 'क्विंटल' : currentUnit,
+      ta: currentUnit === 'kg' ? 'கிலோ' : currentUnit === 'bag' ? 'மூட்டை' : currentUnit,
+      kn: currentUnit === 'kg' ? 'ಕೆಜಿ' : currentUnit === 'bag' ? 'ಮೂಟೆ' : currentUnit,
+      en: currentUnit
+    };
+
     const prompts = {
       NAME: {
         en: "What crop or produce do you want to sell? Please speak after the chime.",
@@ -355,17 +428,17 @@ export default function AddCrop() {
       },
       PRICE: {
         en: `What is your selling price per ${currentUnit} in rupees? For example, 40 rupees.`,
-        te: `ఒక ${currentUnit} అమ్మకపు ధర ఎన్ని రూపాయలు? ఉదాహరణకు 40 రూపాయలు.`,
-        hi: `प्रति ${currentUnit} आपकी बिक्री कीमत कितने रुपये है? जैसे 40 रुपये।`,
-        ta: `ஒரு ${currentUnit} விற்பனை விலை எத்தனை ரூபாய்? உதாரணத்திற்கு 40 ரூபாய்.`,
-        kn: `ಪ್ರತಿ ${currentUnit} ಗೆ ನಿಮ್ಮ ಮಾರಾಟದ ಬೆಲೆ ಎಷ್ಟು ರೂಪಾಯಿ? ಉದಾಹರಣೆಗೆ 40 ರೂಪಾಯಿ.`
+        te: `ఒక ${unitInLang.te} అమ్మకపు ధర ఎన్ని రూపాయలు? ఉదాహరణకు 40 రూపాయలు.`,
+        hi: `प्रति ${unitInLang.hi} आपकी बिक्री कीमत कितने रुपये है? जैसे 40 रुपये।`,
+        ta: `ஒரு ${unitInLang.ta} விற்பனை விலை எத்தனை ரூபாய்? உதாரணத்திற்கு 40 ரூபாய்.`,
+        kn: `ಪ್ರತಿ ${unitInLang.kn} ಗೆ ನಿಮ್ಮ ಮಾರಾಟದ ಬೆಲೆ ಎಷ್ಟು ರೂಪಾಯಿ? ಉದಾಹರಣೆಗೆ 40 ರೂಪಾಯಿ.`
       },
       CONFIRM_SUBMIT: {
-        en: "Do you want to submit this listing? Please say Yes or No.",
-        te: "మీరు ఈ వివరాలను సమర్పించాలనుకుంటున్నారా? దయచేసి అవును లేదా కాదు అని చెప్పండి.",
-        hi: "क्या आप इस लिस्टिंग को सबमिट करना चाहते हैं? कृपया हाँ या ना कहें।",
-        ta: "இந்த பட்டியலைச் சமர்ப்பிக்க விரும்புகிறீர்களா? ஆம் அல்லது இல்லை என்று சொல்லுங்கள்.",
-        kn: "ನೀವು ಇದನ್ನು ಸಲ್ಲಿಸಲು ಬಯಸುವಿರಾ? ದಯವಿಟ್ಟು ಹೌದು ಅಥವಾ ಇಲ್ಲ ಎಂದು ಹೇಳಿ."
+        en: `All details collected: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${formDataRef.current.unit || currentUnit} at ₹${formDataRef.current.price || ''}. Do you want to submit this listing? Please say Yes or No.`,
+        te: `వివరాలు నమోదు చేశాను: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.te}, ధర ₹${formDataRef.current.price || ''}. మీరు ఈ వివరాలను సమర్పించాలనుకుంటున్నారా? దయచేసి అవును లేదా కాదు అని చెప్పండి.`,
+        hi: `विवरण दर्ज किया गया: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.hi}, ₹${formDataRef.current.price || ''} प्रति यूनिट। क्या आप इसे सबमिट करना चाहते हैं? कृपया हाँ या ना कहें।`,
+        ta: `விவரங்கள் பெறப்பட்டன: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.ta}, விலை ₹${formDataRef.current.price || ''}. இந்த பட்டியலைச் சமர்ப்பிக்க விரும்புகிறீர்களா? ஆம் அல்லது இல்லை என்று சொல்லுங்கள்.`,
+        kn: `ವಿವರಗಳನ್ನು ನಮೂದಿಸಲಾಗಿದೆ: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.kn}, ಬೆಲೆ ₹${formDataRef.current.price || ''}. ನೀವು ಇದನ್ನು ಸಲ್ಲಿಸಲು ಬಯಸುವಿರಾ? ಹೌದು ಅಥವಾ ಇಲ್ಲ ಎಂದು ಹೇಳಿ.`
       },
       COMPLETED: {
         en: "All details filled! Please review the form and click List Item to publish.",
@@ -381,62 +454,28 @@ export default function AddCrop() {
   const getSuccessAck = (step, val1 = "", val2 = "") => {
     const acks = {
       NAME: {
-        en: `Got it! Added ${val1} to your listing.`,
+        en: `Got it! Added ${val1}.`,
         te: `సరే! ${val1} అని తీసుకున్నాను.`,
-        hi: `समझ गया! ${val1} जोड़ दिया गया है।`,
+        hi: `समझ गया! ${val1} जोड़ दिया गया।`,
         ta: `புரிந்தது! ${val1} சேர்க்கப்பட்டது.`,
         kn: `ಅರ್ಥವಾಯಿತು! ${val1} ಸೇರಿಸಲಾಗಿದೆ.`
       },
       QUANTITY: {
         en: `Understood! Added ${val1} ${val2}.`,
         te: `సరే! ${val1} ${val2} నమోదు చేశాను.`,
-        hi: `बढ़िया! ${val1} ${val2} दर्ज कर दिया गया।`,
+        hi: `बढ़िया! ${val1} ${val2} दर्ज किया।`,
         ta: `அருமை! ${val1} ${val2} சேர்க்கப்பட்டது.`,
         kn: `ಉತ್ತಮ! ${val1} ${val2} ಸೇರಿಸಲಾಗಿದೆ.`
       },
       PRICE: {
         en: `Perfect! Selling price set to ₹${val1} per ${val2}.`,
-        te: `అద్భుతం! ధర ఒక ${val2}కి ₹${val1}గా నిర్ణయించాను.`,
-        hi: `शानदार! प्रति ${val2} कीमत ₹${val1} तय कर दी गई।`,
-        ta: `மிக நன்று! விலை ஒரு ${val2}க்கு ₹${val1} என அமைக்கப்பட்டது.`,
+        te: `అద్భుతం! ఒక ${val2}కి ₹${val1}గా నిర్ణయించాను.`,
+        hi: `शानदार! प्रति ${val2} कीमत ₹${val1} तय की गई।`,
+        ta: `மிக நன்று! ஒரு ${val2}க்கு ₹${val1} என அமைக்கப்பட்டது.`,
         kn: `ಅದ್ಭುತ! ಪ್ರತಿ ${val2} ಗೆ ₹${val1} ಬೆಲೆ ನಿಗದಿಪಡಿಸಲಾಗಿದೆ.`
       }
     };
     return acks[step]?.[lang] || acks[step]?.en || "";
-  };
-
-  const getSilenceRetryAck = (step) => {
-    const retryAcks = {
-      NAME: {
-        en: "I didn't hear you. What crop do you want to sell? Please speak now.",
-        te: "మీరు చెప్పింది వినపడలేదు. మీరు ఏ పంటను అమ్మాలనుకుంటున్నారు? దయచేసి మళ్లీ చెప్పండి.",
-        hi: "आपकी आवाज़ नहीं आई। आप कौन सी फसल बेचना चाहते हैं? कृपया फिर से बोलें।",
-        ta: "நீங்கள் பேசியது கேட்கவில்லை. என்ன பயிரை விற்க விரும்புகிறீர்கள்? மீண்டும் சொல்லுங்கள்.",
-        kn: "ನಿಮ್ಮ ಧ್ವನಿ ಕೇಳಿಸಲಿಲ್ಲ. ಯಾವ ಬೆಳೆಯನ್ನು ಮಾರಾಟ ಮಾಡಲು ಬಯಸುತ್ತೀರಿ? ದಯವಿಟ್ಟು ಮತ್ತೆ ಹೇಳಿ."
-      },
-      QUANTITY: {
-        en: "I didn't hear the quantity. How much quantity do you have? For example, 50 kg.",
-        te: "పరిమాణం వినపడలేదు. మీ వద్ద ఎంత పరిమాణం ఉంది? ఉదాహరణకు 50 కేజీలు అని చెప్పండి.",
-        hi: "मात्रा सुनाई नहीं दी। आपके पास कितनी फसल है? जैसे 50 किलो बोलें।",
-        ta: "அளவு கேட்கவில்லை. எவ்வளவு அளவு உள்ளது? உதாரணத்திற்கு 50 கிலோ என்று சொல்லுங்கள்.",
-        kn: "ಪ್ರಮಾಣ ಕೇಳಿಸಲಿಲ್ಲ. ಎಷ್ಟು ಪ್ರಮಾಣವಿದೆ? ಉದಾಹರಣೆಗೆ 50 ಕೆಜಿ ಎಂದು ಹೇಳಿ."
-      },
-      PRICE: {
-        en: "I didn't hear the price. What is the selling price in rupees? For example, 40.",
-        te: "ధర వినపడలేదు. ఒక కేజీ ధర ఎన్ని రూపాయలు? ఉదాహరణకు 40 అని చెప్పండి.",
-        hi: "कीमत सुनाई नहीं दी। कितने रुपये में बेचना चाहते हैं? जैसे 40 बोलें।",
-        ta: "விலை கேட்கவில்லை. எத்தனை ரூபாய்க்கு விற்க விரும்புகிறீர்கள்? உதாரணத்திற்கு 40.",
-        kn: "ಬೆಲೆ ಕೇಳಿಸಲಿಲ್ಲ. ಎಷ್ಟು ರೂಪಾಯಿಗೆ ಮಾರಾಟ ಮಾಡಲು ಬಯಸುತ್ತೀರಿ? ಉದಾಹರಣೆಗೆ 40."
-      },
-      CONFIRM_SUBMIT: {
-        en: "I didn't hear you. Please say Yes to submit or No to cancel.",
-        te: "వినపడలేదు. దయచేసి సమర్పించడానికి అవును లేదా కాదు అని చెప్పండి.",
-        hi: "मुझे सुनाई नहीं दिया। कृपया हाँ या ना कहें।",
-        ta: "கேட்கவில்லை. ஆம் அல்லது இல்லை என்று சொல்லுங்கள்.",
-        kn: "ಕೇಳಿಸಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಹೌದು ಅಥವಾ ಇಲ್ಲ ಎಂದು ಹೇಳಿ."
-      }
-    };
-    return retryAcks[step]?.[lang] || retryAcks[step]?.en || "";
   };
 
   const getUnrecognizedAck = (step, heard) => {
@@ -463,11 +502,11 @@ export default function AddCrop() {
         kn: `ದಯವಿಟ್ಟು ಬೆಲೆಯನ್ನು ರೂಪಾಯಿಗಳಲ್ಲಿ ಹೇಳಿ, ಉದಾಹರಣೆಗೆ 40 ರೂಪಾಯಿ.`
       },
       CONFIRM_SUBMIT: {
-        en: `I heard "${heard}". Please just say Yes or No.`,
-        te: `అర్థం కాలేదు. దయచేసి అవును లేదా కాదు అని మాత్రమే చెప్పండి.`,
-        hi: `कृपया केवल हाँ या ना कहें।`,
-        ta: `ஆம் அல்லது இல்லை என்று மட்டுமே சொல்லுங்கள்.`,
-        kn: `ದಯವಿಟ್ಟು ಹೌದು ಅಥವಾ ಇಲ್ಲ ಎಂದು ಮಾತ್ರ ಹೇಳಿ.`
+        en: `I heard "${heard}". Please just say Yes to submit or No to cancel.`,
+        te: `దయచేసి సమర్పించడానికి అవును లేదా రద్దు చేయడానికి కాదు అని చెప్పండి.`,
+        hi: `कृपया केवल सबमिट के लिए हाँ या रद्द के लिए ना कहें।`,
+        ta: `தயவுசெய்து ஆம் அல்லது இல்லை என்று மட்டுமே சொல்லுங்கள்.`,
+        kn: `ದಯವಿಟ್ಟು ಸಲ್ಲಿಸಲು ಹೌದು ಅಥವಾ ರದ್ದು ಮಾಡಲು ಇಲ್ಲ ಎಂದು ಹೇಳಿ.`
       }
     };
     return unrecAcks[step]?.[lang] || unrecAcks[step]?.en || "";
@@ -523,7 +562,7 @@ export default function AddCrop() {
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setWizardMsg("Speech recognition is not supported in this browser. Please use Chrome or Edge.");
+      setWizardMsg("Speech recognition is not supported in this browser. Please use Chrome or Edge, or tap the suggestion buttons below.");
       return;
     }
 
@@ -535,22 +574,20 @@ export default function AddCrop() {
     capturedTextRef.current = "";
     hasUserSpokenRef.current = false;
     setInterim("");
-    let micStarted = Date.now();
 
     recognition.onstart = () => {
       setIsListening(true);
       if (!isSpeakingRef.current) {
         setInterim("Listening... Please speak now 🎙️");
       }
-      micStarted = Date.now();
       
-      // Silence detector: If user doesn't speak for 10 seconds, prompt them
+      // Silence detector: If user doesn't speak for 12 seconds, prompt them
       if (initialSilenceTimerRef.current) clearTimeout(initialSilenceTimerRef.current);
       initialSilenceTimerRef.current = setTimeout(() => {
         if (!hasUserSpokenRef.current && !isSpeakingRef.current && wizardStepRef.current !== 'COMPLETED' && wizardStepRef.current !== 'IDLE') {
           handleNoSpeechDetected(wizardStepRef.current);
         }
-      }, 15000); // 15 seconds silence
+      }, 12000);
     };
 
     recognition.onresult = (event) => {
@@ -564,40 +601,74 @@ export default function AddCrop() {
         currentText += event.results[i][0].transcript + " ";
       }
       currentText = currentText.trim();
+      if (!currentText) return;
+
       capturedTextRef.current = currentText;
       setInterim(currentText);
 
+      // Debounce natural conversational silence pause (1200ms)
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
-         // Auto-submit step on natural silence pause
-         const textToProcess = (capturedTextRef.current || currentText || "").trim();
-         if (textToProcess && !isProcessingRef.current && wizardStepRef.current !== 'COMPLETED') {
-            capturedTextRef.current = ""; // Clear immediately so it doesn't fire twice
-            processStepInput(wizardStepRef.current, textToProcess);
-         }
-      }, 1800); // Natural 1.8s conversational silence pause
+        const textToProcess = (capturedTextRef.current || currentText || "").trim();
+        if (
+          textToProcess && 
+          !textToProcess.startsWith("Listening...") &&
+          !isProcessingRef.current && 
+          wizardStepRef.current !== 'COMPLETED' && 
+          wizardStepRef.current !== 'IDLE'
+        ) {
+          capturedTextRef.current = "";
+          processStepInput(wizardStepRef.current, textToProcess);
+        }
+      }, 1200);
     };
 
     recognition.onerror = (event) => {
-      console.warn("Speech recognition error:", event.error);
+      console.warn("Speech recognition notice:", event.error);
       if (event.error === 'not-allowed') {
-        setWizardMsg("Microphone permission was not granted. You can tap the quick crop buttons below or type manually.");
+        setWizardMsg("Microphone permission was not granted. You can tap the quick suggestion buttons below or enter text manually.");
         stopWizard();
       }
     };
 
     recognition.onend = () => {
       setIsListening(false);
-      // Restart cleanly only if wizard is active & not speaking/processing
-      // IMPORTANT: Create a FRESH recognition instance via startContinuousListening()
-      // because a recognition object that has fired 'onend' cannot be .start()-ed again
-      // on many browsers (especially mobile Chrome) — it throws InvalidStateError.
-      if (wizardStepRef.current !== 'IDLE' && wizardStepRef.current !== 'COMPLETED' && !isSpeakingRef.current && !isProcessingRef.current) {
-         setTimeout(() => {
-            if (wizardStepRef.current !== 'IDLE' && wizardStepRef.current !== 'COMPLETED' && !isSpeakingRef.current && !isProcessingRef.current) {
-              startContinuousListening(); // Create fresh instance instead of reusing dead one
-            }
-         }, 350);
+      
+      // CRITICAL FIX: Flush any captured speech immediately so user speech is NEVER lost when Chrome ends stream!
+      const pendingText = (capturedTextRef.current || "").trim();
+      if (
+        pendingText && 
+        !pendingText.startsWith("Listening...") &&
+        !isProcessingRef.current && 
+        wizardStepRef.current !== 'IDLE' && 
+        wizardStepRef.current !== 'COMPLETED'
+      ) {
+        capturedTextRef.current = "";
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+          silenceTimerRef.current = null;
+        }
+        processStepInput(wizardStepRef.current, pendingText);
+        return;
+      }
+
+      // If no speech captured yet, restart listening cleanly if wizard is still active
+      if (
+        wizardStepRef.current !== 'IDLE' && 
+        wizardStepRef.current !== 'COMPLETED' && 
+        !isSpeakingRef.current && 
+        !isProcessingRef.current
+      ) {
+        setTimeout(() => {
+          if (
+            wizardStepRef.current !== 'IDLE' && 
+            wizardStepRef.current !== 'COMPLETED' && 
+            !isSpeakingRef.current && 
+            !isProcessingRef.current
+          ) {
+            startContinuousListening();
+          }
+        }, 250);
       }
     };
 
@@ -610,25 +681,35 @@ export default function AddCrop() {
     }
   };
 
-  // ─── Handle No Speech Detected: Acknowledge & Ask Again (Max 2 retries) ───
+  // ─── Handle No Speech Detected: Polite Prompt & Ask Again ───
   const handleNoSpeechDetected = (step) => {
     playChime('retry');
-    hasUserSpokenRef.current = false; // Reset so the detector can fire again
+    hasUserSpokenRef.current = false;
 
     setRetryCount(prev => {
       const next = prev + 1;
       if (next > 2) {
         const pauseMsg = lang === "te" 
-          ? "మైక్ పాజ్ చేయబడింది. మీకు కావలసినప్పుడు మైక్ బటన్ నొక్కండి లేదా వివరాలు నమోదు చేయండి." 
-          : "Are you still there? Please tap 'Tap to Speak' or select a suggestion below.";
+          ? "మైక్ పాజ్ చేయబడింది. మీకు కావలసినప్పుడు 'Tap to Speak' బటన్ నొక్కండి లేదా సూచనలను ఎంచుకోండి." 
+          : lang === "hi"
+          ? "माइक रोक दिया गया है। जब तैयार हों 'Tap to Speak' दबाएं।"
+          : "Microphone paused. Tap 'Tap to Speak' or select a suggestion below when ready.";
         setWizardMsg(pauseMsg);
-        stopRecognition(); // Only stop completely on 3rd failure
+        stopRecognition();
         return 0;
       }
       
-      const retryMsg = getSilenceRetryAck(step);
-      setWizardMsg(retryMsg);
-      askStep(step, retryMsg);
+      const retryPrefix = lang === "te" 
+        ? "మీరు చెప్పింది వినపడలేదు." 
+        : lang === "hi" 
+        ? "आपकी आवाज़ नहीं आई।" 
+        : lang === "ta"
+        ? "நீங்கள் பேசியது கேட்கவில்லை."
+        : lang === "kn"
+        ? "ನಿಮ್ಮ ಧ್ವನಿ ಕೇಳಿಸಲಿಲ್ಲ."
+        : "I didn't hear you.";
+
+      askStep(step, retryPrefix);
       return next;
     });
   };
@@ -639,23 +720,31 @@ export default function AddCrop() {
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
     }
-    const textToProcess = (capturedTextRef.current || interim || "").trim();
+    const raw = (capturedTextRef.current || interim || "").trim();
+    const textToProcess = raw.startsWith("Listening...") ? "" : raw;
+
     if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch(e) {}
+      try { 
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onend = null;
+        recognitionRef.current.stop(); 
+      } catch(e) {}
     }
-    if (textToProcess && !isProcessingRef.current && wizardStepRef.current !== 'COMPLETED') {
+
+    if (textToProcess && !isProcessingRef.current && wizardStepRef.current !== 'COMPLETED' && wizardStepRef.current !== 'IDLE') {
       capturedTextRef.current = "";
       processStepInput(wizardStepRef.current, textToProcess);
+    } else {
+      setInterim("Please speak now or tap a suggestion below 🎙️");
+      startContinuousListening();
     }
   };
 
   const handleManualTapToSpeak = () => {
     if (wizardStep === 'IDLE') {
-      // Initiate the wizard from the beginning when idle
       setWizardStep('NAME');
       askStep('NAME');
     } else if (wizardStep !== 'COMPLETED') {
-      // Continue listening for the current step
       startContinuousListening();
     }
   };
@@ -675,34 +764,44 @@ export default function AddCrop() {
 
   // ─── Process Input: Sense, Acknowledge, Add to Form, or Ask Again ───
   const processStepInput = async (step, transcript) => {
-    if (!transcript) {
+    const cleanTranscript = (transcript || "").replace(/^Listening[^\w]*/i, "").trim();
+    if (!cleanTranscript) {
       handleNoSpeechDetected(step);
       return;
     }
 
+    if (isProcessingRef.current) return;
     setIsProcessing(true);
     isProcessingRef.current = true;
-    setLastHeard(transcript);
+    setLastHeard(cleanTranscript);
     setInterim("");
     stopRecognition();
+    stopTTS();
 
     try {
-      const lower = transcript.toLowerCase().trim();
+      const lower = cleanTranscript.toLowerCase().trim();
 
       // ────────────────────────────────
       // STEP 1: CROP NAME
       // ────────────────────────────────
       if (step === 'NAME') {
-        let extractedName = "";
-        let extractedCategory = "";
+        // 1. First run instant local multilingual parser (handles "50 kg tomato for 40 rupees")
+        const parsedAll = parseVoiceToFormMultilingual(cleanTranscript, lang);
 
-        // 1. Check instant local dictionary across 100+ multi-lingual slang variants
-        for (const [slang, stdName] of Object.entries(CROPS_MAP)) {
-          const sLower = slang.toLowerCase();
-          if (lower.includes(sLower) || lower.split(/\s+/).includes(sLower)) {
-            extractedName = stdName;
-            extractedCategory = CATEGORIES_MAP[stdName] || "vegetable";
-            break;
+        let extractedName = parsedAll.name || "";
+        let extractedCategory = parsedAll.category || "";
+
+        // Check local CROPS_MAP if not found by parser
+        if (!extractedName) {
+          const sortedEntries = Object.entries(CROPS_MAP).sort((a, b) => b[0].length - a[0].length);
+          for (const [slang, stdName] of sortedEntries) {
+            const sLower = slang.toLowerCase();
+            const words = lower.split(/[\s,]+/);
+            if (words.includes(sLower) || lower.includes(sLower)) {
+              extractedName = stdName;
+              extractedCategory = CATEGORIES_MAP[stdName] || "vegetable";
+              break;
+            }
           }
         }
 
@@ -712,7 +811,7 @@ export default function AddCrop() {
             const res = await fetch(`${BASE_URL}/api/ai/parse-wizard-step`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ step, transcript, lang })
+              body: JSON.stringify({ step: "NAME", transcript: cleanTranscript, lang })
             });
             const data = await res.json();
             if (data && data.name) {
@@ -724,22 +823,20 @@ export default function AddCrop() {
           }
         }
 
-        // If still could not extract a meaningful crop name (e.g. noise / random word)
-        if (!extractedName && transcript.length > 2) {
-          // Accept the capitalized transcript as direct produce name
-          extractedName = transcript.charAt(0).toUpperCase() + transcript.slice(1);
+        // 3. Fallback: if transcript is a sensible word (>2 chars) and not a question word
+        if (!extractedName && cleanTranscript.length > 2 && !/(what|how|where|when|hello|hi|please|babu|bhaiya|namaste)/i.test(lower)) {
+          extractedName = cleanTranscript.charAt(0).toUpperCase() + cleanTranscript.slice(1);
           extractedCategory = "vegetable";
         }
 
         if (!extractedName) {
-          // Could not recognize: Acknowledge & Ask Again!
           playChime('retry');
-          const retryMsg = getUnrecognizedAck('NAME', transcript);
+          const retryMsg = getUnrecognizedAck('NAME', cleanTranscript);
           askStep('NAME', retryMsg);
           return;
         }
 
-        // SENSE SUCCEEDED: Add to Form & Give Success Acknowledgment!
+        // SENSE SUCCEEDED: Update form & refs
         playChime('success');
         setFormData(prev => ({
           ...prev,
@@ -750,46 +847,30 @@ export default function AddCrop() {
         formDataRef.current.category = extractedCategory || formDataRef.current.category;
         setFilledFields(prev => ({ ...prev, name: true, category: true }));
 
-        // Check if quantity and/or price were also spoken in this sentence
-        let alsoQty = null;
-        let alsoUnit = "kg";
-        const qtyMatch = transcript.match(/(\d+(?:\.\d+)?)\s*(kg|kilo|kilos|bag|bags|quintal|ton|tonne|litre|piece)?/i);
-        if (qtyMatch && qtyMatch[1]) {
-          alsoQty = parseFloat(qtyMatch[1]);
-          if (qtyMatch[2]) {
-            const u = qtyMatch[2].toLowerCase();
-            if (u.includes("bag")) alsoUnit = "bag";
-            else if (u.includes("quintal")) alsoUnit = "quintal";
-            else if (u.includes("ton")) alsoUnit = "tonne";
-            else if (u.includes("litre")) alsoUnit = "litre";
-          }
-        }
+        // Check if quantity and/or price were also extracted in this sentence!
+        const alsoQty = parsedAll.quantity;
+        const alsoUnit = parsedAll.unit || formDataRef.current.unit || "kg";
+        const alsoPrice = parsedAll.price;
 
-        let alsoPrice = null;
-        const priceMatch = transcript.match(/(?:₹|rs|rupees?|ధర|రూపాయలు|रुपये|ರೂಪಾಯಿ)\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*(?:₹|rs|rupees?|ధర|రూపాయలు|रुपये|ರೂపಾಯಿ)/i);
-        if (priceMatch) {
-          alsoPrice = parseFloat(priceMatch[1] || priceMatch[2]);
-        }
-
-        if (alsoQty !== null && alsoPrice !== null) {
+        if (alsoQty && alsoPrice) {
           formDataRef.current.quantity = alsoQty;
           formDataRef.current.unit = alsoUnit;
           formDataRef.current.price = alsoPrice;
           setFormData(prev => ({ ...prev, quantity: alsoQty, unit: alsoUnit, price: alsoPrice }));
           setFilledFields(prev => ({ ...prev, quantity: true, unit: true, price: true }));
-          askStep('CONFIRM_SUBMIT', `Added ${extractedName}, ${alsoQty} ${alsoUnit} at ₹${alsoPrice}.`);
+          askStep('CONFIRM_SUBMIT');
           return;
-        } else if (alsoQty !== null) {
+        } else if (alsoQty) {
           formDataRef.current.quantity = alsoQty;
           formDataRef.current.unit = alsoUnit;
           setFormData(prev => ({ ...prev, quantity: alsoQty, unit: alsoUnit }));
           setFilledFields(prev => ({ ...prev, quantity: true, unit: true }));
-          askStep('PRICE', `Got ${extractedName}, ${alsoQty} ${alsoUnit}.`);
+          const ackMsg = getSuccessAck('NAME', extractedName) + " " + getSuccessAck('QUANTITY', alsoQty, alsoUnit);
+          askStep('PRICE', ackMsg);
           return;
         }
 
         const ackMsg = getSuccessAck('NAME', extractedName);
-        // Move to QUANTITY step with acknowledgment
         askStep('QUANTITY', ackMsg);
       }
 
@@ -798,32 +879,40 @@ export default function AddCrop() {
       // ────────────────────────────────
       else if (step === 'QUANTITY') {
         let extractedQty = null;
-        let extractedUnit = "kg";
+        let extractedUnit = formDataRef.current.unit || "kg";
 
-        // 1. Number extraction
-        const numMatch = transcript.match(/\d+(?:\.\d+)?/);
+        // Check for numbers (digits or spoken number words in any language)
+        const numMatch = cleanTranscript.match(/\d+(?:\.\d+)?/);
         if (numMatch) {
           extractedQty = parseFloat(numMatch[0]);
         } else {
-          const spoken = parseSpokenNumber(transcript);
+          const spoken = parseSpokenNumber(cleanTranscript);
           if (spoken && !isNaN(spoken)) extractedQty = parseFloat(spoken);
         }
 
-        // Unit extraction in multi-lingual slangs
+        // Unit extraction in multi-lingual slangs without false substring hits
+        const qWords = lower.split(/[\s,]+/);
         for (const [unitKey, aliases] of Object.entries(UNITS_MAP)) {
-          if (aliases.some(a => lower.includes(a.toLowerCase()))) {
+          if (qWords.some(w => aliases.some(a => matchesUnitToken(w, a)))) {
             extractedUnit = unitKey === 'ton' ? 'tonne' : unitKey;
             break;
           }
         }
 
-        // 2. Fallback to API if not recognized locally
+        // Also check if price was spoken in the same sentence! E.g. "50 kg at 40 rupees"
+        let alsoPrice = null;
+        const priceMatch = cleanTranscript.match(/(?:₹|rs|rupees?|ధర|రూపాయలు|रुपये|ರೂಪಾಯಿ)\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*(?:₹|rs|rupees?|ధర|రూపాయలు|रुपये|ರೂపಾಯಿ)/i);
+        if (priceMatch) {
+          alsoPrice = parseFloat(priceMatch[1] || priceMatch[2]);
+        }
+
+        // Fallback to API if not recognized locally
         if (extractedQty === null) {
           try {
             const res = await fetch(`${BASE_URL}/api/ai/parse-wizard-step`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ step, transcript, lang })
+              body: JSON.stringify({ step: "QUANTITY", transcript: cleanTranscript, lang })
             });
             const data = await res.json();
             if (data && data.quantity !== undefined && data.quantity !== null) {
@@ -836,14 +925,12 @@ export default function AddCrop() {
         }
 
         if (extractedQty === null || isNaN(extractedQty)) {
-          // Could not extract quantity: Acknowledge & Ask Again!
           playChime('retry');
-          const retryMsg = getUnrecognizedAck('QUANTITY', transcript);
+          const retryMsg = getUnrecognizedAck('QUANTITY', cleanTranscript);
           askStep('QUANTITY', retryMsg);
           return;
         }
 
-        // SENSE SUCCEEDED: Add to Form & Acknowledge!
         playChime('success');
         setFormData(prev => ({
           ...prev,
@@ -854,8 +941,15 @@ export default function AddCrop() {
         formDataRef.current.unit = extractedUnit;
         setFilledFields(prev => ({ ...prev, quantity: true, unit: true }));
 
+        if (alsoPrice !== null && !isNaN(alsoPrice)) {
+          formDataRef.current.price = alsoPrice;
+          setFormData(prev => ({ ...prev, price: alsoPrice }));
+          setFilledFields(prev => ({ ...prev, price: true }));
+          askStep('CONFIRM_SUBMIT');
+          return;
+        }
+
         const ackMsg = getSuccessAck('QUANTITY', extractedQty, extractedUnit);
-        // Move to PRICE step with acknowledgment
         askStep('PRICE', ackMsg);
       }
 
@@ -865,22 +959,21 @@ export default function AddCrop() {
       else if (step === 'PRICE') {
         let extractedPrice = null;
 
-        // 1. Number extraction
-        const numMatch = transcript.match(/\d+(?:\.\d+)?/);
+        const numMatch = cleanTranscript.match(/\d+(?:\.\d+)?/);
         if (numMatch) {
           extractedPrice = parseFloat(numMatch[0]);
         } else {
-          const spoken = parseSpokenNumber(transcript);
+          const spoken = parseSpokenNumber(cleanTranscript);
           if (spoken && !isNaN(spoken)) extractedPrice = parseFloat(spoken);
         }
 
-        // 2. Fallback to API if not recognized locally
+        // Fallback to API if not recognized locally
         if (extractedPrice === null) {
           try {
             const res = await fetch(`${BASE_URL}/api/ai/parse-wizard-step`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ step, transcript, lang })
+              body: JSON.stringify({ step: "PRICE", transcript: cleanTranscript, lang })
             });
             const data = await res.json();
             if (data && data.price !== undefined && data.price !== null) {
@@ -892,14 +985,12 @@ export default function AddCrop() {
         }
 
         if (extractedPrice === null || isNaN(extractedPrice)) {
-          // Could not extract price: Acknowledge & Ask Again!
           playChime('retry');
-          const retryMsg = getUnrecognizedAck('PRICE', transcript);
+          const retryMsg = getUnrecognizedAck('PRICE', cleanTranscript);
           askStep('PRICE', retryMsg);
           return;
         }
 
-        // SENSE SUCCEEDED: Add to Form & Acknowledge!
         playChime('success');
         setFormData(prev => ({
           ...prev,
@@ -909,22 +1000,28 @@ export default function AddCrop() {
         setFilledFields(prev => ({ ...prev, price: true }));
 
         const ackMsg = getSuccessAck('PRICE', extractedPrice, formDataRef.current.unit || 'kg');
-        // Move to CONFIRM_SUBMIT step with acknowledgment
         askStep('CONFIRM_SUBMIT', ackMsg);
-      } else if (step === 'CONFIRM_SUBMIT') {
-        const isYes = lower.includes("yes") || lower.includes("avunu") || lower.includes("haan") || lower.includes("sare") || lower.includes("ok") || lower.includes("submit") || lower.includes("list") || lower.includes("am");
-        const isNo = lower.includes("no") || lower.includes("kadu") || lower.includes("nahi") || lower.includes("vaddhu") || lower.includes("cancel") || lower.includes("illai");
+      }
 
-        if (isYes) {
+      // ────────────────────────────────
+      // STEP 4: CONFIRM_SUBMIT
+      // ────────────────────────────────
+      else if (step === 'CONFIRM_SUBMIT') {
+        if (isAffirmative(cleanTranscript)) {
           playChime('success');
-          handleSubmit({ preventDefault: () => {} });
+          await handleSubmit(new Event('submit'));
           stopWizard();
-        } else if (isNo) {
+        } else if (isNegative(cleanTranscript)) {
           playChime('retry');
-          askStep('NAME', "Okay, let's start over.");
+          const restartAck = lang === "te" 
+            ? "సరే, మళ్లీ మొదటి నుండి మొదలుపెడదాం." 
+            : lang === "hi" 
+            ? "ठीक है, फिर से शुरू करते हैं।" 
+            : "Okay, let's start over.";
+          askStep('NAME', restartAck);
         } else {
           playChime('retry');
-          const retryMsg = getUnrecognizedAck('CONFIRM_SUBMIT', transcript);
+          const retryMsg = getUnrecognizedAck('CONFIRM_SUBMIT', cleanTranscript);
           askStep('CONFIRM_SUBMIT', retryMsg);
         }
       }
@@ -957,8 +1054,6 @@ export default function AddCrop() {
 
     setFilledFields({});
     setRetryCount(0);
-    // Don't set wizardStep here — askStep('NAME') does it internally.
-    // Setting it twice creates a brief window where wizardStepRef is stale.
     askStep('NAME');
   };
 
@@ -966,7 +1061,7 @@ export default function AddCrop() {
     stopRecognition();
     stopTTS();
     setWizardStep('IDLE');
-    wizardStepRef.current = 'IDLE'; // Sync ref immediately to prevent stale race conditions
+    wizardStepRef.current = 'IDLE';
     setWizardMsg("");
     setIsSpeaking(false);
     isSpeakingRef.current = false;
@@ -977,11 +1072,23 @@ export default function AddCrop() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!user) {
       setMsg("You must be logged in to add a crop.");
       return;
     }
+
+    // Always merge formDataRef.current to prevent stale state issues
+    const currentData = {
+      ...formData,
+      ...formDataRef.current
+    };
+
+    if (!currentData.name || !currentData.price || !currentData.quantity) {
+      setMsg("Please provide crop name, quantity, and price.");
+      return;
+    }
+
     setLoading(true);
     try {
       const growingToLifecycle = {
@@ -991,19 +1098,19 @@ export default function AddCrop() {
         fruiting: "flowering",
         harvested: "ready"
       };
-      const isGrowing = formData.growingStage && formData.growingStage !== 'harvested';
-      const isPrebook = Boolean(formData.allowPrebooking || isGrowing);
+      const isGrowing = currentData.growingStage && currentData.growingStage !== 'harvested';
+      const isPrebook = Boolean(currentData.allowPrebooking || isGrowing);
 
       const payload = {
-        ...formData,
+        ...currentData,
         farmer: user._id,
         isPrebooking: isPrebook,
         allowPrebooking: isPrebook,
-        lifecycleStage: growingToLifecycle[formData.growingStage] || (isGrowing ? "sowing" : "ready")
+        lifecycleStage: growingToLifecycle[currentData.growingStage] || (isGrowing ? "sowing" : "ready")
       };
       
       // Inject Organic Verification Payload
-      if (formData.isOrganic) {
+      if (currentData.isOrganic) {
         if (organicVerificationType === 'official') {
           payload.certificationDocument = certificationDocument;
           payload.certificationStatus = 'pending';
@@ -1016,34 +1123,34 @@ export default function AddCrop() {
       }
 
       await API.post('/crops/add', payload);
-      setMsg(`Successfully listed ${formData.name} for sale!`);
-      setFormData({
+      setMsg(`Successfully listed ${payload.name} for sale!`);
+      
+      const resetForm = {
         name: '', category: 'vegetable', price: '', quantity: '', unit: 'kg', description: '', isOrganic: false,
         location: user?.location || '', farmLocation: user?.farmName || user?.location || '',
         latitude: user?.latitude || '', longitude: user?.longitude || '',
         growingStage: 'harvested', notifyAdmin: false, allowPrebooking: false, expectedHarvestDate: ''
-      });
-      setFilledFields({});
-      setOrganicVerificationType('5-step');
-      setCertificationDocument('');
-      setOrganicSteps({
-        step1_soil_bio: { photoUrl: "" },
-        step2_natural_seed: { photoUrl: "" },
-        step3_corn_border_catch_crop: { photoUrl: "" },
-        step4_botanical_spray: { photoUrl: "" },
-        step5_clean_harvest: { photoUrl: "" }
-      });
-      
-      const successMsg = {
-        en: `Successfully listed ${formData.name} for sale!`,
-        te: `${formData.name} అమ్మకానికి విజయవంతంగా ఉంచబడింది!`,
-        hi: `${formData.name} को बिक्री के लिए सफलतापूर्वक सूचीबद्ध किया गया!`
       };
-      playTTS(successMsg[lang] || successMsg.en, lang);
+      setFormData(resetForm);
+      formDataRef.current = resetForm;
+      setFilledFields({});
+      setWizardStep('IDLE');
+      wizardStepRef.current = 'IDLE';
+
+      const successAnnounce = {
+        en: `Successfully listed ${payload.name} for sale!`,
+        te: `${payload.name} అమ్మకానికి విజయవంతంగా ఉంచబడింది!`,
+        hi: `${payload.name} को बिक्री के लिए सफलतापूर्वक सूचीबद्ध किया गया!`,
+        ta: `${payload.name} வெற்றிகரமாக சந்தையில் பட்டியலிடப்பட்டது!`,
+        kn: `${payload.name} ಮಾರಾಟಕ್ಕೆ ಯಶಸ್ವಿಯಾಗಿ ಪಟ್ಟಿ ಮಾಡಲಾಗಿದೆ!`
+      };
+      playTTS(successAnnounce[lang] || successAnnounce.en, lang);
     } catch (err) {
+      console.error("Crop submission error:", err);
       setMsg("Failed to list item. Ensure all fields are valid.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -1298,9 +1405,9 @@ export default function AddCrop() {
                   <>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         playChime('success');
-                        handleSubmit(new Event('submit'));
+                        await handleSubmit(new Event('submit'));
                         stopWizard();
                       }}
                       style={{
@@ -1375,129 +1482,6 @@ export default function AddCrop() {
                     </button>
                   </>
                 )}
-              </div>
-            )}
-
-            {/* ─── 1-CLICK QUICK CHOICE CHIPS FOR FARMERS ─── */}
-            {wizardStep === 'NAME' && !isSpeaking && (
-              <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px dashed #cbd5e1" }}>
-                <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.78rem", fontWeight: 700, color: "#475569" }}>
-                  💡 Or Tap 1-Click Popular Produce Chips:
-                </p>
-                <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
-                  {[
-                    { name: "Tomato", label: "🍅 Tomato (టమోటా)", cat: "vegetable" },
-                    { name: "Rice", label: "🌾 Paddy / Rice (వరి)", cat: "grain" },
-                    { name: "Onion", label: "🧅 Onion (ఉల్లిపాయ)", cat: "vegetable" },
-                    { name: "Potato", label: "🥔 Potato (బంగాళదుంప)", cat: "vegetable" },
-                    { name: "Chili", label: "🌶️ Chilli (మిర్చి)", cat: "spice" },
-                    { name: "Mango", label: "🥭 Mango (మామిడి)", cat: "fruit" },
-                    { name: "Maize", label: "🌽 Maize (మొక్కజొన్న)", cat: "grain" },
-                    { name: "Groundnut", label: "🥜 Groundnut (పల్లీలు)", cat: "pulse" },
-                    { name: "Banana", label: "🍌 Banana (అరటి)", cat: "fruit" },
-                    { name: "Bio Waste", label: "🌿 Organic Waste (వ్యర్థాలు)", cat: "other" }
-                  ].map((item) => (
-                    <button
-                      key={item.name}
-                      type="button"
-                      onClick={() => {
-                        playChime('success');
-                        setFormData(prev => ({ ...prev, name: item.name, category: item.cat }));
-                        formDataRef.current.name = item.name;
-                        formDataRef.current.category = item.cat;
-                        setFilledFields(prev => ({ ...prev, name: true, category: true }));
-                        const ackMsg = getSuccessAck('NAME', item.name);
-                        askStep('QUANTITY', ackMsg);
-                      }}
-                      style={{
-                        background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d",
-                        padding: "5px 10px", borderRadius: "100px", fontSize: "0.8rem", fontWeight: 700,
-                        cursor: "pointer", boxShadow: "0 2px 5px rgba(0,0,0,0.03)"
-                      }}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {wizardStep === 'QUANTITY' && !isSpeaking && (
-              <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px dashed #cbd5e1" }}>
-                <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.78rem", fontWeight: 700, color: "#475569" }}>
-                  ⚖️ Tap Quick Quantity Chip:
-                </p>
-                <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
-                  {[
-                    { qty: 10, unit: "kg", label: "10 kg" },
-                    { qty: 50, unit: "kg", label: "50 kg" },
-                    { qty: 1, unit: "quintal", label: "1 Quintal (100kg)" },
-                    { qty: 5, unit: "quintal", label: "5 Quintals" },
-                    { qty: 10, unit: "quintal", label: "10 Quintals" },
-                    { qty: 1, unit: "tonne", label: "1 Tonne" },
-                    { qty: 5, unit: "bag", label: "5 Bags" }
-                  ].map((item) => (
-                    <button
-                      key={item.label}
-                      type="button"
-                      onClick={() => {
-                        playChime('success');
-                        setFormData(prev => ({ ...prev, quantity: item.qty, unit: item.unit }));
-                        formDataRef.current.quantity = item.qty;
-                        formDataRef.current.unit = item.unit;
-                        setFilledFields(prev => ({ ...prev, quantity: true, unit: true }));
-                        const ackMsg = getSuccessAck('QUANTITY', item.qty, item.unit);
-                        askStep('PRICE', ackMsg);
-                      }}
-                      style={{
-                        background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8",
-                        padding: "5px 10px", borderRadius: "100px", fontSize: "0.8rem", fontWeight: 700,
-                        cursor: "pointer", boxShadow: "0 2px 5px rgba(0,0,0,0.03)"
-                      }}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {wizardStep === 'PRICE' && !isSpeaking && (
-              <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px dashed #cbd5e1" }}>
-                <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.78rem", fontWeight: 700, color: "#475569" }}>
-                  💰 Tap Quick Price Chip:
-                </p>
-                <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
-                  {[
-                    { price: 20, label: "₹20 / unit" },
-                    { price: 30, label: "₹30 / unit" },
-                    { price: 40, label: "₹40 / unit" },
-                    { price: 50, label: "₹50 / unit" },
-                    { price: 80, label: "₹80 / unit" },
-                    { price: 100, label: "₹100 / unit" },
-                    { price: 2500, label: "₹2,500 / quintal" }
-                  ].map((item) => (
-                    <button
-                      key={item.label}
-                      type="button"
-                      onClick={() => {
-                        playChime('success');
-                        setFormData(prev => ({ ...prev, price: item.price }));
-                        formDataRef.current.price = item.price;
-                        setFilledFields(prev => ({ ...prev, price: true }));
-                        const ackMsg = getSuccessAck('PRICE', item.price, formDataRef.current.unit || 'kg');
-                        askStep('COMPLETED', ackMsg);
-                      }}
-                      style={{
-                        background: "#fef3c7", border: "1px solid #fde68a", color: "#b45309",
-                        padding: "5px 10px", borderRadius: "100px", fontSize: "0.8rem", fontWeight: 700,
-                        cursor: "pointer", boxShadow: "0 2px 5px rgba(0,0,0,0.03)"
-                      }}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
               </div>
             )}
 

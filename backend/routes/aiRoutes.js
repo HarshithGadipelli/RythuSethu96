@@ -1110,7 +1110,13 @@ router.post("/parse-wizard-step", async (req, res) => {
       okati:1, rendu:2, moodu:3, nalugu:4, aidu:5, aaru:6, yedu:7, enimidi:8, tommidi:9, padi:10,
       padihenu:15, iravai:20, iravaiyaindu:25, muppai:30, nalabhai:40, yabai:50, yabhei:50, vanda:100, veyi:1000,
       ek:1, do:2, teen:3, char:4, paanch:5, chah:6, saat:7, aath:8, nau:9, das:10,
-      pandrah:15, bees:20, pachis:25, tees:30, chalis:40, pachas:50, sau:100, hazar:1000
+      pandrah:15, bees:20, pachis:25, tees:30, chalis:40, pachas:50, sau:100, hazar:1000,
+      // Telugu native script
+      ఒకటి:1, రెండు:2, మూడు:3, నాలుగు:4, ఐదు:5, ఆరు:6, ఏడు:7, ఎనిమిది:8, తొమ్మిది:9, పది:10,
+      పదిహేను:15, ఇరవై:20, ఇరవైఐదు:25, పాతిక:25, ముప్పై:30, ముప్పైఐదు:35, నలభై:40, నలభైఐదు:45, యాభై:50, యాబై:50, అరవై:60, డెబ్బై:70, ఎనభై:80, తొంభై:90, వంద:100, వెయ్యి:1000,
+      // Hindi native script
+      एक:1, दो:2, तीन:3, चार:4, पांच:5, पाँच:5, छह:6, सात:7, आठ:8, नौ:9, दस:10,
+      पंद्रह:15, बीस:20, पच्चीस:25, तीस:30, पैंतीस:35, चालीस:40, पैंतालीस:45, पचास:50, साठ:60, सत्तर:70, अस्सी:80, नब्बे:90, सौ:100, हजार:1000
     };
 
     let extractedNum = null;
