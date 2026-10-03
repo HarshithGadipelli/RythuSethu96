@@ -526,7 +526,7 @@ export default function AddCrop() {
 
   // ─── Step Transition: Speak Prompt & Open Mic ───
   const askStep = async (step, customPrefix = "") => {
-    stopRecognition();
+    stopRecognition(true);
     stopTTS();
 
     setWizardStep(step);
@@ -570,7 +570,8 @@ export default function AddCrop() {
 
   // ─── Start Continuous Listening for Farmer's Response ───
   const startContinuousListening = () => {
-    stopRecognition();
+    stopRecognition(true);
+    isExplicitlyStoppedRef.current = false;
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -669,14 +670,16 @@ export default function AddCrop() {
         wizardStepRef.current !== 'IDLE' && 
         wizardStepRef.current !== 'COMPLETED' && 
         !isSpeakingRef.current && 
-        !isProcessingRef.current
+        !isProcessingRef.current &&
+        !isExplicitlyStoppedRef.current
       ) {
         setTimeout(() => {
           if (
             wizardStepRef.current !== 'IDLE' && 
             wizardStepRef.current !== 'COMPLETED' && 
             !isSpeakingRef.current && 
-            !isProcessingRef.current
+            !isProcessingRef.current &&
+            !isExplicitlyStoppedRef.current
           ) {
             startContinuousListening();
           }
@@ -787,7 +790,7 @@ export default function AddCrop() {
     isProcessingRef.current = true;
     setLastHeard(cleanTranscript);
     setInterim("");
-    stopRecognition();
+    stopRecognition(true);
     stopTTS();
 
     try {
@@ -1070,7 +1073,7 @@ export default function AddCrop() {
   };
 
   const stopWizard = () => {
-    stopRecognition();
+    stopRecognition(true);
     stopTTS();
     setWizardStep('IDLE');
     wizardStepRef.current = 'IDLE';
