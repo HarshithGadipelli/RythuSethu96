@@ -195,7 +195,8 @@ export default function AddCrop() {
     ],
     CONFIRM_SUBMIT: [
       { label: "✅ Yes, Submit (అవును / हाँ)", val: "yes" },
-      { label: "❌ No, Start Over (వద్దు / नहीं)", val: "no" }
+      { label: "📝 Review Details (సమీక్షించండి)", val: "review" },
+      { label: "🔄 Start Over (మళ్లీ ప్రారంభించు)", val: "no" }
     ]
   };
 
@@ -208,6 +209,8 @@ export default function AddCrop() {
   const hasUserSpokenRef = useRef(false);
   const isSpeakingRef = useRef(false);
   const isProcessingRef = useRef(false);
+  const isExplicitlyStoppedRef = useRef(false);
+  const silenceRestartCountRef = useRef(0);
 
   useEffect(() => {
     wizardStepRef.current = wizardStep;
@@ -320,18 +323,26 @@ export default function AddCrop() {
           formDataRef.current.price = price;
           setFilledFields(prev => ({ ...prev, price: true }));
         }
-      } else if (field === "description" || field === "farmLocation") {
+      } else if (field === "description") {
+        setFormData(prev => ({ ...prev, description: transcript }));
+        formDataRef.current.description = transcript;
+        setFilledFields(prev => ({ ...prev, description: true }));
         playChime('success');
-        setFormData(prev => ({ ...prev, [field]: transcript }));
-        if (field === "farmLocation") {
-          setFormData(prev => ({ ...prev, location: transcript }));
-        }
+      } else if (field === "farmLocation" || field === "location") {
+        setFormData(prev => ({ ...prev, farmLocation: transcript, location: transcript }));
+        formDataRef.current.farmLocation = transcript;
+        formDataRef.current.location = transcript;
+        setFilledFields(prev => ({ ...prev, farmLocation: true, location: true }));
+        playChime('success');
       }
-    }, { fieldId: field, lang, silenceDelay: 2200, initialWaitDelay: 8000 });
+    }, { fieldId: field });
   };
 
   // Safe Speech Recognition Cleanup
-  const stopRecognition = () => {
+  const stopRecognition = (explicit = false) => {
+    if (explicit) {
+      isExplicitlyStoppedRef.current = true;
+    }
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
@@ -358,13 +369,14 @@ export default function AddCrop() {
     const clean = text.toLowerCase().trim();
     const yesTokens = [
       "yes", "yeah", "yep", "sure", "ok", "okay", "submit", "list", "confirm", "done", "save", "proceed",
-      "అవును", "సరే", "హా", "అవునండి", "చేయండి", "సమర్పించు", "లిస్ట్ చేయండి", "అవ్వను", "ఓకే",
-      "avunu", "sare", "ha", "avunandi", "cheyandi", "list cheyandi",
-      "हाँ", "हां", "हाँजी", "जी", "हांजी", "ठीक", "ठीक है", "जमा करें", "सहेजें", "कर दो", "लिस्ट करो",
+      "correct", "right", "publish", "post", "fine", "good", "all good",
+      "అవును", "సరే", "హా", "అవునండి", "చేయండి", "సమర్పించు", "లిస్ట్ చేయండి", "అవ్వను", "ఓకే", "సరిగ్గా ఉంది", "సమర్పించండి", "లిస్ట్ చేయి", "బాగుంది", "కన్ఫర్మ్", "పంపు", "అవును చేయండి",
+      "avunu", "sare", "ha", "avunandi", "cheyandi", "list cheyandi", "sarigga undi",
+      "हाँ", "हां", "हाँजी", "जी", "हांजी", "ठीक", "ठीक है", "जमा करें", "सहेजें", "कर दो", "लिस्ट करो", "सही है", "कर दीजिए", "सबमिट",
       "haan", "haanji", "theek", "theek hai", "sahi", "ji haan",
-      "ஆம்", "ஆமாம்", "சரி", "சமர்ப்பி", "செய்",
+      "ஆம்", "ஆமாம்", "சரி", "சமர்ப்பி", "செய்", "சரிதான்",
       "aam", "aamaam", "sari",
-      "ಹೌದು", "ಸರಿ", "ಸಲ್ಲಿಸು", "ಮಾಡು",
+      "ಹೌದು", "ಸರಿ", "ಸಲ್ಲಿಸು", "ಮಾಡು", "ಸರಿ ಇದೆ",
       "haudu", "sari", "houdu"
     ];
     return yesTokens.some(tok => {
@@ -381,10 +393,10 @@ export default function AddCrop() {
     if (!text) return false;
     const clean = text.toLowerCase().trim();
     const noTokens = [
-      "no", "nope", "cancel", "stop", "restart", "start over", "reset", "clear", "don't", "dont",
-      "కాదు", "వద్దు", "వద్దండి", "రద్దు", "ఆపు", "మళ్లీ", "మళ్ళీ", "కాదండి",
+      "no", "nope", "cancel", "stop", "restart", "start over", "reset", "clear", "don't", "dont", "wait", "change", "edit",
+      "కాదు", "వద్దు", "వద్దండి", "రద్దు", "ఆపు", "మళ్లీ", "మళ్ళీ", "కాదండి", "మార్చు", "ఆగండి",
       "kadu", "vaddu", "vaddhu", "raddu", "malli", "aapu",
-      "नहीं", "ना", "मत", "रद्द", "बंद", "फिर से", "रोको",
+      "नहीं", "ना", "मत", "रद्द", "बंद", "फिर से", "रोको", "रुको", "बदलो",
       "nahi", "nahin", "na", "mat", "radd", "fir se", "roko",
       "இல்லை", "வேண்டாம்", "ரத்து", "நிறுத்து",
       "illai", "vendaam", "niruthu",
@@ -434,11 +446,11 @@ export default function AddCrop() {
         kn: `ಪ್ರತಿ ${unitInLang.kn} ಗೆ ನಿಮ್ಮ ಮಾರಾಟದ ಬೆಲೆ ಎಷ್ಟು ರೂಪಾಯಿ? ಉದಾಹರಣೆಗೆ 40 ರೂಪಾಯಿ.`
       },
       CONFIRM_SUBMIT: {
-        en: `All details collected: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${formDataRef.current.unit || currentUnit} at ₹${formDataRef.current.price || ''}. Do you want to submit this listing? Please say Yes or No.`,
-        te: `వివరాలు నమోదు చేశాను: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.te}, ధర ₹${formDataRef.current.price || ''}. మీరు ఈ వివరాలను సమర్పించాలనుకుంటున్నారా? దయచేసి అవును లేదా కాదు అని చెప్పండి.`,
-        hi: `विवरण दर्ज किया गया: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.hi}, ₹${formDataRef.current.price || ''} प्रति यूनिट। क्या आप इसे सबमिट करना चाहते हैं? कृपया हाँ या ना कहें।`,
-        ta: `விவரங்கள் பெறப்பட்டன: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.ta}, விலை ₹${formDataRef.current.price || ''}. இந்த பட்டியலைச் சமர்ப்பிக்க விரும்புகிறீர்களா? ஆம் அல்லது இல்லை என்று சொல்லுங்கள்.`,
-        kn: `ವಿವರಗಳನ್ನು ನಮೂದಿಸಲಾಗಿದೆ: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.kn}, ಬೆಲೆ ₹${formDataRef.current.price || ''}. ನೀವು ಇದನ್ನು ಸಲ್ಲಿಸಲು ಬಯಸುವಿರಾ? ಹೌದು ಅಥವಾ ಇಲ್ಲ ಎಂದು ಹೇಳಿ.`
+        en: `All details collected: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${formDataRef.current.unit || currentUnit} at ₹${formDataRef.current.price || ''}. Say Yes to submit, or review your form below.`,
+        te: `వివరాలు నమోదు చేశాను: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.te}, ధర ₹${formDataRef.current.price || ''}. మార్కెట్‌లో లిస్ట్ చేయడానికి అవును అని చెప్పండి లేదా క్రింది బటన్ నొక్కండి.`,
+        hi: `विवरण दर्ज किया गया: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.hi}, ₹${formDataRef.current.price || ''} प्रति यूनिट। लिस्ट करने के लिए हाँ कहें या नीचे दिया गया फॉर्म देखें।`,
+        ta: `விவரங்கள் பெறப்பட்டன: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.ta}, விலை ₹${formDataRef.current.price || ''}. பட்டியலிட ஆம் என்று சொல்லுங்கள்.`,
+        kn: `ವಿವರಗಳನ್ನು ನಮೂದಿಸಲಾಗಿದೆ: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.kn}, ಬೆಲೆ ₹${formDataRef.current.price || ''}. ಪಟ್ಟಿ ಮಾಡಲು ಹೌದು ಎಂದು ಹೇಳಿ.`
       },
       COMPLETED: {
         en: "All details filled! Please review the form and click List Item to publish.",
@@ -685,20 +697,21 @@ export default function AddCrop() {
   const handleNoSpeechDetected = (step) => {
     playChime('retry');
     hasUserSpokenRef.current = false;
+    
+    silenceRestartCountRef.current += 1;
+    setRetryCount(silenceRestartCountRef.current);
 
-    setRetryCount(prev => {
-      const next = prev + 1;
-      if (next > 2) {
-        const pauseMsg = lang === "te" 
-          ? "మైక్ పాజ్ చేయబడింది. మీకు కావలసినప్పుడు 'Tap to Speak' బటన్ నొక్కండి లేదా సూచనలను ఎంచుకోండి." 
-          : lang === "hi"
-          ? "माइक रोक दिया गया है। जब तैयार हों 'Tap to Speak' दबाएं।"
-          : "Microphone paused. Tap 'Tap to Speak' or select a suggestion below when ready.";
-        setWizardMsg(pauseMsg);
-        stopRecognition();
-        return 0;
-      }
-      
+    if (silenceRestartCountRef.current > 2) {
+      const pauseMsg = lang === "te" 
+        ? "మైక్ పాజ్ చేయబడింది. మీకు కావలసినప్పుడు 'Tap to Speak' బటన్ నొక్కండి లేదా సూచనలను ఎంచుకోండి." 
+        : lang === "hi"
+        ? "माइक रोक दिया गया है। जब तैयार हों 'Tap to Speak' दबाएं।"
+        : "Microphone paused. Tap 'Tap to Speak' or select a suggestion below when ready.";
+      setWizardMsg(pauseMsg);
+      stopRecognition(true);
+      silenceRestartCountRef.current = 0;
+      setRetryCount(0);
+    } else {
       const retryPrefix = lang === "te" 
         ? "మీరు చెప్పింది వినపడలేదు." 
         : lang === "hi" 
@@ -710,8 +723,7 @@ export default function AddCrop() {
         : "I didn't hear you.";
 
       askStep(step, retryPrefix);
-      return next;
-    });
+    }
   };
 
   // ─── Manual Controls ───

@@ -496,6 +496,8 @@ export function stopTTS() {
   if (typeof window !== "undefined" && window.speechSynthesis) {
     try {
       window.speechSynthesis.cancel();
+      activeSpeechSynthesisUtterance = null;
+      window.__activeTTSUtterance = null;
     } catch(e) {}
   }
 
@@ -553,6 +555,8 @@ export const normalizeDialectPhonetics = (text, langCode) => {
   return clean;
 };
 
+let activeSpeechSynthesisUtterance = null;
+
 const fallbackSpeechSynthesis = (text, langCode, options = {}) => {
   return new Promise((resolve) => {
     if (typeof window === "undefined" || !('speechSynthesis' in window)) return resolve(false);
@@ -560,6 +564,11 @@ const fallbackSpeechSynthesis = (text, langCode, options = {}) => {
       window.speechSynthesis.cancel();
       const phoneticText = normalizeDialectPhonetics(text, langCode);
       const utterance = new SpeechSynthesisUtterance(phoneticText);
+      activeSpeechSynthesisUtterance = utterance;
+      if (typeof window !== "undefined") {
+        window.__activeTTSUtterance = utterance;
+      }
+
       const localeMap = { en: "en-IN", te: "te-IN", hi: "hi-IN", kn: "kn-IN", ta: "ta-IN", ml: "ml-IN", mr: "mr-IN", gu: "gu-IN", bn: "bn-IN", pa: "pa-IN", or: "or-IN", ur: "ur-IN" };
       const targetLang = localeMap[langCode] || "en-IN";
       utterance.lang = targetLang;
@@ -591,11 +600,23 @@ const fallbackSpeechSynthesis = (text, langCode, options = {}) => {
       utterance.pitch = options.pitch || 1.02;
       if (options.volume !== undefined) utterance.volume = Math.max(0.1, Math.min(1.0, options.volume));
       
-      utterance.onend = () => resolve(true);
-      utterance.onerror = () => resolve(false);
+      let resolved = false;
+      const cleanFinish = (val) => {
+        if (!resolved) {
+          resolved = true;
+          activeSpeechSynthesisUtterance = null;
+          if (typeof window !== "undefined") {
+            window.__activeTTSUtterance = null;
+          }
+          resolve(val);
+        }
+      };
+
+      utterance.onend = () => cleanFinish(true);
+      utterance.onerror = () => cleanFinish(false);
       window.speechSynthesis.speak(utterance);
       
-      setTimeout(() => resolve(true), Math.max(4000, phoneticText.length * 80));
+      setTimeout(() => cleanFinish(true), Math.max(4000, phoneticText.length * 80));
     } catch(err) {
       resolve(false);
     }
