@@ -59,6 +59,35 @@ const playChime = (type = 'start') => {
   } catch (e) {}
 };
 
+const STEP_CHIPS = {
+  NAME: [
+    { label: "🍅 Tomato", val: "Tomato" },
+    { label: "🥔 Potato", val: "Potato" },
+    { label: "🧅 Onion", val: "Onion" },
+    { label: "🍚 Rice", val: "Rice" },
+    { label: "🌾 Wheat", val: "Wheat" },
+    { label: "🥭 Mango", val: "Mango" }
+  ],
+  QUANTITY: [
+    { label: "50 kg", val: "50 kg" },
+    { label: "100 kg", val: "100 kg" },
+    { label: "1 quintal", val: "1 quintal" },
+    { label: "5 bags", val: "5 bags" },
+    { label: "10 tonnes", val: "10 tonnes" }
+  ],
+  PRICE: [
+    { label: "₹30", val: "30 rupees" },
+    { label: "₹40", val: "40 rupees" },
+    { label: "₹50", val: "50 rupees" },
+    { label: "₹100", val: "100 rupees" },
+    { label: "Market Price", val: "market price" }
+  ],
+  CONFIRM_SUBMIT: [
+    { label: "✅ Yes, Submit", val: "yes" },
+    { label: "❌ No, wait", val: "no" }
+  ]
+};
+
 export default function AddCrop() {
   const { user } = useAuth();
   const { lang, t } = useLang();
@@ -211,6 +240,8 @@ export default function AddCrop() {
   const isProcessingRef = useRef(false);
   const isExplicitlyStoppedRef = useRef(false);
   const silenceRestartCountRef = useRef(0);
+  const consecutiveRestartsRef = useRef(0);
+  const lastRestartTimeRef = useRef(0);
 
   useEffect(() => {
     wizardStepRef.current = wizardStep;
@@ -564,7 +595,13 @@ export default function AddCrop() {
     if (step !== 'COMPLETED' && wizardStepRef.current === step) {
        playChime('start');
        setInterim("Listening... Please speak now 🎙️");
-       startContinuousListening();
+       // Add a delay before starting the microphone to ensure the chime has completely finished playing.
+       // This prevents Android Chrome from instantly aborting the mic due to audio channel overlap.
+       setTimeout(() => {
+         if (wizardStepRef.current === step && !isExplicitlyStoppedRef.current) {
+           startContinuousListening();
+         }
+       }, 500);
     }
   };
 
@@ -633,7 +670,7 @@ export default function AddCrop() {
           capturedTextRef.current = "";
           processStepInput(wizardStepRef.current, textToProcess);
         }
-      }, 1200);
+      }, 2500); // Increased to 2.5s to allow for slow natural speech pauses
     };
 
     recognition.onerror = (event) => {
@@ -681,6 +718,21 @@ export default function AddCrop() {
             !isProcessingRef.current &&
             !isExplicitlyStoppedRef.current
           ) {
+            const now = Date.now();
+            if (now - lastRestartTimeRef.current < 1500) {
+              consecutiveRestartsRef.current += 1;
+            } else {
+              consecutiveRestartsRef.current = 0;
+            }
+            lastRestartTimeRef.current = now;
+
+            if (consecutiveRestartsRef.current > 4) {
+              console.warn("Speech recognition is crash-looping. Stopping auto-restart.");
+              setWizardMsg("Microphone disconnected or paused. Tap a suggestion below or manually restart.");
+              stopRecognition(true);
+              consecutiveRestartsRef.current = 0;
+              return;
+            }
             startContinuousListening();
           }
         }, 250);
@@ -823,11 +875,15 @@ export default function AddCrop() {
         // 2. Fallback to API if not recognized locally
         if (!extractedName) {
           try {
+            const ctrl = new AbortController();
+            const id = setTimeout(() => ctrl.abort(), 2000); // 2 second max wait for fallback
             const res = await fetch(`${BASE_URL}/api/ai/parse-wizard-step`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ step: "NAME", transcript: cleanTranscript, lang })
+              body: JSON.stringify({ step: "NAME", transcript: cleanTranscript, lang }),
+              signal: ctrl.signal
             });
+            clearTimeout(id);
             const data = await res.json();
             if (data && data.name) {
               extractedName = data.name;
@@ -922,13 +978,17 @@ export default function AddCrop() {
         }
 
         // Fallback to API if not recognized locally
-        if (extractedQty === null) {
+        if (extractedQty === null || isNaN(extractedQty)) {
           try {
+            const ctrl = new AbortController();
+            const id = setTimeout(() => ctrl.abort(), 2000);
             const res = await fetch(`${BASE_URL}/api/ai/parse-wizard-step`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ step: "QUANTITY", transcript: cleanTranscript, lang })
+              body: JSON.stringify({ step: "QUANTITY", transcript: cleanTranscript, lang }),
+              signal: ctrl.signal
             });
+            clearTimeout(id);
             const data = await res.json();
             if (data && data.quantity !== undefined && data.quantity !== null) {
               extractedQty = data.quantity;
@@ -983,13 +1043,17 @@ export default function AddCrop() {
         }
 
         // Fallback to API if not recognized locally
-        if (extractedPrice === null) {
+        if (extractedPrice === null || isNaN(extractedPrice)) {
           try {
+            const ctrl = new AbortController();
+            const id = setTimeout(() => ctrl.abort(), 2000);
             const res = await fetch(`${BASE_URL}/api/ai/parse-wizard-step`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ step: "PRICE", transcript: cleanTranscript, lang })
+              body: JSON.stringify({ step: "PRICE", transcript: cleanTranscript, lang }),
+              signal: ctrl.signal
             });
+            clearTimeout(id);
             const data = await res.json();
             if (data && data.price !== undefined && data.price !== null) {
               extractedPrice = data.price;

@@ -216,21 +216,23 @@ export const CROP_BENCHMARKS = {
 export function parseSpokenNumber(text) {
   if (!text) return "";
   const lower = text.trim().toLowerCase();
-  const cleaned = lower.replace(/\s+/g, '').replace(/^-+/, '');
-  if (NUMBERS_MAP[cleaned] !== undefined) {
-    return String(Math.abs(NUMBERS_MAP[cleaned]));
-  }
 
   // 1. Direct digit match e.g. "40", "50.5"
-  const digits = text.match(/\d+(?:\.\d+)?/);
+  const digits = lower.match(/\d+(?:\.\d+)?/);
   if (digits) {
     const num = Math.abs(parseFloat(digits[0]));
     if (!isNaN(num)) return String(num);
   }
 
+  // 2. Exact match of entire string without spaces
+  const cleaned = lower.replace(/\s+/g, '').replace(/^-+/, '');
+  if (NUMBERS_MAP[cleaned] !== undefined) {
+    return String(Math.abs(NUMBERS_MAP[cleaned]));
+  }
+
   const words = lower.split(/[\s,]+/);
 
-  // 2. Check compound pairs e.g. "twenty five" (20 + 5 = 25), "నలభై ఐదు" (40 + 5 = 45), "तीस पांच" (30 + 5 = 35)
+  // 3. Check compound pairs e.g. "twenty five" (20 + 5 = 25), "तीस पांच" (30 + 5 = 35)
   for (let i = 0; i < words.length - 1; i++) {
     const w1 = words[i].replace(/^-+/, '');
     const w2 = words[i + 1].replace(/^-+/, '');
@@ -249,15 +251,15 @@ export function parseSpokenNumber(text) {
     }
   }
 
-  // 3. Single word number match
+  // 4. Fallback: Find the FIRST valid single number word in the sentence
   for (const w of words) {
-    const cleanWord = w.replace(/^-+/, '');
-    if (NUMBERS_MAP[cleanWord] !== undefined) {
-      return String(Math.abs(NUMBERS_MAP[cleanWord]));
+    const wordClean = w.replace(/^-+/, '');
+    if (NUMBERS_MAP[wordClean] !== undefined) {
+      return String(Math.abs(NUMBERS_MAP[wordClean]));
     }
   }
 
-  return text.trim().replace(/^-+/, '');
+  return "";
 }
 
 // Helper to match a token against a unit alias accurately without false substring hits
