@@ -242,6 +242,7 @@ export default function AddCrop() {
   const silenceRestartCountRef = useRef(0);
   const consecutiveRestartsRef = useRef(0);
   const lastRestartTimeRef = useRef(0);
+  const listenSessionRef = useRef(0);
 
   useEffect(() => {
     wizardStepRef.current = wizardStep;
@@ -557,14 +558,17 @@ export default function AddCrop() {
 
   // ─── Step Transition: Speak Prompt & Open Mic ───
   const askStep = async (step, customPrefix = "") => {
+    // Immediately kill any running recognition and TTS
+    listenSessionRef.current++; // Invalidate any stale session callbacks
     stopRecognition(true);
     stopTTS();
 
     setWizardStep(step);
-    wizardStepRef.current = step; // Immediate ref update to fix race condition
+    wizardStepRef.current = step;
     setInterim("");
     setIsProcessing(false);
     isProcessingRef.current = false;
+    silenceRestartCountRef.current = 0;
 
     let promptText = getPromptForStep(
       step, 
@@ -591,24 +595,36 @@ export default function AddCrop() {
     setIsSpeaking(false);
     isSpeakingRef.current = false;
 
-    // Play a gentle chime after TTS to indicate it's listening
+    // After TTS finishes, start listening for farmer's response
     if (step !== 'COMPLETED' && wizardStepRef.current === step) {
        playChime('start');
-       setInterim("Listening... Please speak now 🎙️");
-       // Add a delay before starting the microphone to ensure the chime has completely finished playing.
-       // This prevents Android Chrome from instantly aborting the mic due to audio channel overlap.
-       setTimeout(() => {
-         if (wizardStepRef.current === step && !isExplicitlyStoppedRef.current) {
-           startContinuousListening();
-         }
-       }, 500);
+       // Small delay to let chime finish before opening mic
+       await new Promise(r => setTimeout(r, 300));
+       if (wizardStepRef.current === step) {
+         startContinuousListening();
+       }
     }
   };
 
   // ─── Start Continuous Listening for Farmer's Response ───
+  // Uses listenSessionRef to prevent stale callbacks from old recognition instances
   const startContinuousListening = () => {
-    stopRecognition(true);
-    isExplicitlyStoppedRef.current = false;
+    // Kill any previous recognition instance cleanly
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onend = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.abort();
+      } catch(e) {}
+      recognitionRef.current = null;
+    }
+    if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
+    if (initialSilenceTimerRef.current) { clearTimeout(initialSilenceTimerRef.current); initialSilenceTimerRef.current = null; }
+
+    // Increment session — any callback from a previous session will be ignored
+    const sessionId = ++listenSessionRef.current;
+    const isStaleSession = () => listenSessionRef.current !== sessionId;
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -617,129 +633,146 @@ export default function AddCrop() {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = true; 
+    recognition.continuous = true;  // Keep microphone open smoothly without rapid restarting
     recognition.interimResults = true;
     recognition.lang = LANG_MAP[lang] || "en-IN";
+    recognition.maxAlternatives = 3;
 
     capturedTextRef.current = "";
     hasUserSpokenRef.current = false;
-    setInterim("");
+    let finalText = "";
+    let alreadyProcessed = false;
+
+    const processAndAdvance = (text) => {
+      if (alreadyProcessed || isStaleSession()) return;
+      alreadyProcessed = true;
+      const clean = (text || "").replace(/^Listening[^\w]*/i, "").trim();
+      if (!clean) return;
+      
+      // Clear timers
+      if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
+      if (initialSilenceTimerRef.current) { clearTimeout(initialSilenceTimerRef.current); initialSilenceTimerRef.current = null; }
+      capturedTextRef.current = "";
+      
+      // Stop recognition cleanly before processing next step
+      stopRecognition(true);
+      
+      if (!isProcessingRef.current && wizardStepRef.current !== 'COMPLETED' && wizardStepRef.current !== 'IDLE') {
+        processStepInput(wizardStepRef.current, clean);
+      }
+    };
 
     recognition.onstart = () => {
+      if (isStaleSession()) return;
       setIsListening(true);
       if (!isSpeakingRef.current) {
         setInterim("Listening... Please speak now 🎙️");
       }
       
-      // Silence detector: If user doesn't speak for 12 seconds, prompt them
-      if (initialSilenceTimerRef.current) clearTimeout(initialSilenceTimerRef.current);
+      // Silence detector: If user doesn't speak at all for 10 seconds, gently ask again
       initialSilenceTimerRef.current = setTimeout(() => {
+        if (isStaleSession()) return;
         if (!hasUserSpokenRef.current && !isSpeakingRef.current && wizardStepRef.current !== 'COMPLETED' && wizardStepRef.current !== 'IDLE') {
           handleNoSpeechDetected(wizardStepRef.current);
         }
-      }, 12000);
+      }, 10000);
     };
 
     recognition.onresult = (event) => {
-      if (isSpeakingRef.current) return; // Ignore AI's own voice echo
+      if (isStaleSession() || isSpeakingRef.current) return;
       
       hasUserSpokenRef.current = true;
-      if (initialSilenceTimerRef.current) clearTimeout(initialSilenceTimerRef.current);
-      
-      let currentText = "";
-      for (let i = 0; i < event.results.length; i++) {
-        currentText += event.results[i][0].transcript + " ";
+      if (initialSilenceTimerRef.current) { 
+        clearTimeout(initialSilenceTimerRef.current); 
+        initialSilenceTimerRef.current = null; 
       }
-      currentText = currentText.trim();
-      if (!currentText) return;
+      
+      let interimText = "";
+      finalText = "";
+      for (let i = 0; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          finalText += result[0].transcript + " ";
+        } else {
+          interimText += result[0].transcript + " ";
+        }
+      }
+      finalText = finalText.trim();
+      interimText = interimText.trim();
+      
+      // Show the user live speech in real-time
+      const displayText = (finalText + " " + interimText).trim();
+      if (displayText) {
+        capturedTextRef.current = displayText;
+        setInterim(displayText);
+      }
 
-      capturedTextRef.current = currentText;
-      setInterim(currentText);
-
-      // Debounce natural conversational silence pause (1200ms)
+      // Voice Activity Debounce: after farmer stops speaking for 1.3 seconds, auto-process!
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
-        const textToProcess = (capturedTextRef.current || currentText || "").trim();
-        if (
-          textToProcess && 
-          !textToProcess.startsWith("Listening...") &&
-          !isProcessingRef.current && 
-          wizardStepRef.current !== 'COMPLETED' && 
-          wizardStepRef.current !== 'IDLE'
-        ) {
-          capturedTextRef.current = "";
-          processStepInput(wizardStepRef.current, textToProcess);
+        const textToProcess = (finalText || capturedTextRef.current || "").trim();
+        if (textToProcess && !alreadyProcessed) {
+          processAndAdvance(textToProcess);
         }
-      }, 2500); // Increased to 2.5s to allow for slow natural speech pauses
+      }, 1300);
     };
 
     recognition.onerror = (event) => {
+      if (isStaleSession()) return;
+      if (event.error === 'no-speech') {
+        // Normal silence — no need to log or stop
+        return;
+      }
       console.warn("Speech recognition notice:", event.error);
       if (event.error === 'not-allowed') {
         setWizardMsg("Microphone permission was not granted. You can tap the quick suggestion buttons below or enter text manually.");
-        stopWizard();
+        stopRecognition(true);
+      } else if (event.error === 'network') {
+        console.warn("Speech recognition network error. Auto-restarting in 1s...");
+        setWizardMsg("Network glitch. Restarting microphone...");
+        setTimeout(() => {
+          if (!isStaleSession() && wizardStepRef.current !== 'IDLE' && wizardStepRef.current !== 'COMPLETED') {
+            try { recognition.start(); } catch(e) { startContinuousListening(); }
+          }
+        }, 1000);
       }
     };
 
     recognition.onend = () => {
-      setIsListening(false);
+      if (isStaleSession()) return;
       
-      // CRITICAL FIX: Flush any captured speech immediately so user speech is NEVER lost when Chrome ends stream!
-      const pendingText = (capturedTextRef.current || "").trim();
-      if (
-        pendingText && 
-        !pendingText.startsWith("Listening...") &&
-        !isProcessingRef.current && 
-        wizardStepRef.current !== 'IDLE' && 
-        wizardStepRef.current !== 'COMPLETED'
-      ) {
-        capturedTextRef.current = "";
-        if (silenceTimerRef.current) {
-          clearTimeout(silenceTimerRef.current);
-          silenceTimerRef.current = null;
-        }
-        processStepInput(wizardStepRef.current, pendingText);
+      // If we have captured text that hasn't been processed yet, process it now
+      const pendingText = (finalText || capturedTextRef.current || "").trim();
+      if (pendingText && !pendingText.startsWith("Listening...") && !alreadyProcessed) {
+        processAndAdvance(pendingText);
         return;
       }
 
-      // If no speech captured yet, restart listening cleanly if wizard is still active
+      // If continuous stream ended naturally by the browser (Chrome continuous ends after ~60s of streaming)
+      // quietly restart without flickering or blinking UI
       if (
+        !alreadyProcessed &&
         wizardStepRef.current !== 'IDLE' && 
         wizardStepRef.current !== 'COMPLETED' && 
         !isSpeakingRef.current && 
-        !isProcessingRef.current &&
-        !isExplicitlyStoppedRef.current
+        !isProcessingRef.current
       ) {
         setTimeout(() => {
-          if (
-            wizardStepRef.current !== 'IDLE' && 
-            wizardStepRef.current !== 'COMPLETED' && 
-            !isSpeakingRef.current && 
-            !isProcessingRef.current &&
-            !isExplicitlyStoppedRef.current
-          ) {
-            const now = Date.now();
-            if (now - lastRestartTimeRef.current < 1500) {
-              consecutiveRestartsRef.current += 1;
-            } else {
-              consecutiveRestartsRef.current = 0;
+          if (!isStaleSession() && wizardStepRef.current !== 'IDLE' && wizardStepRef.current !== 'COMPLETED' && !isSpeakingRef.current) {
+            try {
+              recognition.start();
+            } catch(e) {
+              startContinuousListening();
             }
-            lastRestartTimeRef.current = now;
-
-            if (consecutiveRestartsRef.current > 4) {
-              console.warn("Speech recognition is crash-looping. Stopping auto-restart.");
-              setWizardMsg("Microphone disconnected or paused. Tap a suggestion below or manually restart.");
-              stopRecognition(true);
-              consecutiveRestartsRef.current = 0;
-              return;
-            }
-            startContinuousListening();
           }
-        }, 250);
+        }, 200);
+      } else {
+        setIsListening(false);
       }
     };
 
     recognitionRef.current = recognition;
+    setIsListening(true);
     try {
       recognition.start();
     } catch (e) {
@@ -759,8 +792,8 @@ export default function AddCrop() {
     if (silenceRestartCountRef.current > 2) {
       const pauseMsg = lang === "te" 
         ? "మైక్ పాజ్ చేయబడింది. మీకు కావలసినప్పుడు 'Tap to Speak' బటన్ నొక్కండి లేదా సూచనలను ఎంచుకోండి." 
-        : lang === "hi"
-        ? "माइक रोक दिया गया है। जब तैयार हों 'Tap to Speak' दबाएं।"
+        : lang === "hi" 
+        ? "माइक रोक दिया गया है। जब तैयार हों 'Tap to Speak' दबाएं।" 
         : "Microphone paused. Tap 'Tap to Speak' or select a suggestion below when ready.";
       setWizardMsg(pauseMsg);
       stopRecognition(true);
@@ -771,10 +804,10 @@ export default function AddCrop() {
         ? "మీరు చెప్పింది వినపడలేదు." 
         : lang === "hi" 
         ? "आपकी आवाज़ नहीं आई।" 
-        : lang === "ta"
-        ? "நீங்கள் பேசியது கேட்கவில்லை."
-        : lang === "kn"
-        ? "ನಿಮ್ಮ ಧ್ವನಿ ಕೇಳಿಸಲಿಲ್ಲ."
+        : lang === "ta" 
+        ? "நீங்கள் பேசியது கேட்கவில்லை." 
+        : lang === "kn" 
+        ? "ನಿಮ್ಮ ಧ್ವನಿ ಕೇಳಿಸಲಿಲ್ಲ." 
         : "I didn't hear you.";
 
       askStep(step, retryPrefix);
@@ -783,20 +816,15 @@ export default function AddCrop() {
 
   // ─── Manual Controls ───
   const handleManualDoneSpeaking = () => {
-    if (silenceTimerRef.current) {
-      clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = null;
-    }
+    listenSessionRef.current++;
+    
+    if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
+    if (initialSilenceTimerRef.current) { clearTimeout(initialSilenceTimerRef.current); initialSilenceTimerRef.current = null; }
+    
     const raw = (capturedTextRef.current || interim || "").trim();
     const textToProcess = raw.startsWith("Listening...") ? "" : raw;
 
-    if (recognitionRef.current) {
-      try { 
-        recognitionRef.current.onresult = null;
-        recognitionRef.current.onend = null;
-        recognitionRef.current.stop(); 
-      } catch(e) {}
-    }
+    stopRecognition(true);
 
     if (textToProcess && !isProcessingRef.current && wizardStepRef.current !== 'COMPLETED' && wizardStepRef.current !== 'IDLE') {
       capturedTextRef.current = "";
@@ -1033,13 +1061,23 @@ export default function AddCrop() {
       // ────────────────────────────────
       else if (step === 'PRICE') {
         let extractedPrice = null;
+        
+        // Check if farmer asked for current market price or mandi rate
+        if (/market\s*price|మార్కెట్|మండి|మండీ|bhav|daam|rate|average/i.test(lower)) {
+          const cropKey = formDataRef.current.name || "";
+          if (CROP_BENCHMARKS[cropKey]) {
+            extractedPrice = CROP_BENCHMARKS[cropKey].avg;
+          }
+        }
 
-        const numMatch = cleanTranscript.match(/\d+(?:\.\d+)?/);
-        if (numMatch) {
-          extractedPrice = parseFloat(numMatch[0]);
-        } else {
-          const spoken = parseSpokenNumber(cleanTranscript);
-          if (spoken && !isNaN(spoken)) extractedPrice = parseFloat(spoken);
+        if (extractedPrice === null) {
+          const numMatch = cleanTranscript.match(/\d+(?:\.\d+)?/);
+          if (numMatch) {
+            extractedPrice = parseFloat(numMatch[0]);
+          } else {
+            const spoken = parseSpokenNumber(cleanTranscript);
+            if (spoken && !isNaN(spoken)) extractedPrice = parseFloat(spoken);
+          }
         }
 
         // Fallback to API if not recognized locally
@@ -1137,6 +1175,7 @@ export default function AddCrop() {
   };
 
   const stopWizard = () => {
+    listenSessionRef.current++; // Kill any stale recognition callbacks
     stopRecognition(true);
     stopTTS();
     setWizardStep('IDLE');

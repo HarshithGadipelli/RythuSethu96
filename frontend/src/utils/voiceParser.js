@@ -618,7 +618,25 @@ const fallbackSpeechSynthesis = (text, langCode, options = {}) => {
       utterance.onerror = () => cleanFinish(false);
       window.speechSynthesis.speak(utterance);
       
-      setTimeout(() => cleanFinish(true), Math.max(4000, phoneticText.length * 80));
+      // Better fallback for Chrome's missing onend bug: poll speaking state
+      let checkInterval;
+      let safetyTimer;
+      
+      // Wait a short moment to ensure the browser registers the utterance
+      setTimeout(() => {
+        checkInterval = setInterval(() => {
+          if (!window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
+            clearInterval(checkInterval);
+            clearTimeout(safetyTimer);
+            cleanFinish(true);
+          }
+        }, 250);
+      }, 500);
+
+      safetyTimer = setTimeout(() => {
+        if (checkInterval) clearInterval(checkInterval);
+        cleanFinish(true);
+      }, Math.max(10000, phoneticText.length * 150));
     } catch(err) {
       resolve(false);
     }
@@ -655,18 +673,23 @@ export function playTTS(text, lang = "en", options = {}) {
     };
     currentTTSResolver = safeResolve;
 
-    // Fast-fallback timeout: If backend TTS takes > 1400ms (e.g. Render waking up),
-    // immediately speak via browser's built-in Web Speech API so farmer never waits!
-    const fetchTimeoutId = setTimeout(async () => {
-      if (!resolved && thisRequestId === ttsRequestId) {
-        try { abortCtrl.abort(); } catch(e) {}
-        await fallbackSpeechSynthesis(text, gttsLang, options);
-        safeResolve(true);
+    // 1. FAST PRIMARY: Browser native SpeechSynthesis (0ms latency, runs locally on device, no network lag)
+    if (typeof window !== "undefined" && ('speechSynthesis' in window)) {
+      try {
+        const spokenOk = await fallbackSpeechSynthesis(text, gttsLang, options);
+        if (spokenOk && thisRequestId === ttsRequestId) {
+          return safeResolve(true);
+        }
+      } catch (err) {
+        console.warn("Browser SpeechSynthesis warning, attempting backend TTS...", err);
       }
-    }, 1400);
+    }
 
-    const safetyTimer = setTimeout(() => safeResolve(true), Math.max(6000, text.length * 75));
-    
+    // 2. FALLBACK: Backend audio synthesis (only if browser synthesis is missing or failed)
+    if (thisRequestId !== ttsRequestId) return safeResolve(false);
+
+    const safetyTimer = setTimeout(() => safeResolve(true), Math.max(4000, text.length * 60));
+
     try {
       const res = await fetch(`${BASE_URL}/api/ai/tts`, {
         method: "POST",
@@ -675,95 +698,59 @@ export function playTTS(text, lang = "en", options = {}) {
         signal: abortCtrl.signal
       });
 
-      clearTimeout(fetchTimeoutId);
-
-      // If a newer request was dispatched while fetching, discard this one
       if (thisRequestId !== ttsRequestId || abortCtrl.signal.aborted) {
         clearTimeout(safetyTimer);
         return safeResolve(false);
       }
-      
+
       const data = await res.json();
-      if (thisRequestId !== ttsRequestId || abortCtrl.signal.aborted) {
+      if (!data.audioContent || thisRequestId !== ttsRequestId) {
         clearTimeout(safetyTimer);
-        return safeResolve(false);
-      }
-
-      if (!data.audioContent) {
-        clearTimeout(safetyTimer);
-        await fallbackSpeechSynthesis(text, gttsLang, options);
         return safeResolve(true);
       }
-      
-      // Preferred HTML5 Audio object playback
+
+      // HTML5 Audio playback
       try {
         const audioUrl = `data:audio/mp3;base64,${data.audioContent}`;
         const audio = new Audio(audioUrl);
-        
         if (options.rate) audio.playbackRate = options.rate;
         if (options.volume !== undefined) audio.volume = Math.max(0.1, Math.min(1.0, options.volume));
 
         const audioNode = {
           stop: () => {
-            try { 
-              audio.pause(); 
-              audio.currentTime = 0; 
-              audio.src = "";
-            } catch(e) {}
+            try { audio.pause(); audio.currentTime = 0; audio.src = ""; } catch(e) {}
           },
           pause: () => {
             try { audio.pause(); } catch(e) {}
           }
         };
 
-        if (thisRequestId !== ttsRequestId || abortCtrl.signal.aborted) {
-          clearTimeout(safetyTimer);
-          return safeResolve(false);
-        }
-
         activeAudioNodes.add(audioNode);
-
         audio.onended = () => {
           clearTimeout(safetyTimer);
           activeAudioNodes.delete(audioNode);
           safeResolve(true);
         };
-
-        audio.onerror = async (err) => {
+        audio.onerror = () => {
           clearTimeout(safetyTimer);
           activeAudioNodes.delete(audioNode);
-          if (thisRequestId === ttsRequestId) {
-            await fallbackSpeechSynthesis(text, gttsLang, options);
-          }
           safeResolve(true);
         };
 
         const playPromise = audio.play();
         if (playPromise !== undefined) {
-          playPromise.catch((err) => {
+          playPromise.catch(() => {
             clearTimeout(safetyTimer);
             activeAudioNodes.delete(audioNode);
-            if (err.name !== "AbortError" && thisRequestId === ttsRequestId) {
-              fallbackSpeechSynthesis(text, gttsLang, options).then(() => safeResolve(true));
-            } else {
-              safeResolve(false);
-            }
+            safeResolve(true);
           });
         }
       } catch (audioPlayErr) {
         clearTimeout(safetyTimer);
-        if (thisRequestId === ttsRequestId) {
-          await fallbackSpeechSynthesis(text, gttsLang, options);
-        }
         safeResolve(true);
       }
-      
     } catch (err) {
       clearTimeout(safetyTimer);
-      if (err.name === "AbortError" || thisRequestId !== ttsRequestId) {
-        return safeResolve(false);
-      }
-      await fallbackSpeechSynthesis(text, gttsLang, options);
       safeResolve(true);
     }
   });

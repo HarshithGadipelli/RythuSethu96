@@ -990,39 +990,47 @@ router.post("/tts", async (req, res) => {
     const rawLang = (lang || "en").toLowerCase().trim();
     const safeLang = rawLang.split("-")[0] || "en";
 
-    // Use googleTTS.getAllAudioBase64 to handle any length safely without 200-char limit
+    // For prompt texts under 200 chars, getAudioBase64 is a single fast HTTP call
     try {
-      const audioChunks = await googleTTS.getAllAudioBase64(text.trim(), {
-        lang: safeLang,
-        slow: false,
-        host: "https://translate.google.com",
-        timeout: 10000,
-      });
+      if (text.trim().length <= 200) {
+        const base64Audio = await googleTTS.getAudioBase64(text.trim(), {
+          lang: safeLang,
+          slow: false,
+          host: "https://translate.google.com",
+          timeout: 4000,
+        });
+        if (base64Audio) {
+          return res.json({ audioContent: base64Audio, lang: safeLang });
+        }
+      } else {
+        const audioChunks = await googleTTS.getAllAudioBase64(text.trim(), {
+          lang: safeLang,
+          slow: false,
+          host: "https://translate.google.com",
+          timeout: 5000,
+        });
 
-      if (audioChunks && audioChunks.length > 0) {
-        // Concatenate all base64 MP3 chunks seamlessly into a single buffer
-        const combinedBuffer = Buffer.concat(
-          audioChunks.map(chunk => Buffer.from(chunk.base64, "base64"))
-        );
-        return res.json({ audioContent: combinedBuffer.toString("base64"), lang: safeLang });
+        if (audioChunks && audioChunks.length > 0) {
+          const combinedBuffer = Buffer.concat(
+            audioChunks.map(chunk => Buffer.from(chunk.base64, "base64"))
+          );
+          return res.json({ audioContent: combinedBuffer.toString("base64"), lang: safeLang });
+        }
       }
     } catch (chunkErr) {
-      console.warn(`[TTS] getAllAudioBase64 failed for ${safeLang}:`, chunkErr.message);
+      console.warn(`[TTS] TTS failed for ${safeLang}:`, chunkErr.message);
     }
 
     // Fallback: try English if primary language failed
     try {
-      const fallbackChunks = await googleTTS.getAllAudioBase64(text.trim(), {
+      const fallbackBase64 = await googleTTS.getAudioBase64(text.trim().slice(0, 200), {
         lang: "en",
         slow: false,
         host: "https://translate.google.com",
-        timeout: 10000,
+        timeout: 3000,
       });
-      if (fallbackChunks && fallbackChunks.length > 0) {
-        const combinedBuffer = Buffer.concat(
-          fallbackChunks.map(chunk => Buffer.from(chunk.base64, "base64"))
-        );
-        return res.json({ audioContent: combinedBuffer.toString("base64"), lang: "en" });
+      if (fallbackBase64) {
+        return res.json({ audioContent: fallbackBase64, lang: "en" });
       }
     } catch (fbErr) {
       console.error("[TTS] Fallback to English also failed:", fbErr.message);
