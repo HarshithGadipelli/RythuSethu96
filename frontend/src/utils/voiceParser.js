@@ -1,4 +1,35 @@
 // Multilingual Voice Parser for Rythu Sethu
+import { BASE_URL } from '../api/api';
+
+const getApiBaseUrl = () => {
+  if (typeof BASE_URL !== 'undefined' && BASE_URL) return BASE_URL;
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    const isProd = host.includes("vercel.app") || host.includes("rythujanasethu");
+    return isProd ? "https://rythusethu96.onrender.com" : `http://${host}:5000`;
+  }
+  return "http://localhost:5000";
+};
+
+let persistentAudioElement = null;
+
+export function unlockAudio() {
+  if (typeof window === "undefined") return;
+  try {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0.001;
+      window.speechSynthesis.speak(u);
+    }
+    if (!persistentAudioElement) {
+      persistentAudioElement = new Audio();
+    }
+    persistentAudioElement.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+    persistentAudioElement.volume = 0.001;
+    persistentAudioElement.play().catch(() => {});
+  } catch(e) {}
+}
 
 export const CROPS_MAP = {
   // English & Slangs
@@ -121,11 +152,11 @@ const ORGANIC_KEYWORDS = [
 ];
 
 export const UNITS_MAP = {
-  quintal: ["quintal", "quintals", "qntl", "క్వింటాల్", "క్వింటాళ్లు", "क्विंटल", "ಕ್ವಿಂಟಾಲ್", "குவிண்டால்"],
-  bag: ["bag", "bags", "bori", "boriyan", "basta", "bastalu", "bastha", "basthalu", "బస్తా", "బస్తాలు", "బోరి", "बोरी", "ಮೂಟೆ", "மூட்டை"],
+  quintal: ["quintal", "quintals", "qntl", "kintal", "kintallu", "క్వింటాల్", "క్వింటాళ్లు", "క్వింటాళ్ల", "క్వింటాలు", "क्विंटल", "ಕ್ವಿಂಟಾಲ್", "குவிண்டால்"],
+  bag: ["bag", "bags", "bori", "boriyan", "basta", "bastalu", "bastha", "basthalu", "బస్తా", "బస్తాలు", "బస్తాల", "బోరి", "बोरी", "मोटे", "మూటే", "மூட்டை"],
   crate: ["crate", "crates", "peti", "pette", "pettelu", "పెట్టె", "పెట్టెలు", "पेटी", "ಪೆಟ್ಟಿಗೆ"],
   ton: ["ton", "tons", "tonne", "tonnes", "టన్", "టన్నులు", "टन"],
-  kg: ["kg", "kilo", "kilos", "kilogram", "kilograms", "కేజీ", "కేజీలు", "కిలో", "కిలోలు", "किलो", "किलोग्राम", "ಕೆಜಿ", "ಕಿಲೋ", "கிலோ"],
+  kg: ["kg", "kilo", "kilos", "kilogram", "kilograms", "కేజీ", "కేజీలు", "కేజీల", "కిలో", "కిలోలు", "కిలోల", "किलो", "किलोग्राम", "ಕೆಜಿ", "ಕಿಲೋ", "கிலோ"],
   g: ["g", "gram", "grams", "గ్రాములు", "గ్రామ్", "ग्राम", "ಗ್ರಾಂ", "கிராம்"],
   litre: ["litre", "litres", "liter", "liters", "లీటర్", "లీటర్లు", "लीटर", "ಲೀಟರ್", "லிட்டர்"],
   piece: ["piece", "pieces", "పీస్", "పీసులు", "पीस", "टुकड़ा", "ಪೀಸ್", "பீஸ்"],
@@ -133,7 +164,8 @@ export const UNITS_MAP = {
 };
 
 const PRICE_INDICATORS = [
-  "price", "rupees", "rupee", "rs", "₹", "inr", "bucks", "rate", "cost", "at",
+  "price", "rupees", "rupee", "rs", "₹", "inr", "bucks", "rate", "cost", "at", "for", "per",
+  "rupay", "rupe", "rupiya", "roopay", "rupaayalu", "rupai", "bhav", "daam",
   "ధర", "రూపాయలు", "రూపాయి", "రూ", "రొపాయలు", "డబ్బులు",
   "कीमत", "रुपये", "रुपया", "रू", "दाम", "भाव",
   "ಬೆಲೆ", "ರೂಪಾಯಿ", "ರೂ",
@@ -146,6 +178,18 @@ const NUMBERS_MAP = {
   eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20,
   twentyfive: 25, thirty: 30, thirtyfive: 35, forty: 40, fortyfive: 45, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90,
   hundred: 100, twohundred: 200, fivehundred: 500, thousand: 1000,
+
+  // Romanized Telugu
+  okati: 1, rendu: 2, moodu: 3, nalugu: 4, aidu: 5, aaru: 6, yedu: 7, enimidi: 8, tommidi: 9, padi: 10,
+  padakondu: 11, pannendu: 12, padhamudu: 13, padanalugu: 14, padihenu: 15, padahaaru: 16, padhedu: 17, paddhenimidi: 18, panthommidi: 19,
+  iravai: 20, iravaiyaindu: 25, pathika: 25, patika: 25, muppai: 30, muppay: 30, nalabhai: 40, nalabai: 40, yabai: 50, yabhai: 50, yabhei: 50,
+  aravai: 60, debbai: 70, enabhai: 80, thombai: 90, tommbhai: 90, vanda: 100, nooru: 100, veyi: 1000, veyyi: 1000,
+
+  // Romanized Hindi
+  ek: 1, do: 2, teen: 3, char: 4, paanch: 5, chah: 6, saat: 7, aath: 8, nau: 9, das: 10,
+  gyarah: 11, barah: 12, terah: 13, chaudah: 14, pandrah: 15, solah: 16, satrah: 17, atharah: 18, unnis: 19,
+  bees: 20, pachis: 25, tees: 30, paintis: 35, chalis: 40, paintalis: 45, pachas: 50, saath: 60, sattar: 70, assi: 80, nabbe: 90,
+  sau: 100, hazar: 1000,
 
   // Telugu
   సున్నా: 0, ఒకటి: 1, రెండు: 2, మూడు: 3, నాలుగు: 4, ఐదు: 5, ఆరు: 6, ఏడు: 7, ఎనిమిది: 8, తొమ్మిది: 9, పది: 10,
@@ -314,7 +358,7 @@ export function parseSpokenSequence(text) {
 }
 
 // Client-side Multilingual Entity & Command Parser
-export function parseVoiceToFormMultilingual(transcript, lang = "en") {
+export function parseVoiceToFormMultilingual(transcript, lang = "en", options = {}) {
   if (!transcript) return {};
   const lower = transcript.toLowerCase().trim();
   const updates = {};
@@ -371,64 +415,110 @@ export function parseVoiceToFormMultilingual(transcript, lang = "en") {
     updates.isPesticideFree = true;
   }
 
-  // 3. Extract Numbers & Map with Proximity Analysis
+  // 3. Extract Numbers & Map with Directional Proximity Analysis
   const tokens = lower.split(/[\s,]+/);
   const foundNumbers = [];
 
   tokens.forEach((token, index) => {
-    const digitMatch = token.match(/\d+/);
+    const digitMatch = token.match(/\d+(?:\.\d+)?/);
     if (digitMatch) {
-      foundNumbers.push({ val: parseInt(digitMatch[0]), index });
+      foundNumbers.push({ val: parseFloat(digitMatch[0]), index });
     } else if (NUMBERS_MAP[token] !== undefined) {
       foundNumbers.push({ val: NUMBERS_MAP[token], index });
     }
   });
 
-  // Assign numbers to fields based on proximity keywords
-  // We compute minimum distance to a unit vs a price indicator for each number
-  foundNumbers.forEach(({ val, index }) => {
-    let minQtyDist = Infinity;
-    let minPriceDist = Infinity;
-    let foundUnit = null;
-
-    tokens.forEach((t, i) => {
-      const dist = Math.abs(index - i);
-      if (dist > 4) return; // Only look within radius of 4
-
-      // Check if this token is a unit using matchesUnitToken
-      for (const [unitKey, unitAliases] of Object.entries(UNITS_MAP)) {
-        if (unitAliases.some(alias => matchesUnitToken(t, alias))) {
-          if (dist < minQtyDist) {
-            minQtyDist = dist;
-            foundUnit = unitKey === 'ton' ? 'tonne' : unitKey;
-          }
-        }
+  const checkUnit = (tok) => {
+    for (const [unitKey, unitAliases] of Object.entries(UNITS_MAP)) {
+      if (unitAliases.some(alias => matchesUnitToken(tok, alias))) {
+        return unitKey === 'ton' ? 'tonne' : unitKey;
       }
+    }
+    return null;
+  };
 
-      // Check if this token is a price indicator
-      if (PRICE_INDICATORS.some(ind => t.includes(ind.toLowerCase()))) {
-        if (dist < minPriceDist) {
-          minPriceDist = dist;
-        }
+  const checkPrice = (tok) => {
+    return PRICE_INDICATORS.some(ind => tok === ind.toLowerCase() || tok.includes(ind.toLowerCase()));
+  };
+
+  const scored = foundNumbers.map(fn => {
+    let bestUnit = null;
+    let unitDist = 999;
+    let priceDist = 999;
+    let isUnitDirectlyAfter = false;
+    let isPriceDirectlyAfter = false;
+    let isPriceDirectlyBefore = false;
+
+    tokens.forEach((tok, i) => {
+      const dist = Math.abs(fn.index - i);
+      const u = checkUnit(tok);
+      if (u && dist < unitDist) {
+        unitDist = dist;
+        bestUnit = u;
+        if (i === fn.index + 1) isUnitDirectlyAfter = true;
+      }
+      if (checkPrice(tok) && dist < priceDist) {
+        priceDist = dist;
+        if (i === fn.index + 1) isPriceDirectlyAfter = true;
+        if (i === fn.index - 1) isPriceDirectlyBefore = true;
       }
     });
 
-    if (minQtyDist < Infinity || minPriceDist < Infinity) {
-      if (minQtyDist <= minPriceDist) {
-        updates.quantity = val;
-        updates.unit = foundUnit;
-      } else {
-        updates.price = val;
-      }
-    } else {
-      // Fallback
-      if (updates.quantity === undefined) {
-        updates.quantity = val;
-      } else if (updates.price === undefined) {
-        updates.price = val;
-      }
-    }
+    let qtyScore = 0;
+    if (isUnitDirectlyAfter) qtyScore = 150;
+    else if (unitDist === 1) qtyScore = 100;
+    else if (unitDist === 2) qtyScore = 50;
+    else if (unitDist <= 4) qtyScore = 20;
+
+    let priceScore = 0;
+    if (isPriceDirectlyAfter || isPriceDirectlyBefore) priceScore = 150;
+    else if (priceDist === 1) priceScore = 100;
+    else if (priceDist === 2) priceScore = 50;
+    else if (priceDist <= 4) priceScore = 20;
+
+    return { ...fn, qtyScore, priceScore, bestUnit };
   });
+
+  const currentStep = options?.step || null;
+
+  if (scored.length >= 2) {
+    const sorted = [...scored].sort((a, b) => a.index - b.index);
+    const n1 = sorted[0];
+    const n2 = sorted[1];
+
+    if (n1.qtyScore >= n1.priceScore && n2.priceScore >= n2.qtyScore) {
+      updates.quantity = n1.val;
+      updates.unit = n1.bestUnit || "kg";
+      updates.price = n2.val;
+    } else if (n1.priceScore > n1.qtyScore && n2.qtyScore >= n2.priceScore) {
+      updates.price = n1.val;
+      updates.quantity = n2.val;
+      updates.unit = n2.bestUnit || "kg";
+    } else if (n1.bestUnit && !n2.bestUnit) {
+      updates.quantity = n1.val;
+      updates.unit = n1.bestUnit || "kg";
+      updates.price = n2.val;
+    } else if (n2.bestUnit && !n1.bestUnit) {
+      updates.quantity = n2.val;
+      updates.unit = n2.bestUnit || "kg";
+      updates.price = n1.val;
+    } else {
+      updates.quantity = n1.val;
+      updates.unit = n1.bestUnit || "kg";
+      updates.price = n2.val;
+    }
+  } else if (scored.length === 1) {
+    const s = scored[0];
+    if (s.priceScore > s.qtyScore || currentStep === 'PRICE') {
+      updates.price = s.val;
+    } else if (s.qtyScore > s.priceScore || s.bestUnit || currentStep === 'QUANTITY') {
+      updates.quantity = s.val;
+      updates.unit = s.bestUnit || "kg";
+    } else {
+      updates.quantity = s.val;
+      updates.unit = "kg";
+    }
+  }
 
   // 4. Extract Location if any
   // e.g. "from hyderabad", "హైదరాబాద్ నుండి", "हैदराबाद से", "ಹೈದರಾಬಾದ್‌ನಿಂದ", "ஹைதராபாத்தில் இருந்து"
@@ -465,8 +555,6 @@ export function parseVoiceToFormMultilingual(transcript, lang = "en") {
 
   return updates;
 }
-
-import { BASE_URL } from "../api/api.js";
 
 let activeAudioNodes = new Set();
 let currentTTSResolver = null;
@@ -576,8 +664,16 @@ const fallbackSpeechSynthesis = (text, langCode, options = {}) => {
       utterance.lang = targetLang;
       
       const voices = window.speechSynthesis.getVoices();
+      const langPrefix = targetLang.split('-')[0];
+      const hasMatchingVoice = voices.some(v => v.lang === targetLang || v.lang.startsWith(langPrefix));
+      
+      // If the target language is NOT English and there is no native voice installed in the browser,
+      // skip browser synthesis immediately so playTTS uses crystal clear backend Google TTS!
+      if (langPrefix !== "en" && !hasMatchingVoice) {
+        return resolve(false);
+      }
+
       if (voices.length > 0) {
-        const langPrefix = targetLang.split('-')[0];
         const matchVoice = (v) => v.lang === targetLang || v.lang.startsWith(langPrefix);
         
         // 1. Natural / Neural voice priority (Edge/Chrome/Android/iOS)
@@ -588,13 +684,13 @@ const fallbackSpeechSynthesis = (text, langCode, options = {}) => {
         if (!bestVoice) bestVoice = voices.find(v => matchVoice(v) && /(mohan|swara|neerja|ravi|heera|madhav|priya|mukta|shruti|pallavi)/i.test(v.name));
         // 4. Any voice matching the target dialect
         if (!bestVoice) bestVoice = voices.find(v => matchVoice(v));
-        // 5. Fallback to any en-IN natural voice
-        if (!bestVoice && targetLang !== "en-IN") {
-          bestVoice = voices.find(v => v.lang === "en-IN" && (v.name.toLowerCase().includes('natural') || v.name.toLowerCase().includes('google')));
-        }
         
+        // Only use voice if it matches the target language
         if (bestVoice) {
           utterance.voice = bestVoice;
+        } else if (langPrefix !== "en") {
+          // If no matching regional voice found, do NOT fallback to English voice for Indian scripts!
+          return resolve(false);
         }
       }
 
@@ -688,10 +784,11 @@ export function playTTS(text, lang = "en", options = {}) {
     // 2. FALLBACK: Backend audio synthesis (only if browser synthesis is missing or failed)
     if (thisRequestId !== ttsRequestId) return safeResolve(false);
 
-    const safetyTimer = setTimeout(() => safeResolve(true), Math.max(4000, text.length * 60));
+    const safetyTimer = setTimeout(() => safeResolve(true), Math.max(16000, text.length * 60));
 
     try {
-      const res = await fetch(`${BASE_URL}/api/ai/tts`, {
+      const apiUrl = getApiBaseUrl();
+      const res = await fetch(`${apiUrl}/api/ai/tts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, lang: gttsLang }),
@@ -712,13 +809,14 @@ export function playTTS(text, lang = "en", options = {}) {
       // HTML5 Audio playback
       try {
         const audioUrl = `data:audio/mp3;base64,${data.audioContent}`;
-        const audio = new Audio(audioUrl);
+        const audio = persistentAudioElement || new Audio();
+        audio.src = audioUrl;
         if (options.rate) audio.playbackRate = options.rate;
         if (options.volume !== undefined) audio.volume = Math.max(0.1, Math.min(1.0, options.volume));
 
         const audioNode = {
           stop: () => {
-            try { audio.pause(); audio.currentTime = 0; audio.src = ""; } catch(e) {}
+            try { audio.pause(); audio.currentTime = 0; } catch(e) {}
           },
           pause: () => {
             try { audio.pause(); } catch(e) {}
@@ -731,7 +829,8 @@ export function playTTS(text, lang = "en", options = {}) {
           activeAudioNodes.delete(audioNode);
           safeResolve(true);
         };
-        audio.onerror = () => {
+        audio.onerror = (e) => {
+          console.warn("[TTS] Backend audio playback error:", e);
           clearTimeout(safetyTimer);
           activeAudioNodes.delete(audioNode);
           safeResolve(true);
@@ -739,17 +838,20 @@ export function playTTS(text, lang = "en", options = {}) {
 
         const playPromise = audio.play();
         if (playPromise !== undefined) {
-          playPromise.catch(() => {
+          playPromise.catch((err) => {
+            console.warn("[TTS] Audio play promise catch:", err);
             clearTimeout(safetyTimer);
             activeAudioNodes.delete(audioNode);
             safeResolve(true);
           });
         }
       } catch (audioPlayErr) {
+        console.warn("[TTS] HTML5 Audio setup failed:", audioPlayErr);
         clearTimeout(safetyTimer);
         safeResolve(true);
       }
     } catch (err) {
+      console.warn("[TTS] Backend fetch error:", err);
       clearTimeout(safetyTimer);
       safeResolve(true);
     }

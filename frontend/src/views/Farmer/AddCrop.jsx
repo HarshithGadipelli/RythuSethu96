@@ -12,7 +12,7 @@ import LocationUpdateModal from '../../components/LocationUpdateModal';
 import { useAuth } from '../../context/AuthContext';
 import { useLang } from '../../context/LangContext';
 import { 
-  playTTS, stopTTS, parseVoiceToFormMultilingual, 
+  playTTS, stopTTS, unlockAudio, parseVoiceToFormMultilingual, 
   CROPS_MAP, CATEGORIES_MAP, UNITS_MAP, parseSpokenNumber, matchesUnitToken 
 } from '../../utils/voiceParser';
 import { useVoiceInput, LANG_MAP } from '../../utils/useVoiceInput';
@@ -90,7 +90,17 @@ const STEP_CHIPS = {
 
 export default function AddCrop() {
   const { user } = useAuth();
-  const { lang, t } = useLang();
+  const { lang, changeLang, t } = useLang();
+  
+  const [wizardLang, setWizardLang] = useState(lang || 'te');
+  const wizardLangRef = useRef(lang || 'te');
+
+  useEffect(() => {
+    if (lang) {
+      setWizardLang(lang);
+      wizardLangRef.current = lang;
+    }
+  }, [lang]);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -170,7 +180,8 @@ export default function AddCrop() {
   });
 
   // Wizard States
-  const [wizardStep, setWizardStep] = useState('IDLE'); // 'IDLE' | 'NAME' | 'QUANTITY' | 'PRICE' | 'CONFIRM_SUBMIT' | 'COMPLETED'
+  const [wizardStep, setWizardStep] = useState('IDLE'); // 'IDLE' | 'NAME' | 'QUANTITY' | 'PRICE' | 'CONFIRM_SUBMIT' | 'COMPLETED' | 'SINGLE_PROMPT'
+  const [assistantMode, setAssistantMode] = useState('step'); // 'step' | 'single'
   const [wizardMsg, setWizardMsg] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -182,6 +193,10 @@ export default function AddCrop() {
   const [manualWizardText, setManualWizardText] = useState("");
 
   const STEP_CHIPS = {
+    SINGLE_PROMPT: [
+      { label: "🍅 50kg Tomato at ₹40", val: "50kg Tomato at 40 rupees" },
+      { label: "🍚 10 bags Rice at ₹2000", val: "10 bags of Rice at 2000 rupees" }
+    ],
     NAME: [
       { label: "🍅 Tomato (టమోటా)", val: "Tomato" },
       { label: "🧅 Onion (ఉల్లిపాయ)", val: "Onion" },
@@ -446,7 +461,8 @@ export default function AddCrop() {
   };
 
   // ─── Conversational Prompts & Acknowledgments in Indian Languages ───
-  const getPromptForStep = (step, currentCrop = "", currentQty = "", currentUnit = "kg") => {
+  const getPromptForStep = (step, currentCrop = "", currentQty = "", currentUnit = "kg", targetLang = null) => {
+    const activeLang = targetLang || wizardLangRef.current || lang || 'te';
     const unitInLang = {
       te: currentUnit === 'kg' ? 'కేజీ' : currentUnit === 'bag' ? 'బస్తా' : currentUnit === 'quintal' ? 'క్వింటాల్' : currentUnit,
       hi: currentUnit === 'kg' ? 'किलो' : currentUnit === 'bag' ? 'बोरी' : currentUnit === 'quintal' ? 'क्विंटल' : currentUnit,
@@ -456,12 +472,19 @@ export default function AddCrop() {
     };
 
     const prompts = {
+      SINGLE_PROMPT: {
+        en: "Please tell me what you want to sell, how much you have, and the price, all in one sentence.",
+        te: "మీరు ఏమి అమ్మాలనుకుంటున్నారు, ఎంత పరిమాణం ఉంది, మరియు ధర ఎంత, ఇవన్నీ ఒకే వాక్యంలో చెప్పండి.",
+        hi: "कृपया मुझे एक ही वाक्य में बताएं कि आप क्या बेचना चाहते हैं, कितनी मात्रा है और क्या कीमत है।",
+        ta: "நீங்கள் என்ன விற்க விரும்புகிறீர்கள், எவ்வளவு இருக்கிறது, விலை என்ன என்பதை ஒரே வாக்கியத்தில் சொல்லுங்கள்.",
+        kn: "ನೀವು ಏನು ಮಾರಾಟ ಮಾಡಲು ಬಯಸುತ್ತೀರಿ, ಎಷ್ಟು ಇದೆ ಮತ್ತು ಬೆಲೆ ಎಷ್ಟು ಎಂಬುದನ್ನು ಒಂದೇ ವಾಕ್ಯದಲ್ಲಿ ಹೇಳಿ."
+      },
       NAME: {
-        en: "What crop or produce do you want to sell? Please speak after the chime.",
-        te: "మీరు ఏ పంటను అమ్మాలనుకుంటున్నారు? బీప్ శబ్దం తర్వాత పంట పేరు చెప్పండి.",
-        hi: "आप कौन सी फसल या उत्पाद बेचना चाहते हैं? बीप के बाद बोलें।",
-        ta: "நீங்கள் என்ன பயிரை விற்க விரும்புகிறீர்கள்? பீப் ஒலிக்குப் பிறகு சொல்லுங்கள்.",
-        kn: "ನೀವು ಯಾವ ಬೆಳೆಯನ್ನು ಮಾರಾಟ ಮಾಡಲು ಬಯಸುತ್ತೀರಿ? ಧ್ವನಿಯ ನಂತರ ಹೇಳಿ."
+        en: "What crop or produce do you want to sell? You can tell me the crop name, quantity, and price together, or one by one.",
+        te: "మీరు ఏ పంటను అమ్మాలనుకుంటున్నారు? పంట పేరు, పరిమాణం, ధర అన్నీ కలిపి చెప్పవచ్చు లేదా ఒక్కొక్కటిగా చెప్పవచ్చు.",
+        hi: "आप कौन सी फसल या उत्पाद बेचना चाहते हैं? आप फसल का नाम, मात्रा और कीमत एक साथ या अलग-अलग बता सकते हैं।",
+        ta: "நீங்கள் என்ன பயிரை விற்க விரும்புகிறீர்கள்? பயிர் பெயர், அளவு, விலை ஆகியவற்றை ஒன்றாகவோ அல்லது ஒவ்வொன்றாகவோ சொல்லலாம்.",
+        kn: "ನೀವು ಯಾವ ಬೆಳೆಯನ್ನು ಮಾರಾಟ ಮಾಡಲು ಬಯಸುತ್ತೀರಿ? ಬೆಳೆಯ ಹೆಸರು, ಪ್ರಮಾಣ ಮತ್ತು ಬೆಲೆಯನ್ನು ಒಟ್ಟಿಗೆ ಅಥವಾ ಒಂದೊಂದಾಗಿ ಹೇಳಬಹುದು."
       },
       QUANTITY: {
         en: `How much quantity of ${currentCrop || 'produce'} do you have? For example, 50 kg or 10 bags.`,
@@ -478,24 +501,25 @@ export default function AddCrop() {
         kn: `ಪ್ರತಿ ${unitInLang.kn} ಗೆ ನಿಮ್ಮ ಮಾರಾಟದ ಬೆಲೆ ಎಷ್ಟು ರೂಪಾಯಿ? ಉದಾಹರಣೆಗೆ 40 ರೂಪಾಯಿ.`
       },
       CONFIRM_SUBMIT: {
-        en: `All details collected: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${formDataRef.current.unit || currentUnit} at ₹${formDataRef.current.price || ''}. Say Yes to submit, or review your form below.`,
-        te: `వివరాలు నమోదు చేశాను: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.te}, ధర ₹${formDataRef.current.price || ''}. మార్కెట్‌లో లిస్ట్ చేయడానికి అవును అని చెప్పండి లేదా క్రింది బటన్ నొక్కండి.`,
-        hi: `विवरण दर्ज किया गया: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.hi}, ₹${formDataRef.current.price || ''} प्रति यूनिट। लिस्ट करने के लिए हाँ कहें या नीचे दिया गया फॉर्म देखें।`,
-        ta: `விவரங்கள் பெறப்பட்டன: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.ta}, விலை ₹${formDataRef.current.price || ''}. பட்டியலிட ஆம் என்று சொல்லுங்கள்.`,
-        kn: `ವಿವರಗಳನ್ನು ನಮೂದಿಸಲಾಗಿದೆ: ${formDataRef.current.name || currentCrop}, ${formDataRef.current.quantity || currentQty} ${unitInLang.kn}, ಬೆಲೆ ₹${formDataRef.current.price || ''}. ಪಟ್ಟಿ ಮಾಡಲು ಹೌದು ಎಂದು ಹೇಳಿ.`
+        en: "Would you like me to submit this crop now? Say Yes to submit, or No to start over.",
+        te: "ఈ పంట వివరాలను ఇప్పుడు సమర్పించమంటారా? సమర్పించడానికి అవును అని, మళ్లీ ప్రారంభించడానికి కాదు అని చెప్పండి.",
+        hi: "क्या आप इस फसल को अभी सबमिट करना चाहते हैं? सबमिट के लिए हाँ कहें, या फिर से शुरू करने के लिए ना कहें।",
+        ta: "இந்த பயிர் விவரங்களை இப்போது சமர்ப்பிக்கலாமா? ஆம் அல்லது இல்லை என்று சொல்லுங்கள்.",
+        kn: "ಈ ಬೆಳೆಯ ವಿವರಗಳನ್ನು ಈಗ ಸಲ್ಲಿಸಬೇಕೇ? ಸಲ್ಲಿಸಲು ಹೌದು ಅಥವಾ ಮತ್ತೆ ಪ್ರಾರಂಭಿಸಲು ಇಲ್ಲ ಎಂದು ಹೇಳಿ."
       },
       COMPLETED: {
-        en: "All details filled! Please review the form and click List Item to publish.",
-        te: "అన్ని వివరాలు నింపబడ్డాయి! ఫారమ్‌ను సరిచూసి లిస్ట్ ఐటెం బటన్ నొక్కండి.",
+        en: "All details filled! Review your listing and submit the form.",
+        te: "అన్ని వివరాలు నమోదయ్యాయి! ఒకసారి చూసుకుని సబ్మిట్ చేయండి.",
         hi: "सभी विवरण भर दिए गए हैं! फॉर्म की समीक्षा करें और सबमिट करें।",
         ta: "எல்லா விவரங்களும் நிரப்பப்பட்டுள்ளன! சரிபார்த்து சமர்ப்பிக்கவும்.",
         kn: "ಎಲ್ಲಾ ವಿವರಗಳು ಭರ್ತಿಯಾಗಿವೆ! ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಸಬ್ಮಿಟ್ ಮಾಡಿ."
       }
     };
-    return prompts[step]?.[lang] || prompts[step]?.en || "";
+    return prompts[step]?.[activeLang] || prompts[step]?.en || "";
   };
 
-  const getSuccessAck = (step, val1 = "", val2 = "") => {
+  const getSuccessAck = (step, val1 = "", val2 = "", targetLang = null) => {
+    const activeLang = targetLang || wizardLangRef.current || lang || 'te';
     const acks = {
       NAME: {
         en: `Got it! Added ${val1}.`,
@@ -519,11 +543,19 @@ export default function AddCrop() {
         kn: `ಅದ್ಭುತ! ಪ್ರತಿ ${val2} ಗೆ ₹${val1} ಬೆಲೆ ನಿಗದಿಪಡಿಸಲಾಗಿದೆ.`
       }
     };
-    return acks[step]?.[lang] || acks[step]?.en || "";
+    return acks[step]?.[activeLang] || acks[step]?.en || "";
   };
 
-  const getUnrecognizedAck = (step, heard) => {
+  const getUnrecognizedAck = (step, heard, targetLang = null) => {
+    const activeLang = targetLang || wizardLangRef.current || lang || 'te';
     const unrecAcks = {
+      SINGLE_PROMPT: {
+        en: `I heard "${heard}", but couldn't catch all the details. Let's go step by step. What crop is this?`,
+        te: `మీరు చెప్పిన "${heard}" లో వివరాలన్నీ సరిగ్గా అర్థం కాలేదు. ఒక్కొక్కటిగా చూద్దాం. పంట పేరు ఏమిటి?`,
+        hi: `मुझे "${heard}" सुनाई दिया, लेकिन सभी विवरण समझ नहीं आए। चलिए एक-एक करके भरते हैं। फसल का नाम क्या है?`,
+        ta: `"${heard}" என்று கேட்டது, ஆனால் எல்லா விவரங்களும் புரியவில்லை. ஒவ்வொன்றாகச் செல்வோம். இது என்ன பயிர்?`,
+        kn: `"${heard}" ಕೇಳಿಸಿತು, ಆದರೆ ಎಲ್ಲಾ ವಿವರಗಳು ಅರ್ಥವಾಗಲಿಲ್ಲ. ಒಂದೊಂದಾಗಿ ಹೋಗೋಣ. ಬೆಳೆಯ ಹೆಸರು ಏನು?`
+      },
       NAME: {
         en: `I heard "${heard}", but didn't catch the crop. Please speak a crop name like Tomato, Rice, or Onion.`,
         te: `మీరు చెప్పిన "${heard}" పంట పేరు అర్థంకాలేదు. దయచేసి టమోటా, వరి లేదా ఉల్లిపాయ లాంటి పంట పేరు చెప్పండి.`,
@@ -550,14 +582,14 @@ export default function AddCrop() {
         te: `దయచేసి సమర్పించడానికి అవును లేదా రద్దు చేయడానికి కాదు అని చెప్పండి.`,
         hi: `कृपया केवल सबमिट के लिए हाँ या रद्द के लिए ना कहें।`,
         ta: `தயவுசெய்து ஆம் அல்லது இல்லை என்று மட்டுமே சொல்லுங்கள்.`,
-        kn: `ದಯವಿಟ್ಟು ಸಲ್ಲಿಸಲು ಹೌದು ಅಥವಾ ರದ್ದು ಮಾಡಲು ಇಲ್ಲ ಎಂದು ಹೇಳಿ.`
+        kn: `ದಯವಿಟ್ಟು ಸಲ್ಲಿಸಲು ಹೌದು அல்லது ರದ್ದು ಮಾಡಲು ಇಲ್ಲ ಎಂದು ಹೇಳಿ.`
       }
     };
-    return unrecAcks[step]?.[lang] || unrecAcks[step]?.en || "";
+    return unrecAcks[step]?.[activeLang] || unrecAcks[step]?.en || "";
   };
 
   // ─── Step Transition: Speak Prompt & Open Mic ───
-  const askStep = async (step, customPrefix = "") => {
+  const askStep = async (step, customPrefix = "", overrideLang = null) => {
     // Immediately kill any running recognition and TTS
     listenSessionRef.current++; // Invalidate any stale session callbacks
     stopRecognition(true);
@@ -570,11 +602,14 @@ export default function AddCrop() {
     isProcessingRef.current = false;
     silenceRestartCountRef.current = 0;
 
+    const currentLang = overrideLang || wizardLangRef.current || lang || 'te';
+
     let promptText = getPromptForStep(
       step, 
       formDataRef.current.name, 
       formDataRef.current.quantity, 
-      formDataRef.current.unit
+      formDataRef.current.unit,
+      currentLang
     );
 
     if (customPrefix) {
@@ -585,9 +620,9 @@ export default function AddCrop() {
     setIsSpeaking(true);
     isSpeakingRef.current = true;
 
-    // Speak prompt aloud
+    // Speak prompt aloud in selected language
     try {
-      await playTTS(promptText, lang);
+      await playTTS(promptText, currentLang);
     } catch (e) {
       console.warn("TTS playback warning:", e);
     }
@@ -601,15 +636,94 @@ export default function AddCrop() {
        // Small delay to let chime finish before opening mic
        await new Promise(r => setTimeout(r, 300));
        if (wizardStepRef.current === step) {
-         startContinuousListening();
+         startContinuousListening(currentLang);
        }
     }
   };
 
+  // ─── Fallback: MediaRecorder STT for browsers/networks that block Web Speech API ───
+  const startMediaRecorderListening = async (targetLang = null) => {
+    if (recognitionRef.current) {
+      try {
+        if (recognitionRef.current.stop) recognitionRef.current.stop();
+        if (recognitionRef.current.abort) recognitionRef.current.abort();
+      } catch(e) {}
+      recognitionRef.current = null;
+    }
+    if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
+    if (initialSilenceTimerRef.current) { clearTimeout(initialSilenceTimerRef.current); initialSilenceTimerRef.current = null; }
+
+    const sessionId = ++listenSessionRef.current;
+    const isStaleSession = () => listenSessionRef.current !== sessionId;
+    const activeLang = targetLang || wizardLangRef.current || lang || "te";
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (isStaleSession()) {
+        stream.getTracks().forEach(t => t.stop());
+        return;
+      }
+
+      const mediaRecorder = new window.MediaRecorder(stream);
+      recognitionRef.current = mediaRecorder;
+      const audioChunks = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunks.push(event.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        setIsListening(false);
+        if (isStaleSession() || audioChunks.length === 0) return;
+
+        const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+        const formDataPayload = new FormData();
+        formDataPayload.append("audio", audioBlob);
+        formDataPayload.append("lang", activeLang);
+
+        setInterim("Processing your voice... 🤖");
+        try {
+          const res = await fetch(`${BASE_URL}/api/ai/stt`, {
+            method: "POST",
+            body: formDataPayload
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.transcript && data.transcript.trim()) {
+               if (!isProcessingRef.current && wizardStepRef.current !== "COMPLETED" && wizardStepRef.current !== "IDLE") {
+                  processStepInput(wizardStepRef.current, data.transcript.trim());
+               }
+            } else {
+               handleNoSpeechDetected(wizardStepRef.current, activeLang);
+            }
+          } else {
+            handleNoSpeechDetected(wizardStepRef.current, activeLang);
+          }
+        } catch (e) {
+          console.warn("STT upload fallback warning:", e);
+          handleNoSpeechDetected(wizardStepRef.current, activeLang);
+        }
+      };
+
+      mediaRecorder.start();
+      setIsListening(true);
+      setInterim("Listening (Backup mic active)... Please speak now 🎙️");
+
+      silenceTimerRef.current = setTimeout(() => {
+        if (mediaRecorder.state === "recording") {
+          mediaRecorder.stop();
+        }
+      }, 7000);
+    } catch(err) {
+      console.warn("Could not start MediaRecorder STT:", err);
+      setIsListening(false);
+      setWizardMsg("Microphone could not be started. Please use buttons below to choose your details.");
+    }
+  };
+
   // ─── Start Continuous Listening for Farmer's Response ───
-  // Uses listenSessionRef to prevent stale callbacks from old recognition instances
-  const startContinuousListening = () => {
-    // Kill any previous recognition instance cleanly
+  const startContinuousListening = (targetLang = null) => {
     if (recognitionRef.current) {
       try {
         recognitionRef.current.onresult = null;
@@ -622,7 +736,7 @@ export default function AddCrop() {
     if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
     if (initialSilenceTimerRef.current) { clearTimeout(initialSilenceTimerRef.current); initialSilenceTimerRef.current = null; }
 
-    // Increment session — any callback from a previous session will be ignored
+    const activeLang = targetLang || wizardLangRef.current || lang || "te";
     const sessionId = ++listenSessionRef.current;
     const isStaleSession = () => listenSessionRef.current !== sessionId;
 
@@ -633,9 +747,9 @@ export default function AddCrop() {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = true;  // Keep microphone open smoothly without rapid restarting
+    recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = LANG_MAP[lang] || "en-IN";
+    recognition.lang = LANG_MAP[activeLang] || "te-IN";
     recognition.maxAlternatives = 3;
 
     capturedTextRef.current = "";
@@ -648,16 +762,14 @@ export default function AddCrop() {
       alreadyProcessed = true;
       const clean = (text || "").replace(/^Listening[^\w]*/i, "").trim();
       if (!clean) return;
-      
-      // Clear timers
+
       if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
       if (initialSilenceTimerRef.current) { clearTimeout(initialSilenceTimerRef.current); initialSilenceTimerRef.current = null; }
       capturedTextRef.current = "";
-      
-      // Stop recognition cleanly before processing next step
+
       stopRecognition(true);
-      
-      if (!isProcessingRef.current && wizardStepRef.current !== 'COMPLETED' && wizardStepRef.current !== 'IDLE') {
+
+      if (!isProcessingRef.current && wizardStepRef.current !== "COMPLETED" && wizardStepRef.current !== "IDLE") {
         processStepInput(wizardStepRef.current, clean);
       }
     };
@@ -668,25 +780,24 @@ export default function AddCrop() {
       if (!isSpeakingRef.current) {
         setInterim("Listening... Please speak now 🎙️");
       }
-      
-      // Silence detector: If user doesn't speak at all for 10 seconds, gently ask again
+
       initialSilenceTimerRef.current = setTimeout(() => {
         if (isStaleSession()) return;
-        if (!hasUserSpokenRef.current && !isSpeakingRef.current && wizardStepRef.current !== 'COMPLETED' && wizardStepRef.current !== 'IDLE') {
-          handleNoSpeechDetected(wizardStepRef.current);
+        if (!hasUserSpokenRef.current && !isSpeakingRef.current && wizardStepRef.current !== "COMPLETED" && wizardStepRef.current !== "IDLE") {
+          handleNoSpeechDetected(wizardStepRef.current, activeLang);
         }
-      }, 10000);
+      }, 9000);
     };
 
     recognition.onresult = (event) => {
       if (isStaleSession() || isSpeakingRef.current) return;
-      
+
       hasUserSpokenRef.current = true;
-      if (initialSilenceTimerRef.current) { 
-        clearTimeout(initialSilenceTimerRef.current); 
-        initialSilenceTimerRef.current = null; 
+      if (initialSilenceTimerRef.current) {
+        clearTimeout(initialSilenceTimerRef.current);
+        initialSilenceTimerRef.current = null;
       }
-      
+
       let interimText = "";
       finalText = "";
       for (let i = 0; i < event.results.length; i++) {
@@ -699,70 +810,60 @@ export default function AddCrop() {
       }
       finalText = finalText.trim();
       interimText = interimText.trim();
-      
-      // Show the user live speech in real-time
+
       const displayText = (finalText + " " + interimText).trim();
       if (displayText) {
         capturedTextRef.current = displayText;
         setInterim(displayText);
       }
 
-      // Voice Activity Debounce: after farmer stops speaking for 1.3 seconds, auto-process!
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
         const textToProcess = (finalText || capturedTextRef.current || "").trim();
         if (textToProcess && !alreadyProcessed) {
           processAndAdvance(textToProcess);
         }
-      }, 1300);
+      }, 1200);
     };
 
     recognition.onerror = (event) => {
       if (isStaleSession()) return;
-      if (event.error === 'no-speech') {
-        // Normal silence — no need to log or stop
+      if (event.error === "no-speech") {
         return;
       }
       console.warn("Speech recognition notice:", event.error);
-      if (event.error === 'not-allowed') {
+      if (event.error === "not-allowed") {
         setWizardMsg("Microphone permission was not granted. You can tap the quick suggestion buttons below or enter text manually.");
         stopRecognition(true);
-      } else if (event.error === 'network') {
-        console.warn("Speech recognition network error. Auto-restarting in 1s...");
-        setWizardMsg("Network glitch. Restarting microphone...");
-        setTimeout(() => {
-          if (!isStaleSession() && wizardStepRef.current !== 'IDLE' && wizardStepRef.current !== 'COMPLETED') {
-            try { recognition.start(); } catch(e) { startContinuousListening(); }
-          }
-        }, 1000);
+      } else if (event.error === "network") {
+        console.warn("Speech recognition network error. Switching to robust MediaRecorder...");
+        setWizardMsg("Using backup microphone...");
+        startMediaRecorderListening(activeLang);
       }
     };
 
     recognition.onend = () => {
       if (isStaleSession()) return;
-      
-      // If we have captured text that hasn't been processed yet, process it now
+
       const pendingText = (finalText || capturedTextRef.current || "").trim();
       if (pendingText && !pendingText.startsWith("Listening...") && !alreadyProcessed) {
         processAndAdvance(pendingText);
         return;
       }
 
-      // If continuous stream ended naturally by the browser (Chrome continuous ends after ~60s of streaming)
-      // quietly restart without flickering or blinking UI
       if (
         !alreadyProcessed &&
-        wizardStepRef.current !== 'IDLE' && 
-        wizardStepRef.current !== 'COMPLETED' && 
-        !isSpeakingRef.current && 
+        wizardStepRef.current !== "IDLE" &&
+        wizardStepRef.current !== "COMPLETED" &&
+        !isSpeakingRef.current &&
         !isProcessingRef.current
       ) {
         setTimeout(() => {
-          if (!isStaleSession() && wizardStepRef.current !== 'IDLE' && wizardStepRef.current !== 'COMPLETED' && !isSpeakingRef.current) {
+          if (!isStaleSession() && wizardStepRef.current !== "IDLE" && wizardStepRef.current !== "COMPLETED" && !isSpeakingRef.current) {
             try {
               recognition.start();
             } catch(e) {
-              startContinuousListening();
+              startContinuousListening(activeLang);
             }
           }
         }, 200);
@@ -782,86 +883,101 @@ export default function AddCrop() {
   };
 
   // ─── Handle No Speech Detected: Polite Prompt & Ask Again ───
-  const handleNoSpeechDetected = (step) => {
-    playChime('retry');
+  const handleNoSpeechDetected = (step, targetLang = null) => {
+    playChime("retry");
     hasUserSpokenRef.current = false;
-    
+    const activeLang = targetLang || wizardLangRef.current || lang || "te";
+
     silenceRestartCountRef.current += 1;
     setRetryCount(silenceRestartCountRef.current);
 
     if (silenceRestartCountRef.current > 2) {
-      const pauseMsg = lang === "te" 
-        ? "మైక్ పాజ్ చేయబడింది. మీకు కావలసినప్పుడు 'Tap to Speak' బటన్ నొక్కండి లేదా సూచనలను ఎంచుకోండి." 
-        : lang === "hi" 
-        ? "माइक रोक दिया गया है। जब तैयार हों 'Tap to Speak' दबाएं।" 
-        : "Microphone paused. Tap 'Tap to Speak' or select a suggestion below when ready.";
-      setWizardMsg(pauseMsg);
+      const pauseMsg = {
+        te: "మైక్ పాజ్ చేయబడింది. మీకు కావలసినప్పుడు 'Tap to Speak' బటన్ నొక్కండి లేదా సూచనలను ఎంచుకోండి.",
+        hi: "माइक रोक दिया गया है। जब तैयार हों 'Tap to Speak' दबाएं।",
+        ta: "மைக் இடைநிறுத்தப்பட்டது. தயாராகும்போது 'Tap to Speak' அழுத்தவும்.",
+        kn: "ಮೈಕ್ ವಿರಾಮಗೊಳಿಸಲಾಗಿದೆ. ಸಿದ್ಧವಾದಾಗ 'Tap to Speak' ಒತ್ತಿರಿ.",
+        en: "Microphone paused. Tap 'Tap to Speak' or select a suggestion below when ready."
+      };
+      setWizardMsg(pauseMsg[activeLang] || pauseMsg.en);
       stopRecognition(true);
       silenceRestartCountRef.current = 0;
       setRetryCount(0);
     } else {
-      const retryPrefix = lang === "te" 
-        ? "మీరు చెప్పింది వినపడలేదు." 
-        : lang === "hi" 
-        ? "आपकी आवाज़ नहीं आई।" 
-        : lang === "ta" 
-        ? "நீங்கள் பேசியது கேட்கவில்லை." 
-        : lang === "kn" 
-        ? "ನಿಮ್ಮ ಧ್ವನಿ ಕೇಳಿಸಲಿಲ್ಲ." 
-        : "I didn't hear you.";
+      const retryPrefix = {
+        te: "మీరు చెప్పింది వినపడలేదు.",
+        hi: "आपकी आवाज़ नहीं आई।",
+        ta: "நீங்கள் பேசியது கேட்கவில்லை.",
+        kn: "ನಿಮ್ಮ ಧ್ವನಿ ಕೇಳಿಸಲಿಲ್ಲ.",
+        en: "I didn't hear you."
+      };
 
-      askStep(step, retryPrefix);
+      askStep(step, retryPrefix[activeLang] || retryPrefix.en, activeLang);
     }
   };
 
   // ─── Manual Controls ───
   const handleManualDoneSpeaking = () => {
     listenSessionRef.current++;
-    
+    const activeLang = wizardLangRef.current || lang || "te";
+
     if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
     if (initialSilenceTimerRef.current) { clearTimeout(initialSilenceTimerRef.current); initialSilenceTimerRef.current = null; }
-    
+
+    if (recognitionRef.current && recognitionRef.current.state === "recording") {
+      try {
+        recognitionRef.current.stop();
+      } catch(e) {}
+      return;
+    }
+
     const raw = (capturedTextRef.current || interim || "").trim();
     const textToProcess = raw.startsWith("Listening...") ? "" : raw;
 
     stopRecognition(true);
 
-    if (textToProcess && !isProcessingRef.current && wizardStepRef.current !== 'COMPLETED' && wizardStepRef.current !== 'IDLE') {
+    if (textToProcess && !isProcessingRef.current && wizardStepRef.current !== "COMPLETED" && wizardStepRef.current !== "IDLE") {
       capturedTextRef.current = "";
       processStepInput(wizardStepRef.current, textToProcess);
     } else {
       setInterim("Please speak now or tap a suggestion below 🎙️");
-      startContinuousListening();
+      startContinuousListening(activeLang);
     }
   };
 
   const handleManualTapToSpeak = () => {
-    if (wizardStep === 'IDLE') {
-      setWizardStep('NAME');
-      askStep('NAME');
-    } else if (wizardStep !== 'COMPLETED') {
-      startContinuousListening();
+    const activeLang = wizardLangRef.current || lang || "te";
+    if (wizardStep === "IDLE") {
+      setWizardStep("NAME");
+      askStep("NAME", "", activeLang);
+    } else if (wizardStep !== "COMPLETED") {
+      startContinuousListening(activeLang);
     }
   };
 
   const handleRepeatQuestion = () => {
-    if (wizardStep !== 'IDLE') {
-      askStep(wizardStep);
+    const activeLang = wizardLangRef.current || lang || "te";
+    if (wizardStep !== "IDLE") {
+      askStep(wizardStep, "", activeLang);
     }
   };
 
   const handleSkipStep = () => {
-    if (wizardStep === 'NAME') askStep('QUANTITY');
-    else if (wizardStep === 'QUANTITY') askStep('PRICE');
-    else if (wizardStep === 'PRICE') askStep('CONFIRM_SUBMIT');
-    else if (wizardStep === 'CONFIRM_SUBMIT') askStep('COMPLETED');
+    const activeLang = wizardLangRef.current || lang || "te";
+    if (wizardStep === "SINGLE_PROMPT") askStep("CONFIRM_SUBMIT", "", activeLang);
+    else if (wizardStep === "NAME") askStep("QUANTITY", "", activeLang);
+    else if (wizardStep === "QUANTITY") askStep("PRICE", "", activeLang);
+    else if (wizardStep === "PRICE") askStep("CONFIRM_SUBMIT", "", activeLang);
+    else if (wizardStep === "CONFIRM_SUBMIT") askStep("COMPLETED", "", activeLang);
   };
 
-  // ─── Process Input: Sense, Acknowledge, Add to Form, or Ask Again ───
+  // ─── Omnipresent Input Processor: Detects Full Sentences, Step-by-Step, or Partial Inputs ───
   const processStepInput = async (step, transcript) => {
     const cleanTranscript = (transcript || "").replace(/^Listening[^\w]*/i, "").trim();
+    const activeLang = wizardLangRef.current || lang || "te";
+
     if (!cleanTranscript) {
-      handleNoSpeechDetected(step);
+      handleNoSpeechDetected(step, activeLang);
       return;
     }
 
@@ -876,281 +992,268 @@ export default function AddCrop() {
     try {
       const lower = cleanTranscript.toLowerCase().trim();
 
-      // ────────────────────────────────
-      // STEP 1: CROP NAME
-      // ────────────────────────────────
-      if (step === 'NAME') {
-        // 1. First run instant local multilingual parser (handles "50 kg tomato for 40 rupees")
-        const parsedAll = parseVoiceToFormMultilingual(cleanTranscript, lang);
+      // 1. If at CONFIRM_SUBMIT step, handle confirmation or cancellation
+      if (step === "CONFIRM_SUBMIT") {
+        if (isAffirmative(cleanTranscript)) {
+          playChime("success");
+          await handleSubmit(new Event("submit"));
+          stopWizard();
+          return;
+        } else if (isNegative(cleanTranscript)) {
+          playChime("retry");
+          const resetData = {
+            name: "", category: "vegetable", price: "", quantity: "", unit: "kg", description: "", isOrganic: false,
+            location: user?.location || "", farmLocation: user?.farmName || user?.location || "",
+            latitude: user?.latitude || "", longitude: user?.longitude || "",
+            growingStage: "harvested", notifyAdmin: false, allowPrebooking: false, expectedHarvestDate: ""
+          };
+          setFormData(resetData);
+          formDataRef.current = resetData;
+          setFilledFields({});
+          const restartAck = {
+            te: "సరే, మళ్లీ మొదటి నుండి మొదలుపెడదాం.",
+            hi: "ठीक है, फिर से शुरू करते हैं।",
+            ta: "சரி, மீண்டும் முதலிலிருந்து தொடங்குவோம்.",
+            kn: "ಸರಿ, ಮೊದಲಿನಿಂದ ಪ್ರಾರಂಭಿಸೋಣ.",
+            en: "Okay, let's start over."
+          };
+          askStep("NAME", restartAck[activeLang] || restartAck.en, activeLang);
+          return;
+        } else {
+          playChime("retry");
+          const retryMsg = getUnrecognizedAck("CONFIRM_SUBMIT", cleanTranscript, activeLang);
+          askStep("CONFIRM_SUBMIT", retryMsg, activeLang);
+          return;
+        }
+      }
 
-        let extractedName = parsedAll.name || "";
-        let extractedCategory = parsedAll.category || "";
+      // 2. OMNIPRESENT EXTRACTION:
+      // A. Fast local multilingual parser (handles crop names, numbers, units, slangs in all languages)
+      const localParsed = parseVoiceToFormMultilingual(cleanTranscript, activeLang, { step }) || {};
 
-        // Check local CROPS_MAP if not found by parser
-        if (!extractedName) {
-          const sortedEntries = Object.entries(CROPS_MAP).sort((a, b) => b[0].length - a[0].length);
-          for (const [slang, stdName] of sortedEntries) {
-            const sLower = slang.toLowerCase();
-            const words = lower.split(/[\s,]+/);
-            if (words.includes(sLower) || lower.includes(sLower)) {
-              extractedName = stdName;
-              extractedCategory = CATEGORIES_MAP[stdName] || "vegetable";
-              break;
+      let extractedName = localParsed.name || null;
+      let extractedCategory = localParsed.category || (extractedName ? CATEGORIES_MAP[extractedName] : null) || null;
+      let extractedQty = (localParsed.quantity !== undefined && localParsed.quantity !== null) ? parseFloat(localParsed.quantity) : null;
+      let extractedUnit = localParsed.unit || formDataRef.current.unit || "kg";
+      let extractedPrice = (localParsed.price !== undefined && localParsed.price !== null) ? parseFloat(localParsed.price) : null;
+
+      // B. If step required entity was NOT resolved locally, invoke backend wizard parser:
+      const isMissingCurrentEntity =
+        (step === "SINGLE_PROMPT" && (!extractedName || extractedQty === null || extractedPrice === null)) ||
+        (step === "NAME" && !extractedName && extractedQty === null && extractedPrice === null) ||
+        (step === "QUANTITY" && extractedQty === null) ||
+        (step === "PRICE" && extractedPrice === null);
+
+      if (isMissingCurrentEntity) {
+        try {
+          const ctrl = new AbortController();
+          const tid = setTimeout(() => ctrl.abort(), 3500);
+          const res = await fetch(`${BASE_URL}/api/ai/parse-wizard-step`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ step, transcript: cleanTranscript, lang: activeLang }),
+            signal: ctrl.signal
+          });
+          clearTimeout(tid);
+          if (res.ok) {
+            const aiParsed = await res.json();
+            if (!extractedName && aiParsed.name) {
+              extractedName = aiParsed.name;
+              extractedCategory = aiParsed.category || CATEGORIES_MAP[extractedName] || "vegetable";
+            }
+            if (extractedQty === null && aiParsed.quantity !== undefined && aiParsed.quantity !== null) {
+              extractedQty = parseFloat(aiParsed.quantity);
+              if (aiParsed.unit) extractedUnit = aiParsed.unit;
+            }
+            if (extractedPrice === null && aiParsed.price !== undefined && aiParsed.price !== null) {
+              extractedPrice = parseFloat(aiParsed.price);
             }
           }
+        } catch (e) {
+          console.warn("AI extraction warning:", e);
         }
+      }
 
-        // 2. Fallback to API if not recognized locally
-        if (!extractedName) {
-          try {
-            const ctrl = new AbortController();
-            const id = setTimeout(() => ctrl.abort(), 2000); // 2 second max wait for fallback
-            const res = await fetch(`${BASE_URL}/api/ai/parse-wizard-step`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ step: "NAME", transcript: cleanTranscript, lang }),
-              signal: ctrl.signal
-            });
-            clearTimeout(id);
-            const data = await res.json();
-            if (data && data.name) {
-              extractedName = data.name;
-              extractedCategory = CATEGORIES_MAP[data.name] || "vegetable";
-            }
-          } catch (e) {
-            console.warn("Backend parse fallback failed", e);
+      // C. Local heuristic fallback for isolated values based on current step
+      if (!extractedName && (step === "NAME" || step === "SINGLE_PROMPT") && extractedQty === null && extractedPrice === null) {
+        const sortedEntries = Object.entries(CROPS_MAP).sort((a, b) => b[0].length - a[0].length);
+        for (const [slang, stdName] of sortedEntries) {
+          const sLower = slang.toLowerCase();
+          const words = lower.split(/[\s,]+/);
+          if (words.includes(sLower) || lower.includes(sLower)) {
+            extractedName = stdName;
+            extractedCategory = CATEGORIES_MAP[stdName] || "vegetable";
+            break;
           }
         }
-
-        // 3. Fallback: if transcript is a sensible word (>2 chars) and not a question word
         if (!extractedName && cleanTranscript.length > 2 && !/(what|how|where|when|hello|hi|please|babu|bhaiya|namaste)/i.test(lower)) {
           extractedName = cleanTranscript.charAt(0).toUpperCase() + cleanTranscript.slice(1);
           extractedCategory = "vegetable";
         }
-
-        if (!extractedName) {
-          playChime('retry');
-          const retryMsg = getUnrecognizedAck('NAME', cleanTranscript);
-          askStep('NAME', retryMsg);
-          return;
-        }
-
-        // SENSE SUCCEEDED: Update form & refs
-        playChime('success');
-        setFormData(prev => ({
-          ...prev,
-          name: extractedName,
-          category: extractedCategory || prev.category
-        }));
-        formDataRef.current.name = extractedName;
-        formDataRef.current.category = extractedCategory || formDataRef.current.category;
-        setFilledFields(prev => ({ ...prev, name: true, category: true }));
-
-        // Check if quantity and/or price were also extracted in this sentence!
-        const alsoQty = parsedAll.quantity;
-        const alsoUnit = parsedAll.unit || formDataRef.current.unit || "kg";
-        const alsoPrice = parsedAll.price;
-
-        if (alsoQty && alsoPrice) {
-          formDataRef.current.quantity = alsoQty;
-          formDataRef.current.unit = alsoUnit;
-          formDataRef.current.price = alsoPrice;
-          setFormData(prev => ({ ...prev, quantity: alsoQty, unit: alsoUnit, price: alsoPrice }));
-          setFilledFields(prev => ({ ...prev, quantity: true, unit: true, price: true }));
-          askStep('CONFIRM_SUBMIT');
-          return;
-        } else if (alsoQty) {
-          formDataRef.current.quantity = alsoQty;
-          formDataRef.current.unit = alsoUnit;
-          setFormData(prev => ({ ...prev, quantity: alsoQty, unit: alsoUnit }));
-          setFilledFields(prev => ({ ...prev, quantity: true, unit: true }));
-          const ackMsg = getSuccessAck('NAME', extractedName) + " " + getSuccessAck('QUANTITY', alsoQty, alsoUnit);
-          askStep('PRICE', ackMsg);
-          return;
-        }
-
-        const ackMsg = getSuccessAck('NAME', extractedName);
-        askStep('QUANTITY', ackMsg);
       }
 
-      // ────────────────────────────────
-      // STEP 2: QUANTITY
-      // ────────────────────────────────
-      else if (step === 'QUANTITY') {
-        let extractedQty = null;
-        let extractedUnit = formDataRef.current.unit || "kg";
-
-        // Check for numbers (digits or spoken number words in any language)
+      if (extractedQty === null && (step === "QUANTITY" || step === "SINGLE_PROMPT" || /(kg|kilo|bag|quintal|tonne|lit|piece|dozen)/i.test(lower))) {
         const numMatch = cleanTranscript.match(/\d+(?:\.\d+)?/);
-        if (numMatch) {
-          extractedQty = parseFloat(numMatch[0]);
-        } else {
+        if (numMatch) extractedQty = parseFloat(numMatch[0]);
+        else {
           const spoken = parseSpokenNumber(cleanTranscript);
           if (spoken && !isNaN(spoken)) extractedQty = parseFloat(spoken);
         }
-
-        // Unit extraction in multi-lingual slangs without false substring hits
-        const qWords = lower.split(/[\s,]+/);
         for (const [unitKey, aliases] of Object.entries(UNITS_MAP)) {
-          if (qWords.some(w => aliases.some(a => matchesUnitToken(w, a)))) {
-            extractedUnit = unitKey === 'ton' ? 'tonne' : unitKey;
+          if (aliases.some(a => lower.includes(a.toLowerCase()))) {
+            extractedUnit = unitKey === "ton" ? "tonne" : unitKey;
             break;
           }
         }
-
-        // Also check if price was spoken in the same sentence! E.g. "50 kg at 40 rupees"
-        let alsoPrice = null;
-        const priceMatch = cleanTranscript.match(/(?:₹|rs|rupees?|ధర|రూపాయలు|रुपये|ರೂಪಾಯಿ)\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*(?:₹|rs|rupees?|ధర|రూపాయలు|रुपये|ರೂపಾಯಿ)/i);
-        if (priceMatch) {
-          alsoPrice = parseFloat(priceMatch[1] || priceMatch[2]);
-        }
-
-        // Fallback to API if not recognized locally
-        if (extractedQty === null || isNaN(extractedQty)) {
-          try {
-            const ctrl = new AbortController();
-            const id = setTimeout(() => ctrl.abort(), 2000);
-            const res = await fetch(`${BASE_URL}/api/ai/parse-wizard-step`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ step: "QUANTITY", transcript: cleanTranscript, lang }),
-              signal: ctrl.signal
-            });
-            clearTimeout(id);
-            const data = await res.json();
-            if (data && data.quantity !== undefined && data.quantity !== null) {
-              extractedQty = data.quantity;
-              if (data.unit) extractedUnit = data.unit;
-            }
-          } catch (e) {
-            console.warn("Backend parse fallback failed", e);
-          }
-        }
-
-        if (extractedQty === null || isNaN(extractedQty)) {
-          playChime('retry');
-          const retryMsg = getUnrecognizedAck('QUANTITY', cleanTranscript);
-          askStep('QUANTITY', retryMsg);
-          return;
-        }
-
-        playChime('success');
-        setFormData(prev => ({
-          ...prev,
-          quantity: extractedQty,
-          unit: extractedUnit
-        }));
-        formDataRef.current.quantity = extractedQty;
-        formDataRef.current.unit = extractedUnit;
-        setFilledFields(prev => ({ ...prev, quantity: true, unit: true }));
-
-        if (alsoPrice !== null && !isNaN(alsoPrice)) {
-          formDataRef.current.price = alsoPrice;
-          setFormData(prev => ({ ...prev, price: alsoPrice }));
-          setFilledFields(prev => ({ ...prev, price: true }));
-          askStep('CONFIRM_SUBMIT');
-          return;
-        }
-
-        const ackMsg = getSuccessAck('QUANTITY', extractedQty, extractedUnit);
-        askStep('PRICE', ackMsg);
       }
 
-      // ────────────────────────────────
-      // STEP 3: PRICE
-      // ────────────────────────────────
-      else if (step === 'PRICE') {
-        let extractedPrice = null;
-        
-        // Check if farmer asked for current market price or mandi rate
-        if (/market\s*price|మార్కెట్|మండి|మండీ|bhav|daam|rate|average/i.test(lower)) {
-          const cropKey = formDataRef.current.name || "";
+      if (extractedPrice === null && (step === "PRICE" || step === "SINGLE_PROMPT" || /(₹|rs|rupee|rupees|ధర|రూపాయలు|रुपये|రూపాయి|bhav|daam|rate|at|for)/i.test(lower))) {
+        if (/markets*price|మార్కెట్|మండి|మండీ|bhav|daam|rate|average/i.test(lower)) {
+          const cropKey = formDataRef.current.name || extractedName || "";
           if (CROP_BENCHMARKS[cropKey]) {
             extractedPrice = CROP_BENCHMARKS[cropKey].avg;
           }
         }
-
         if (extractedPrice === null) {
-          const numMatch = cleanTranscript.match(/\d+(?:\.\d+)?/);
+          const numMatch = cleanTranscript.match(/(?:₹|rs|rupees?|ధర|రూపాయలు|रुपये|రూపాయి)\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*(?:₹|rs|rupees?|ధర|రూపాయలు|रुपये|రూపాయి)/i);
           if (numMatch) {
-            extractedPrice = parseFloat(numMatch[0]);
+            extractedPrice = parseFloat(numMatch[1] || numMatch[2]);
           } else {
-            const spoken = parseSpokenNumber(cleanTranscript);
-            if (spoken && !isNaN(spoken)) extractedPrice = parseFloat(spoken);
-          }
-        }
-
-        // Fallback to API if not recognized locally
-        if (extractedPrice === null || isNaN(extractedPrice)) {
-          try {
-            const ctrl = new AbortController();
-            const id = setTimeout(() => ctrl.abort(), 2000);
-            const res = await fetch(`${BASE_URL}/api/ai/parse-wizard-step`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ step: "PRICE", transcript: cleanTranscript, lang }),
-              signal: ctrl.signal
-            });
-            clearTimeout(id);
-            const data = await res.json();
-            if (data && data.price !== undefined && data.price !== null) {
-              extractedPrice = data.price;
+            const anyNum = cleanTranscript.match(/\d+(?:\.\d+)?/);
+            if (anyNum && extractedQty !== parseFloat(anyNum[0])) {
+              extractedPrice = parseFloat(anyNum[0]);
+            } else {
+              const spoken = parseSpokenNumber(cleanTranscript);
+              if (spoken && !isNaN(spoken) && extractedQty !== parseFloat(spoken)) {
+                extractedPrice = parseFloat(spoken);
+              }
             }
-          } catch (e) {
-            console.warn("Backend parse fallback failed", e);
           }
         }
+      }
 
-        if (extractedPrice === null || isNaN(extractedPrice)) {
-          playChime('retry');
-          const retryMsg = getUnrecognizedAck('PRICE', cleanTranscript);
-          askStep('PRICE', retryMsg);
-          return;
-        }
+      // D. Update form state & refs live with all extracted fields
+      let hasUpdates = false;
+      const formUpdates = {};
+      const filledUpdates = {};
 
-        playChime('success');
-        setFormData(prev => ({
-          ...prev,
-          price: extractedPrice
-        }));
+      if (extractedName) {
+        formUpdates.name = extractedName;
+        formUpdates.category = extractedCategory || formDataRef.current.category || "vegetable";
+        formDataRef.current.name = extractedName;
+        formDataRef.current.category = formUpdates.category;
+        filledUpdates.name = true;
+        filledUpdates.category = true;
+        hasUpdates = true;
+      }
+
+      if (extractedQty !== null && !isNaN(extractedQty)) {
+        formUpdates.quantity = extractedQty;
+        formUpdates.unit = extractedUnit;
+        formDataRef.current.quantity = extractedQty;
+        formDataRef.current.unit = extractedUnit;
+        filledUpdates.quantity = true;
+        filledUpdates.unit = true;
+        hasUpdates = true;
+      }
+
+      if (extractedPrice !== null && !isNaN(extractedPrice)) {
+        formUpdates.price = extractedPrice;
         formDataRef.current.price = extractedPrice;
-        setFilledFields(prev => ({ ...prev, price: true }));
-
-        const ackMsg = getSuccessAck('PRICE', extractedPrice, formDataRef.current.unit || 'kg');
-        askStep('CONFIRM_SUBMIT', ackMsg);
+        filledUpdates.price = true;
+        hasUpdates = true;
       }
 
-      // ────────────────────────────────
-      // STEP 4: CONFIRM_SUBMIT
-      // ────────────────────────────────
-      else if (step === 'CONFIRM_SUBMIT') {
-        if (isAffirmative(cleanTranscript)) {
-          playChime('success');
-          await handleSubmit(new Event('submit'));
-          stopWizard();
-        } else if (isNegative(cleanTranscript)) {
-          playChime('retry');
-          const restartAck = lang === "te" 
-            ? "సరే, మళ్లీ మొదటి నుండి మొదలుపెడదాం." 
-            : lang === "hi" 
-            ? "ठीक है, फिर से शुरू करते हैं।" 
-            : "Okay, let's start over.";
-          askStep('NAME', restartAck);
+      if (hasUpdates) {
+        setFormData(prev => ({ ...prev, ...formUpdates }));
+        setFilledFields(prev => ({ ...prev, ...filledUpdates }));
+        playChime("success");
+      }
+
+      // E. Check current status across all 3 core fields
+      const curName = formDataRef.current.name;
+      const curQty = formDataRef.current.quantity;
+      const curUnit = formDataRef.current.unit || "kg";
+      const curPrice = formDataRef.current.price;
+
+      // If nothing could be recognized at all, gently ask again
+      if (!hasUpdates && !curName && !curQty && !curPrice) {
+        playChime("retry");
+        const retryMsg = getUnrecognizedAck(step, cleanTranscript, activeLang);
+        if (step === "SINGLE_PROMPT") {
+           setAssistantMode("step");
+           askStep("NAME", retryMsg, activeLang);
         } else {
-          playChime('retry');
-          const retryMsg = getUnrecognizedAck('CONFIRM_SUBMIT', cleanTranscript);
-          askStep('CONFIRM_SUBMIT', retryMsg);
+           askStep(step, retryMsg, activeLang);
         }
+        return;
       }
+
+      // ── SMART FLOW TRANSITIONS ──
+      // Scenario 1: ALL 3 CORE FIELDS ARE PRESENT! (Complete sentence or accumulated step)
+      if (curName && curQty && curPrice) {
+        const fullAcks = {
+          en: `All details collected: ${curName}, ${curQty} ${curUnit} at ₹${curPrice}.`,
+          te: `వివరాలు నమోదు చేశాను: ${curName}, ${curQty} ${curUnit}, ధర ₹${curPrice}.`,
+          hi: `विवरण दर्ज किया गया: ${curName}, ${curQty} ${curUnit}, ₹${curPrice} प्रति यूनिट।`,
+          ta: `விவரங்கள் பெறப்பட்டன: ${curName}, ${curQty} ${curUnit}, விலை ₹${curPrice}.`,
+          kn: `ವಿವರಗಳನ್ನು ನಮೂದಿಸಲಾಗಿದೆ: ${curName}, ${curQty} ${curUnit}, ಬೆಲೆ ₹${curPrice}.`
+        };
+        const ack = fullAcks[activeLang] || fullAcks.en;
+        askStep("CONFIRM_SUBMIT", ack, activeLang);
+        return;
+      }
+      
+      // Handle SINGLE_PROMPT fallback to step-by-step if missing info
+      if (step === "SINGLE_PROMPT" && (!curName || !curQty || !curPrice)) {
+         setAssistantMode('step');
+         if (!curName) {
+            askStep("NAME", "Could not catch the crop name. What crop is this?", activeLang);
+         } else if (!curQty) {
+            askStep("QUANTITY", `Got ${curName}. How much quantity?`, activeLang);
+         } else if (!curPrice) {
+            askStep("PRICE", `Got ${curQty} ${curUnit} of ${curName}. What is the price?`, activeLang);
+         }
+         return;
+      }
+
+      // Scenario 2: Crop Name is known, Quantity is known, Price is MISSING
+      if (curName && curQty && !curPrice) {
+        const ack = getSuccessAck("QUANTITY", curQty, curUnit, activeLang);
+        askStep("PRICE", ack, activeLang);
+        return;
+      }
+
+      // Scenario 3: Crop Name is known, Quantity is MISSING
+      if (curName && !curQty) {
+        const ack = getSuccessAck("NAME", curName, "", activeLang);
+        askStep("QUANTITY", ack, activeLang);
+        return;
+      }
+
+      // Scenario 4: Quantity or Price is known, Crop Name is MISSING
+      if (!curName) {
+        const partialAck = {
+          en: curQty ? `Got quantity ${curQty} ${curUnit}. What crop is this?` : `Got price ₹${curPrice}. What crop is this?`,
+          te: curQty ? `${curQty} ${curUnit} తీసుకున్నాను. పంట పేరు ఏమిటి?` : `ధర ₹${curPrice} తీసుకున్నాను. పంట పేరు ఏమిటి?`,
+          hi: curQty ? `${curQty} ${curUnit} दर्ज किया। फसल का नाम क्या है?` : `कीमत ₹${curPrice} दर्ज की। फसल का नाम क्या है?`,
+          ta: curQty ? `${curQty} ${curUnit} சேர்க்கப்பட்டது. பயிர் பெயர் என்ன?` : `விலை ₹${curPrice} சேர்க்கப்பட்டது. பயிர் பெயர் என்ன?`,
+          kn: curQty ? `${curQty} ${curUnit} ಸೇರಿಸಲಾಗಿದೆ. ಬೆಳೆಯ ಹೆಸರು ಏನು?` : `ಬೆಲೆ ₹${curPrice} ಸೇರಿಸಲಾಗಿದೆ. ಬೆಳೆಯ ಹೆಸರು ಏನು?`
+        };
+        askStep("NAME", partialAck[activeLang] || partialAck.en, activeLang);
+        return;
+      }
+
+      // Default fallback to continue wizard
+      askStep(step, "", activeLang);
     } catch (err) {
       console.error("Step processing error:", err);
-      handleNoSpeechDetected(step);
+      handleNoSpeechDetected(step, activeLang);
     } finally {
       setIsProcessing(false);
       isProcessingRef.current = false;
     }
   };
-
   const startWizard = async () => {
     // SYNC AUDIO UNLOCK: Play a silent utterance immediately on click to unlock TTS
     try {
@@ -1171,7 +1274,11 @@ export default function AddCrop() {
 
     setFilledFields({});
     setRetryCount(0);
-    askStep('NAME');
+    if (assistantMode === 'single') {
+      askStep('SINGLE_PROMPT');
+    } else {
+      askStep('NAME');
+    }
   };
 
   const stopWizard = () => {
@@ -1305,10 +1412,83 @@ export default function AddCrop() {
             <p style={{ margin: "0.25rem 0 0 0", color: "#374151", fontSize: "0.95rem" }}>
               Illiterate or non-technical? Speak in Telugu, Hindi, Tamil, Kannada, or English. The assistant auto-fills and acknowledges your input!
             </p>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
+              <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#166534" }}>Language / భాష:</span>
+              {[
+                { code: 'te', label: 'తెలుగు' },
+                { code: 'hi', label: 'हिन्दी' },
+                { code: 'en', label: 'English' },
+                { code: 'ta', label: 'தமிழ்' },
+                { code: 'kn', label: 'ಕನ್ನಡ' }
+              ].map((l) => (
+                <button
+                  key={l.code}
+                  type="button"
+                  onClick={() => {
+                    setWizardLang(l.code);
+                    wizardLangRef.current = l.code;
+                    if (changeLang) changeLang(l.code);
+                    if (wizardStep !== 'IDLE' && wizardStep !== 'COMPLETED') {
+                      askStep(wizardStep, "", l.code);
+                    }
+                  }}
+                  style={{
+                    padding: "0.25rem 0.65rem",
+                    borderRadius: "100px",
+                    fontSize: "0.8rem",
+                    fontWeight: wizardLang === l.code ? 700 : 500,
+                    background: wizardLang === l.code ? "#16a34a" : "white",
+                    color: wizardLang === l.code ? "white" : "#374151",
+                    border: wizardLang === l.code ? "1px solid #16a34a" : "1px solid #cbd5e1",
+                    cursor: "pointer",
+                    boxShadow: wizardLang === l.code ? "0 2px 6px rgba(22,163,74,0.3)" : "none"
+                  }}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {wizardStep === 'IDLE' ? (
-            <button 
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", alignItems: "flex-end" }}>
+              <div style={{ display: "flex", gap: "0.5rem", background: "white", padding: "4px", borderRadius: "8px", border: "1px solid #cbd5e1" }}>
+                <button
+                  type="button"
+                  onClick={() => setAssistantMode('single')}
+                  style={{
+                    padding: "0.4rem 0.8rem",
+                    borderRadius: "6px",
+                    border: "none",
+                    background: assistantMode === 'single' ? "#16a34a" : "transparent",
+                    color: assistantMode === 'single' ? "white" : "#475569",
+                    fontWeight: assistantMode === 'single' ? 700 : 500,
+                    cursor: "pointer",
+                    fontSize: "0.85rem",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  Single Sentence
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAssistantMode('step')}
+                  style={{
+                    padding: "0.4rem 0.8rem",
+                    borderRadius: "6px",
+                    border: "none",
+                    background: assistantMode === 'step' ? "#16a34a" : "transparent",
+                    color: assistantMode === 'step' ? "white" : "#475569",
+                    fontWeight: assistantMode === 'step' ? 700 : 500,
+                    cursor: "pointer",
+                    fontSize: "0.85rem",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  Step-by-Step
+                </button>
+              </div>
+              <button 
               type="button"
               onClick={startWizard}
               style={{
@@ -1321,6 +1501,7 @@ export default function AddCrop() {
             >
               <PlayCircle size={22} /> Start Voice Wizard
             </button>
+            </div>
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <button 
@@ -1340,19 +1521,26 @@ export default function AddCrop() {
 
         {/* Wizard Progress Steps Indicator */}
         {wizardStep !== 'IDLE' && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative", margin: "0.5rem 0" }}>
-            {[
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative", margin: "0.5rem 0", flexWrap: "wrap", gap: "0.5rem" }}>
+            {(assistantMode === 'step' ? [
               { id: 'NAME', label: '1. Crop Name 🌾' },
               { id: 'QUANTITY', label: '2. Quantity ⚖️' },
               { id: 'PRICE', label: '3. Price 💰' },
               { id: 'CONFIRM_SUBMIT', label: '4. Ready ?' }
-            ].map((s) => {
+            ] : [
+              { id: 'SINGLE_PROMPT', label: '1. Speak Details 🎙️' },
+              { id: 'CONFIRM_SUBMIT', label: '2. Ready ?' }
+            ]).map((s) => {
               const isCurrent = wizardStep === s.id;
-              const isDone = 
+              const isDone = assistantMode === 'step' ? (
                 (s.id === 'NAME' && (wizardStep === 'QUANTITY' || wizardStep === 'PRICE' || wizardStep === 'CONFIRM_SUBMIT' || wizardStep === 'COMPLETED')) ||
                 (s.id === 'QUANTITY' && (wizardStep === 'PRICE' || wizardStep === 'CONFIRM_SUBMIT' || wizardStep === 'COMPLETED')) ||
                 (s.id === 'PRICE' && (wizardStep === 'CONFIRM_SUBMIT' || wizardStep === 'COMPLETED')) ||
-                (s.id === 'CONFIRM_SUBMIT' && wizardStep === 'COMPLETED');
+                (s.id === 'CONFIRM_SUBMIT' && wizardStep === 'COMPLETED')
+              ) : (
+                (s.id === 'SINGLE_PROMPT' && (wizardStep === 'CONFIRM_SUBMIT' || wizardStep === 'COMPLETED')) ||
+                (s.id === 'CONFIRM_SUBMIT' && wizardStep === 'COMPLETED')
+              );
 
               return (
                 <div 

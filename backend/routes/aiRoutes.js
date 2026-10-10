@@ -997,7 +997,7 @@ router.post("/tts", async (req, res) => {
           lang: safeLang,
           slow: false,
           host: "https://translate.google.com",
-          timeout: 4000,
+          timeout: 15000,
         });
         if (base64Audio) {
           return res.json({ audioContent: base64Audio, lang: safeLang });
@@ -1007,7 +1007,7 @@ router.post("/tts", async (req, res) => {
           lang: safeLang,
           slow: false,
           host: "https://translate.google.com",
-          timeout: 5000,
+          timeout: 15000,
         });
 
         if (audioChunks && audioChunks.length > 0) {
@@ -1027,7 +1027,7 @@ router.post("/tts", async (req, res) => {
         lang: "en",
         slow: false,
         host: "https://translate.google.com",
-        timeout: 3000,
+        timeout: 10000,
       });
       if (fallbackBase64) {
         return res.json({ audioContent: fallbackBase64, lang: "en" });
@@ -1089,21 +1089,24 @@ CRITICAL RULES:
 Output the transcription as pure plain text. Do not wrap in quotes or markdown.
 `;
 
-    const result = await ai.models.generateContent({
-      model: "gemini-3.5-flash-lite",
-      contents: [prompt, audioPart]
-    });
-    const transcription = (result.text || "").trim();
+    let transcription = "";
+    try {
+      const textResult = await callGeminiWithFallback([prompt, audioPart]);
+      if (textResult) {
+        transcription = textResult.trim();
+      }
+    } catch (e) {
+      console.warn("Gemini audio transcription error:", e.message);
+    }
 
     res.json({ transcript: transcription });
   } catch (err) {
     console.error("STT Error:", err.message || err);
-    console.log("Using fallback mock transcription due to API error.");
-    res.json({ transcript: "5kg rice, 2kg onions, 1kg tomatoes, 500g ginger, fresh spinach" });
+    res.json({ transcript: "" });
   }
 });
 
-// ── Step-by-Step Conversational AI Parser for Add Crop Wizard ──
+// ── Step-by-Step & Full-Sentence Conversational AI Parser for Add Crop Wizard ──
 router.post("/parse-wizard-step", async (req, res) => {
   try {
     const { step, transcript, lang } = req.body;
@@ -1142,52 +1145,108 @@ router.post("/parse-wizard-step", async (req, res) => {
     }
 
     let foundUnit = "kg";
-    // Fast heuristic extraction
-    if (step === "QUANTITY") {
-      if (/(quintal|క్వింటాల్|క్వింటాళ్లు|क्विंटल|qntl|kintal|kintallu)/i.test(lower)) foundUnit = "quintal";
-      else if (/(bag|bori|బస్తా|బస్తాలు|బోరీ|మూటే|basta|bastalu|boriyan)/i.test(lower)) foundUnit = "bag";
-      else if (/(ton|tonne|టన్|టన్నులు|टन|tannulu)/i.test(lower)) foundUnit = "tonne";
-      else if (/(litre|liter|లీటర్|लीटर)/i.test(lower)) foundUnit = "litre";
-      else if (/(bale|బేల్)/i.test(lower)) foundUnit = "bale";
-      else if (/(piece|పీస్|पीस|nos)/i.test(lower)) foundUnit = "piece";
-      else if (/(dozen|డజన్|दर्जन)/i.test(lower)) foundUnit = "dozen";
+    if (/(quintal|క్వింటాల్|క్వింటాళ్లు|क्विंटल|qntl|kintal|kintallu)/i.test(lower)) foundUnit = "quintal";
+    else if (/(bag|bori|బస్తా|బస్తాలు|బోరీ|మూటే|basta|bastalu|boriyan)/i.test(lower)) foundUnit = "bag";
+    else if (/(ton|tonne|టన్|టన్నులు|टन|tannulu)/i.test(lower)) foundUnit = "tonne";
+    else if (/(litre|liter|లీటర్|लीटर)/i.test(lower)) foundUnit = "litre";
+    else if (/(bale|బేల్)/i.test(lower)) foundUnit = "bale";
+    else if (/(piece|పీస్|पीस|nos)/i.test(lower)) foundUnit = "piece";
+    else if (/(dozen|డజన్|दर्जन)/i.test(lower)) foundUnit = "dozen";
 
-      if (extractedNum !== null) {
-        return res.json({ quantity: extractedNum, unit: foundUnit });
+    // Fast heuristic extraction for isolated values or full sentences
+    const wordsList = lower.split(/[\s,]+/);
+    const hasPriceContext = /(₹|rs|rupee|rupees|ధర|రూపాయలు|రొపాయలు|రూ|कीमत|रुपये|रुपया|ರೂಪಾಯಿ|rupay|rupiya|bhav|daam|rate|at|for|per)/i.test(lower);
+    const hasUnitContext = /(kg|kilo|quintal|bag|bori|tonne|ton|litre|piece|dozen|కేజీ|కిలో|బస్తా|క్వింటాల్|టన్|లీటర్|किलो|बोरी|क्विंटल)/i.test(lower);
+    const numbersCount = (lower.match(/\d+(?:\.\d+)?/g) || []).length;
+
+    // A. Step-specific isolated answers
+    if (step === "PRICE" && extractedNum !== null && wordsList.length <= 4) {
+      return res.json({ price: extractedNum });
+    }
+    if (step === "QUANTITY" && extractedNum !== null && wordsList.length <= 4 && !hasPriceContext) {
+      return res.json({ quantity: extractedNum, unit: foundUnit });
+    }
+
+    // Crop synonym matching helper
+    let matchedCropName = null;
+    const cropDict = {
+      "Tomato": ["tomato", "tomatoes", "tamatar", "tamota", "tamata", "thakkali", "టమోటా", "టమోటాలు", "టమాట", "टमाटर", "தக்காளி", "ಟೊಮೆಟೊ"],
+      "Potato": ["potato", "potatoes", "aloo", "aalu", "aaloo", "alugadda", "batata", "బంగాళదుంప", "ఆలుగడ్డ", "ఆలూ", "आलू", "உருளைக்கிழங்கு", "ಆಲೂಗಡ್ಡೆ"],
+      "Onion": ["onion", "onions", "pyaz", "pyaaz", "kanda", "ullipaya", "ulligadda", "erragaddalu", "ఉల్లిపాయ", "ఉల్లిగడ్డ", "ఎర్రగడ్డలు", "प्याज", "வெங்காயம்", "ಈರುಳ್ಳಿ"],
+      "Rice": ["rice", "paddy", "chawal", "dhaan", "dhan", "biyyam", "vadlu", "sonamasoori", "వరి", "బియ్యం", "వడ్లు", "चावल", "அரிசி", "ಅಕ್ಕಿ"],
+      "Wheat": ["wheat", "gehu", "gehoon", "godhumalu", "godhuma", "గోధుమలు", "గోధుమ", "गेहूं", "கோதுமை", "ಗೋಧಿ"],
+      "Cotton": ["cotton", "patti", "kapaas", "kapas", "doodi", "పత్తి", "దూది", "कपास", "பருத்தி", "ಹತ್ತಿ"],
+      "Chili": ["chili", "chilli", "chilies", "mirchi", "mirapa", "pachimirchi", "మిర్చి", "మిరపకాయ", "పచ్చిమిర్చి", "मिर्ची", "மிளகாய்", "ಮೆಣಸಿನಕಾಯಿ"],
+      "Garlic": ["garlic", "lahsun", "lashun", "vellulli", "tellagaddalu", "వెల్లుల్లి", "తెల్లగడ్డలు", "लहसुन", "பூண்டு", "ಬೆಳ್ಳುಳ್ಳಿ"],
+      "Ginger": ["ginger", "adrak", "allam", "inji", "అల్లం", "अदरक", "இஞ்சி", "ಶುಂಠಿ"],
+      "Turmeric": ["turmeric", "haldi", "pasupu", "manjal", "పసుపు", "हल्दी", "மஞ்சள்", "ಅರಿಶಿನ"],
+      "Groundnut": ["groundnut", "peanut", "palli", "pallilu", "mungfali", "వేరుశనగ", "పల్లీలు", "मूंगफली", "வேர்க்கடலை", "ಕಡಲೆಕಾಯಿ"],
+      "Maize": ["maize", "corn", "bhutta", "makka", "makkajonna", "jonnalu", "మొక్కజొన్న", "జొన్నలు", "मक्का", "மக்காச்சோளம்", "ಮೆಕ್ಕೆಜೋಳ"],
+      "Mango": ["mango", "mangoes", "aam", "mamidi", "mamidikaya", "banganapalli", "మామిడి", "మామిడికాయ", "आम", "மாம்பழம்", "ಮಾವಿನಹಣ್ಣು"],
+      "Banana": ["banana", "bananas", "kela", "arati", "aratipandu", "అరటి", "అరటిపండు", "केला", "வாழைப்பழம்", "ಬಾಳೆಹಣ್ಣು"],
+      "Apple": ["apple", "apples", "seb", "ఆపిల్", "ఆపిల్స్", "सेब", "ஆப்பிள்", "ಸೇಬು"],
+      "Okra": ["okra", "ladyfinger", "bhindi", "bhendi", "bendakaya", "బెండకాయ", "भिंडी", "வெண்டைக்காய்", "ಬೆಂಡೆಕಾಯಿ"],
+      "Brinjal": ["brinjal", "eggplant", "baingan", "vankaya", "వంకాయ", "గుత్తివంకాయ", "बैंगन", "கத்தரிக்காய்", "ಬದನೆಕಾಯಿ"],
+      "Cabbage": ["cabbage", "patta gobhi", "kosu", "క్యాబేజీ", "पत्ता गोभी", "முட்டைக்கோஸ்", "ಕೋಸು"],
+      "Carrot": ["carrot", "carrots", "gajar", "క్యారెట్", "गाजर", "கேரட்", "ಕ್ಯಾರೆಟ್"],
+      "Spinach": ["spinach", "palak", "palakura", "పాలకూర", "पालक", "கீரை", "ಪಾಲಕ್"],
+      "Pulses": ["pulses", "dal", "chana", "kandulu", "pesalu", "minumulu", "పప్పులు", "కందిపప్పు", "दाल", "பருப்பு", "ಬೇಳೆ"]
+    };
+
+    for (const [stdName, aliases] of Object.entries(cropDict)) {
+      if (aliases.some(a => lower.includes(a.toLowerCase()))) {
+        matchedCropName = stdName;
+        break;
       }
-    } else if (step === "PRICE") {
-      if (extractedNum !== null) {
-        return res.json({ price: extractedNum });
-      }
+    }
+
+    if (step === "NAME" && matchedCropName && wordsList.length <= 4 && !numbersCount) {
+      return res.json({ name: matchedCropName });
+    }
+
+    // B. Multi-entity extraction for complete or partial sentences
+    const allNums = (lower.match(/\d+(?:\.\d+)?/g) || []).map(n => parseFloat(n));
+    if (matchedCropName && allNums.length >= 2) {
+      // Typically first number is quantity, second is price
+      const q = allNums[0];
+      const p = allNums[1];
+      return res.json({
+        name: matchedCropName,
+        quantity: q,
+        unit: foundUnit,
+        price: p
+      });
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey.trim().length < 10) {
-      if (step === "NAME") return res.json({ name: transcript.trim() });
-      if (step === "QUANTITY") return res.json({ quantity: extractedNum || 10, unit: foundUnit });
-      if (step === "PRICE") return res.json({ price: extractedNum || 30 });
+      const resp = {};
+      if (matchedCropName) resp.name = matchedCropName;
+      else if (step === "NAME") resp.name = transcript.trim();
+      if (extractedNum !== null) {
+        if (step === "QUANTITY" || hasUnitContext) {
+          resp.quantity = extractedNum;
+          resp.unit = foundUnit;
+        } else if (step === "PRICE" || hasPriceContext) {
+          resp.price = extractedNum;
+        }
+      }
+      return res.json(resp);
     }
 
-    let prompt = "";
-    if (step === "NAME") {
-      prompt = `You are an Indian agricultural produce parser for farmers speaking English, Telugu, Hindi, Tamil, or Kannada.
-The farmer said: "${transcript}" in language "${lang || "en"}".
-Extract the standard English crop/produce name (e.g. Tomato, Potato, Onion, Rice, Wheat, Cotton, Chilli, Garlic, Ginger, Turmeric, Groundnut, Maize, Mango, Banana, Apple, Okra, Brinjal, Cabbage, Sugarcane, Watermelon, Bio Waste).
-Phonetic guide: Tamata/Tamatar -> Tomato, Vankaya/Baingan -> Brinjal, Ullipayalu/Kanda/Pyaaz -> Onion, Mirapa/Mirchi -> Chilli, Pasupu/Haldi -> Turmeric, Vari/Chawal -> Rice, Bhendi/Bhindi -> Okra, Allam/Adrak -> Ginger.
-Reply strictly in JSON: { "name": "StandardCropName" } without any markdown backticks or commentary.`;
-    } else if (step === "QUANTITY") {
-      prompt = `You are an Indian agricultural parser. The farmer said: "${transcript}".
-Extract the numerical quantity and standard unit (one of: kg, quintal, bag, tonne, litre, piece, dozen).
-Reply strictly in JSON: { "quantity": number, "unit": "unit_string" } without any markdown backticks or commentary.`;
-    } else if (step === "PRICE") {
-      prompt = `You are an Indian agricultural parser. The farmer said: "${transcript}".
-Extract the price amount as a single number in Indian Rupees.
-Reply strictly in JSON: { "price": number } without any markdown backticks or commentary.`;
-    } else {
-      return res.status(400).json({ error: "Invalid step" });
-    }
+    const prompt = `You are an omnipresent agricultural assistant parsing voice input from farmers in "${lang || "en"}".
+The farmer is currently at the "${step}" step of the form, but they might provide a full sentence.
+The farmer said: "${transcript}".
 
-    const rawText = await callGeminiWithFallback([prompt]);
+Extract as much information as you can from this sentence:
+1. "name": The standard English crop/produce name (e.g. Tomato, Potato, Rice, Wheat, Exotic Dragon Fruit).
+2. "quantity": The numerical quantity (e.g. 50).
+3. "unit": The unit (e.g. "kg", "quintal", "bag", "tonne", "litre", "piece", "dozen").
+4. "price": The price in Rupees if mentioned.
+
+Reply strictly in JSON format (e.g. { "name": "Tomato", "quantity": 50, "unit": "kg", "price": 40 }). Omit keys if the user didn't mention them. Do not include markdown backticks or extra commentary.`;
+
+    const rawText = await callGeminiWithFallback(prompt);
     if (rawText) {
       const cleanJson = (rawText || "").trim().replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
       const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
