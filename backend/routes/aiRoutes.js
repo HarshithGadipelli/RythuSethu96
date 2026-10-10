@@ -1235,16 +1235,20 @@ router.post("/parse-wizard-step", async (req, res) => {
     }
 
     const prompt = `You are an omnipresent agricultural assistant parsing voice input from farmers in "${lang || "en"}".
-The farmer is currently at the "${step}" step of the form, but they might provide a full sentence.
+The farmer is currently at the "${step}" step of the form, but they might provide a full sentence, or use local dialects/slang.
 The farmer said: "${transcript}".
 
-Extract as much information as you can from this sentence:
-1. "name": The standard English crop/produce name (e.g. Tomato, Potato, Rice, Wheat, Exotic Dragon Fruit).
+Extract as much information as you can from this sentence, even if it's in local slang or mixed language.
+If the user is correcting a previous mistake (e.g. "no, not 50, it is 40", or "change the price to 30"), extract the NEW corrected value.
+Fields to extract:
+1. "name": The standard English crop/produce name (e.g. Tomato, Potato, Rice, Wheat).
 2. "quantity": The numerical quantity (e.g. 50).
 3. "unit": The unit (e.g. "kg", "quintal", "bag", "tonne", "litre", "piece", "dozen").
 4. "price": The price in Rupees if mentioned.
+5. "location": The city, village or GPS location if mentioned.
+6. "description": Any other descriptive words.
 
-Reply strictly in JSON format (e.g. { "name": "Tomato", "quantity": 50, "unit": "kg", "price": 40 }). Omit keys if the user didn't mention them. Do not include markdown backticks or extra commentary.`;
+Reply strictly in JSON format (e.g. { "name": "Tomato", "quantity": 50, "unit": "kg", "price": 40, "location": "Hyderabad", "description": "Fresh" }). Omit keys if the user didn't mention them. Do not include markdown backticks or extra commentary.`;
 
     const rawText = await callGeminiWithFallback(prompt);
     if (rawText) {
@@ -1263,6 +1267,8 @@ Reply strictly in JSON format (e.g. { "name": "Tomato", "quantity": 50, "unit": 
     if (step === "NAME") return res.json({ name: transcript.trim() });
     if (step === "QUANTITY") return res.json({ quantity: extractedNum || 10, unit: foundUnit });
     if (step === "PRICE") return res.json({ price: extractedNum || 30 });
+    if (step === "LOCATION") return res.json({ location: transcript.trim() });
+    if (step === "DESCRIPTION") return res.json({ description: transcript.trim() });
   } catch (err) {
     console.warn("Parse Wizard Step Fallback for", req.body?.step, err.message);
     const { step, transcript } = req.body || {};
@@ -1286,6 +1292,10 @@ Reply strictly in JSON format (e.g. { "name": "Tomato", "quantity": 50, "unit": 
       res.json({ quantity: extractedNum || 50, unit: foundUnit });
     } else if (step === "PRICE") {
       res.json({ price: extractedNum || 40 });
+    } else if (step === "LOCATION") {
+      res.json({ location: transcript ? transcript.trim() : "" });
+    } else if (step === "DESCRIPTION") {
+      res.json({ description: transcript ? transcript.trim() : "" });
     } else {
       res.json({});
     }

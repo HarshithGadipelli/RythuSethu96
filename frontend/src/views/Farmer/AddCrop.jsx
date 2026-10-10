@@ -237,6 +237,16 @@ export default function AddCrop() {
       { label: "₹150 /kg", val: "150" },
       { label: "₹2,500 /quintal", val: "2500" }
     ],
+    LOCATION: [
+      { label: "📍 Current Location", val: "current location" },
+      { label: "Hyderabad", val: "Hyderabad" },
+      { label: "My Village", val: "My Village" }
+    ],
+    DESCRIPTION: [
+      { label: "Skip", val: "skip" },
+      { label: "Fresh Organic", val: "Fresh organic produce" },
+      { label: "Good Quality", val: "Good quality" }
+    ],
     CONFIRM_SUBMIT: [
       { label: "✅ Yes, Submit (అవును / हाँ)", val: "yes" },
       { label: "📝 Review Details (సమీక్షించండి)", val: "review" },
@@ -500,12 +510,26 @@ export default function AddCrop() {
         ta: `ஒரு ${unitInLang.ta} விற்பனை விலை எத்தனை ரூபாய்? உதாரணத்திற்கு 40 ரூபாய்.`,
         kn: `ಪ್ರತಿ ${unitInLang.kn} ಗೆ ನಿಮ್ಮ ಮಾರಾಟದ ಬೆಲೆ ಎಷ್ಟು ರೂಪಾಯಿ? ಉದಾಹರಣೆಗೆ 40 ರೂಪಾಯಿ.`
       },
+      LOCATION: {
+        en: "Where is the farm or produce located?",
+        te: "పంట లేదా పొలం ఎక్కడ ఉంది?",
+        hi: "खेत या उपज कहाँ स्थित है?",
+        ta: "பண்ணை அல்லது விளைபொருள் எங்கே உள்ளது?",
+        kn: "ಹೊಲ ಅಥವಾ ಉತ್ಪನ್ನ ಎಲ್ಲಿದೆ?"
+      },
+      DESCRIPTION: {
+        en: "Any extra details? Like 'Fresh and organic', or say 'Skip' to move on.",
+        te: "ఏవైనా అదనపు వివరాలు ఉన్నాయా? 'తాజాది' అని చెప్పండి లేదా 'వదిలేయండి' అనండి.",
+        hi: "कोई अतिरिक्त विवरण? जैसे 'ताज़ा' या आगे बढ़ने के लिए 'छोड़ें' कहें।",
+        ta: "கூடுதல் விவரங்கள் ஏதேனும் உண்டா? அல்லது 'தவிர்' என்று சொல்லவும்.",
+        kn: "ಯಾವುದಾದರೂ ಹೆಚ್ಚುವರಿ ವಿವರಗಳಿವೆಯೇ? ಅಥವಾ 'ಬಿಟ್ಟುಬಿಡಿ' ಎಂದು ಹೇಳಿ."
+      },
       CONFIRM_SUBMIT: {
-        en: "Would you like me to submit this crop now? Say Yes to submit, or No to start over.",
-        te: "ఈ పంట వివరాలను ఇప్పుడు సమర్పించమంటారా? సమర్పించడానికి అవును అని, మళ్లీ ప్రారంభించడానికి కాదు అని చెప్పండి.",
-        hi: "क्या आप इस फसल को अभी सबमिट करना चाहते हैं? सबमिट के लिए हाँ कहें, या फिर से शुरू करने के लिए ना कहें।",
-        ta: "இந்த பயிர் விவரங்களை இப்போது சமர்ப்பிக்கலாமா? ஆம் அல்லது இல்லை என்று சொல்லுங்கள்.",
-        kn: "ಈ ಬೆಳೆಯ ವಿವರಗಳನ್ನು ಈಗ ಸಲ್ಲಿಸಬೇಕೇ? ಸಲ್ಲಿಸಲು ಹೌದು ಅಥವಾ ಮತ್ತೆ ಪ್ರಾರಂಭಿಸಲು ಇಲ್ಲ ಎಂದು ಹೇಳಿ."
+        en: "Are these details correct? Say 'Yes' to submit, or 'Change [field]' to correct any wrong info.",
+        te: "ఈ వివరాలు సరైనవేనా? సమర్పించడానికి 'అవును' అనండి, తప్పు ఉంటే 'పేరు మార్చు' లేదా 'ధర మార్చు' అని చెప్పండి.",
+        hi: "क्या ये विवरण सही हैं? सबमिट करने के लिए 'हाँ' कहें, या गलत जानकारी ठीक करने के लिए 'बदलें' कहें।",
+        ta: "இந்த விவரங்கள் சரியானவையா? சமர்ப்பிக்க 'ஆம்' என்று கூறவும், தவறாக இருந்தால் திருத்த 'மாற்று' என்று கூறவும்.",
+        kn: "ಈ ವಿವರಗಳು ಸರಿಯಾಗಿವೆಯೇ? ಸಲ್ಲಿಸಲು 'ಹೌದು' ಎಂದು ಹೇಳಿ, ತಪ್ಪಿದ್ದರೆ ಸರಿಪಡಿಸಲು 'ಬದಲಾಯಿಸಿ' ಎಂದು ಹೇಳಿ."
       },
       COMPLETED: {
         en: "All details filled! Review your listing and submit the form.",
@@ -541,6 +565,20 @@ export default function AddCrop() {
         hi: `शानदार! प्रति ${val2} कीमत ₹${val1} तय की गई।`,
         ta: `மிக நன்று! ஒரு ${val2}க்கு ₹${val1} என அமைக்கப்பட்டது.`,
         kn: `ಅದ್ಭುತ! ಪ್ರತಿ ${val2} ಗೆ ₹${val1} ಬೆಲೆ ನಿಗದಿಪಡಿಸಲಾಗಿದೆ.`
+      },
+      LOCATION: {
+        en: `Got it. Location set to ${val1}.`,
+        te: `స్థానం ${val1} గా నమోదు చేయబడింది.`,
+        hi: `स्थान ${val1} के रूप में सेट किया गया।`,
+        ta: `இடம் ${val1} என அமைக்கப்பட்டது.`,
+        kn: `ಸ್ಥಳವನ್ನು ${val1} ಎಂದು ಹೊಂದಿಸಲಾಗಿದೆ.`
+      },
+      DESCRIPTION: {
+        en: `Description added.`,
+        te: `వివరణ జోడించబడింది.`,
+        hi: `विवरण जोड़ा गया।`,
+        ta: `விவரம் சேர்க்கப்பட்டது.`,
+        kn: `ವಿವರಣೆ ಸೇರಿಸಲಾಗಿದೆ.`
       }
     };
     return acks[step]?.[activeLang] || acks[step]?.en || "";
@@ -576,6 +614,20 @@ export default function AddCrop() {
         hi: `कृपया कीमत का नंबर बोलें, जैसे 40 रुपये।`,
         ta: `தயவுசெய்து விலையைச் சொல்லுங்கள், உதாரணத்திற்கு 40 ரூபாய்.`,
         kn: `ದಯವಿಟ್ಟು ಬೆಲೆಯನ್ನು ರೂಪಾಯಿಗಳಲ್ಲಿ ಹೇಳಿ, ಉದಾಹರಣೆಗೆ 40 ರೂಪಾಯಿ.`
+      },
+      LOCATION: {
+        en: `I heard "${heard}". Please state the city or village name.`,
+        te: `దయచేసి మీ ఊరు లేదా నగరం పేరు చెప్పండి.`,
+        hi: `कृपया शहर या गांव का नाम बताएं।`,
+        ta: `தயவுசெய்து ஊர் அல்லது நகரத்தின் பெயரைக் கூறவும்.`,
+        kn: `ದಯವಿಟ್ಟು ಊರು ಅಥವಾ ನಗರದ ಹೆಸರನ್ನು ಹೇಳಿ.`
+      },
+      DESCRIPTION: {
+        en: `I heard "${heard}". Speak a short description or say 'Skip'.`,
+        te: `చిన్న వివరణ చెప్పండి లేదా 'వదిలేయండి' అనండి.`,
+        hi: `संक्षिप्त विवरण बोलें या 'छोड़ें' कहें।`,
+        ta: `சிறிய விளக்கம் சொல்லவும் அல்லது 'தவிர்' என்று சொல்லவும்.`,
+        kn: `ಸಣ್ಣ ವಿವರಣೆ ಹೇಳಿ ಅಥವಾ 'ಬಿಟ್ಟುಬಿಡಿ' ಎಂದು ಹೇಳಿ.`
       },
       CONFIRM_SUBMIT: {
         en: `I heard "${heard}". Please just say Yes to submit or No to cancel.`,
@@ -967,7 +1019,9 @@ export default function AddCrop() {
     if (wizardStep === "SINGLE_PROMPT") askStep("CONFIRM_SUBMIT", "", activeLang);
     else if (wizardStep === "NAME") askStep("QUANTITY", "", activeLang);
     else if (wizardStep === "QUANTITY") askStep("PRICE", "", activeLang);
-    else if (wizardStep === "PRICE") askStep("CONFIRM_SUBMIT", "", activeLang);
+    else if (wizardStep === "PRICE") askStep("LOCATION", "", activeLang);
+    else if (wizardStep === "LOCATION") askStep("DESCRIPTION", "", activeLang);
+    else if (wizardStep === "DESCRIPTION") askStep("CONFIRM_SUBMIT", "", activeLang);
     else if (wizardStep === "CONFIRM_SUBMIT") askStep("COMPLETED", "", activeLang);
   };
 
@@ -992,38 +1046,38 @@ export default function AddCrop() {
     try {
       const lower = cleanTranscript.toLowerCase().trim();
 
-      // 1. If at CONFIRM_SUBMIT step, handle confirmation or cancellation
+      // 1. If at CONFIRM_SUBMIT step, handle confirmation or cancellation FIRST unless it's a correction
       if (step === "CONFIRM_SUBMIT") {
-        if (isAffirmative(cleanTranscript)) {
-          playChime("success");
-          await handleSubmit(new Event("submit"));
-          stopWizard();
-          return;
-        } else if (isNegative(cleanTranscript)) {
-          playChime("retry");
-          const resetData = {
-            name: "", category: "vegetable", price: "", quantity: "", unit: "kg", description: "", isOrganic: false,
-            location: user?.location || "", farmLocation: user?.farmName || user?.location || "",
-            latitude: user?.latitude || "", longitude: user?.longitude || "",
-            growingStage: "harvested", notifyAdmin: false, allowPrebooking: false, expectedHarvestDate: ""
-          };
-          setFormData(resetData);
-          formDataRef.current = resetData;
-          setFilledFields({});
-          const restartAck = {
-            te: "సరే, మళ్లీ మొదటి నుండి మొదలుపెడదాం.",
-            hi: "ठीक है, फिर से शुरू करते हैं।",
-            ta: "சரி, மீண்டும் முதலிலிருந்து தொடங்குவோம்.",
-            kn: "ಸರಿ, ಮೊದಲಿನಿಂದ ಪ್ರಾರಂಭಿಸೋಣ.",
-            en: "Okay, let's start over."
-          };
-          askStep("NAME", restartAck[activeLang] || restartAck.en, activeLang);
-          return;
-        } else {
-          playChime("retry");
-          const retryMsg = getUnrecognizedAck("CONFIRM_SUBMIT", cleanTranscript, activeLang);
-          askStep("CONFIRM_SUBMIT", retryMsg, activeLang);
-          return;
+        const hasNumbers = /\\d/.test(cleanTranscript);
+        const hasChangeIntent = /change|edit|update|మార్చు|बदलो|மாற்று|ಬದಲಾಯಿಸಿ/i.test(cleanTranscript);
+        // Only submit or restart if it's purely a yes/no without data updates
+        if (!hasNumbers && !hasChangeIntent) {
+          if (isAffirmative(cleanTranscript)) {
+            playChime("success");
+            await handleSubmit(new Event("submit"));
+            stopWizard();
+            return;
+          } else if (isNegative(cleanTranscript)) {
+            playChime("retry");
+            const resetData = {
+              name: "", category: "vegetable", price: "", quantity: "", unit: "kg", description: "", isOrganic: false,
+              location: user?.location || "", farmLocation: user?.farmName || user?.location || "",
+              latitude: user?.latitude || "", longitude: user?.longitude || "",
+              growingStage: "harvested", notifyAdmin: false, allowPrebooking: false, expectedHarvestDate: ""
+            };
+            setFormData(resetData);
+            formDataRef.current = resetData;
+            setFilledFields({});
+            const restartAck = {
+              te: "సరే, మళ్లీ మొదటి నుండి మొదలుపెడదాం.",
+              hi: "ठीक है, फिर से शुरू करते हैं।",
+              ta: "சரி, மீண்டும் முதலிலிருந்து தொடங்குவோம்.",
+              kn: "ಸರಿ, ಮೊದಲಿನಿಂದ ಪ್ರಾರಂಭಿಸೋಣ.",
+              en: "Okay, let's start over."
+            };
+            askStep("NAME", restartAck[activeLang] || restartAck.en, activeLang);
+            return;
+          }
         }
       }
 
@@ -1137,6 +1191,22 @@ export default function AddCrop() {
       const formUpdates = {};
       const filledUpdates = {};
 
+      let extractedLocation = localParsed.location || null;
+      let extractedDescription = localParsed.description || null;
+
+      if (step === "LOCATION" && !extractedLocation) {
+        if (cleanTranscript.length > 2 && !isNegative(cleanTranscript)) {
+          extractedLocation = cleanTranscript;
+        }
+      }
+      if (step === "DESCRIPTION" && !extractedDescription) {
+        if (!isNegative(cleanTranscript) && !/skip|వదిలేయండి|छोड़ें|தவிர்|ಬಿಟ್ಟುಬಿಡಿ/i.test(cleanTranscript)) {
+          extractedDescription = cleanTranscript;
+        } else {
+          extractedDescription = " ";
+        }
+      }
+
       if (extractedName) {
         formUpdates.name = extractedName;
         formUpdates.category = extractedCategory || formDataRef.current.category || "vegetable";
@@ -1163,6 +1233,24 @@ export default function AddCrop() {
         filledUpdates.price = true;
         hasUpdates = true;
       }
+      
+      if (extractedLocation) {
+        formUpdates.location = extractedLocation;
+        formUpdates.farmLocation = extractedLocation;
+        formDataRef.current.location = extractedLocation;
+        formDataRef.current.farmLocation = extractedLocation;
+        filledUpdates.location = true;
+        filledUpdates.farmLocation = true;
+        hasUpdates = true;
+      }
+      
+      if (extractedDescription) {
+        const descText = extractedDescription === " " ? "" : extractedDescription;
+        formUpdates.description = descText;
+        formDataRef.current.description = descText;
+        filledUpdates.description = true;
+        hasUpdates = true;
+      }
 
       if (hasUpdates) {
         setFormData(prev => ({ ...prev, ...formUpdates }));
@@ -1170,14 +1258,26 @@ export default function AddCrop() {
         playChime("success");
       }
 
-      // E. Check current status across all 3 core fields
+      // E. Check current status across all core fields
       const curName = formDataRef.current.name;
       const curQty = formDataRef.current.quantity;
       const curUnit = formDataRef.current.unit || "kg";
       const curPrice = formDataRef.current.price;
+      const curLocation = formDataRef.current.location;
+      const curDescription = formDataRef.current.description;
+
+      if (step === "CONFIRM_SUBMIT" && hasUpdates) {
+        const ackMsgs = {
+           en: "Updated! Say 'Yes' if all details are correct now.",
+           te: "సవరించబడింది! ఇప్పుడు వివరాలు సరైనవే అయితే 'అవును' అనండి.",
+           hi: "अपडेट किया गया! अगर अब सभी विवरण सही हैं तो 'हाँ' कहें।"
+        };
+        askStep("CONFIRM_SUBMIT", ackMsgs[activeLang] || ackMsgs.en, activeLang);
+        return;
+      }
 
       // If nothing could be recognized at all, gently ask again
-      if (!hasUpdates && !curName && !curQty && !curPrice) {
+      if (!hasUpdates && !curName && !curQty && !curPrice && step !== "LOCATION" && step !== "DESCRIPTION") {
         playChime("retry");
         const retryMsg = getUnrecognizedAck(step, cleanTranscript, activeLang);
         if (step === "SINGLE_PROMPT") {
@@ -1190,58 +1290,39 @@ export default function AddCrop() {
       }
 
       // ── SMART FLOW TRANSITIONS ──
-      // Scenario 1: ALL 3 CORE FIELDS ARE PRESENT! (Complete sentence or accumulated step)
-      if (curName && curQty && curPrice) {
-        const fullAcks = {
-          en: `All details collected: ${curName}, ${curQty} ${curUnit} at ₹${curPrice}.`,
-          te: `వివరాలు నమోదు చేశాను: ${curName}, ${curQty} ${curUnit}, ధర ₹${curPrice}.`,
-          hi: `विवरण दर्ज किया गया: ${curName}, ${curQty} ${curUnit}, ₹${curPrice} प्रति यूनिट।`,
-          ta: `விவரங்கள் பெறப்பட்டன: ${curName}, ${curQty} ${curUnit}, விலை ₹${curPrice}.`,
-          kn: `ವಿವರಗಳನ್ನು ನಮೂದಿಸಲಾಗಿದೆ: ${curName}, ${curQty} ${curUnit}, ಬೆಲೆ ₹${curPrice}.`
-        };
-        const ack = fullAcks[activeLang] || fullAcks.en;
-        askStep("CONFIRM_SUBMIT", ack, activeLang);
-        return;
-      }
       
-      // Handle SINGLE_PROMPT fallback to step-by-step if missing info
-      if (step === "SINGLE_PROMPT" && (!curName || !curQty || !curPrice)) {
-         setAssistantMode('step');
-         if (!curName) {
-            askStep("NAME", "Could not catch the crop name. What crop is this?", activeLang);
-         } else if (!curQty) {
-            askStep("QUANTITY", `Got ${curName}. How much quantity?`, activeLang);
-         } else if (!curPrice) {
-            askStep("PRICE", `Got ${curQty} ${curUnit} of ${curName}. What is the price?`, activeLang);
-         }
-         return;
-      }
-
-      // Scenario 2: Crop Name is known, Quantity is known, Price is MISSING
-      if (curName && curQty && !curPrice) {
-        const ack = getSuccessAck("QUANTITY", curQty, curUnit, activeLang);
-        askStep("PRICE", ack, activeLang);
-        return;
-      }
-
-      // Scenario 3: Crop Name is known, Quantity is MISSING
-      if (curName && !curQty) {
-        const ack = getSuccessAck("NAME", curName, "", activeLang);
-        askStep("QUANTITY", ack, activeLang);
-        return;
-      }
-
-      // Scenario 4: Quantity or Price is known, Crop Name is MISSING
-      if (!curName) {
-        const partialAck = {
-          en: curQty ? `Got quantity ${curQty} ${curUnit}. What crop is this?` : `Got price ₹${curPrice}. What crop is this?`,
-          te: curQty ? `${curQty} ${curUnit} తీసుకున్నాను. పంట పేరు ఏమిటి?` : `ధర ₹${curPrice} తీసుకున్నాను. పంట పేరు ఏమిటి?`,
-          hi: curQty ? `${curQty} ${curUnit} दर्ज किया। फसल का नाम क्या है?` : `कीमत ₹${curPrice} दर्ज की। फसल का नाम क्या है?`,
-          ta: curQty ? `${curQty} ${curUnit} சேர்க்கப்பட்டது. பயிர் பெயர் என்ன?` : `விலை ₹${curPrice} சேர்க்கப்பட்டது. பயிர் பெயர் என்ன?`,
-          kn: curQty ? `${curQty} ${curUnit} ಸೇರಿಸಲಾಗಿದೆ. ಬೆಳೆಯ ಹೆಸರು ಏನು?` : `ಬೆಲೆ ₹${curPrice} ಸೇರಿಸಲಾಗಿದೆ. ಬೆಳೆಯ ಹೆಸರು ಏನು?`
-        };
-        askStep("NAME", partialAck[activeLang] || partialAck.en, activeLang);
-        return;
+      if (assistantMode === 'single') {
+        if (curName && curQty && curPrice) {
+          askStep("CONFIRM_SUBMIT", `All details collected: ${curName}, ${curQty} ${curUnit} at ₹${curPrice}.`, activeLang);
+          return;
+        } else {
+          setAssistantMode('step');
+          if (!curName) { askStep("NAME", "Could not catch the crop name.", activeLang); return; }
+          if (!curQty) { askStep("QUANTITY", `Got ${curName}. How much?`, activeLang); return; }
+          if (!curPrice) { askStep("PRICE", `What is the price?`, activeLang); return; }
+        }
+      } else {
+        if (!curName) { askStep("NAME", "", activeLang); return; }
+        if (!curQty) { askStep("QUANTITY", getSuccessAck("NAME", curName, "", activeLang), activeLang); return; }
+        if (!curPrice) { askStep("PRICE", getSuccessAck("QUANTITY", curQty, curUnit, activeLang), activeLang); return; }
+        
+        // After Price -> Location
+        if (!curLocation && step !== 'DESCRIPTION' && step !== 'CONFIRM_SUBMIT' && step !== 'COMPLETED') {
+           askStep("LOCATION", step === 'PRICE' ? getSuccessAck("PRICE", curPrice, curUnit, activeLang) : "", activeLang);
+           return;
+        }
+        
+        // After Location -> Description
+        if (curLocation && !curDescription && step !== 'CONFIRM_SUBMIT' && step !== 'COMPLETED' && step !== 'DESCRIPTION') {
+           askStep("DESCRIPTION", step === 'LOCATION' ? getSuccessAck("LOCATION", curLocation, "", activeLang) : "", activeLang);
+           return;
+        }
+        
+        // After Description -> Confirm
+        if (step === 'DESCRIPTION' || (curName && curQty && curPrice && curLocation && curDescription !== undefined)) {
+           askStep("CONFIRM_SUBMIT", `All details set.`, activeLang);
+           return;
+        }
       }
 
       // Default fallback to continue wizard
@@ -1390,24 +1471,26 @@ export default function AddCrop() {
 
       {/* ─── AI GUIDED VOICE ASSISTANT WIZARD BANNER ─── */}
       <div 
+        className="glass-card"
         style={{
           background: wizardStep === 'IDLE' 
-            ? "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)" 
+            ? "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)" 
             : "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)",
-          border: "2px solid #86efac",
+          border: wizardStep === 'IDLE' ? "2px solid #d97706" : "2px solid #86efac",
           borderRadius: "16px",
           padding: "1.5rem",
           marginBottom: "2rem",
-          boxShadow: "0 8px 25px rgba(34, 197, 94, 0.15)",
+          boxShadow: wizardStep === 'IDLE' ? "0 8px 25px rgba(217, 119, 6, 0.15)" : "0 8px 25px rgba(34, 197, 94, 0.15)",
           display: "flex", flexDirection: "column", gap: "1.2rem",
-          transition: "all 0.3s ease"
+          transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)"
         }}
       >
         {/* Header & Controls */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
           <div>
-            <h3 style={{ margin: 0, color: "#166534", display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.25rem" }}>
-              <Mic size={26} color="#16a34a" /> Guided Voice Assistant (స్మార్ట్ వాయిస్ అసిస్టెంట్)
+            <h3 style={{ margin: 0, color: wizardStep === 'IDLE' ? "#92400e" : "#166534", display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.25rem", transition: "color 0.3s" }}>
+              <Mic size={26} color={wizardStep === 'IDLE' ? "#d97706" : "#16a34a"} style={{ transition: "all 0.3s" }} /> 
+              Guided Voice Assistant (స్మార్ట్ వాయిస్ అసిస్టెంట్)
             </h3>
             <p style={{ margin: "0.25rem 0 0 0", color: "#374151", fontSize: "0.95rem" }}>
               Illiterate or non-technical? Speak in Telugu, Hindi, Tamil, Kannada, or English. The assistant auto-fills and acknowledges your input!
@@ -1523,24 +1606,24 @@ export default function AddCrop() {
         {wizardStep !== 'IDLE' && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative", margin: "0.5rem 0", flexWrap: "wrap", gap: "0.5rem" }}>
             {(assistantMode === 'step' ? [
-              { id: 'NAME', label: '1. Crop Name 🌾' },
-              { id: 'QUANTITY', label: '2. Quantity ⚖️' },
+              { id: 'NAME', label: '1. Crop 🌾' },
+              { id: 'QUANTITY', label: '2. Qty ⚖️' },
               { id: 'PRICE', label: '3. Price 💰' },
-              { id: 'CONFIRM_SUBMIT', label: '4. Ready ?' }
+              { id: 'LOCATION', label: '4. Location 📍' },
+              { id: 'DESCRIPTION', label: '5. Details 📝' },
+              { id: 'CONFIRM_SUBMIT', label: '6. Ready?' }
             ] : [
               { id: 'SINGLE_PROMPT', label: '1. Speak Details 🎙️' },
-              { id: 'CONFIRM_SUBMIT', label: '2. Ready ?' }
+              { id: 'CONFIRM_SUBMIT', label: '2. Ready?' }
             ]).map((s) => {
               const isCurrent = wizardStep === s.id;
-              const isDone = assistantMode === 'step' ? (
-                (s.id === 'NAME' && (wizardStep === 'QUANTITY' || wizardStep === 'PRICE' || wizardStep === 'CONFIRM_SUBMIT' || wizardStep === 'COMPLETED')) ||
-                (s.id === 'QUANTITY' && (wizardStep === 'PRICE' || wizardStep === 'CONFIRM_SUBMIT' || wizardStep === 'COMPLETED')) ||
-                (s.id === 'PRICE' && (wizardStep === 'CONFIRM_SUBMIT' || wizardStep === 'COMPLETED')) ||
-                (s.id === 'CONFIRM_SUBMIT' && wizardStep === 'COMPLETED')
-              ) : (
-                (s.id === 'SINGLE_PROMPT' && (wizardStep === 'CONFIRM_SUBMIT' || wizardStep === 'COMPLETED')) ||
-                (s.id === 'CONFIRM_SUBMIT' && wizardStep === 'COMPLETED')
-              );
+              const stepOrder = ['NAME', 'QUANTITY', 'PRICE', 'LOCATION', 'DESCRIPTION', 'CONFIRM_SUBMIT', 'COMPLETED'];
+              const currentIndex = stepOrder.indexOf(wizardStep);
+              const sIndex = stepOrder.indexOf(s.id);
+              
+              const isDone = assistantMode === 'step' 
+                ? (currentIndex > sIndex)
+                : ((s.id === 'SINGLE_PROMPT' && (wizardStep === 'CONFIRM_SUBMIT' || wizardStep === 'COMPLETED')) || (s.id === 'CONFIRM_SUBMIT' && wizardStep === 'COMPLETED'));
 
               return (
                 <div 
@@ -1551,7 +1634,9 @@ export default function AddCrop() {
                     color: isCurrent ? "#15803d" : isDone ? "#059669" : "#9ca3af",
                     fontSize: "0.85rem",
                     background: isCurrent ? "rgba(34, 197, 94, 0.2)" : isDone ? "rgba(16, 185, 129, 0.1)" : "transparent",
-                    padding: "0.3rem 0.6rem", borderRadius: "8px"
+                    padding: "0.4rem 0.7rem", borderRadius: "8px",
+                    transition: "all 0.3s ease",
+                    transform: isCurrent ? "scale(1.05)" : "scale(1)"
                   }}
                 >
                   {isDone ? <Check size={16} /> : null}
@@ -1803,6 +1888,42 @@ export default function AddCrop() {
               @keyframes ping {
                 75%, 100% { transform: scale(2); opacity: 0; }
               }
+              @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(15px); }
+                to { opacity: 1; transform: translateY(0); }
+              }
+              .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+              .glass-card {
+                background: rgba(255, 255, 255, 0.9);
+                backdrop-filter: blur(12px);
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06), 0 2px 10px rgba(0,0,0,0.03);
+                border-radius: 20px;
+                padding: 1.8rem;
+                transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+              }
+              .glass-card:hover {
+                box-shadow: 0 15px 50px rgba(0, 0, 0, 0.1), 0 5px 15px rgba(0,0,0,0.05);
+                transform: translateY(-3px);
+              }
+              .input-wrap {
+                 transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+              }
+              .input-wrap:focus-within {
+                 transform: scale(1.01);
+              }
+              .form-input {
+                 transition: all 0.3s ease;
+              }
+              .form-input:focus {
+                 box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.15);
+                 border-color: #d97706;
+              }
+              @keyframes spin { 100% { transform: rotate(360deg); } }
+              .lucide-spin { animation: spin 1.5s linear infinite; }
+              @keyframes ping {
+                75%, 100% { transform: scale(2); opacity: 0; }
+              }
             `}</style>
           </div>
         )}
@@ -1833,10 +1954,10 @@ export default function AddCrop() {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
           
           {/* Crop Name */}
-          <div style={{
-            transition: "all 0.3s",
-            background: wizardStep === 'NAME' ? "rgba(34, 197, 94, 0.08)" : "transparent",
-            border: wizardStep === 'NAME' ? "2px solid #22c55e" : filledFields.name ? "1px solid #86efac" : "1px solid transparent",
+          <div className="input-wrap" style={{
+            transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+            background: wizardStep === 'NAME' ? "rgba(217, 119, 6, 0.08)" : "transparent",
+            border: wizardStep === 'NAME' ? "2px solid #d97706" : filledFields.name ? "1px solid #86efac" : "1px solid transparent",
             borderRadius: "10px", padding: wizardStep === 'NAME' || filledFields.name ? "0.8rem" : "0"
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: '0.5rem' }}>
@@ -1925,10 +2046,10 @@ export default function AddCrop() {
 
           {/* Quantity & Price */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div style={{
-              transition: "all 0.3s",
-              background: wizardStep === 'QUANTITY' ? "rgba(34, 197, 94, 0.08)" : "transparent",
-              border: wizardStep === 'QUANTITY' ? "2px solid #22c55e" : filledFields.quantity ? "1px solid #86efac" : "1px solid transparent",
+            <div className="input-wrap" style={{
+              transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+              background: wizardStep === 'QUANTITY' ? "rgba(217, 119, 6, 0.08)" : "transparent",
+              border: wizardStep === 'QUANTITY' ? "2px solid #d97706" : filledFields.quantity ? "1px solid #86efac" : "1px solid transparent",
               borderRadius: "10px", padding: wizardStep === 'QUANTITY' || filledFields.quantity ? "0.8rem" : "0"
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: '0.5rem' }}>
@@ -1979,10 +2100,10 @@ export default function AddCrop() {
               )}
             </div>
 
-            <div style={{
-              transition: "all 0.3s",
-              background: wizardStep === 'PRICE' ? "rgba(34, 197, 94, 0.08)" : "transparent",
-              border: wizardStep === 'PRICE' ? "2px solid #22c55e" : filledFields.price ? "1px solid #86efac" : "1px solid transparent",
+            <div className="input-wrap" style={{
+              transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+              background: wizardStep === 'PRICE' ? "rgba(217, 119, 6, 0.08)" : "transparent",
+              border: wizardStep === 'PRICE' ? "2px solid #d97706" : filledFields.price ? "1px solid #86efac" : "1px solid transparent",
               borderRadius: "10px", padding: wizardStep === 'PRICE' || filledFields.price ? "0.8rem" : "0"
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: '0.5rem' }}>
@@ -2034,8 +2155,67 @@ export default function AddCrop() {
             </div>
           </div>
 
+          {/* Location */}
+          <div className="input-wrap" style={{
+            transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+            background: wizardStep === 'LOCATION' ? "rgba(217, 119, 6, 0.08)" : "transparent",
+            border: wizardStep === 'LOCATION' ? "2px solid #d97706" : filledFields.location ? "1px solid #86efac" : "1px solid transparent",
+            borderRadius: "10px", padding: wizardStep === 'LOCATION' || filledFields.location ? "0.8rem" : "0"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: '0.5rem' }}>
+              <label style={{ fontWeight: 600, color: wizardStep === 'LOCATION' ? '#166534' : 'var(--text-dark)' }}>
+                Location / Village *
+              </label>
+              {filledFields.location && (
+                <span style={{ fontSize: "0.75rem", background: "#dcfce7", color: "#166534", padding: "0.2rem 0.5rem", borderRadius: "4px", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.2rem" }}>
+                  <Check size={12} /> Added
+                </span>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+              <input 
+                type="text" 
+                name="location" 
+                value={formData.location} 
+                onChange={handleChange} 
+                placeholder="e.g. Hyderabad, My Village" 
+                className="form-input" 
+                required 
+                style={{ flex: 1 }}
+              />
+              <button
+                type="button"
+                onClick={() => speakField('location')}
+                title="Speak Location"
+                style={{
+                  background: fieldListening && activeVoiceField === 'location' ? "#ef4444" : "#f0fdf4",
+                  color: fieldListening && activeVoiceField === 'location' ? "white" : "#16a34a",
+                  border: "1.5px solid " + (fieldListening && activeVoiceField === 'location' ? "#ef4444" : "#86efac"),
+                  borderRadius: "8px",
+                  padding: "0.6rem 0.7rem",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                <Mic size={18} />
+              </button>
+            </div>
+            {fieldListening && activeVoiceField === 'location' && (
+              <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "#16a34a", fontStyle: "italic" }}>
+                🎙️ {fieldInterim || "Listening... speak location"}
+              </p>
+            )}
+          </div>
+
           {/* Description */}
-          <div>
+          <div className="input-wrap" style={{
+            transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+            background: wizardStep === 'DESCRIPTION' ? "rgba(217, 119, 6, 0.08)" : "transparent",
+            border: wizardStep === 'DESCRIPTION' ? "2px solid #d97706" : filledFields.description ? "1px solid #86efac" : "1px solid transparent",
+            borderRadius: "10px", padding: wizardStep === 'DESCRIPTION' || filledFields.description ? "0.8rem" : "0"
+          }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: '0.5rem' }}>
               <label style={{ fontWeight: 600 }}>Description</label>
               <button
