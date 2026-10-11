@@ -7,7 +7,7 @@ import { useLayout } from "../context/LayoutContext";
 import { useCart } from "../context/CartContext";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, ShoppingBag, Leaf, Truck, Shield, LogOut, User, Bell, Headphones, Volume2, VolumeX, ShoppingCart, MapPin, Smartphone, Tablet, Monitor, Laptop, Globe, Package, Check, Play } from "lucide-react";
+import { Home, ShoppingBag, Leaf, Truck, Shield, LogOut, User, Bell, Headphones, Volume2, VolumeX, ShoppingCart, MapPin, Smartphone, Tablet, Monitor, Laptop, Globe, Package, Check, Play, Sparkles, ChevronDown, Layers } from "lucide-react";
 import API from "../api/api";
 import { io } from "socket.io-client";
 import { createPortal } from "react-dom";
@@ -61,6 +61,22 @@ export default function Navbar() {
   const [notificationMode, setNotificationMode] = useState("both"); // "view", "hear", "both"
   const [isSpeakingTest, setIsSpeakingTest] = useState(false);
   const settingsRef = useRef(null);
+
+  // All Services Menu State
+  const [showServicesMenu, setShowServicesMenu] = useState(false);
+  const servicesMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutsideServices = (e) => {
+      if (servicesMenuRef.current && !servicesMenuRef.current.contains(e.target)) {
+        setShowServicesMenu(false);
+      }
+    };
+    if (showServicesMenu) {
+      document.addEventListener("mousedown", handleClickOutsideServices);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutsideServices);
+  }, [showServicesMenu]);
 
   useEffect(() => {
     const handleOpenSettings = (e) => {
@@ -279,6 +295,29 @@ export default function Navbar() {
 
   return (
     <>
+      {/* ─── Top Earthen Soil Ribbon ─── */}
+      <div className="top-soil-ribbon">
+        <div className="top-soil-container">
+          <div className="top-soil-left">
+            <span className="soil-pill">🌾 DIRECT FROM FARM</span>
+            <span className="soil-ticker-text">
+              Zero Middlemen • 100% Soil-Grown Organic Produce • Fresh Daily Deliveries Across Telangana & AP
+            </span>
+          </div>
+          <div className="top-soil-right">
+            <Link href="/curated-boxes" className="soil-link">📦 Curated Boxes</Link>
+            <span className="soil-sep">•</span>
+            <Link href="/customer-groups" className="soil-link">👥 Group Buying (Save 25%)</Link>
+            <span className="soil-sep">•</span>
+            <Link href="/farm-tours" className="soil-link">🚜 Farm Tours</Link>
+            <span className="soil-sep">•</span>
+            <Link href="/offline-tours" className="soil-link">🏕️ Village Stays</Link>
+            <span className="soil-sep">•</span>
+            <Link href="/support" className="soil-link">🎧 24/7 Helpline</Link>
+          </div>
+        </div>
+      </div>
+
       <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
         <Link href="/" className="navbar-brand">
           <motion.img whileHover={{ scale: 1.05 }} src="/logo.png?v=2" alt="Rythu Jana Sethu Logo" style={{ height: "42px", width: "auto", borderRadius: "12px" }} />
@@ -289,20 +328,167 @@ export default function Navbar() {
         </Link>
 
         <ul className="navbar-links">
-          <li><Link href="/" className={active("/")}><Home size={18} /> {t("home")}</Link></li>
-          <li><Link href="/marketplace" className={active("/marketplace")}><ShoppingBag size={18} /> {t("marketplace")}</Link></li>
+          <li><Link href="/" className={active("/")}><Home size={17} /> {t("home")}</Link></li>
+          <li><Link href="/marketplace" className={active("/marketplace")}><ShoppingBag size={17} /> {t("marketplace")}</Link></li>
+
+          {/* All Features & Services Mega Menu Trigger */}
+          <li ref={servicesMenuRef} style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={() => setShowServicesMenu(prev => !prev)}
+              className="navbar-link"
+              style={{
+                background: showServicesMenu ? "var(--green-pale)" : "transparent",
+                color: showServicesMenu ? "var(--green-deep)" : "var(--text-dark)",
+                border: "none",
+                cursor: "pointer",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: "0.35rem"
+              }}
+              title="Explore all Rythu Jana Sethu features"
+            >
+              <Sparkles size={16} color="var(--yellow-wheat)" />
+              <span>All Services</span>
+              <ChevronDown size={14} style={{ transform: showServicesMenu ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+            </button>
+
+            <AnimatePresence>
+              {showServicesMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.96 }}
+                  transition={{ duration: 0.18 }}
+                  className="services-megamenu anim-dropdown"
+                >
+                  <div className="services-megamenu-header">
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: "0.92rem", color: "var(--green-deep)", fontWeight: 800, display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        <span>🌾</span> Farm Services & Hubs
+                      </h4>
+                      <p style={{ margin: "2px 0 0 0", fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                        Direct shopping, community bulk savings, and farm visits
+                      </p>
+                    </div>
+                    <span style={{ fontSize: "0.68rem", background: "rgba(14,51,30,0.08)", color: "var(--green-deep)", padding: "2px 8px", borderRadius: "100px", fontWeight: 700 }}>
+                      9 Portals
+                    </span>
+                  </div>
+
+                  <Link href="/marketplace" className="services-item-card" onClick={() => setShowServicesMenu(false)}>
+                    <div className="services-item-icon" style={{ background: "#dcfce7" }}>🛒</div>
+                    <div>
+                      <div className="services-item-title">
+                        <span>Marketplace</span>
+                        <span className="services-item-pill" style={{ background: "#dcfce7", color: "#166534" }}>LIVE</span>
+                      </div>
+                      <div className="services-item-subtitle">Fresh vegetables, fruits, grains & pulses</div>
+                    </div>
+                  </Link>
+
+                  <Link href="/curated-boxes" className="services-item-card" onClick={() => setShowServicesMenu(false)}>
+                    <div className="services-item-icon" style={{ background: "#fef3c7" }}>📦</div>
+                    <div>
+                      <div className="services-item-title">
+                        <span>Curated Boxes</span>
+                        <span className="services-item-pill" style={{ background: "#fef3c7", color: "#b45309" }}>POPULAR</span>
+                      </div>
+                      <div className="services-item-subtitle">Weekly fresh veggie & fruit subscriptions</div>
+                    </div>
+                  </Link>
+
+                  <Link href="/customer-groups" className="services-item-card" onClick={() => setShowServicesMenu(false)}>
+                    <div className="services-item-icon" style={{ background: "#ffedd5" }}>👥</div>
+                    <div>
+                      <div className="services-item-title">
+                        <span>Group Buying</span>
+                        <span className="services-item-pill" style={{ background: "#ffedd5", color: "#c2410c" }}>SAVE 25%</span>
+                      </div>
+                      <div className="services-item-subtitle">Neighborhood apartment bulk group orders</div>
+                    </div>
+                  </Link>
+
+                  <Link href="/farm-tours" className="services-item-card" onClick={() => setShowServicesMenu(false)}>
+                    <div className="services-item-icon" style={{ background: "#ede9fe" }}>🚜</div>
+                    <div>
+                      <div className="services-item-title">
+                        <span>Farm Tours</span>
+                        <span className="services-item-pill" style={{ background: "#ede9fe", color: "#6d28d9" }}>WEEKEND</span>
+                      </div>
+                      <div className="services-item-subtitle">Tractor rides, fruit picking & nature walks</div>
+                    </div>
+                  </Link>
+
+                  <Link href="/offline-tours" className="services-item-card" onClick={() => setShowServicesMenu(false)}>
+                    <div className="services-item-icon" style={{ background: "#e0f2fe" }}>🏕️</div>
+                    <div>
+                      <div className="services-item-title">
+                        <span>Village Stays</span>
+                        <span className="services-item-pill" style={{ background: "#e0f2fe", color: "#0369a1" }}>EXPERIENCE</span>
+                      </div>
+                      <div className="services-item-subtitle">Authentic countryside homestays & farm meals</div>
+                    </div>
+                  </Link>
+
+                  <Link href="/my-orders" className="services-item-card" onClick={() => setShowServicesMenu(false)}>
+                    <div className="services-item-icon" style={{ background: "#f1f5f9" }}>📍</div>
+                    <div>
+                      <div className="services-item-title">
+                        <span>Order Tracker</span>
+                      </div>
+                      <div className="services-item-subtitle">Live GPS delivery partner tracking</div>
+                    </div>
+                  </Link>
+
+                  <Link href="/farmer" className="services-item-card" onClick={() => setShowServicesMenu(false)}>
+                    <div className="services-item-icon" style={{ background: "#dcfce7" }}>🌱</div>
+                    <div>
+                      <div className="services-item-title">
+                        <span>Farmer Portal</span>
+                        <span className="services-item-pill" style={{ background: "#dcfce7", color: "#166534" }}>0% CUT</span>
+                      </div>
+                      <div className="services-item-subtitle">Direct crop listings, AI demand & fair MSP</div>
+                    </div>
+                  </Link>
+
+                  <Link href="/agent" className="services-item-card" onClick={() => setShowServicesMenu(false)}>
+                    <div className="services-item-icon" style={{ background: "#fef3c7" }}>🚚</div>
+                    <div>
+                      <div className="services-item-title">
+                        <span>Delivery Fleet</span>
+                        <span className="services-item-pill" style={{ background: "#fef3c7", color: "#b45309" }}>EARN</span>
+                      </div>
+                      <div className="services-item-subtitle">Electric bike partner assignments</div>
+                    </div>
+                  </Link>
+
+                  <Link href="/support" className="services-item-card" onClick={() => setShowServicesMenu(false)} style={{ gridColumn: "1 / -1" }}>
+                    <div className="services-item-icon" style={{ background: "#fef2f2" }}>🎧</div>
+                    <div>
+                      <div className="services-item-title">
+                        <span>24/7 Helpdesk & Support</span>
+                        <span className="services-item-pill" style={{ background: "#fef2f2", color: "#dc2626" }}>HELPLINE</span>
+                      </div>
+                      <div className="services-item-subtitle">Instant ticket raise, phone assistance, and WhatsApp support</div>
+                    </div>
+                  </Link>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </li>
+
           {user?.role === "farmer" && (
-            <li><Link href="/farmer" className={active("/farmer")}><Leaf size={18} /> {t("dashboard")}</Link></li>
+            <li><Link href="/farmer" className={active("/farmer")}><Leaf size={17} /> {t("dashboard")}</Link></li>
           )}
           {user?.role === "agent" && (
-            <li><Link href="/agent" className={active("/agent")}><Truck size={18} /> {t("deliveries")}</Link></li>
+            <li><Link href="/agent" className={active("/agent")}><Truck size={17} /> {t("deliveries")}</Link></li>
           )}
           {user?.role === "admin" && (
-            <li><Link href="/admin" className={active("/admin")}><Shield size={18} /> {t("adminPanel")}</Link></li>
+            <li><Link href="/admin" className={active("/admin")}><Shield size={17} /> {t("adminPanel")}</Link></li>
           )}
-          {user && (
-            <li><Link href="/support" className={active("/support")}><Headphones size={18} /> Support</Link></li>
-          )}
+          <li><Link href="/support" className={active("/support")}><Headphones size={17} /> Support</Link></li>
           <li>
             <select className="lang-select" value={lang} onChange={(e) => changeLang(e.target.value)}>
               <option value="en">🇬🇧 EN</option>

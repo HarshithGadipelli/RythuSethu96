@@ -4,60 +4,86 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Poppins:wght@300;400;500;600;700;800&family=Noto+Sans+Telugu:wght@400;600&display=swap');
 @import "./animations.css";
 
-/* ─── CSS VARIABLES (Natural Earthy Theme) ─── */
+/* ─── CSS VARIABLES (Rich Earthy Soil & Lush Forest Green Theme) ─── */
 :root {
-  /* Natural & Earthy Palette */
-  --saffron-main: #e07a5f;
-  --saffron-light: #f4a261;
-  --india-green: #2d6a4f;
-  --india-navy: #1d3557;
+  /* Rich Earthy Browns (Soil, Clay, Terracotta, Loam) */
+  --brown-soil-deep: #24140c;
+  --brown-soil: #381e10;
+  --brown-earth: #5c351b;
+  --brown-clay: #784421;
+  --brown-warm: #94582f;
+  --brown-terracotta: #b46d3e;
+  --brown-light: #d19468;
+  --brown-sand: #f4ece2;
+  --brown-cream: #faf5ee;
+  --soil-dark: #24140c;
+  --soil-border: rgba(92, 53, 27, 0.16);
 
-  --green-deep: #1b4332;
-  --green-mid: #2d6a4f;
-  --green-light: #52b788;
-  --green-pale: #d8f3dc;
-  --yellow-wheat: #f4a261;
-  --yellow-warm: #e9c46a;
-  --brown-earth: #7f4f24;
-  --brown-light: #b08968;
-  --sky-blue: #457b9d;
-  --blue-light: #a8dadc;
-  --blue-mid: #1d3557;
-  --blue-deep: #023047;
-  --red-light: #e5989b;
-  --red-error: #e63946;
-  --red-deep: #9b2226;
-  --soil-dark: #3e2723;
+  /* Deep Forest & Botanical Dark Greens */
+  --green-forest-dark: #071c10;
+  --green-deep: #0e331e;
+  --green-mid: #185233;
+  --green-leaf: #24754a;
+  --green-light: #3da368;
+  --green-pale: #e5f4eb;
+  --green-mint: #d1ecdc;
+  --india-green: #185233;
 
-  /* Soft Neutral Base */
-  --bg-main: #faf9f6;
-  --cream: #fffdd0;
+  /* Harvest Amber & Sunburst */
+  --yellow-wheat: #e89830;
+  --yellow-warm: #f5b041;
+  --saffron-main: #d35424;
+  --saffron-light: #e87a42;
+
+  /* Sky & Irrigation Blue */
+  --sky-blue: #0284c7;
+  --blue-light: #e0f2fe;
+  --blue-mid: #1e40af;
+  --blue-deep: #0f172a;
+  --india-navy: #1e3a5f;
+
+  /* Status Reds */
+  --red-light: #fecdd3;
+  --red-error: #e11d48;
+  --red-deep: #9f1239;
+
+  /* Warm Canvas Base */
+  --bg-main: #f9f6f0;
+  --bg-sand: #f5efe6;
+  --cream: #fffdf5;
   --white: #ffffff;
 
-  /* Text */
-  --text-dark: #2b2d42;
-  --text-mid: #4a4e69;
-  --text-muted: #8d99ae;
+  /* High-Contrast Crisp Typography */
+  --text-dark: #1f1b18;
+  --text-mid: #4a423a;
+  --text-muted: #786f66;
 
-  /* Cards & UI */
+  /* Cards & Surface Shadows */
   --card-bg: #ffffff;
-  --card-border: rgba(45, 106, 79, 0.12);
-  --shadow-green: 0 10px 25px -5px rgba(45, 106, 79, 0.08);
-  --shadow-soft: 0 8px 30px rgba(0, 0, 0, 0.03);
-  --shadow-hover: 0 20px 40px -10px rgba(224, 122, 95, 0.15);
+  --card-bg-warm: #fcfbf9;
+  --card-border: rgba(92, 53, 27, 0.12);
+  --card-border-green: rgba(14, 51, 30, 0.12);
+  --shadow-green: 0 10px 25px -5px rgba(14, 51, 30, 0.14);
+  --shadow-brown: 0 10px 25px -5px rgba(56, 30, 16, 0.18);
+  --shadow-soft: 0 6px 24px rgba(36, 20, 12, 0.05);
+  --shadow-hover: 0 18px 42px -10px rgba(36, 20, 12, 0.16);
 
   /* Gradients */
-  --gradient-sky: linear-gradient(135deg, #f1faee 0%, #a8dadc 100%);
-  --gradient-card: linear-gradient(135deg, #ffffff 0%, #faf9f6 100%);
-  --gradient-btn: linear-gradient(135deg, #2d6a4f 0%, #40916c 100%);
-  /* Earthy green primary button */
-  --gradient-warm: linear-gradient(135deg, #e07a5f 0%, #f4a261 100%);
+  --gradient-btn: linear-gradient(135deg, #0e331e 0%, #185233 55%, #24754a 100%);
+  --gradient-btn-hover: linear-gradient(135deg, #071c10 0%, #0e331e 55%, #185233 100%);
+  --gradient-brown: linear-gradient(135deg, #24140c 0%, #381e10 50%, #5c351b 100%);
+  --gradient-soil-badge: linear-gradient(135deg, #381e10 0%, #5c351b 100%);
+  --gradient-earth-green: linear-gradient(135deg, #24140c 0%, #0e331e 100%);
+  --gradient-sky: linear-gradient(135deg, #f0f9ff 0%, #bae6fd 100%);
+  --gradient-card: linear-gradient(135deg, #ffffff 0%, #fbf9f5 100%);
+  --gradient-warm: linear-gradient(135deg, #d35424 0%, #e89830 100%);
+  --gradient-gold: linear-gradient(135deg, #f5b041 0%, #d97706 100%);
 
   /* Border Radius */
   --radius-lg: 24px;
   --radius-md: 16px;
   --radius-sm: 10px;
-  --transition: all 0.35s cubic-bezier(0.25, 1, 0.35, 1);
+  --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ─── RESET & BASE ─── */
@@ -83,22 +109,138 @@ html {
 
 body {
   font-family: 'Poppins', sans-serif;
-  background: #fdfbf7;
-  background-attachment: fixed;
+  background: transparent;
   min-height: 100vh;
   color: var(--text-dark);
   position: relative;
 }
 
-/* ─── ANIMATED BACKGROUND LAYERS ─── */
-/* Subtle modern mesh instead of dark pattern */
-body::before {
-  content: '';
+/* ─── DYNAMIC SCROLL CROP-TO-SOIL BACKDROP ───
+   Top = Fresh green crop canopy & leaves
+   Bottom = Rich fertile brownish-black root soil */
+.crop-soil-backdrop {
   position: fixed;
   inset: 0;
-  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232d6a4f' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   pointer-events: none;
   z-index: 0;
+  overflow: hidden;
+  transition: opacity 0.3s ease;
+}
+
+/* 1. Lush Green Crop Foliage & Canopy (Visible at top 0-40% scroll) */
+.canopy-crop-layer {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(34, 197, 94, 0.45) 0%, rgba(14, 51, 30, 0.3) 45%, transparent 80%),
+    radial-gradient(circle at 15% 20%, rgba(52, 211, 153, 0.28) 0%, transparent 40%),
+    radial-gradient(circle at 85% 15%, rgba(16, 185, 129, 0.22) 0%, transparent 45%),
+    linear-gradient(180deg, #072a16 0%, #0d3820 28%, #144929 58%, #1a5632 82%, #22643a 100%);
+  opacity: calc(1 - var(--scroll-progress, 0));
+  transition: opacity 0.12s ease-out;
+  will-change: opacity;
+}
+
+/* 2. Deep Fertile Brownish-Black Soil & Earth (Visible at bottom 60-100% scroll) */
+.deep-soil-layer {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 95% 75% at 50% 115%, rgba(18, 9, 4, 0.98) 0%, rgba(36, 18, 10, 0.85) 50%, transparent 92%),
+    radial-gradient(circle at 20% 85%, rgba(72, 38, 20, 0.5) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(56, 30, 16, 0.55) 0%, transparent 45%),
+    linear-gradient(180deg, #2e170a 0%, #241208 30%, #190c05 65%, #0e0502 100%);
+  opacity: var(--scroll-progress, 0);
+  transition: opacity 0.12s ease-out;
+  will-change: opacity;
+}
+
+/* Organic soil loam micro-strata & root texture */
+.soil-strata-overlay {
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.025'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+/* Warm atmospheric wash ensuring all card text and controls remain crisp */
+.crop-soil-readability-wash {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(253, 251, 247, 0.72) 0%, rgba(250, 246, 240, 0.76) 50%, rgba(245, 238, 230, 0.82) 100%);
+  pointer-events: none;
+}
+
+/* ─── CROP-TO-SOIL HORIZON HUD (Real Presence Indicator) ─── */
+.crop-soil-hud {
+  position: fixed;
+  bottom: 84px;
+  left: 20px;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(14, 28, 20, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 100px;
+  padding: 6px 14px 6px 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  color: white;
+  font-size: 0.76rem;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  cursor: pointer;
+}
+
+.crop-soil-hud:hover {
+  transform: translateY(-2px) scale(1.02);
+  background: rgba(14, 28, 20, 0.95);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+}
+
+.crop-soil-hud-bar {
+  width: 50px;
+  height: 6px;
+  border-radius: 100px;
+  background: linear-gradient(90deg, #16a34a 0%, #854d0e 50%, #24140c 100%);
+  position: relative;
+  overflow: visible;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.crop-soil-hud-pin {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+  border: 2px solid #16a34a;
+  transition: left 0.1s linear;
+}
+
+.crop-soil-hud-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .crop-soil-hud {
+    bottom: 72px;
+    left: 12px;
+    padding: 5px 10px 5px 8px;
+    font-size: 0.7rem;
+  }
+  .crop-soil-hud-bar {
+    width: 36px;
+  }
 }
 
 #root {
@@ -144,24 +286,24 @@ h5 {
   letter-spacing: -0.01em;
 }
 
-/* ─── GLASSMORPHISM CARDS (Clean Light Theme) ─── */
+/* ─── GLASSMORPHISM CARDS (Clean Light Theme with Earth & Forest Accents) ─── */
 .glass-card {
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.95);
   border-radius: var(--radius-lg);
   padding: 1.75rem;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-soft);
   transition: var(--transition);
-  animation: fadeInUp 0.6s ease-out backwards;
-  /* Global Entrance Animation */
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  position: relative;
 }
 
 .glass-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 15px 35px -10px rgba(45, 106, 79, 0.15);
-  border-color: #ffffff;
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+  border-color: rgba(92, 53, 27, 0.2);
 }
 
 .glass-card-dark {
@@ -171,38 +313,45 @@ h5 {
   padding: 1.75rem;
   box-shadow: var(--shadow-soft);
   overflow-x: auto;
-  /* Allows tables inside to scroll without clipping */
+  transition: var(--transition);
+}
+
+.glass-card-dark:hover {
+  border-color: var(--card-border-green);
+  box-shadow: 0 12px 30px rgba(14, 51, 30, 0.08);
 }
 
 /* ─── CROP / PRODUCT CARDS (Premium Blinkit Style) ─── */
 .crop-card {
   background: #ffffff;
-  border: 1px solid rgba(45, 106, 79, 0.08);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: var(--transition);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
   box-shadow: var(--shadow-soft);
   display: flex;
   flex-direction: column;
   height: 100%;
   animation: fadeInUp 0.6s ease-out backwards;
-  /* Global Entrance Animation */
+  position: relative;
 }
 
 .crop-card:hover {
-  border-color: rgba(45, 106, 79, 0.25);
+  transform: translateY(-6px) scale(1.01);
+  border-color: var(--green-mid);
+  box-shadow: 0 20px 40px -12px rgba(14, 51, 30, 0.18), 0 4px 12px rgba(56, 30, 16, 0.06);
 }
 
 .crop-card img {
   width: 100%;
   height: 190px;
   object-fit: cover;
-  transition: transform 0.5s ease;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .crop-card:hover img {
-  transform: scale(1.05);
+  transform: scale(1.08);
 }
 
 .crop-card-body {
@@ -223,16 +372,60 @@ h5 {
 }
 
 .crop-price {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: 800;
-  color: var(--green-mid);
+  color: var(--green-deep);
   margin: 0.4rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .crop-qty {
   font-size: 0.8rem;
   color: var(--text-muted);
   margin: 0.2rem 0 0.8rem;
+}
+
+/* ─── THEMATIC BADGES & ACCENTS (Earthy Soil, Dark Green & Harvest) ─── */
+.soil-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 100px;
+  background: rgba(56, 30, 16, 0.08);
+  color: var(--brown-soil);
+  border: 1px solid rgba(92, 53, 27, 0.25);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.dark-green-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 100px;
+  background: rgba(14, 51, 30, 0.08);
+  color: var(--green-deep);
+  border: 1px solid rgba(14, 51, 30, 0.25);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.amber-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 100px;
+  background: rgba(232, 152, 48, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(232, 152, 48, 0.3);
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 /* ─── FORMS & INPUTS (Premium Bright Theme) ─── */
@@ -382,8 +575,8 @@ h5 {
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-3px);
-  box-shadow: 0 12px 30px rgba(5, 150, 105, 0.4), 0 0 15px rgba(52, 211, 153, 0.2);
-  filter: brightness(1.1);
+  box-shadow: 0 12px 30px rgba(14, 51, 30, 0.45), 0 0 15px rgba(61, 163, 104, 0.25);
+  filter: brightness(1.08);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -399,26 +592,53 @@ h5 {
   padding: 0.7rem 1.25rem;
   background: #ffffff;
   color: var(--green-deep);
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid rgba(92, 53, 27, 0.22);
   border-radius: var(--radius-md);
   font-size: 0.9rem;
   font-weight: 700;
   font-family: 'Poppins', sans-serif;
   cursor: pointer;
   transition: var(--transition);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 2px 5px rgba(36, 20, 12, 0.03);
 }
 
 .btn-secondary:hover {
-  background: #f8fafc;
+  background: #fdfaf6;
   border-color: var(--green-mid);
   color: var(--green-mid);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(22, 163, 74, 0.1);
+  box-shadow: 0 8px 22px rgba(36, 20, 12, 0.1);
 }
 
 .btn-secondary:active {
   transform: scale(0.97) translateY(0);
+}
+
+/* Soil & Terracotta Earth Button */
+.btn-earth {
+  padding: 0.85rem 1.4rem;
+  background: linear-gradient(135deg, #24140c 0%, #381e10 50%, #5c351b 100%);
+  color: #fff9f2;
+  border: 1px solid rgba(245, 176, 65, 0.3);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 6px 18px rgba(36, 20, 12, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+.btn-earth:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #381e10 0%, #5c351b 50%, #784421 100%);
+  box-shadow: 0 12px 28px rgba(36, 20, 12, 0.35);
+  color: #ffffff;
 }
 
 .btn-warn {
@@ -473,88 +693,276 @@ h5 {
   border-color: #cbd5e1;
 }
 
-/* ─── NAVBAR (Premium Bright Theme) ─── */
-.navbar {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  padding: 1rem 2rem;
+/* ─── TOP EARTHEN SOIL RIBBON (Authentic Agricultural Earth Tones) ─── */
+.top-soil-ribbon {
+  background: linear-gradient(90deg, #1f110a 0%, #381e10 30%, #4e2913 70%, #24140c 100%);
+  color: var(--brown-sand);
+  font-size: 0.78rem;
+  padding: 0.45rem 1.5rem;
+  border-bottom: 1px solid rgba(245, 176, 65, 0.25);
+  position: relative;
+  z-index: 1002;
+  box-shadow: 0 2px 8px rgba(36, 20, 12, 0.25);
+}
+
+.top-soil-container {
+  max-width: 1360px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  gap: 1rem;
+}
+
+.top-soil-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.soil-pill {
+  background: linear-gradient(135deg, #d35424 0%, #f5b041 100%);
+  color: #ffffff;
+  padding: 2px 9px;
+  border-radius: 100px;
+  font-weight: 800;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(211, 84, 36, 0.4);
+  flex-shrink: 0;
+}
+
+.soil-ticker-text {
+  color: #f7ede2;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.top-soil-right {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+.soil-link {
+  color: #eedcc9;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  font-size: 0.76rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.soil-link:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.soil-sep {
+  color: rgba(238, 220, 201, 0.35);
+  font-size: 0.7rem;
+}
+
+@media (max-width: 768px) {
+  .top-soil-right {
+    display: none;
+  }
+  .top-soil-ribbon {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.72rem;
+  }
+}
+
+/* ─── NAVBAR (Lush Forest Green & Warm Earth Accents) ─── */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1001;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1.5px solid rgba(92, 53, 27, 0.1);
+  padding: 0.85rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 20px rgba(36, 20, 12, 0.03);
 }
 
 .navbar.scrolled {
   background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  padding: 0.8rem 2rem;
+  box-shadow: 0 8px 30px rgba(36, 20, 12, 0.08), 0 2px 6px rgba(14, 51, 30, 0.05);
+  padding: 0.7rem 2rem;
+  border-bottom-color: rgba(14, 51, 30, 0.15);
 }
 
 .navbar-brand {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.85rem;
   text-decoration: none;
 }
 
 .navbar-logo {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   background: var(--gradient-btn);
-  border-radius: 12px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.4rem;
-  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3);
+  box-shadow: 0 4px 14px rgba(14, 51, 30, 0.3);
   color: white;
+  transition: transform 0.3s ease;
+}
+
+.navbar-brand:hover .navbar-logo {
+  transform: rotate(5deg) scale(1.05);
 }
 
 .navbar-title {
-  font-family: 'Algerian', serif;
+  font-family: 'Outfit', 'Poppins', sans-serif;
   font-size: 1.4rem;
   font-weight: 800;
-  color: var(--text-dark);
+  color: var(--green-deep);
   letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #0e331e 0%, #185233 60%, #381e10 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .navbar-subtitle {
-  font-size: 0.7rem;
-  color: var(--green-mid);
+  font-size: 0.72rem;
+  color: var(--brown-earth);
   display: block;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 .navbar-links {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 0.85rem;
   list-style: none;
 }
 
 .navbar-link {
-  color: var(--text-mid);
+  color: var(--text-dark);
   text-decoration: none;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 600;
   padding: 0.5rem 0.85rem;
   border-radius: 100px;
   transition: var(--transition);
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
+  position: relative;
 }
 
-.navbar-link:hover,
-.navbar-link.active {
+.navbar-link:hover {
   background: var(--green-pale);
   color: var(--green-deep);
+  transform: translateY(-1px);
+}
+
+.navbar-link.active {
+  background: var(--green-deep);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(14, 51, 30, 0.25);
+}
+
+/* ─── SERVICES MEGA-MENU & EXPLORE DROPDOWN ─── */
+.services-megamenu {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: -40px;
+  width: 480px;
+  background: #ffffff;
+  border: 1.5px solid rgba(92, 53, 27, 0.16);
+  border-radius: 20px;
+  box-shadow: 0 20px 50px -10px rgba(36, 20, 12, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.8);
+  padding: 1.25rem;
+  z-index: 1005;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.services-megamenu-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.65rem;
+  margin-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(92, 53, 27, 0.1);
+}
+
+.services-item-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 14px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  background: #fbf9f5;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.services-item-card:hover {
+  background: #ffffff;
+  border-color: rgba(14, 51, 30, 0.2);
+  box-shadow: 0 6px 18px rgba(14, 51, 30, 0.08);
+  transform: translateY(-2px);
+}
+
+.services-item-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.services-item-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.services-item-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.services-item-pill {
+  font-size: 0.62rem;
+  padding: 1px 6px;
+  border-radius: 100px;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .lang-select {

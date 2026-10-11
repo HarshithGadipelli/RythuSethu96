@@ -53,6 +53,85 @@ function RouteChangeListener() {
   return null;
 }
 
+// Dynamic Crop-to-Soil Scroll Progress & Depth Horizon Engine
+function ScrollCropSoilEffect() {
+  const [progress, setProgress] = useState(0);
+  const [isHudMinimized, setIsHudMinimized] = useState(false);
+
+  useEffect(() => {
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const doc = document.documentElement;
+          const max = doc.scrollHeight - window.innerHeight;
+          const currentProgress = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+          doc.style.setProperty("--scroll-progress", currentProgress.toFixed(4));
+          setProgress(currentProgress);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll, { passive: true });
+    handleScroll();
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, []);
+
+  // Determine active agricultural horizon
+  const stratum = progress < 0.28
+    ? { emoji: "🌾", title: "Crop Canopy", depth: "0-15cm (Foliage)", color: "#16a34a" }
+    : progress < 0.60
+    ? { emoji: "🌱", title: "Topsoil Loam", depth: "15-45cm (Roots)", color: "#ca8a04" }
+    : progress < 0.85
+    ? { emoji: "🍂", title: "Organic Humus", depth: "45-80cm (Subsoil)", color: "#92400e" }
+    : { emoji: "🌍", title: "Deep Black Earth", depth: ">80cm (Mineral Soil)", color: "#451a03" };
+
+  return (
+    <>
+      {/* Dynamic Fixed Backdrop: Canopy green at top cross-fades to deep brownish-black soil at bottom */}
+      <div className="crop-soil-backdrop" aria-hidden="true">
+        <div className="canopy-crop-layer" />
+        <div className="deep-soil-layer" />
+        <div className="soil-strata-overlay" />
+        <div className="crop-soil-readability-wash" />
+      </div>
+
+      {/* Floating Soil & Canopy Horizon Gauge */}
+      <div
+        className="crop-soil-hud"
+        onClick={() => setIsHudMinimized(!isHudMinimized)}
+        title="Soil Horizon Gauge: Scrolling down shifts the atmosphere from crop foliage to deep brownish-black soil."
+      >
+        <div className="crop-soil-hud-bar">
+          <div
+            className="crop-soil-hud-pin"
+            style={{ left: `${Math.round(progress * 100)}%` }}
+          />
+        </div>
+        <div className="crop-soil-hud-badge">
+          <span style={{ fontSize: "0.95rem" }}>{stratum.emoji}</span>
+          {!isHudMinimized && (
+            <span>
+              <strong style={{ color: "#dcfce7" }}>{stratum.title}</strong>
+              <span style={{ opacity: 0.75, marginLeft: 4 }}>• {stratum.depth}</span>
+            </span>
+          )}
+          <span style={{ fontSize: "0.68rem", opacity: 0.75, marginLeft: 3 }}>
+            {Math.round(progress * 100)}%
+          </span>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function AppShell({ children }) {
   const [broadcast, setBroadcast] = useState(null);
   
@@ -66,6 +145,7 @@ function AppShell({ children }) {
 
   return (
     <>
+      <ScrollCropSoilEffect />
       <MaintenanceAlertBanner />
       <AudioManager />
       <RouteChangeListener />

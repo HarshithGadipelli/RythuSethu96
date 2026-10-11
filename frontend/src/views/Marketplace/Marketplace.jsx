@@ -1552,6 +1552,18 @@ export default function Marketplace() {
           }}>
           <Tractor size={18} /> Farm Tour Booking
         </button>
+        <Link href="/curated-boxes" style={{ textDecoration: "none" }}>
+          <button 
+            type="button"
+            style={{
+              background: "none", border: "none", fontSize: "1.1rem", fontWeight: 700,
+              color: "var(--text-mid)", cursor: "pointer",
+              borderBottom: "3px solid transparent",
+              padding: "0.5rem 1rem", display: "flex", alignItems: "center", gap: "0.5rem"
+            }}>
+            <Package size={18} /> Curated Boxes
+          </button>
+        </Link>
       </div>
 
       {mainTab === "orders" ? (

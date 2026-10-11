@@ -201,6 +201,59 @@ function createRealFarmIcon(isOrganic = false) {
   });
 }
 
+function createHighlightedRealFarmIcon(grade = "New", isOrganic = false, imgUrl = null, cropCount = 1) {
+  const parsedImg = imgUrl ? (imgUrl.startsWith("http") ? imgUrl : `${BASE_URL}${imgUrl}`) : null;
+  const innerHtml = parsedImg
+    ? `<div style="width:36px;height:36px;border-radius:50%;background-image:url('${parsedImg}');background-size:cover;background-position:center;border:2px solid #facc15;"></div>`
+    : `<span style="font-size:1.35rem;line-height:1">🚜</span>`;
+
+  return L.divIcon({
+    className: "",
+    html: `<div style="
+      position:relative;
+      width:54px;height:54px;
+      display:flex;align-items:center;justify-content:center;
+    ">
+      <!-- Outer Beacon Halo Wave -->
+      <div class="live-farm-beacon" style="position:absolute;inset:0;margin:auto;"></div>
+
+      <!-- Core Farm Parcel Pin -->
+      <div style="
+        position:relative;
+        width:44px;height:44px;
+        background:linear-gradient(135deg, #072a16 0%, #15803d 60%, #16a34a 100%);
+        border:2.5px solid #facc15;
+        border-radius:50%;
+        box-shadow:0 0 16px rgba(234, 179, 8, 0.75), 0 5px 16px rgba(0,0,0,0.45);
+        display:flex;align-items:center;justify-content:center;
+        cursor:pointer;
+        z-index:2;
+      ">
+        ${innerHtml}
+
+        <!-- Flashing Live Dot -->
+        <span style="
+          position:absolute;top:-6px;right:-6px;
+          background:#dc2626;color:white;font-size:7.5px;font-weight:900;
+          padding:1px 5px;border-radius:100px;border:1.5px solid white;
+          white-space:nowrap;box-shadow:0 2px 5px rgba(220,38,38,0.6);
+        ">LIVE</span>
+
+        <!-- Real Farm Ribbon -->
+        <span style="
+          position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);
+          background:#1c130c;color:#fde047;font-size:7.5px;font-weight:900;
+          padding:1px 6px;border-radius:100px;border:1.5px solid #ca8a04;
+          white-space:nowrap;letter-spacing:0.5px;box-shadow:0 3px 8px rgba(0,0,0,0.5);
+        ">REAL FARM</span>
+      </div>
+    </div>`,
+    iconSize: [54, 54],
+    iconAnchor: [27, 27],
+    popupAnchor: [0, -30],
+  });
+}
+
 function createRealSalePlaceIcon(hubType = "mandi") {
   const isCold = hubType === "cold_storage";
   const bg = isCold ? "linear-gradient(135deg, #0284c7, #0ea5e9)" : "linear-gradient(135deg, #2563eb, #3b82f6)";
@@ -373,6 +426,8 @@ export default function MarketplaceMap({
   const [showDemand, setShowDemand] = useState(false);
   const [showWeatherRadar, setShowWeatherRadar] = useState(false);
   const [showFarmBoundaries, setShowFarmBoundaries] = useState(false);
+  const [highlightRealFarms, setHighlightRealFarms] = useState(true);
+  const [selectedRealFarmKey, setSelectedRealFarmKey] = useState(null);
 
   // NEW STATES
   const [searchRadius, setSearchRadius] = useState(50);
@@ -500,6 +555,7 @@ export default function MarketplaceMap({
     if (quickFilter === "organic" && !c.isOrganic) return false;
     if (quickFilter === "prebook" && !c.isPrebooking) return false;
     if (quickFilter === "trace" && (!c.realFarmDetails?.latitude || !c.realSalePlace?.latitude)) return false;
+    if (quickFilter === "realFarms" && (!c.realFarmDetails?.latitude && !c.farmer?.latitude && !c.latitude)) return false;
     if (!customerLat || !customerLng) return true;
     const lat = c.latitude || c.farmer?.latitude;
     const lng = c.longitude || c.farmer?.longitude;
@@ -511,6 +567,40 @@ export default function MarketplaceMap({
   const organicZonePositions = organicFarms.length >= 3 
     ? organicFarms.map(c => [c.latitude || c.farmer?.latitude, c.longitude || c.farmer?.longitude])
     : [];
+
+  // Group verified real-time agricultural farms
+  const realFarmsList = Object.values(
+    visibleCrops.reduce((acc, c) => {
+      const lat = Number(c.realFarmDetails?.latitude || c.latitude || c.farmer?.latitude);
+      const lng = Number(c.realFarmDetails?.longitude || c.longitude || c.farmer?.longitude);
+      if (!lat || !lng) return acc;
+
+      const fName = c.realFarmDetails?.farmName || c.farmer?.farmName || `${c.farmer?.name || "Verified Farmer"}'s Farm Parcel`;
+      const fid = (c.farmer?._id || c.farmer)?.toString?.() || fName;
+      const key = `${fid}_${lat.toFixed(4)}_${lng.toFixed(4)}`;
+
+      if (!acc[key]) {
+        acc[key] = {
+          key,
+          id: fid,
+          farmName: fName,
+          farmerName: c.realFarmDetails?.farmerName || c.farmer?.name || "Verified Producer",
+          farmLocation: c.realFarmDetails?.farmLocation || c.farmLocation || c.location || c.farmer?.farmLocation || c.farmer?.location || "Telangana Farm Belt",
+          soilType: c.realFarmDetails?.soilType || c.farmer?.soilType || "Fertile Black Cotton Soil",
+          farmSizeAcres: c.realFarmDetails?.farmSizeAcres || c.farmer?.farmSize || c.farmer?.farmSizeAcres || 8,
+          lat,
+          lng,
+          crops: [],
+          isOrganic: !!c.isOrganic,
+          image: c.farmer?.avatar || c.farmer?.profilePic || c.image || null,
+          realSalePlace: c.realSalePlace || null
+        };
+      }
+      acc[key].crops.push(c);
+      if (c.isOrganic) acc[key].isOrganic = true;
+      return acc;
+    }, {})
+  );
 
   const topFarms = Object.values(
     visibleCrops.reduce((acc, c) => {
@@ -560,6 +650,7 @@ export default function MarketplaceMap({
       }}>
         {[
           { type: "all", label: "🌍 All Crops" },
+          { type: "realFarms", label: "🚜 Live Real Farms" },
           { type: "organic", label: "🌿 Organic Only" },
           { type: "prebook", label: "⏳ Pre-Book" },
           { type: "trace", label: "📍 Farm ↔ Sale Hubs" }
@@ -577,7 +668,7 @@ export default function MarketplaceMap({
         ))}
       </div>
 
-      {/* Tile Layer Switcher */}
+      {/* Tile Layer Switcher & Toolbar */}
       <div style={{
         position: "absolute", top: 10, right: 10, zIndex: 1000,
         display: "flex", gap: "0.3rem", flexWrap: "wrap",
@@ -585,6 +676,31 @@ export default function MarketplaceMap({
         padding: "6px 10px", boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
         border: "1px solid #e2e8f0",
       }}>
+        {/* Real Farm Highlighting Toggle */}
+        <button
+          onClick={() => setHighlightRealFarms(!highlightRealFarms)}
+          style={{
+            padding: "3px 12px",
+            borderRadius: 100,
+            fontSize: "0.72rem",
+            fontWeight: 800,
+            cursor: "pointer",
+            background: highlightRealFarms ? "linear-gradient(135deg, #15803d, #854d0e)" : "transparent",
+            color: highlightRealFarms ? "white" : "#15803d",
+            border: highlightRealFarms ? "none" : "1.5px solid #16a34a",
+            boxShadow: highlightRealFarms ? "0 2px 10px rgba(22,163,74,0.4)" : "none",
+            transition: "all 0.2s",
+            display: "flex",
+            alignItems: "center",
+            gap: "5px"
+          }}
+          title="Toggle live highlighting of real agricultural farms with soil beacons and plot boundaries"
+        >
+          🚜 {highlightRealFarms ? "🌾 Live Farms Highlighted" : "Highlight Real Farms"}
+        </button>
+
+        <div style={{ width: "1px", height: "20px", background: "#cbd5e1", margin: "0 4px" }} />
+
         {Object.entries(TILE_LAYERS).map(([key, layer]) => (
           <button
             key={key}
@@ -849,7 +965,80 @@ export default function MarketplaceMap({
         </div>
       )}
 
-      {topFarms.length > 0 && (
+      {/* ─── REAL-TIME HIGHLIGHTED FARMS SPOTLIGHT CAROUSEL ─── */}
+      {highlightRealFarms && realFarmsList.length > 0 ? (
+        <div 
+          className="no-scrollbar" 
+          style={{
+            position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)", zIndex: 1000,
+            display: "flex", flexDirection: "column", gap: "6px", maxWidth: "80%", width: "max-content",
+            background: "rgba(14, 28, 20, 0.94)", backdropFilter: "blur(14px)",
+            padding: "8px 12px", borderRadius: "18px", border: "1.5px solid rgba(234, 179, 8, 0.45)",
+            boxShadow: "0 10px 35px rgba(0,0,0,0.4)"
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", padding: "0 4px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span className="live-pulse-dot" style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block" }}></span>
+              <span style={{ fontSize: "0.72rem", color: "#fef08a", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                🌾 Live Highlighted Farms ({realFarmsList.length} Active Parcels)
+              </span>
+            </div>
+            <span style={{ fontSize: "0.68rem", color: "#86efac", fontWeight: 600 }}>
+              Click farm to fly & inspect soil
+            </span>
+          </div>
+
+          <div className="no-scrollbar" style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "2px" }}>
+            {realFarmsList.map(farm => {
+              const farmDist = customerLat && customerLng ? haversine(customerLat, customerLng, farm.lat, farm.lng) : null;
+              return (
+                <div
+                  key={farm.key}
+                  onClick={() => {
+                    setFlyToCoords({ lat: farm.lat, lng: farm.lng, zoom: 15 });
+                    setSelectedRealFarmKey(farm.key);
+                    if (farm.crops[0]) setHoveredCrop(farm.crops[0]);
+                  }}
+                  style={{
+                    background: selectedRealFarmKey === farm.key ? "#f0fdf4" : "rgba(255, 255, 255, 0.96)",
+                    borderRadius: "12px",
+                    padding: "6px 10px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    cursor: "pointer",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.18)",
+                    border: selectedRealFarmKey === farm.key ? "2px solid #16a34a" : "1.5px solid #bbf7d0",
+                    flexShrink: 0,
+                    transition: "all 0.2s"
+                  }}
+                  className="hover-scale"
+                >
+                  <img
+                    src={farm.image ? (farm.image.startsWith("http") ? farm.image : `${BASE_URL}${farm.image}`) : "/default.png"}
+                    style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", border: "1.5px solid #16a34a", flexShrink: 0 }}
+                    alt={farm.farmName}
+                  />
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                      <strong style={{ fontSize: "0.76rem", color: "#0f172a", whiteSpace: "nowrap" }}>
+                        {farm.farmName}
+                      </strong>
+                      {farm.isOrganic && <span style={{ fontSize: "0.65rem" }}>🌿</span>}
+                    </div>
+                    <div style={{ fontSize: "0.66rem", color: "#64748b", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <span style={{ color: "#854d0e", fontWeight: 700 }}>🌱 {farm.soilType}</span>
+                      <span>• {farm.farmSizeAcres} Ac</span>
+                      {farmDist !== null && <span style={{ color: "#2563eb", fontWeight: 700 }}>• {farmDist.toFixed(1)} km</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : topFarms.length > 0 ? (
         <div className="no-scrollbar" style={{
           position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)", zIndex: 1000,
           display: "flex", gap: "10px", overflowX: "auto", maxWidth: "50%", padding: "10px"
@@ -867,7 +1056,7 @@ export default function MarketplaceMap({
             </div>
           ))}
         </div>
-      )}
+      ) : null}
 
       <MapContainer
         center={centre}
@@ -1158,6 +1347,55 @@ export default function MarketplaceMap({
           );
         })}
 
+        {/* ── REAL-TIME FARM HIGHLIGHT BEACONS & GEOFENCE LAYER ── */}
+        {highlightRealFarms && realFarmsList.map((farm, idx) => {
+          const deltaLat = 0.0032 + (idx % 3) * 0.0008;
+          const deltaLng = 0.0038 + (idx % 2) * 0.001;
+          const polygonPositions = [
+            [farm.lat - deltaLat * 0.8, farm.lng - deltaLng],
+            [farm.lat + deltaLat, farm.lng - deltaLng * 0.7],
+            [farm.lat + deltaLat * 0.9, farm.lng + deltaLng],
+            [farm.lat - deltaLat * 0.7, farm.lng + deltaLng * 0.8]
+          ];
+          return (
+            <React.Fragment key={`live-farm-highlight-${farm.key}`}>
+              {/* Concentric Animated Radar Beacon */}
+              <Marker
+                position={[farm.lat, farm.lng]}
+                icon={L.divIcon({
+                  className: "",
+                  html: `<div class="live-farm-beacon"></div>`,
+                  iconSize: [32, 32],
+                  iconAnchor: [16, 16]
+                })}
+                interactive={false}
+                zIndexOffset={800}
+              />
+
+              {/* Real Farm Parcel Geofence Boundary with Soil/Crop Tint */}
+              <Polygon
+                positions={polygonPositions}
+                pathOptions={{
+                  color: farm.isOrganic ? "#16a34a" : "#854d0e",
+                  weight: 2,
+                  dashArray: "6 4",
+                  fillColor: farm.isOrganic ? "#22c55e" : "#ca8a04",
+                  fillOpacity: 0.16
+                }}
+              >
+                <Popup>
+                  <div style={{ fontFamily: "'Inter', sans-serif", padding: "4px" }}>
+                    <strong style={{ color: "#166534", fontSize: "0.85rem" }}>🌾 {farm.farmName}</strong>
+                    <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>
+                      Soil: <strong>{farm.soilType}</strong> • {farm.farmSizeAcres} Acres
+                    </div>
+                  </div>
+                </Popup>
+              </Polygon>
+            </React.Fragment>
+          );
+        })}
+
         {/* Farmer / crop markers grouped by Farmer & exact coordinates */}
         <MarkerClusterGroup chunkedLoading={true} maxClusterRadius={35}>
           {Object.values(visibleCrops.reduce((acc, c) => {
@@ -1174,8 +1412,11 @@ export default function MarketplaceMap({
                  id: fid, 
                  groupKey: groupKey,
                  name: c.farmer?.name || "Farmer", 
+                 farmName: c.realFarmDetails?.farmName || c.farmer?.farmName || `${c.farmer?.name || "Verified Farmer"}'s Farm Parcel`,
+                 soilType: c.realFarmDetails?.soilType || c.farmer?.soilType || "Fertile Black Cotton Soil",
+                 farmSizeAcres: c.realFarmDetails?.farmSizeAcres || c.farmer?.farmSize || c.farmer?.farmSizeAcres || 8,
                  phone: c.farmer?.phone || "",
-                 farmLocation: c.farmLocation || c.location || c.farmer?.farmName || c.farmer?.location || "Registered Farm",
+                 farmLocation: c.realFarmDetails?.farmLocation || c.farmLocation || c.location || c.farmer?.farmName || c.farmer?.location || "Registered Farm",
                  lat, 
                  lng, 
                  crops: [], 
@@ -1198,14 +1439,32 @@ export default function MarketplaceMap({
               <Marker
                 key={f.groupKey}
                 position={[f.lat, f.lng]}
-                icon={createFarmerIcon(grade, f.isOrganic, f.image, f.crops.length)}
+                icon={highlightRealFarms ? createHighlightedRealFarmIcon(grade, f.isOrganic, f.image, f.crops.length) : createFarmerIcon(grade, f.isOrganic, f.image, f.crops.length)}
                 eventHandlers={{
                   mouseover: () => setHoveredCrop(f.crops[0]),
                   mouseout: () => setHoveredCrop(null),
                 }}
               >
-                <Popup maxWidth={290} minWidth={260}>
+                <Popup maxWidth={300} minWidth={270}>
                   <div style={{ fontFamily: "'Inter', sans-serif", padding: "4px" }}>
+                    {highlightRealFarms && (
+                      <div style={{
+                        background: "linear-gradient(135deg, #fef3c7, #fef08a)",
+                        border: "1px solid #facc15",
+                        borderRadius: "8px",
+                        padding: "4px 8px",
+                        marginBottom: "8px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px"
+                      }}>
+                        <span className="live-pulse-dot" style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a", display: "inline-block" }}></span>
+                        <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "#854d0e" }}>
+                          🌾 REAL-TIME FARM ORIGIN • DIRECT HARVEST
+                        </span>
+                      </div>
+                    )}
+
                     {/* Farmer Profile Header */}
                     <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "8px" }}>
                       <img
@@ -1225,13 +1484,12 @@ export default function MarketplaceMap({
                           )}
                         </div>
                         <span style={{ color: "#64748b", fontSize: "0.75rem", display: "block" }}>
-                          🧑‍🌾 Verified Producer
+                          🧑‍🌾 {f.farmName}
                         </span>
                       </div>
                     </div>
 
-                    {/* Exact Location & GPS Coordinates Badge */}
-                    {/* Exact Location & GPS Coordinates Badge */}
+                    {/* Exact Location & Soil Specifications Badge */}
                     <div style={{
                       background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px",
                       padding: "6px 8px", marginBottom: "8px"
@@ -1240,6 +1498,9 @@ export default function MarketplaceMap({
                         <span style={{ fontSize: "0.9rem" }}>📍</span>
                         <span style={{ lineHeight: 1.25 }}>{f.farmLocation}</span>
                       </div>
+                      <div style={{ marginTop: "4px", fontSize: "0.74rem", color: "#854d0e", fontWeight: 700 }}>
+                        🌱 <strong>Soil Horizon:</strong> {f.soilType} • 📏 {f.farmSizeAcres} Acres
+                      </div>
                       <div style={{ marginTop: "4px", fontSize: "0.7rem", color: "#15803d", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "4px" }}>
                         <span style={{ fontFamily: "monospace", fontWeight: 700 }}>
                           GPS: {f.lat.toFixed(5)}° N, {f.lng.toFixed(5)}° E
@@ -1247,7 +1508,7 @@ export default function MarketplaceMap({
                         {dist !== null && <span style={{ fontWeight: 800, color: "#2563eb" }}>{dist.toFixed(1)} km away</span>}
                       </div>
                       <div style={{ marginTop: "3px", fontSize: "0.66rem", color: "#166534", display: "flex", alignItems: "center", gap: "4px", fontWeight: 600 }}>
-                        <span>🛡️</span> <span>100% Verified Transparent Farm Location</span>
+                        <span>🛡️</span> <span>100% Verified Transparent Cultivation Origin</span>
                       </div>
                     </div>
 

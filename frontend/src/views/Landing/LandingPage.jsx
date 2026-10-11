@@ -1398,6 +1398,131 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ─── QUICK FEATURE & SERVICES LAUNCHPAD (Instant Access to All Features) ─── */}
+      <section className="page-wrapper" style={{ marginTop: "1rem", marginBottom: "3rem" }}>
+        <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
+          <span className="soil-badge" style={{ marginBottom: "0.75rem", fontSize: "0.8rem", padding: "0.35rem 1rem" }}>
+            🌾 COMPLETE AGRICULTURAL ECOSYSTEM
+          </span>
+          <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "clamp(2rem, 4vw, 2.8rem)", fontWeight: 800, color: "var(--green-deep)", marginBottom: "0.5rem", letterSpacing: "-0.02em" }}>
+            Access All Rythu Jana Sethu Services
+          </h2>
+          <p style={{ color: "var(--text-mid)", fontSize: "1.05rem", maxWidth: "680px", margin: "0 auto", lineHeight: 1.6 }}>
+            Direct organic shopping, weekly subscription boxes, group bulk buying, weekend countryside agro-tours, and transparent farmer portals.
+          </p>
+        </div>
+
+        <div className="grid-4">
+          {[
+            {
+              title: "Farm Marketplace",
+              href: "/marketplace",
+              icon: "🛒",
+              badge: "LIVE HARVEST",
+              badgeClass: "dark-green-badge",
+              desc: "Buy organic vegetables, fresh fruits, grains & pulses directly from verified local farmers."
+            },
+            {
+              title: "Curated Farm Boxes",
+              href: "/curated-boxes",
+              icon: "📦",
+              badge: "WEEKLY BASKETS",
+              badgeClass: "amber-badge",
+              desc: "Hand-picked weekly seasonal family veggie & fruit boxes harvested fresh and delivered to your doorstep."
+            },
+            {
+              title: "Community Groups",
+              href: "/customer-groups",
+              icon: "👥",
+              badge: "SAVE 20-30%",
+              badgeClass: "soil-badge",
+              desc: "Join apartment & neighborhood buying groups to unlock direct wholesale farm pricing."
+            },
+            {
+              title: "Weekend Farm Tours",
+              href: "/farm-tours",
+              icon: "🚜",
+              badge: "FAMILY AGRO-TOUR",
+              badgeClass: "dark-green-badge",
+              desc: "Exciting countryside weekend getaways with tractor rides, fruit picking, and authentic farm lunches."
+            },
+            {
+              title: "Offline Village Stays",
+              href: "/offline-tours",
+              icon: "🏕️",
+              badge: "RUSTIC RETREAT",
+              badgeClass: "amber-badge",
+              desc: "Overnight countryside homestays, natural living workshops, and peaceful village culture."
+            },
+            {
+              title: "Live Order Tracker",
+              href: "/my-orders",
+              icon: "📍",
+              badge: "REAL-TIME GPS",
+              badgeClass: "soil-badge",
+              desc: "Track your bike partner's live GPS route from farm harvest to your front door in real time."
+            },
+            {
+              title: "Farmer Seller Portal",
+              href: "/farmer",
+              icon: "🌱",
+              badge: "0% COMMISSION",
+              badgeClass: "dark-green-badge",
+              desc: "Farmers list crops in 30 seconds with voice input, access AI demand forecast & transparent APMC rates."
+            },
+            {
+              title: "24/7 Helpline Desk",
+              href: "/support",
+              icon: "🎧",
+              badge: "INSTANT HELP",
+              badgeClass: "soil-badge",
+              desc: "Multilingual phone assistance, quick ticket management, and direct WhatsApp support anytime."
+            }
+          ].map((feat, idx) => (
+            <Link key={idx} href={feat.href} style={{ textDecoration: "none" }}>
+              <motion.div
+                whileHover={{ y: -6, scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="glass-card"
+                style={{
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  padding: "1.5rem",
+                  border: "1.5px solid rgba(92, 53, 27, 0.12)",
+                  background: "linear-gradient(135deg, #ffffff 0%, #fcfaf7 100%)",
+                  boxShadow: "0 4px 15px rgba(36, 20, 12, 0.04)"
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+                    <div style={{ width: 44, height: 44, borderRadius: "12px", background: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", boxShadow: "0 4px 10px rgba(0,0,0,0.06)", border: "1px solid rgba(92,53,27,0.08)" }}>
+                      {feat.icon}
+                    </div>
+                    <span className={feat.badgeClass} style={{ fontSize: "0.68rem" }}>
+                      {feat.badge}
+                    </span>
+                  </div>
+
+                  <h3 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--green-deep)", marginBottom: "0.45rem" }}>
+                    {feat.title}
+                  </h3>
+                  <p style={{ fontSize: "0.85rem", color: "var(--text-mid)", lineHeight: 1.5, margin: 0 }}>
+                    {feat.desc}
+                  </p>
+                </div>
+
+                <div style={{ marginTop: "1.25rem", display: "flex", alignItems: "center", gap: "0.4rem", color: "var(--brown-warm)", fontWeight: 700, fontSize: "0.85rem" }}>
+                  <span>Explore Feature</span>
+                  <span>→</span>
+                </div>
+              </motion.div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       {/* ─── RAM SETU VISION SECTION ─── */}
       <section className="sethu-section" style={{ position: "relative", padding: "8rem 2rem", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
         <div className="sethu-bg-layer" style={{
@@ -1625,19 +1750,66 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── FOOTER ─── */}
+      {/* ─── COMPREHENSIVE FOOTER (Forest Green & Earth Accents) ─── */}
       <footer style={{
-        marginTop: "4rem", padding: "3rem 2rem", background: "var(--green-deep)",
-        borderTop: "1px solid rgba(82,183,136,0.2)",
-        textAlign: "center", color: "white", fontSize: "0.9rem"
+        marginTop: "5rem", padding: "4rem 2rem 2.5rem",
+        background: "linear-gradient(180deg, #071c10 0%, #0e331e 100%)",
+        borderTop: "3px solid #b8703b",
+        color: "white", fontSize: "0.9rem"
       }}>
-        <div style={{ display: "flex", justifyContent: "center", gap: "2rem", marginBottom: "1.5rem" }}>
-          <a href="mailto:support@rythujanasethu.in" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Contact Us</a>
-          <a href="#" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Privacy Policy</a>
-          <a href="#" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Terms of Service</a>
+        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "2.5rem", marginBottom: "3rem", textAlign: "left" }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.85rem" }}>
+              <span style={{ fontSize: "1.8rem" }}>🌾</span>
+              <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "1.3rem", fontWeight: 800, color: "#ffffff" }}>Rythu Jana Sethu</span>
+            </div>
+            <p style={{ color: "#d1ecdc", fontSize: "0.85rem", lineHeight: 1.6, marginBottom: "1rem" }}>
+              India's direct-from-soil farm marketplace connecting verified farmers and conscious families with zero middlemen.
+            </p>
+            <div style={{ display: "inline-block", background: "rgba(245,176,65,0.15)", border: "1px solid rgba(245,176,65,0.3)", padding: "4px 10px", borderRadius: "100px", color: "var(--yellow-warm)", fontSize: "0.75rem", fontWeight: 700 }}>
+              🌿 100% Verified Chemical-Free
+            </div>
+          </div>
+
+          <div>
+            <h4 style={{ color: "var(--yellow-wheat)", fontSize: "0.95rem", fontWeight: 700, marginBottom: "1rem", letterSpacing: "0.05em", textTransform: "uppercase" }}>Direct Services</h4>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.6rem", fontSize: "0.85rem" }}>
+              <li><Link href="/marketplace" style={{ color: "#e5f4eb", textDecoration: "none" }}>🛒 Fresh Marketplace</Link></li>
+              <li><Link href="/curated-boxes" style={{ color: "#e5f4eb", textDecoration: "none" }}>📦 Weekly Curated Boxes</Link></li>
+              <li><Link href="/customer-groups" style={{ color: "#e5f4eb", textDecoration: "none" }}>👥 Community Bulk Buying</Link></li>
+              <li><Link href="/my-orders" style={{ color: "#e5f4eb", textDecoration: "none" }}>📍 Live Order Tracking</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 style={{ color: "var(--yellow-wheat)", fontSize: "0.95rem", fontWeight: 700, marginBottom: "1rem", letterSpacing: "0.05em", textTransform: "uppercase" }}>Agro-Tourism & Stays</h4>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.6rem", fontSize: "0.85rem" }}>
+              <li><Link href="/farm-tours" style={{ color: "#e5f4eb", textDecoration: "none" }}>🚜 Weekend Farm Tours</Link></li>
+              <li><Link href="/offline-tours" style={{ color: "#e5f4eb", textDecoration: "none" }}>🏕️ Offline Village Homestays</Link></li>
+              <li><Link href="/farmer" style={{ color: "#e5f4eb", textDecoration: "none" }}>🌱 Farmer Seller Hub</Link></li>
+              <li><Link href="/agent" style={{ color: "#e5f4eb", textDecoration: "none" }}>🚚 Delivery Fleet Portal</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 style={{ color: "var(--yellow-wheat)", fontSize: "0.95rem", fontWeight: 700, marginBottom: "1rem", letterSpacing: "0.05em", textTransform: "uppercase" }}>Help & Connect</h4>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.6rem", fontSize: "0.85rem" }}>
+              <li><Link href="/support" style={{ color: "#e5f4eb", textDecoration: "none" }}>🎧 24/7 Helpline & Tickets</Link></li>
+              <li><a href="mailto:support@rythujanasethu.in" style={{ color: "#e5f4eb", textDecoration: "none" }}>✉️ support@rythujanasethu.in</a></li>
+              <li><span style={{ color: "#bbf7d0" }}>📞 1800-RYTHU-SETHU (Toll-Free)</span></li>
+              <li><span style={{ color: "rgba(229,244,235,0.7)", fontSize: "0.78rem" }}>Telangana & Andhra Pradesh, India</span></li>
+            </ul>
+          </div>
         </div>
-        <p>Rythu Jana Sethu — Connecting Farmers & Customers Across India</p>
-        <p style={{ marginTop: "0.5rem", opacity: 0.8 }}>Made with ❤️ for Indian Agriculture</p>
+
+        <div style={{ borderTop: "1px solid rgba(61,163,104,0.2)", paddingTop: "1.5rem", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "1rem", maxWidth: "1200px", margin: "0 auto", fontSize: "0.8rem", color: "rgba(229,244,235,0.7)" }}>
+          <p style={{ margin: 0 }}>© {new Date().getFullYear()} Rythu Jana Sethu. All rights reserved. Made with ❤️ for Indian Agriculture.</p>
+          <div style={{ display: "flex", gap: "1.5rem" }}>
+            <Link href="/support" style={{ color: "rgba(229,244,235,0.7)", textDecoration: "none" }}>Privacy Policy</Link>
+            <Link href="/support" style={{ color: "rgba(229,244,235,0.7)", textDecoration: "none" }}>Terms of Service</Link>
+            <Link href="/support" style={{ color: "rgba(229,244,235,0.7)", textDecoration: "none" }}>Farmer Protection Charter</Link>
+          </div>
+        </div>
       </footer>
     </div>
   );
