@@ -67,40 +67,57 @@ body.device-mobile {
   }
 }
 
-/* Mobile mode: hide desktop navigation links, audio toggles, and bulky badges.
-   Keep navbar container, login/register auth buttons, cart, and device switcher fully visible! */
-body.force-mobile-mode .nav-item-desktop,
-body.device-mobile .nav-item-desktop,
-body.force-mobile-mode .nav-item-audio,
-body.device-mobile .nav-item-audio,
-body.force-mobile-mode .nav-item-location,
-body.device-mobile .nav-item-location,
-body.force-mobile-mode .nav-item-desktop-badge,
-body.device-mobile .nav-item-desktop-badge,
-body.force-mobile-mode .nav-item-user-name,
-body.device-mobile .nav-item-user-name {
+/* Mobile mode: Top Soil Ribbon is horizontally scrollable with all links */
+body.force-mobile-mode .top-soil-ribbon,
+body.device-mobile .top-soil-ribbon {
+  padding: 0.35rem 0.6rem !important;
+  font-size: 0.72rem !important;
+  overflow-x: auto !important;
+  white-space: nowrap !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+}
+body.force-mobile-mode .top-soil-ribbon::-webkit-scrollbar,
+body.device-mobile .top-soil-ribbon::-webkit-scrollbar {
   display: none !important;
+}
+body.force-mobile-mode .top-soil-container,
+body.device-mobile .top-soil-container {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.6rem !important;
+  width: max-content !important;
+}
+body.force-mobile-mode .top-soil-right,
+body.device-mobile .top-soil-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  white-space: nowrap !important;
+}
+
+/* Mobile mode: Hide wide desktop navbar links, show primary mobile actions and full mobile quick strip */
+body.force-mobile-mode .desktop-only,
+body.device-mobile .desktop-only {
+  display: none !important;
+}
+
+body.force-mobile-mode .navbar-mobile-actions,
+body.device-mobile .navbar-mobile-actions {
+  display: flex !important;
+}
+
+body.force-mobile-mode .mobile-quick-strip,
+body.device-mobile .mobile-quick-strip {
+  display: flex !important;
 }
 
 body.force-mobile-mode .navbar,
 body.device-mobile .navbar {
   display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  padding: 0.55rem 0.75rem !important;
-  flex-wrap: nowrap !important;
-  gap: 0.4rem !important;
-}
-
-body.force-mobile-mode .navbar-links,
-body.device-mobile .navbar-links {
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.35rem !important;
-  list-style: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  flex-shrink: 0 !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  padding: 0.55rem 0.75rem 0.35rem !important;
 }
 
 body.force-mobile-mode .navbar-brand,

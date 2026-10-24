@@ -319,15 +319,16 @@ export default function Navbar() {
       </div>
 
       <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
-        <Link href="/" className="navbar-brand">
-          <motion.img whileHover={{ scale: 1.05 }} src="/logo.png?v=2" alt="Rythu Jana Sethu Logo" style={{ height: "42px", width: "auto", borderRadius: "12px" }} />
-          <div>
-            <span className="navbar-title notranslate" translate="no">{t("appName")}</span>
-            <span className="navbar-subtitle notranslate" translate="no">{t("tagline")}</span>
-          </div>
-        </Link>
+        <div className="navbar-top-row">
+          <Link href="/" className="navbar-brand">
+            <motion.img whileHover={{ scale: 1.05 }} src="/logo.png?v=2" alt="Rythu Jana Sethu Logo" style={{ height: "42px", width: "auto", borderRadius: "12px" }} />
+            <div>
+              <span className="navbar-title notranslate" translate="no">{t("appName")}</span>
+              <span className="navbar-subtitle notranslate" translate="no">{t("tagline")}</span>
+            </div>
+          </Link>
 
-        <ul className="navbar-links">
+          <ul className="navbar-links desktop-only">
           <li className="nav-item-desktop"><Link href="/" className={active("/")}><Home size={17} /> {t("home")}</Link></li>
           <li className="nav-item-desktop"><Link href="/marketplace" className={active("/marketplace")}><ShoppingBag size={17} /> {t("marketplace")}</Link></li>
 
@@ -1111,7 +1112,249 @@ export default function Navbar() {
           )}
         </ul>
 
-        {/* Mobile Settings Drawer - Anchored above BottomNav on mobile or simulated mobile mode */}
+        {/* Mobile Header Primary Actions (Cart, Notifications, Login/Register or Profile) */}
+        <div className="navbar-mobile-actions">
+          {/* Cart Button */}
+          <button 
+            type="button"
+            className="btn-icon" 
+            onClick={() => setIsCartOpen(true)}
+            style={{ position: "relative" }}
+            title="Shopping Cart"
+          >
+            <ShoppingCart size={19} color="var(--text-dark)" />
+            {getCartCount() > 0 && (
+              <span style={{ position: "absolute", top: -2, right: -2, background: "#eab308", color: "black", borderRadius: "50%", width: 17, height: 17, fontSize: "0.62rem", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", border: "2px solid white" }}>
+                {getCartCount()}
+              </span>
+            )}
+          </button>
+
+          {/* Notifications Button */}
+          {user && (
+            <div style={{ position: "relative" }}>
+              <button 
+                type="button"
+                className="btn-icon" 
+                style={{ position: "relative", background: showNotifs ? "var(--green-pale)" : "transparent" }}
+                onClick={() => setShowNotifs(!showNotifs)}
+                title="Notifications"
+              >
+                <Bell size={19} color="var(--text-dark)" />
+                {notifications.filter(n => !n.isRead).length > 0 && (
+                  <span style={{ position: "absolute", top: -2, right: -2, background: "#ef4444", color: "white", borderRadius: "50%", width: 17, height: 17, fontSize: "0.62rem", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", border: "2px solid white" }}>
+                    {notifications.filter(n => !n.isRead).length}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Auth / Profile Button */}
+          {user ? (
+            <motion.button 
+              whileTap={{ scale: 0.95 }} 
+              type="button"
+              className="btn-secondary" 
+              onClick={() => setShowSettings(prev => !prev)} 
+              style={{ padding: "0.35rem 0.65rem", fontSize: "0.78rem", display: "flex", alignItems: "center", gap: "0.3rem", borderRadius: "100px", color: "var(--green-deep)", background: "rgba(34,197,94,0.08)", borderColor: "rgba(34,197,94,0.25)" }}
+            >
+              <User size={14} />
+              <span>{user.name ? user.name.split(" ")[0] : "Profile"}</span>
+            </motion.button>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+              <Link href="/login" style={{ textDecoration: "none" }}>
+                <motion.span whileTap={{ scale: 0.95 }} className="btn-secondary nav-btn-login" style={{ padding: "0.35rem 0.65rem", fontSize: "0.78rem", borderRadius: "100px", fontWeight: 700, color: "var(--text-dark)", background: "white", border: "1px solid #cbd5e1" }}>
+                  {t("login") || "Login"}
+                </motion.span>
+              </Link>
+              <Link href="/register" style={{ textDecoration: "none" }}>
+                <motion.span whileTap={{ scale: 0.95 }} className="btn-primary nav-btn-register" style={{ padding: "0.35rem 0.75rem", fontSize: "0.78rem", borderRadius: "100px", fontWeight: 700 }}>
+                  {t("register") || "Register"}
+                </motion.span>
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ─── Mobile Quick Strip (ALL Desktop Options Accessible on Mobile with 1-Tap) ─── */}
+      <div className="mobile-quick-strip">
+        {/* 1. Location / Coordinates Detect & Update */}
+        <button
+          type="button"
+          onClick={() => setShowLocationModal(true)}
+          className="mobile-strip-item mobile-strip-btn"
+          title="Click to detect GPS & update your location"
+        >
+          <MapPin size={13} color="#16a34a" />
+          <span>{currentLocText ? (currentLocText.split(",")[0] || currentLocText) : (user ? (user.role === 'farmer' ? "Farm GPS" : "Set Location") : "Detect GPS")}</span>
+        </button>
+
+        {/* 2. Language Selector */}
+        <div className="mobile-strip-item mobile-strip-select-wrap">
+          <Globe size={13} color="#166534" />
+          <select className="mobile-strip-select" value={lang} onChange={(e) => changeLang(e.target.value)}>
+            <option value="en">🇬🇧 EN</option>
+            <option value="hi">🇮🇳 हि</option>
+            <option value="te">🇮🇳 తె</option>
+            <option value="ta">🇮🇳 தமி</option>
+            <option value="kn">🇮🇳 ಕನ್</option>
+            <option value="ml">🇮🇳 മല</option>
+          </select>
+        </div>
+
+        {/* 3. Farm Nature Audio */}
+        <button
+          type="button"
+          onClick={handleNatureToggle}
+          className={`mobile-strip-item mobile-strip-btn ${natureAudioInfo.isPlaying ? "active-audio" : ""}`}
+          title="Ambient Farm & Market Nature Sounds"
+        >
+          <span>{natureAudioInfo.isPlaying ? natureAudioInfo.icon : "🔇"}</span>
+          <span>{natureAudioInfo.isPlaying ? "Farm Sound ON" : "Farm Sounds"}</span>
+          {natureAudioInfo.isPlaying && <span className="strip-dot green" />}
+        </button>
+
+        {/* 4. Krishna Flute BGM */}
+        <button
+          type="button"
+          onClick={handleFluteToggle}
+          className={`mobile-strip-item mobile-strip-btn ${fluteBgm ? "active-audio" : ""}`}
+          title="Krishna Flute Ambient Music"
+        >
+          <span>🎵</span>
+          <span>{fluteBgm ? "Flute ON" : "Krishna Flute"}</span>
+          {fluteBgm && <span className="strip-dot yellow" />}
+        </button>
+
+        {/* 5. Marketplace Voice Announcer */}
+        <button
+          type="button"
+          onClick={handleAnnouncerToggle}
+          className={`mobile-strip-item mobile-strip-btn ${isAnnouncerActive ? "active-audio" : ""}`}
+          title="Marketplace Voice Announcements & Alerts"
+        >
+          <span>📢</span>
+          <span>{isAnnouncerActive ? "Announcements ON" : "Voice Alerts"}</span>
+          {isAnnouncerActive && <span className="strip-dot amber" />}
+        </button>
+
+        {/* 6. Active Device Mode Switcher */}
+        <button
+          type="button"
+          onClick={() => {
+            const modes = ["auto", "mobile", "tablet", "desktop"];
+            const nextIdx = (modes.indexOf(layoutMode) + 1) % modes.length;
+            setLayoutMode(modes[nextIdx]);
+          }}
+          className="mobile-strip-item mobile-strip-btn"
+          style={{ background: "rgba(22, 101, 52, 0.08)", border: "1px solid rgba(22, 101, 52, 0.25)", color: "var(--green-deep)" }}
+          title={`Active Device View: ${layoutMode.toUpperCase()} (Click to cycle view)`}
+        >
+          {layoutMode === "mobile" ? <Smartphone size={13} /> : layoutMode === "tablet" ? <Tablet size={13} /> : layoutMode === "desktop" ? <Monitor size={13} /> : <Globe size={13} />}
+          <span style={{ textTransform: "capitalize" }}>{layoutMode === "auto" ? "Responsive" : layoutMode}</span>
+        </button>
+
+        {/* 7. Trust Score Breakdown */}
+        <button
+          type="button"
+          onClick={() => setShowTrustModal(true)}
+          className="mobile-strip-item mobile-strip-btn trust-badge"
+          title="Click to view Platform Trust Score breakdown"
+        >
+          <span>🛡️</span>
+          <span>Trust: {user?.trustScore || 85}%</span>
+        </button>
+
+        {/* 8. Loyalty Reward Points & XP */}
+        {user && (user.rewardPoints > 0 || user.experiencePoints > 0) && (
+          <span className="mobile-strip-item mobile-strip-badge">
+            {user.role === "agent" ? `⭐ ${user.experiencePoints} XP` : `🪙 ${user.rewardPoints} Pts`}
+          </span>
+        )}
+
+        {/* 9. All Services Mega Menu Trigger */}
+        <button
+          type="button"
+          onClick={() => setShowServicesMenu(prev => !prev)}
+          className="mobile-strip-item mobile-strip-btn"
+          style={{ background: showServicesMenu ? "var(--green-pale)" : "white", color: "var(--green-deep)" }}
+          title="All Services & Portals"
+        >
+          <Sparkles size={13} color="var(--yellow-wheat)" />
+          <span>All Services</span>
+          <ChevronDown size={11} style={{ transform: showServicesMenu ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+        </button>
+
+        {/* 10. Support Helpline */}
+        <Link href="/support" className="mobile-strip-item mobile-strip-link">
+          <Headphones size={13} />
+          <span>Support</span>
+        </Link>
+
+        {/* 11. Curated Boxes */}
+        <Link href="/curated-boxes" className="mobile-strip-item mobile-strip-link">
+          <Package size={13} />
+          <span>Curated Boxes</span>
+        </Link>
+
+        {/* 12. Group Buying */}
+        <Link href="/customer-groups" className="mobile-strip-item mobile-strip-link">
+          <span>👥 Group Buying</span>
+        </Link>
+
+        {/* 13. Farm Agro-Tours */}
+        <Link href="/farm-tours" className="mobile-strip-item mobile-strip-link">
+          <span>🚜 Farm Tours</span>
+        </Link>
+
+        {/* 14. Village Stays */}
+        <Link href="/offline-tours" className="mobile-strip-item mobile-strip-link">
+          <span>🏕️ Village Stays</span>
+        </Link>
+
+        {/* 15. Role Links */}
+        {user?.role === "farmer" && (
+          <Link href="/farmer" className="mobile-strip-item mobile-strip-link highlight">
+            <Leaf size={13} />
+            <span>Farmer Hub</span>
+          </Link>
+        )}
+        {user?.role === "agent" && (
+          <Link href="/agent" className="mobile-strip-item mobile-strip-link highlight">
+            <Truck size={13} />
+            <span>Fleet</span>
+          </Link>
+        )}
+        {user?.role === "admin" && (
+          <Link href="/admin" className="mobile-strip-item mobile-strip-link highlight">
+            <Shield size={13} />
+            <span>Admin</span>
+          </Link>
+        )}
+        {user?.role === "customer" && (
+          <Link href="/my-orders" className="mobile-strip-item mobile-strip-link highlight">
+            <Package size={13} />
+            <span>My Orders</span>
+          </Link>
+        )}
+
+        {/* 16. Marketplace */}
+        <Link href="/marketplace" className="mobile-strip-item mobile-strip-link">
+          <ShoppingBag size={13} />
+          <span>Marketplace</span>
+        </Link>
+
+        {/* 17. Home */}
+        <Link href="/" className="mobile-strip-item mobile-strip-link">
+          <Home size={13} />
+          <span>Home</span>
+        </Link>
+      </div>
+
+      {/* Mobile Settings Drawer - Anchored above BottomNav on mobile or simulated mobile mode */}
         {showSettings && typeof window !== "undefined" && (window.innerWidth <= 768 || (typeof document !== "undefined" && (document.body.classList.contains("force-mobile-mode") || document.body.classList.contains("device-mobile")))) && createPortal(
           <div className="modal-overlay" onClick={() => setShowSettings(false)} style={{ zIndex: 10004 }}>
             <motion.div 

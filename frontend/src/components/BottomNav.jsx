@@ -61,6 +61,8 @@ export default function BottomNav() {
     { title: "Village Stays", path: "/offline-tours", icon: "🏕️", badge: "EXPERIENCE", badgeBg: "#e0f2fe", badgeColor: "#0369a1", desc: "Overnight countryside escapes & organic feasts" },
     { title: "Order Tracker", path: "/my-orders", icon: "📍", badge: "GPS", badgeBg: "#f1f5f9", badgeColor: "#334155", desc: "Live delivery partner tracking & history" },
     { title: "Farmer Portal", path: "/farmer", icon: "🌱", badge: "SELL DIRECT", badgeBg: "#dcfce7", badgeColor: "#166534", desc: "Add crops, check mandi rates & fair MSP" },
+    { title: "Delivery Fleet", path: "/agent", icon: "🚚", badge: "EARN", badgeBg: "#fef3c7", badgeColor: "#b45309", desc: "Electric bike delivery partner assignments" },
+    { title: "Admin Panel", path: "/admin", icon: "🛡️", badge: "GOVERN", badgeBg: "#ede9fe", badgeColor: "#6d28d9", desc: "Platform audit, KYC & verification" },
     { title: "24/7 Helpline", path: "/support", icon: "🎧", badge: "SUPPORT", badgeBg: "#fee2e2", badgeColor: "#991b1b", desc: "Instant help, refund desk & WhatsApp" }
   ];
 
