@@ -209,6 +209,7 @@ app.use("/api/farmers", farmerRoutes);
 app.use("/api/crops", cropRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/delivery", deliveryRoutes);
+app.use("/api/deliveries", deliveryRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/ml", mlRoutes);
 app.use("/api/tours", farmTourRoutes);
