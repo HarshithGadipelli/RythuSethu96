@@ -3425,37 +3425,77 @@ iframe {
   }
 
   /* Navbar adjustments for mobile */
+  .nav-item-desktop,
+  .nav-item-audio,
+  .nav-item-location,
+  .nav-item-desktop-badge,
+  .nav-item-user-name {
+    display: none !important;
+  }
+
   .navbar {
-    padding: 0.6rem 0.85rem !important;
-    flex-wrap: wrap !important;
-    gap: 0.5rem !important;
+    padding: 0.55rem 0.85rem !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 0.4rem !important;
   }
 
   .navbar-brand {
-    gap: 0.5rem !important;
+    gap: 0.45rem !important;
+    min-width: 0 !important;
+    flex-shrink: 1 !important;
+  }
+
+  .navbar-logo {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
   }
 
   .navbar-title {
-    font-size: 1.15rem !important;
+    font-size: 1.05rem !important;
+    white-space: nowrap !important;
   }
 
   .navbar-subtitle {
-    font-size: 0.62rem !important;
+    font-size: 0.58rem !important;
+    white-space: nowrap !important;
   }
 
   .navbar-links {
-    gap: 0.5rem !important;
-    flex-wrap: wrap !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    flex-wrap: nowrap !important;
+    flex-shrink: 0 !important;
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  .navbar-link {
-    padding: 0.35rem 0.65rem !important;
-    font-size: 0.8rem !important;
-  }
-
-  /* Hide standard navbar text links on mobile because BottomNav covers them */
   .navbar-links li:has(.navbar-link) {
     display: none !important;
+  }
+
+  .nav-btn-login {
+    padding: 0.35rem 0.7rem !important;
+    font-size: 0.78rem !important;
+    border-radius: 100px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+  }
+
+  .nav-btn-register {
+    padding: 0.35rem 0.8rem !important;
+    font-size: 0.78rem !important;
+    border-radius: 100px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+    box-shadow: 0 2px 8px rgba(22, 101, 52, 0.25) !important;
   }
 
   /* Modals & Overlays */

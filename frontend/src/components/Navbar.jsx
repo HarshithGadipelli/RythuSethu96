@@ -328,11 +328,11 @@ export default function Navbar() {
         </Link>
 
         <ul className="navbar-links">
-          <li><Link href="/" className={active("/")}><Home size={17} /> {t("home")}</Link></li>
-          <li><Link href="/marketplace" className={active("/marketplace")}><ShoppingBag size={17} /> {t("marketplace")}</Link></li>
+          <li className="nav-item-desktop"><Link href="/" className={active("/")}><Home size={17} /> {t("home")}</Link></li>
+          <li className="nav-item-desktop"><Link href="/marketplace" className={active("/marketplace")}><ShoppingBag size={17} /> {t("marketplace")}</Link></li>
 
           {/* All Features & Services Mega Menu Trigger */}
-          <li ref={servicesMenuRef} style={{ position: "relative" }}>
+          <li ref={servicesMenuRef} className="nav-item-desktop" style={{ position: "relative" }}>
             <button
               type="button"
               onClick={() => setShowServicesMenu(prev => !prev)}
@@ -480,16 +480,16 @@ export default function Navbar() {
           </li>
 
           {user?.role === "farmer" && (
-            <li><Link href="/farmer" className={active("/farmer")}><Leaf size={17} /> {t("dashboard")}</Link></li>
+            <li className="nav-item-desktop"><Link href="/farmer" className={active("/farmer")}><Leaf size={17} /> {t("dashboard")}</Link></li>
           )}
           {user?.role === "agent" && (
-            <li><Link href="/agent" className={active("/agent")}><Truck size={17} /> {t("deliveries")}</Link></li>
+            <li className="nav-item-desktop"><Link href="/agent" className={active("/agent")}><Truck size={17} /> {t("deliveries")}</Link></li>
           )}
           {user?.role === "admin" && (
-            <li><Link href="/admin" className={active("/admin")}><Shield size={17} /> {t("adminPanel")}</Link></li>
+            <li className="nav-item-desktop"><Link href="/admin" className={active("/admin")}><Shield size={17} /> {t("adminPanel")}</Link></li>
           )}
-          <li><Link href="/support" className={active("/support")}><Headphones size={17} /> Support</Link></li>
-          <li>
+          <li className="nav-item-desktop"><Link href="/support" className={active("/support")}><Headphones size={17} /> Support</Link></li>
+          <li className="nav-item-lang">
             <select className="lang-select" value={lang} onChange={(e) => changeLang(e.target.value)}>
               <option value="en">🇬🇧 EN</option>
               <option value="hi">🇮🇳 Hindi (हि)</option>
@@ -499,7 +499,7 @@ export default function Navbar() {
               <option value="ml">🇮🇳 Malayalam (മല)</option>
             </select>
           </li>
-          <li>
+          <li className="nav-item-location">
             <button
               type="button"
               onClick={() => setShowLocationModal(true)}
@@ -526,7 +526,7 @@ export default function Navbar() {
               </span>
             </button>
           </li>
-          <li>
+          <li className="nav-item-audio">
             <button 
               className={`icon-btn ${natureAudioInfo.isPlaying ? "nature-sound-active" : ""}`} 
               onClick={handleNatureToggle} 
@@ -551,12 +551,12 @@ export default function Navbar() {
               )}
             </button>
           </li>
-          <li>
+          <li className="nav-item-audio">
             <button className="icon-btn" onClick={handleFluteToggle} title="Krishna Flute">
               {fluteBgm ? <span style={{fontSize:"1.1rem"}}>🎵</span> : <span style={{fontSize:"1.1rem", filter:"grayscale(1) opacity(0.5)"}}>🎵</span>}
             </button>
           </li>
-          <li>
+          <li className="nav-item-audio">
             <button 
               className={`icon-btn ${isAnnouncerActive ? "market-audio-active" : ""}`} 
               onClick={handleAnnouncerToggle} 
@@ -581,7 +581,7 @@ export default function Navbar() {
               )}
             </button>
           </li>
-          <li>
+          <li className="nav-item-device">
             <button 
               className="device-mode-badge" 
               onClick={() => {
@@ -610,7 +610,7 @@ export default function Navbar() {
           </li>
           {user ? (
             <>
-              <li>
+              <li className="nav-item-desktop-badge">
                 <button
                   type="button"
                   onClick={() => setShowTrustModal(true)}
@@ -636,20 +636,20 @@ export default function Navbar() {
                 </button>
               </li>
               {user.role === "agent" && user.experiencePoints > 0 && (
-                <li>
+                <li className="nav-item-desktop-badge">
                   <span className="rewards-badge" style={{ padding: "0.3rem 0.8rem", fontSize: "0.8rem" }}>⭐ {user.experiencePoints} XP</span>
                 </li>
               )}
               {user.role !== "agent" && user.rewardPoints > 0 && (
-                <li>
+                <li className="nav-item-desktop-badge">
                   <span className="rewards-badge" style={{ padding: "0.3rem 0.8rem", fontSize: "0.8rem" }}>🏆 {user.rewardPoints} Pts</span>
                 </li>
               )}
-              <li style={{ color: "var(--text-dark)", fontSize: "0.95rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <li className="nav-item-user-name" style={{ color: "var(--text-dark)", fontSize: "0.95rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.4rem" }}>
                 <div style={{ background: "var(--green-pale)", padding: "6px", borderRadius: "50%", color: "var(--green-deep)" }}><User size={16} /></div>
                 {user.name ? user.name.split(" ")[0] : "User"}
               </li>
-              <li ref={notifRef} style={{ position: "relative" }}>
+              <li className="nav-item-notifs" ref={notifRef} style={{ position: "relative" }}>
                 <button 
                   className="btn-icon" 
                   style={{ position: "relative", background: showNotifs ? "var(--green-pale)" : "transparent" }}
@@ -734,7 +734,7 @@ export default function Navbar() {
               </li>
               
               {/* Cart Button */}
-              <li style={{ position: "relative" }}>
+              <li className="nav-item-cart" style={{ position: "relative" }}>
                 <button 
                   className="btn-icon" 
                   onClick={() => setIsCartOpen(true)}
@@ -749,7 +749,7 @@ export default function Navbar() {
               </li>
 
               {user.role === 'customer' && (
-                <li>
+                <li className="nav-item-desktop">
                   <Link href="/my-orders" style={{ textDecoration: 'none' }}>
                     <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-secondary" style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem", color: "var(--green-deep)", borderColor: "var(--green-pale)", background: "rgba(34,197,94,0.05)" }}>
                       <Package size={16} /> Orders & Boxes
@@ -757,7 +757,7 @@ export default function Navbar() {
                   </Link>
                 </li>
               )}
-              <li ref={settingsRef} style={{ position: "relative" }}>
+              <li className="nav-item-profile" ref={settingsRef} style={{ position: "relative" }}>
                 <motion.button 
                   whileHover={{ scale: 1.05 }} 
                   whileTap={{ scale: 0.95 }} 
@@ -1052,7 +1052,7 @@ export default function Navbar() {
                   )}
                 </AnimatePresence>
               </li>
-              <li>
+              <li className="nav-item-desktop">
                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-secondary" onClick={handleLogout} style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem", background: "#fef2f2", color: "#ef4444", borderColor: "#fecaca" }}>
                   <LogOut size={16} /> {t("logout")}
                 </motion.button>
@@ -1060,22 +1060,59 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <li>
+              <li className="nav-item-auth nav-item-login">
                 <Link href="/login" style={{ textDecoration: "none" }}>
-                  <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-secondary" style={{ padding: "0.5rem 1.25rem", fontSize: "0.9rem", display: "inline-block", borderRadius: "100px", color: "var(--text-dark)", borderColor: "#e2e8f0" }}>{t("login")}</motion.span>
+                  <motion.span 
+                    whileHover={{ scale: 1.05 }} 
+                    whileTap={{ scale: 0.95 }} 
+                    className="btn-secondary nav-btn-login" 
+                    style={{ 
+                      padding: "0.45rem 1.1rem", 
+                      fontSize: "0.85rem", 
+                      display: "inline-flex", 
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "100px", 
+                      color: "var(--text-dark)", 
+                      borderColor: "#cbd5e1",
+                      background: "white",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    {t("login") || "Login"}
+                  </motion.span>
                 </Link>
               </li>
-              <li>
+              <li className="nav-item-auth nav-item-register">
                 <Link href="/register" style={{ textDecoration: "none" }}>
-                  <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-primary" style={{ padding: "0.5rem 1.25rem", fontSize: "0.9rem", display: "inline-block", width: "auto", borderRadius: "100px" }}>{t("register")}</motion.span>
+                  <motion.span 
+                    whileHover={{ scale: 1.05 }} 
+                    whileTap={{ scale: 0.95 }} 
+                    className="btn-primary nav-btn-register" 
+                    style={{ 
+                      padding: "0.45rem 1.15rem", 
+                      fontSize: "0.85rem", 
+                      display: "inline-flex", 
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "100px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    {t("register") || "Register"}
+                  </motion.span>
                 </Link>
               </li>
             </>
           )}
         </ul>
 
-        {/* Mobile Settings Drawer - Anchored above BottomNav on mobile */}
-        {showSettings && typeof window !== "undefined" && window.innerWidth <= 768 && createPortal(
+        {/* Mobile Settings Drawer - Anchored above BottomNav on mobile or simulated mobile mode */}
+        {showSettings && typeof window !== "undefined" && (window.innerWidth <= 768 || (typeof document !== "undefined" && (document.body.classList.contains("force-mobile-mode") || document.body.classList.contains("device-mobile")))) && createPortal(
           <div className="modal-overlay" onClick={() => setShowSettings(false)} style={{ zIndex: 10004 }}>
             <motion.div 
               initial={{ y: "100%", opacity: 0 }}
@@ -1092,8 +1129,10 @@ export default function Navbar() {
                       <User size={18} color="var(--green-mid)" />
                     </div>
                     <div>
-                      <h4 style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-dark)", fontWeight: 700 }}>Personal Settings</h4>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{user?.email || user?.role}</span>
+                      <h4 style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-dark)", fontWeight: 700 }}>
+                        {user ? "Personal Settings" : "Account & Settings"}
+                      </h4>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{user ? (user.email || user.role) : "Guest User"}</span>
                     </div>
                   </div>
                   <button 
@@ -1104,6 +1143,38 @@ export default function Navbar() {
                     ×
                   </button>
                 </div>
+
+                {/* If guest/unauthenticated on mobile: Show direct Login & Register cards */}
+                {!user && (
+                  <div style={{
+                    background: "linear-gradient(135deg, #0e331e 0%, #15803d 100%)",
+                    borderRadius: "14px",
+                    padding: "1rem",
+                    color: "white",
+                    marginBottom: "1rem",
+                    boxShadow: "0 6px 20px rgba(14, 51, 30, 0.25)"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
+                      <span style={{ fontSize: "1.3rem" }}>🌾</span>
+                      <h4 style={{ margin: 0, fontSize: "0.98rem", fontWeight: 800 }}>Welcome to Rythu Jana Sethu</h4>
+                    </div>
+                    <p style={{ margin: "0 0 0.85rem 0", fontSize: "0.78rem", opacity: 0.9, lineHeight: 1.4 }}>
+                      Log in to access your farm orders, save favorites, and connect directly with farmers.
+                    </p>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <Link href="/login" onClick={() => setShowSettings(false)} style={{ flex: 1, textDecoration: "none" }}>
+                        <button type="button" className="btn-primary" style={{ width: "100%", padding: "0.55rem", fontSize: "0.82rem", background: "#fef08a", color: "#166534", fontWeight: 800, border: "none", borderRadius: "8px" }}>
+                          🔑 {t("login") || "Login"}
+                        </button>
+                      </Link>
+                      <Link href="/register" onClick={() => setShowSettings(false)} style={{ flex: 1, textDecoration: "none" }}>
+                        <button type="button" className="btn-secondary" style={{ width: "100%", padding: "0.55rem", fontSize: "0.82rem", background: "rgba(255,255,255,0.18)", color: "white", borderColor: "rgba(255,255,255,0.5)", borderRadius: "8px" }}>
+                          ✨ {t("register") || "Register"}
+                        </button>
+                      </Link>
+                    </div>
+                  </div>
+                )}
 
                 {/* Tabs */}
                 <div style={{ display: "flex", background: "#f1f5f9", borderRadius: "10px", padding: "3px", marginBottom: "1rem" }}>

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Home, ShoppingBag, User, Bot, Package, Sparkles, X, ChevronRight } from "lucide-react";
+import { Home, ShoppingBag, User, Bot, Package, Sparkles, X, ChevronRight, LogIn } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import "./BottomNav.css";
 
@@ -24,15 +24,17 @@ export default function BottomNav() {
       baseLinks.push({ path: "/agent", icon: <Package size={22} />, label: "Fleet" });
     } else if (user?.role === "admin") {
       baseLinks.push({ path: "/admin", icon: <Package size={22} />, label: "Admin" });
-    } else {
+    } else if (user) {
       baseLinks.push({ path: "/my-orders", icon: <Package size={22} />, label: "Orders" });
+    } else {
+      baseLinks.push({ path: "/login", icon: <LogIn size={22} />, label: "Login" });
     }
 
     baseLinks.push({ 
       isAction: true, 
       action: "settings", 
       icon: <User size={22} />, 
-      label: "Account" 
+      label: user ? "Account" : "Account" 
     });
 
     return baseLinks;
@@ -49,6 +51,9 @@ export default function BottomNav() {
   };
 
   const mobileServices = [
+    ...(!user ? [
+      { title: "Register / Create Account", path: "/register", icon: "🌾", badge: "JOIN FREE", badgeBg: "#dcfce7", badgeColor: "#166534", desc: "Sign up as Consumer, Farmer or Delivery Agent" }
+    ] : []),
     { title: "Marketplace", path: "/marketplace", icon: "🛒", badge: "LIVE", badgeBg: "#dcfce7", badgeColor: "#166534", desc: "Fresh organic veggies, fruits & grains" },
     { title: "Curated Boxes", path: "/curated-boxes", icon: "📦", badge: "WEEKLY", badgeBg: "#fef3c7", badgeColor: "#b45309", desc: "Farm fresh family subscription baskets" },
     { title: "Group Buying", path: "/customer-groups", icon: "👥", badge: "SAVE 25%", badgeBg: "#ffedd5", badgeColor: "#c2410c", desc: "Apartment bulk orders from local farms" },
